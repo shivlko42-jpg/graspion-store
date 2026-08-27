@@ -56,6 +56,24 @@ header { position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.92); 
 .deal-strip h2 { font-size:18px; font-weight:800; }
 .deal-strip .sub { font-size:11px; color:#9ca3af; font-weight:600; margin-top:2px; }
 .grid { max-width:1200px; margin:0 auto; padding:10px 20px 20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(165px,1fr)); gap:14px; }
+@media(min-width:900px){
+.hero-banner { padding:56px 60px; }
+.hero-banner h1 { font-size:46px; }
+.hero-banner p { font-size:15px; max-width:420px; }
+.hero-emoji { font-size:92px; }
+.trust-row { justify-content:center; gap:18px; }
+.trust-item { padding:12px 22px; font-size:13px; }
+.quick-cats { grid-template-columns:repeat(8,1fr); gap:20px; }
+.qc-icon { width:68px; height:68px; font-size:30px; }
+.vendor-row { flex-wrap:wrap; }
+.vendor-card { width:180px; padding:18px; }
+.grid { grid-template-columns:repeat(5,1fr); gap:20px; }
+.card:hover { transform:translateY(-6px); box-shadow:0 16px 36px rgba(76,29,149,0.14); transition:.25s; }
+.card { transition:.25s; }
+.cta-banner { padding:52px 60px; }
+.cta-banner h2 { font-size:28px; }
+}
+@media(min-width:1300px){ .grid { grid-template-columns:repeat(6,1fr); } }
 .card { background:#fff; border-radius:16px; overflow:hidden; position:relative; border:1px solid #f0eef7; }
 .badge { position:absolute; top:9px; left:9px; background:#ec4899; color:#fff; font-size:10px; font-weight:800; padding:4px 9px; border-radius:8px; z-index:2; }
 .badge.new { background:linear-gradient(90deg,#22c55e,#16a34a); }
