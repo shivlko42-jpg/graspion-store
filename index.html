@@ -1,58 +1,24 @@
-setArea('226001');
-// FILE READY - Ye poora code copy karke GitHub ke index.html mein paste karo  <div class="trust-item"><span class="ti-icon">🔒</span> Secure Payments</div>
-  <div class="trust-item"><span class="ti-icon">🔄</span> Easy Returns</div>
-  <div class="trust-item"><span class="ti-icon">🏪</span> Local Vendors</div>
-</div>
+```javascript
+// server.js
+const express = require('express');
+const cors = require('cors');
 
-<div class="db-status">
-  <span class="db-status-badge loading" id="dbStatusBadge">⏳ Connecting to Graspion Cloud...</span>
-</div>
+const app = express();
+const PORT = 5000;
 
-<div class="quick-cats" id="quickCats"></div>
+// Middleware -- ye requests ko samajhne mein help karta hai
+app.use(cors());
+app.use(express.json());
 
-<div class="vendor-strip">
-  <h2 id="vendorHeading">🏪 Vendors near you</h2>
-  <div class="vendor-row" id="vendorRow"></div>
-</div>
+// Test route -- check karne ke liye server chal raha hai ya nahi
+app.get('/', function (req, res) {
+  res.send('Graspion Backend is running!');
+});
 
-<div id="mainContent">
-  <div class="deal-strip">
-    <div>
-      <h2>🔥 Products</h2>
-      <div class="sub">Live from Graspion database</div>
-    </div>
-  </div>
-  <div class="grid" id="dealGrid"></div>
-</div>
+// Server start karo
+app.listen(PORT, function () {
+  console.log('Server chal raha hai: http://localhost:' + PORT);
+});
+```
 
-<div class="bottom-cta">
-  <div class="cta-banner">
-    <h2>Become a Graspion Vendor</h2>
-    <p>Apna area select karke apni dukaan online lao · Zero commission for first 3 months</p>
-    <button>Start Selling</button>
-  </div>
-</div>
-
-<footer><b>Graspion</b> © 2026 — Multi-Vendor Quick Commerce · Lucknow, Uttar Pradesh</footer>
-
-<div class="drawer-overlay" id="drawerOverlay"></div>
-<div class="cart-drawer" id="cartDrawer">
-  <div class="drawer-head">
-    <h3>Your Cart</h3>
-    <button class="drawer-close" id="drawerClose">✕</button>
-  </div>
-  <div class="drawer-body" id="drawerBody"></div>
-  <div class="drawer-foot" id="drawerFoot" style="display:none;">
-    <div class="foot-row"><span>Item Total</span><span id="fItemTotal">₹0</span></div>
-    <div class="foot-row"><span>Delivery Fee</span><span id="fDelivery">₹0</span></div>
-    <div class="foot-row total"><span>To Pay</span><span id="fTotal">₹0</span></div>
-    <button class="checkout-btn" id="goCheckoutBtn">Proceed to Checkout</button>
-  </div>
-</div>
-
-<div class="checkout-overlay" id="checkoutOverlay">
-  <div class="co-header">
-    <button class="co-back" id="coBack">←</button>
-    <h2>Checkout</h2>
-  </div>
-  <div cl
+**Note:** Is version mein backticks (template strings) aur emoji hata diye hain, kyunki copy-paste karte waqt kabhi kabhi ye characters sahi se transfer nahi hote aur error deते hain. Ye version 100% safe hai.
