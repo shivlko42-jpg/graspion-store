@@ -240,6 +240,8 @@ let selectedPin = null;
 let selectedVendorId = 'all';
 let cart = {};
 let checkoutStep = 'address';
+let selectedPayMethod = 'upi';
+let customerInfo = { name:'', phone:'', address:'', city:'', pincode:'' };
 async function loadDataFromDatabase(){
 const badge = document.getElementById('dbStatusBadge');
 try {
@@ -314,27 +316,71 @@ document.getElementById('cartOpenBtn').addEventListener('click', function(){ doc
 function closeDrawer(){ document.getElementById('cartDrawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('open'); }
 document.getElementById('drawerClose').addEventListener('click', closeDrawer);
 document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
-let selectedPayMethod = 'upi';
 function openCheckout(){ closeDrawer(); checkoutStep = 'address'; document.getElementById('checkoutOverlay').classList.add('open'); renderCheckout(); }
 function closeCheckout(){ document.getElementById('checkoutOverlay').classList.remove('open'); }
 document.getElementById('goCheckoutBtn').addEventListener('click', openCheckout);
 document.getElementById('coBack').addEventListener('click', function(){ if(checkoutStep === 'payment'){ checkoutStep='address'; renderCheckout(); } else { closeCheckout(); } });
+async function saveOrderToDatabase(){
+const t = cartTotals();
+const items = cartItemsList();
+const firstVendorId = items.length > 0 ? items[0].vendorId : null;
+try {
+const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+body: JSON.stringify({ customer_name: customerInfo.name, customer_phone: customerInfo.phone, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city })
+});
+const orderData = await orderRes.json();
+const orderId = orderData[0] ? orderData[0].id : null;
+if (orderId) {
+const itemInserts = items.map(function(i) {
+return fetch(SUPABASE_URL + '/rest/v1/order_items', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({ order_id: orderId, product_id: i.id, quantity: i.qty, price: i.price })
+});
+});
+await Promise.all(itemInserts);
+}
+return true;
+} catch (err) { console.error('Order save failed:', err); return false; }
+}
 function renderCheckout(){
 const t = cartTotals();
 const items = cartItemsList();
 const wrap = document.getElementById('coWrap');
 if(checkoutStep === 'address'){
-wrap.innerHTML = '<div class="co-section"><h4>📍 Delivery Address</h4><input class="co-input" placeholder="Full Name" id="coName"><input class="co-input" placeholder="Phone Number" id="coPhone"><input class="co-input" placeholder="House No, Street, Area" id="coAddr"><div class="co-row2"><input class="co-input" placeholder="City" id="coCity" value="' + (areaData[selectedPin] ? areaData[selectedPin].city : '') + '"><input class="co-input" placeholder="Pincode" id="coPincode" value="' + (selectedPin || '') + '"></div></div><div class="co-section"><h4>🧾 Order Summary (' + items.length + ' items)</h4>' + items.map(function(i){ return '<div class="co-item-row"><span>' + i.name + ' × ' + i.qty + '</span><b>₹' + (i.price*i.qty).toLocaleString('en-IN') + '</b></div>'; }).join('') + '<div class="co-item-row"><span>Delivery Fee</span><b>' + (t.delivery===0?'FREE':'₹'+t.delivery) + '</b></div><div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>Total</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">Continue to Payment →</button>';
-document.getElementById('toPaymentBtn').addEventListener('click', function(){ checkoutStep = 'payment'; renderCheckout(); });
+wrap.innerHTML = '<div class="co-section"><h4>📍 Delivery Address</h4><input class="co-input" placeholder="Full Name" id="coName" value="' + customerInfo.name + '"><input class="co-input" placeholder="Phone Number" id="coPhone" value="' + customerInfo.phone + '"><input class="co-input" placeholder="House No, Street, Area" id="coAddr" value="' + customerInfo.address + '"><div class="co-row2"><input class="co-input" placeholder="City" id="coCity" value="' + (customerInfo.city || (areaData[selectedPin] ? areaData[selectedPin].city : '')) + '"><input class="co-input" placeholder="Pincode" id="coPincode" value="' + (customerInfo.pincode || selectedPin || '') + '"></div></div><div class="co-section"><h4>🧾 Order Summary (' + items.length + ' items)</h4>' + items.map(function(i) { return '<div class="co-item-row"><span>' + i.name + ' × ' + i.qty + '</span><b>₹' + (i.price*i.qty).toLocaleString('en-IN') + '</b></div>'; }).join('') + '<div class="co-item-row"><span>Delivery Fee</span><b>' + (t.delivery===0?'FREE':'₹'+t.delivery) + '</b></div><div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>Total</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">Continue to Payment →</button>';
+document.getElementById('toPaymentBtn').addEventListener('click', function() {
+customerInfo.name = document.getElementById('coName').value.trim();
+customerInfo.phone = document.getElementById('coPhone').value.trim();
+customerInfo.address = document.getElementById('coAddr').value.trim();
+customerInfo.city = document.getElementById('coCity').value.trim();
+customerInfo.pincode = document.getElementById('coPincode').value.trim();
+if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) { alert('Naam, phone aur address zaroori hai'); return; }
+checkoutStep = 'payment';
+renderCheckout();
+});
 }
 else if(checkoutStep === 'payment'){
-wrap.innerHTML = '<div class="co-section"><h4>💳 Select Payment Method</h4><div class="pay-option ' + (selectedPayMethod==='upi'?'selected':'') + '" data-pay="upi">📱 UPI</div><div class="pay-option ' + (selectedPayMethod==='card'?'selected':'') + '" data-pay="card">💳 Card</div><div class="pay-option ' + (selectedPayMethod==='cod'?'selected':'') + '" data-pay="cod">💵 Cash on Delivery</div></div><div class="co-section"><h4>🧾 Total Payable</h4><div class="co-item-row" style="font-size:15px;"><span>Amount</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="placeOrderBtn">' + (selectedPayMethod==='cod' ? 'Place Order' : 'Pay ₹'+t.total.toLocaleString('en-IN')+' via Razorpay') + '</button><div class="razorpay-note">🔒 Secured by Razorpay · Demo</div>';
-wrap.querySelectorAll('[data-pay]').forEach(function(el){ el.addEventListener('click', function(){ selectedPayMethod = el.getAttribute('data-pay'); renderCheckout(); }); });
-document.getElementById('placeOrderBtn').addEventListener('click', function(){ checkoutStep = 'success'; renderCheckout(); });
+wrap.innerHTML = '<div class="co-section"><h4>💳 Select Payment Method</h4><div class="pay-option ' + (selectedPayMethod==='upi'?'selected':'') + '" data-pay="upi">📱 UPI (Google Pay / PhonePe / Paytm)</div><div class="pay-option ' + (selectedPayMethod==='card'?'selected':'') + '" data-pay="card">💳 Credit / Debit Card</div><div class="pay-option ' + (selectedPayMethod==='cod'?'selected':'') + '" data-pay="cod">💵 Cash on Delivery</div></div><div class="co-section"><h4>🧾 Total Payable</h4><div class="co-item-row" style="font-size:15px;"><span>Amount</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="placeOrderBtn">' + (selectedPayMethod==='cod' ? 'Place Order' : 'Pay ₹'+t.total.toLocaleString('en-IN')+' via Razorpay') + '</button><div class="razorpay-note">🔒 Secured by Razorpay · Demo</div>';
+wrap.querySelectorAll('[data-pay]').forEach(function(el) { el.addEventListener('click', function() { selectedPayMethod = el.getAttribute('data-pay'); renderCheckout(); }); });
+document.getElementById('placeOrderBtn').addEventListener('click', async function() {
+const btn = document.getElementById('placeOrderBtn');
+btn.textContent = '⏳ Order save ho raha hai...';
+btn.disabled = true;
+const saved = await saveOrderToDatabase();
+checkoutStep = saved ? 'success' : 'error';
+renderCheckout();
+});
 }
 else if(checkoutStep === 'success'){
-wrap.innerHTML = '<div class="success-box"><div class="tick">✅</div><h2>Order Placed Successfully!</h2><p>Aapka order confirm ho gaya hai.</p><button id="closeSuccessBtn">Continue Shopping</button></div>';
-document.getElementById('closeSuccessBtn').addEventListener('click', function(){ cart = {}; refreshAll(); closeCheckout(); });
+wrap.innerHTML = '<div class="success-box"><div class="tick">✅</div><h2>Order Placed Successfully!</h2><p>Aapka order database mein save ho gaya hai. Vendor jaldi pack karega.</p><button id="closeSuccessBtn">Continue Shopping</button></div>';
+document.getElementById('closeSuccessBtn').addEventListener('click', function() { cart = {}; customerInfo = { name:'', phone:'', address:'', city:'', pincode:'' }; refreshAll(); closeCheckout(); });
+}
+else if(checkoutStep === 'error'){
+wrap.innerHTML = '<div class="success-box"><div class="tick">⚠️</div><h2>Order Save Nahi Hua</h2><p>Kuch dikkat aayi. Dubara try karo.</p><button id="retryBtn">Try Again</button></div>';
+document.getElementById('retryBtn').addEventListener('click', function() { checkoutStep = 'payment'; renderCheckout(); });
 }
 }
 const cats = [{icon:'🎧',label:'Headphones'},{icon:'📱',label:'Mobiles'},{icon:'🥬',label:'Grocery'},{icon:'🔊',label:'Speakers'},{icon:'🏠',label:'Home Decor'},{icon:'💊',label:'Health'},{icon:'👗',label:'Fashion'},{icon:'🧴',label:'Beauty'}];
