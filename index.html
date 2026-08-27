@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graspion - Har Zarurat, Fast Delivery</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif; -webkit-tap-highlight-color:transparent; }
+  body { background:#f6f5fb; color:#1e1b3a; }
+
+  .modal-overlay { position:fixed; inset:0; background:rgba(15,10,30,0.8); backdrop-filter:blur(6px); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .modal-box { background:#fff; border-radius:24px; padding:36px 28px; max-width:380px; width:100%; text-align:center; box-shadow:0 30px 60px rgba(15,31,61,0.25); }
+  .modal-logo { font-size:24px; font-weight:900; margin-bottom:18px; }
+  .modal-logo span { background:linear-gradient(90deg,#1a3a6b,#0ea5e9); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .modal-box .emoji { font-size:44px; margin-bottom:8px; }
+  .modal-box h2 { font-size:19px; font-weight:800; margin-bottom:6px; }
+  .modal-box p { font-size:12.5px; color:#6b7280; margin-bottom:20px; }
+  .pin-input { width:100%; padding:14px 16px; border:2px solid #eef2f7; border-radius:14px; font-size:16px; margin-bottom:10px; outline:none; text-align:center; letter-spacing:2px; font-weight:800; transition:.2s; }
+  .pin-input:focus { border-color:#1a3a6b; box-shadow:0 0 0 4px rgba(26,58,107,0.1); }
+  .pin-suggestions { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:18px; }
+  .pin-chip { background:#eef4fb; color:#1a3a6b; font-size:11px; font-weight:700; padding:7px 12px; border-radius:10px; cursor:pointer; transition:.2s; }
+  .pin-chip:hover { background:#dbe8f7; transform:translateY(-1px); }
+  .pin-submit { width:100%; background:linear-gradient(90deg,#0f1f3d,#1a3a6b,#0ea5e9); border:none; color:#fff; padding:15px; border-radius:14px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 8px 20px rgba(26,58,107,0.35); }
+  .pin-error { color:#ef4444; font-size:11px; margin-bottom:8px; min-height:14px; font-weight:600; }
+
+  header { position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.92); backdrop-filter:blur(14px); box-shadow:0 1px 0 rgba(0,0,0,0.05); }
+  .nav { max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:13px 20px; gap:16px; }
+  .logo-wrap { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+  .logo-mark { width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,#0f1f3d,#1a3a6b,#3b82f6); display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:900; color:#fff; }
+  .logo { font-size:20px; font-weight:900; color:#0f1f3d; }
+  .logo span { background:linear-gradient(90deg,#1a3a6b,#0ea5e9); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .delivery-info { display:flex; flex-direction:column; cursor:pointer; flex:0 0 auto; padding:6px 12px; border-radius:10px; transition:.2s; }
+  .delivery-info:hover { background:#f2f6fb; }
+  .delivery-info .top { font-size:10px; color:#9ca3af; font-weight:600; }
+  .delivery-info .bottom { font-size:13px; font-weight:800; color:#0f1f3d; display:flex; align-items:center; gap:4px; }
+  .search-box { flex:1; max-width:420px; background:#f2f6fb; border-radius:12px; padding:11px 16px; font-size:13px; color:#9ca3af; display:flex; align-items:center; gap:8px; }
+  .cart-btn { background:linear-gradient(90deg,#1a3a6b,#0ea5e9); border:none; color:#fff; padding:11px 20px; border-radius:12px; font-weight:700; cursor:pointer; font-size:13px; white-space:nowrap; position:relative; box-shadow:0 6px 16px rgba(26,58,107,0.3); }
+  .cart-count { position:absolute; top:-6px; right:-6px; background:#fff; color:#0ea5e9; font-size:10px; font-weight:900; width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+
+  .promo-strip { background:linear-gradient(90deg,#0f1f3d,#1a3a6b,#0ea5e9); color:#fff; text-align:center; font-size:11.5px; font-weight:700; padding:8px; letter-spacing:.3px; }
+
+  .hero { max-width:1200px; margin:0 auto; padding:22px 20px 0; }
+  .hero-banner { background:linear-gradient(120deg,#020617 0%, #0f1f3d 45%, #0ea5e9 100%); border-radius:26px; padding:38px 32px; display:flex; align-items:center; justify-content:space-between; overflow:hidden; position:relative; box-shadow:0 20px 50px rgba(15,31,61,0.3); }
+  .hero-banner::before { content:''; position:absolute; width:260px; height:260px; background:rgba(255,255,255,0.06); border-radius:50%; top:-100px; right:-60px; }
+  .hero-banner::after { content:''; position:absolute; width:160px; height:160px; background:rgba(255,255,255,0.05); border-radius:50%; bottom:-70px; left:20%; }
+  .hero-text { position:relative; z-index:1; }
+  .hero-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.15); color:#7dd3fc; font-size:11px; font-weight:800; padding:6px 14px; border-radius:20px; margin-bottom:14px; }
+  .hero-banner h1 { font-size:clamp(24px,4vw,38px); font-weight:900; color:#fff; line-height:1.2; }
+  .hero-banner p { font-size:13.5px; color:rgba(255,255,255,0.8); margin-top:10px; font-weight:500; max-width:340px; }
+  .hero-emoji { font-size:64px; position:relative; z-index:1; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.3)); }
+
+  .trust-row { max-width:1200px; margin:16px auto 0; padding:0 20px; display:flex; gap:10px; overflow-x:auto; }
+  .trust-item { flex:0 0 auto; display:flex; align-items:center; gap:8px; background:#fff; padding:10px 16px; border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,0.04); font-size:11.5px; font-weight:700; color:#4b4b63; }
+  .trust-item .ti-icon { font-size:16px; }
+
+  .quick-cats { max-width:1200px; margin:0 auto; padding:24px 20px 4px; display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:14px; text-align:center; }
+  .qc-item { cursor:pointer; }
+  .qc-icon { width:58px; height:58px; margin:0 auto 6px; border-radius:18px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; box-shadow:0 4px 14px rgba(15,31,61,0.08); transition:.2s; }
+  .qc-item:hover .qc-icon { transform:translateY(-4px) scale(1.05); box-shadow:0 10px 22px rgba(26,58,107,0.2); }
+  .qc-item span { font-size:11px; font-weight:700; color:#4b4b63; }
+
+  .max-w { max-width:1200px; margin:0 auto; padding:0 20px; }
+
+  .vendor-strip { max-width:1200px; margin:0 auto; padding:24px 20px 4px; }
+  .vendor-strip h2 { font-size:17px; font-weight:800; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+  .vendor-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
+  .vendor-card { flex:0 0 auto; width:145px; background:#fff; border-radius:16px; padding:14px; text-align:center; border:1.5px solid transparent; cursor:pointer; transition:.2s; box-shadow:0 2px 10px rgba(0,0,0,0.04); }
+  .vendor-card.active { border-color:#1a3a6b; box-shadow:0 6px 18px rgba(26,58,107,0.2); background:linear-gradient(135deg,#eef4fb,#fff); }
+  .vendor-card .v-icon { font-size:32px; margin-bottom:6px; }
+  .vendor-card .v-name { font-size:12px; font-weight:700; }
+  .vendor-card .v-eta { font-size:10px; color:#16a34a; font-weight:800; margin-top:4px; }
+  .vendor-card .v-rating { font-size:9.5px; color:#9ca3af; margin-top:2px; }
+
+  .deal-strip { max-width:1200px; margin:0 auto; padding:26px 20px 6px; display:flex; justify-content:space-between; align-items:center; }
+  .deal-strip h2 { font-size:18px; font-weight:800; display:flex; align-items:center; gap:6px; }
+  .deal-strip .sub { font-size:11px; color:#9ca3af; font-weight:600; margin-top:2px; }
+  .deal-strip .timer { background:#0f1f3d; color:#38bdf8; font-size:11px; font-weight:800; padding:7px 14px; border-radius:10px; }
+
+  .grid { max-width:1200px; margin:0 auto; padding:10px 20px 20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(165px,1fr)); gap:14px; }
+  .card { background:#fff; border-radius:16px; overflow:hidden; position:relative; transition:.25s; border:1px solid #f0eef7; }
+  .card:hover { box-shadow:0 14px 30px rgba(15,31,61,0.12); transform:translateY(-4px); }
+  .badge { position:absolute; top:9px; left:9px; background:#0ea5e9; color:#fff; font-size:10px; font-weight:800; padding:4px 9px; border-radius:8px; z-index:2; box-shadow:0 3px 8px rgba(14,165,233,0.35); }
+  .badge.new { background:linear-gradient(90deg,#22c55e,#16a34a); }
+  .img-wrap { height:132px; background:linear-gradient(135deg,#f2f6fb,#e0f2fe); display:flex; align-items:center; justify-content:center; font-size:42px; }
+  .card-body { padding:11px 13px 13px; }
+  .vendor-tag { font-size:9.5px; color:#1a3a6b; font-weight:800; margin-bottom:5px; }
+  .card-body h3 { font-size:12.5px; font-weight:700; margin-bottom:7px; line-height:1.35; height:34px; overflow:hidden; color:#0f1f3d; }
+  .price-row { display:flex; align-items:baseline; gap:6px; }
+  .price-new { font-size:16px; font-weight:900; color:#0f1f3d; }
+  .price-old { font-size:11px; color:#9ca3af; text-decoration:line-through; }
+  .off { font-size:11px; color:#16a34a; font-weight:800; }
+  .rating-pill { display:inline-flex; align-items:center; gap:3px; background:linear-gradient(90deg,#16a34a,#22c55e); color:#fff; font-size:10px; font-weight:800; padding:3px 8px; border-radius:7px; margin-top:7px; }
+  .free-del { font-size:10px; color:#6b7280; font-weight:700; margin-top:6px; }
+
+  .add-btn { width:100%; margin-top:10px; background:#0f1f3d; color:#fff; border:none; padding:10px; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer; transition:.2s; }
+  .add-btn:hover { background:linear-gradient(90deg,#1a3a6b,#0ea5e9); }
+  .qty-row { display:flex; align-items:center; justify-content:space-between; margin-top:10px; background:#f2f6fb; border-radius:10px; padding:7px 12px; }
+  .qty-btn { background:linear-gradient(135deg,#1a3a6b,#0ea5e9); color:#fff; border:none; width:24px; height:24px; border-radius:7px; font-weight:800; cursor:pointer; font-size:14px; }
+  .qty-val { font-weight:800; font-size:13px; }
+
+  .bottom-cta { max-width:1200px; margin:28px auto; padding:0 20px; }
+  .cta-banner { background:linear-gradient(120deg,#020617,#0f1f3d); border-radius:24px; padding:34px 28px; text-align:center; color:#fff; position:relative; overflow:hidden; }
+  .cta-banner::before { content:''; position:absolute; width:200px; height:200px; background:rgba(14,165,233,0.15); border-radius:50%; top:-80px; right:-40px; }
+  .cta-banner h2 { font-size:21px; font-weight:900; margin-bottom:7px; position:relative; }
+  .cta-banner p { font-size:12.5px; color:#cbd5e1; margin-bottom:18px; position:relative; }
+  .cta-banner button { background:linear-gradient(90deg,#1a3a6b,#0ea5e9); border:none; color:#fff; padding:13px 30px; border-radius:12px; font-weight:800; cursor:pointer; position:relative; box-shadow:0 8px 20px rgba(14,165,233,0.4); }
+
+  footer { max-width:1200px; margin:0 auto; padding:28px 20px 44px; text-align:center; color:#9ca3af; font-size:11.5px; }
+  footer b { color:#4b4b63; }
+  .no-vendor { max-width:1200px; margin:30px auto; padding:0 20px; text-align:center; color:#9ca3af; font-size:13px; }
+
+  .drawer-overlay { position:fixed; inset:0; background:rgba(15,10,30,0.55); z-index:250; display:none; }
+  .drawer-overlay.open { display:block; }
+  .cart-drawer { position:fixed; top:0; right:0; height:100%; width:390px; max-width:92vw; background:#fff; z-index:260; transform:translateX(100%); transition:transform .35s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; }
+  .cart-drawer.open { transform:translateX(0); }
+  .drawer-head { padding:20px; background:linear-gradient(90deg,#0f1f3d,#1a3a6b); color:#fff; display:flex; justify-content:space-between; align-items:center; }
+  .drawer-head h3 { font-size:16px; font-weight:800; }
+  .drawer-close { background:rgba(255,255,255,0.15); border:none; font-size:16px; cursor:pointer; color:#fff; width:30px; height:30px; border-radius:9px; }
+  .drawer-body { flex:1; overflow-y:auto; padding:14px 20px; }
+  .cart-item { display:flex; gap:10px; padding:12px 0; border-bottom:1px solid #f7f6fb; }
+  .cart-item .ci-icon { width:52px; height:52px; background:linear-gradient(135deg,#f2f6fb,#e0f2fe); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; flex:0 0 auto; }
+  .cart-item .ci-info { flex:1; }
+  .cart-item .ci-name { font-size:12.5px; font-weight:700; margin-bottom:2px; }
+  .cart-item .ci-vendor { font-size:10.5px; color:#1a3a6b; margin-bottom:6px; font-weight:600; }
+  .cart-item .ci-price { font-size:13px; font-weight:800; }
+  .ci-qty { display:flex; align-items:center; gap:8px; }
+  .empty-cart { text-align:center; color:#9ca3af; font-size:13px; padding:60px 20px; }
+  .drawer-foot { padding:18px 20px 22px; border-top:1px solid #f0eef7; background:#faf9fd; }
+  .foot-row { display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px; color:#6b7280; }
+  .foot-row.total { font-size:16px; font-weight:900; color:#0f1f3d; margin-top:8px; }
+  .checkout-btn { width:100%; background:linear-gradient(90deg,#1a3a6b,#0ea5e9); border:none; color:#fff; padding:15px; border-radius:14px; font-weight:800; font-size:14px; cursor:pointer; margin-top:12px; box-shadow:0 8px 20px rgba(26,58,107,0.35); }
+
+  .checkout-overlay { position:fixed; inset:0; background:#f6f5fb; z-index:300; overflow-y:auto; display:none; }
+  .checkout-overlay.open { display:block; }
+  .co-header { background:#fff; box-shadow:0 2px 10px rgba(0,0,0,0.06); padding:16px 20px; display:flex; align-items:center; gap:14px; position:sticky; top:0; }
+  .co-back { background:#f2f6fb; border:none; font-size:18px; cursor:pointer; width:34px; height:34px; border-radius:10px; }
+  .co-header h2 { font-size:16px; font-weight:800; }
+  .co-wrap { max-width:600px; margin:0 auto; padding:20px; }
+  .co-section { background:#fff; border-radius:16px; padding:18px; margin-bottom:14px; box-shadow:0 2px 10px rgba(0,0,0,0.04); }
+  .co-section h4 { font-size:13px; font-weight:800; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+  .co-input { width:100%; padding:12px 14px; border:1.5px solid #f0eef7; border-radius:11px; font-size:13px; margin-bottom:10px; outline:none; }
+  .co-input:focus { border-color:#1a3a6b; }
+  .co-row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .co-item-row { display:flex; justify-content:space-between; font-size:12.5px; padding:7px 0; color:#4b4b63; }
+  .co-item-row b { color:#0f1f3d; }
+  .pay-option { display:flex; align-items:center; gap:10px; padding:13px; border:1.5px solid #f0eef7; border-radius:11px; margin-bottom:8px; cursor:pointer; font-size:13px; font-weight:600; transition:.2s; }
+  .pay-option.selected { border-color:#1a3a6b; background:#eef4fb; }
+  .place-order-btn { width:100%; background:linear-gradient(90deg,#1a3a6b,#0ea5e9); border:none; color:#fff; padding:16px; border-radius:14px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 10px 24px rgba(26,58,107,0.35); }
+  .razorpay-note { font-size:10.5px; color:#9ca3af; text-align:center; margin-top:10px; }
+
+  .success-box { text-align:center; padding:60px 20px; }
+  .success-box .tick { font-size:60px; margin-bottom:14px; }
+  .success-box h2 { font-size:20px; font-weight:800; margin-bottom:6px; }
+  .success-box p { font-size:13px; color:#6b7280; margin-bottom:20px; }
+  .success-box button { background:#0f1f3d; color:#fff; border:none; padding:13px 28px; border-radius:12px; font-weight:700; cursor:pointer; }
+
+  .db-status { max-width:1200px; margin:12px auto 0; padding:0 20px; }
+  .db-status-badge { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; padding:6px 12px; border-radius:20px; }
+  .db-status-badge.loading { background:#fef3c7; color:#b45309; }
+  .db-status-badge.live { background:#dcfce7; color:#15803d; }
+  .db-status-badge.error { background:#fee2e2; color:#dc2626; }
+
+  @media(max-width:600px){ .search-box{display:none;} .hero-emoji{font-size:44px;} }
+</style>
+</head>
+<body>
+
+<div id="pinModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-logo">Grasp<span>ion</span></div>
+    <div class="emoji">📍</div>
+    <h2>Apna area select karo</h2>
+    <p>Pincode ke hisab se aapke area ke vendors aur delivery time dikhayenge</p>
+    <input type="text" id="pinInput" class="pin-input" placeholder="Pincode e.g. 226001" maxlength="6">
+    <div class="pin-error" id="pinError"></div>
+    <div class="pin-suggestions">
+      <div class="pin-chip" data-pin="226001">226001 · Lucknow</div>
+      <div class="pin-chip" data-pin="110001">110001 · Delhi</div>
+      <div class="pin-chip" data-pin="400001">400001 · Mumbai</div>
+      <div class="pin-chip" data-pin="560001">560001 · Bengaluru</div>
+    </div>
+    <button class="pin-submit" id="pinSubmit">Continue →</button>
+  </div>
+</div>
+
+<div class="promo-strip">🎉 FLAT 50% OFF pehle order pe · Free Delivery ₹199+ pe · Code: GRAB50</div>
+
+<header>
+  <div class="nav">
+    <div class="logo-wrap">
+      <div class="logo-mark">G</div>
+      <div class="logo">Grasp<span>ion</span></div>
+    </div>
+    <div class="delivery-info" id="areaBtn">
+      <div class="top">Delivering to</div>
+      <div class="bottom" id="areaLabel">Select area 📍 ▾</div>
+    </div>
+    <div class="search-box">🔍 Search karo products, brands...</div>
+    <button class="cart-btn" id="cartOpenBtn">🛒 Cart <span class="cart-count" id="cartCount">0</span></button>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-banner">
+    <div class="hero-text">
+      <div class="hero-badge">⚡ 10-20 Min Delivery</div>
+      <h1>Har Zarurat.<br>Har Area. Fast.</h1>
+      <p id="heroSub">Apne area ke best local sellers se, lightning-fast delivery ke saath 🚀</p>
+    </div>
+    <div class="hero-emoji">🛍️</div>
+  </div>
+</section>
+
+<div class="trust-row">
+  <div class="trust-item"><span class="ti-icon">✅</span> 100% Genuine Products</div>
+  <div class="trust-item"><span class="ti-icon">🔒</span> Secure Payments</div>
+  <div class="trust-item"><span class="ti-icon">🔄</span> Easy Returns</div>
+  <div class="trust-item"><span class="ti-icon">🏪</span> Local Vendors</div>
+</div>
+
+<div class="db-status">
+  <span class="db-status-badge loading" id="dbStatusBadge">⏳ Connecting to Graspion Cloud...</span>
+</div>
+
+<div class="quick-cats" id="quickCats"></div>
+
+<div class="vendor-strip">
+  <h2 id="vendorHeading">🏪 Vendors near you</h2>
+  <div class="vendor-row" id="vendorRow"></div>
+</div>
+
+<div id="mainContent">
+  <div class="deal-strip">
+    <div>
+      <h2>🔥 Products</h2>
+      <div class="sub">Live from Graspion database</div>
+    </div>
+  </div>
+  <div class="grid" id="dealGrid"></div>
+</div>
+
+<div class="bottom-cta">
+  <div class="cta-banner">
+    <h2>Become a Graspion Vendor</h2>
+    <p>Apna area select karke apni dukaan online lao · Zero commission for first 3 months</p>
+    <button>Start Selling</button>
+  </div>
+</div>
+
+<footer><b>Graspion</b> © 2026 — Multi-Vendor Quick Commerce · Lucknow, Uttar Pradesh</footer>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="cart-drawer" id="cartDrawer">
+  <div class="drawer-head">
+    <h3>Your Cart</h3>
+    <button class="drawer-close" id="drawerClose">✕</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-foot" id="drawerFoot" style="display:none;">
+    <div class="foot-row"><span>Item Total</span><span id="fItemTotal">₹0</span></div>
+    <div class="foot-row"><span>Delivery Fee</span><span id="fDelivery">₹0</span></div>
+    <div class="foot-row total"><span>To Pay</span><span id="fTotal">₹0</span></div>
+    <button class="checkout-btn" id="goCheckoutBtn">Proceed to Checkout</button>
+  </div>
+</div>
+
+<div class="checkout-overlay" id="checkoutOverlay">
+  <div class="co-header">
+    <button class="co-back" id="coBack">←</button>
+    <h2>Checkout</h2>
+  </div>
+  <div cl
