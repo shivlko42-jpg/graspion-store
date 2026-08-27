@@ -72,4 +72,295 @@ header { position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.92); 
 .add-btn { width:100%; margin-top:10px; background:#1e1b3a; color:#fff; border:none; padding:10px; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer; }
 .qty-row { display:flex; align-items:center; justify-content:space-between; margin-top:10px; background:#f3f1f8; border-radius:10px; padding:7px 12px; }
 .qty-btn { background:linear-gradient(135deg,#7c3aed,#ec4899); color:#fff; border:none; width:24px; height:24px; border-radius:7px; font-weight:800; cursor:pointer; font-size:14px; }
-.qty-val { fo
+.qty-val { font-weight:800; font-size:13px; }
+.bottom-cta { max-width:1200px; margin:28px auto; padding:0 20px; }
+.cta-banner { background:linear-gradient(120deg,#1e1b3a,#4c1d95); border-radius:24px; padding:34px 28px; text-align:center; color:#fff; }
+.cta-banner h2 { font-size:21px; font-weight:900; margin-bottom:7px; }
+.cta-banner p { font-size:12.5px; color:#cbd5e1; margin-bottom:18px; }
+.cta-banner button { background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:13px 30px; border-radius:12px; font-weight:800; cursor:pointer; }
+footer { max-width:1200px; margin:0 auto; padding:28px 20px 44px; text-align:center; color:#9ca3af; font-size:11.5px; }
+.no-vendor { max-width:1200px; margin:30px auto; padding:0 20px; text-align:center; color:#9ca3af; font-size:13px; }
+.drawer-overlay { position:fixed; inset:0; background:rgba(15,10,30,0.55); z-index:250; display:none; }
+.drawer-overlay.open { display:block; }
+.cart-drawer { position:fixed; top:0; right:0; height:100%; width:390px; max-width:92vw; background:#fff; z-index:260; transform:translateX(100%); transition:transform .35s; display:flex; flex-direction:column; }
+.cart-drawer.open { transform:translateX(0); }
+.drawer-head { padding:20px; background:linear-gradient(90deg,#1e1b3a,#4c1d95); color:#fff; display:flex; justify-content:space-between; align-items:center; }
+.drawer-head h3 { font-size:16px; font-weight:800; }
+.drawer-close { background:rgba(255,255,255,0.15); border:none; font-size:16px; cursor:pointer; color:#fff; width:30px; height:30px; border-radius:9px; }
+.drawer-body { flex:1; overflow-y:auto; padding:14px 20px; }
+.cart-item { display:flex; gap:10px; padding:12px 0; border-bottom:1px solid #f7f6fb; }
+.cart-item .ci-icon { width:52px; height:52px; background:linear-gradient(135deg,#f3f1f8,#fde9ee); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; }
+.cart-item .ci-name { font-size:12.5px; font-weight:700; margin-bottom:2px; }
+.cart-item .ci-vendor { font-size:10.5px; color:#9333ea; margin-bottom:6px; font-weight:600; }
+.cart-item .ci-price { font-size:13px; font-weight:800; }
+.ci-qty { display:flex; align-items:center; gap:8px; }
+.empty-cart { text-align:center; color:#9ca3af; font-size:13px; padding:60px 20px; }
+.drawer-foot { padding:18px 20px 22px; border-top:1px solid #f0eef7; background:#faf9fd; }
+.foot-row { display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px; color:#6b7280; }
+.foot-row.total { font-size:16px; font-weight:900; color:#1e1b3a; margin-top:8px; }
+.checkout-btn { width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:15px; border-radius:14px; font-weight:800; font-size:14px; cursor:pointer; margin-top:12px; }
+.checkout-overlay { position:fixed; inset:0; background:#f6f5fb; z-index:300; overflow-y:auto; display:none; }
+.checkout-overlay.open { display:block; }
+.co-header { background:#fff; padding:16px 20px; display:flex; align-items:center; gap:14px; position:sticky; top:0; }
+.co-back { background:#f3f1f8; border:none; font-size:18px; cursor:pointer; width:34px; height:34px; border-radius:10px; }
+.co-header h2 { font-size:16px; font-weight:800; }
+.co-wrap { max-width:600px; margin:0 auto; padding:20px; }
+.co-section { background:#fff; border-radius:16px; padding:18px; margin-bottom:14px; }
+.co-section h4 { font-size:13px; font-weight:800; margin-bottom:12px; }
+.co-input { width:100%; padding:12px 14px; border:1.5px solid #f0eef7; border-radius:11px; font-size:13px; margin-bottom:10px; }
+.co-row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.co-item-row { display:flex; justify-content:space-between; font-size:12.5px; padding:7px 0; color:#4b4b63; }
+.co-item-row b { color:#1e1b3a; }
+.pay-option { display:flex; align-items:center; gap:10px; padding:13px; border:1.5px solid #f0eef7; border-radius:11px; margin-bottom:8px; cursor:pointer; font-size:13px; font-weight:600; }
+.pay-option.selected { border-color:#9333ea; background:#faf5ff; }
+.place-order-btn { width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:16px; border-radius:14px; font-weight:800; font-size:14px; cursor:pointer; }
+.razorpay-note { font-size:10.5px; color:#9ca3af; text-align:center; margin-top:10px; }
+.success-box { text-align:center; padding:60px 20px; }
+.success-box .tick { font-size:60px; margin-bottom:14px; }
+.success-box h2 { font-size:20px; font-weight:800; margin-bottom:6px; }
+.success-box p { font-size:13px; color:#6b7280; margin-bottom:20px; }
+.success-box button { background:#1e1b3a; color:#fff; border:none; padding:13px 28px; border-radius:12px; font-weight:700; cursor:pointer; }
+.db-status { max-width:1200px; margin:12px auto 0; padding:0 20px; }
+.db-status-badge { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; padding:6px 12px; border-radius:20px; }
+.db-status-badge.loading { background:#fef3c7; color:#b45309; }
+.db-status-badge.live { background:#dcfce7; color:#15803d; }
+.db-status-badge.error { background:#fee2e2; color:#dc2626; }
+@media(max-width:600px){ .search-box{display:none;} .hero-emoji{font-size:44px;} }
+</style>
+</head>
+<body>
+<div id="pinModal" class="modal-overlay">
+<div class="modal-box">
+<div class="modal-logo">Grasp<span>ion</span></div>
+<div class="emoji">📍</div>
+<h2>Apna area select karo</h2>
+<p>Pincode ke hisab se aapke area ke vendors aur delivery time dikhayenge</p>
+<input type="text" id="pinInput" class="pin-input" placeholder="Pincode e.g. 226001" maxlength="6">
+<div class="pin-error" id="pinError"></div>
+<div class="pin-suggestions">
+<div class="pin-chip" data-pin="226001">226001 · Lucknow</div>
+<div class="pin-chip" data-pin="110001">110001 · Delhi</div>
+<div class="pin-chip" data-pin="400001">400001 · Mumbai</div>
+<div class="pin-chip" data-pin="560001">560001 · Bengaluru</div>
+</div>
+<button class="pin-submit" id="pinSubmit">Continue →</button>
+</div>
+</div>
+<div class="promo-strip">🎉 FLAT 50% OFF pehle order pe · Free Delivery ₹199+ pe · Code: GRAB50</div>
+<header>
+<div class="nav">
+<div class="logo-wrap">
+<div class="logo-mark">G</div>
+<div class="logo">Grasp<span>ion</span></div>
+</div>
+<div class="delivery-info" id="areaBtn">
+<div class="top">Delivering to</div>
+<div class="bottom" id="areaLabel">Select area 📍 ▾</div>
+</div>
+<div class="search-box">🔍 Search karo products, brands...</div>
+<button class="cart-btn" id="cartOpenBtn">🛒 Cart <span class="cart-count" id="cartCount">0</span></button>
+</div>
+</header>
+<section class="hero">
+<div class="hero-banner">
+<div class="hero-text">
+<div class="hero-badge">⚡ 10-20 Min Delivery</div>
+<h1>Har Zarurat.<br>Har Area. Fast.</h1>
+<p id="heroSub">Apne area ke best local sellers se, lightning-fast delivery ke saath 🚀</p>
+</div>
+<div class="hero-emoji">🛍️</div>
+</div>
+</section>
+<div class="trust-row">
+<div class="trust-item">✅ 100% Genuine Products</div>
+<div class="trust-item">🔒 Secure Payments</div>
+<div class="trust-item">🔄 Easy Returns</div>
+<div class="trust-item">🏪 Local Vendors</div>
+</div>
+<div class="db-status">
+<span class="db-status-badge loading" id="dbStatusBadge">⏳ Connecting to Graspion Cloud...</span>
+</div>
+<div class="quick-cats" id="quickCats"></div>
+<div class="vendor-strip">
+<h2 id="vendorHeading">🏪 Vendors near you</h2>
+<div class="vendor-row" id="vendorRow"></div>
+</div>
+<div id="mainContent">
+<div class="deal-strip">
+<div>
+<h2>🔥 Products</h2>
+<div class="sub">Live from Graspion database</div>
+</div>
+</div>
+<div class="grid" id="dealGrid"></div>
+</div>
+<div class="bottom-cta">
+<div class="cta-banner">
+<h2>Become a Graspion Vendor</h2>
+<p>Apna area select karke apni dukaan online lao · Zero commission for first 3 months</p>
+<button>Start Selling</button>
+</div>
+</div>
+<footer><b>Graspion</b> © 2026 — Multi-Vendor Quick Commerce · Lucknow, Uttar Pradesh</footer>
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="cart-drawer" id="cartDrawer">
+<div class="drawer-head">
+<h3>Your Cart</h3>
+<button class="drawer-close" id="drawerClose">✕</button>
+</div>
+<div class="drawer-body" id="drawerBody"></div>
+<div class="drawer-foot" id="drawerFoot" style="display:none;">
+<div class="foot-row"><span>Item Total</span><span id="fItemTotal">₹0</span></div>
+<div class="foot-row"><span>Delivery Fee</span><span id="fDelivery">₹0</span></div>
+<div class="foot-row total"><span>To Pay</span><span id="fTotal">₹0</span></div>
+<button class="checkout-btn" id="goCheckoutBtn">Proceed to Checkout</button>
+</div>
+</div>
+<div class="checkout-overlay" id="checkoutOverlay">
+<div class="co-header">
+<button class="co-back" id="coBack">←</button>
+<h2>Checkout</h2>
+</div>
+<div class="co-wrap" id="coWrap"></div>
+</div>
+<script>
+const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
+const areaData = {
+'226001': { city:'Lucknow', area:'Hazratganj', eta:'12 mins' },
+'226010': { city:'Lucknow', area:'Indira Nagar', eta:'15 mins' },
+'110001': { city:'Delhi', area:'Connaught Place', eta:'10 mins' },
+'400001': { city:'Mumbai', area:'Fort', eta:'14 mins' },
+'560001': { city:'Bengaluru', area:'MG Road', eta:'11 mins' },
+};
+let vendors = [];
+let productPool = [];
+let dataLoaded = false;
+let selectedPin = null;
+let selectedVendorId = 'all';
+let cart = {};
+let checkoutStep = 'address';
+async function loadDataFromDatabase(){
+const badge = document.getElementById('dbStatusBadge');
+try {
+const vendorRes = await fetch(SUPABASE_URL + '/rest/v1/vendors?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const productRes = await fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const vendorData = await vendorRes.json();
+const productData = await productRes.json();
+vendors = vendorData.map(function(v){ return { id: v.id, name: v.name, icon: v.icon, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode] }; });
+productPool = productData.map(function(p){
+const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
+return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null };
+});
+dataLoaded = true;
+badge.className = 'db-status-badge live';
+badge.textContent = '✅ Live · ' + vendors.length + ' vendors, ' + productPool.length + ' products';
+} catch (err) {
+dataLoaded = false;
+badge.className = 'db-status-badge error';
+badge.textContent = '❌ Connection failed: ' + err.message;
+}
+}
+function renderVendors(pin){
+const list = vendors.filter(function(v){ return v.pincodes.includes(pin); });
+const row = document.getElementById('vendorRow');
+document.getElementById('vendorHeading').textContent = '🏪 ' + list.length + ' Vendors near you';
+if(list.length === 0){ row.innerHTML = '<div style="font-size:12px;color:#9ca3af;">Is area mein abhi koi vendor available nahi hai.</div>'; return; }
+row.innerHTML = '<div class="vendor-card ' + (selectedVendorId==='all'?'active':'') + '" data-v="all"><div class="v-icon">🏬</div><div class="v-name">All Vendors</div><div class="v-eta">' + list.length + ' stores</div></div>' +
+list.map(function(v){ return '<div class="vendor-card ' + (selectedVendorId===v.id?'active':'') + '" data-v="' + v.id + '"><div class="v-icon">' + v.icon + '</div><div class="v-name">' + v.name + '</div><div class="v-eta">⏱ ' + v.eta + '</div><div class="v-rating">★ ' + v.rating + '</div></div>'; }).join('');
+row.querySelectorAll('.vendor-card').forEach(function(el){ el.addEventListener('click', function(){ selectedVendorId = el.getAttribute('data-v'); renderVendors(pin); renderProducts(pin); }); });
+}
+function renderProducts(pin){
+let filtered = productPool.filter(function(p){ return p.pincode === pin; });
+if(selectedVendorId !== 'all') filtered = filtered.filter(function(p){ return p.vendorId === selectedVendorId; });
+const dealGrid = document.getElementById('dealGrid');
+if(filtered.length === 0){ dealGrid.innerHTML = '<div class="no-vendor" style="grid-column:1/-1;">Is area/vendor ke liye abhi products available nahi hain.</div>'; return; }
+dealGrid.innerHTML = filtered.map(function(p){
+const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
+const qty = cart[p.id] || 0;
+return '<div class="card">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') +
+'<div class="img-wrap">' + p.icon + '</div><div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
+'<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
+'<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span><div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' delivery</div>' +
+(qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">Add to Cart</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '">+</button></div>') +
+'</div></div>';
+}).join('');
+document.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(){ cart[btn.getAttribute('data-add')] = 1; refreshAll(); }); });
+document.querySelectorAll('[data-inc]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=btn.getAttribute('data-inc'); cart[id]=(cart[id]||0)+1; refreshAll(); }); });
+document.querySelectorAll('[data-dec]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=btn.getAttribute('data-dec'); cart[id]=(cart[id]||0)-1; if(cart[id]<=0) delete cart[id]; refreshAll(); }); });
+}
+function cartItemsList(){ return Object.keys(cart).map(function(id){ const p = productPool.find(function(pp){ return pp.id === id; }); return Object.assign({}, p, { qty: cart[id] }); }); }
+function cartTotals(){ const items = cartItemsList(); const itemTotal = items.reduce(function(s,i){ return s + i.price*i.qty; }, 0); const delivery = itemTotal > 199 || itemTotal === 0 ? 0 : 29; return { itemTotal: itemTotal, delivery: delivery, total: itemTotal + delivery, count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
+function renderCartDrawer(){
+const items = cartItemsList();
+const body = document.getElementById('drawerBody');
+const foot = document.getElementById('drawerFoot');
+const t = cartTotals();
+document.getElementById('cartCount').textContent = t.count;
+if(items.length === 0){ body.innerHTML = '<div class="empty-cart">🛒<br><br>Aapka cart khaali hai</div>'; foot.style.display = 'none'; return; }
+body.innerHTML = items.map(function(i){
+const vendor = vendors.find(function(v){ return v.id === i.vendorId; });
+return '<div class="cart-item"><div class="ci-icon">' + i.icon + '</div><div class="ci-info"><div class="ci-name">' + i.name + '</div><div class="ci-vendor">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><div class="ci-price">₹' + (i.price*i.qty).toLocaleString('en-IN') + '</div><div class="ci-qty"><button class="qty-btn" data-dec2="' + i.id + '">−</button><span class="qty-val">' + i.qty + '</span><button class="qty-btn" data-inc2="' + i.id + '">+</button></div></div></div>';
+}).join('');
+foot.style.display = 'block';
+document.getElementById('fItemTotal').textContent = '₹' + t.itemTotal.toLocaleString('en-IN');
+document.getElementById('fDelivery').textContent = t.delivery === 0 ? 'FREE' : '₹' + t.delivery;
+document.getElementById('fTotal').textContent = '₹' + t.total.toLocaleString('en-IN');
+document.querySelectorAll('[data-inc2]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=btn.getAttribute('data-inc2'); cart[id]=(cart[id]||0)+1; refreshAll(); }); });
+document.querySelectorAll('[data-dec2]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=btn.getAttribute('data-dec2'); cart[id]=(cart[id]||0)-1; if(cart[id]<=0) delete cart[id]; refreshAll(); }); });
+}
+function refreshAll(){ renderProducts(selectedPin); renderCartDrawer(); }
+document.getElementById('cartOpenBtn').addEventListener('click', function(){ document.getElementById('cartDrawer').classList.add('open'); document.getElementById('drawerOverlay').classList.add('open'); });
+function closeDrawer(){ document.getElementById('cartDrawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('open'); }
+document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+let selectedPayMethod = 'upi';
+function openCheckout(){ closeDrawer(); checkoutStep = 'address'; document.getElementById('checkoutOverlay').classList.add('open'); renderCheckout(); }
+function closeCheckout(){ document.getElementById('checkoutOverlay').classList.remove('open'); }
+document.getElementById('goCheckoutBtn').addEventListener('click', openCheckout);
+document.getElementById('coBack').addEventListener('click', function(){ if(checkoutStep === 'payment'){ checkoutStep='address'; renderCheckout(); } else { closeCheckout(); } });
+function renderCheckout(){
+const t = cartTotals();
+const items = cartItemsList();
+const wrap = document.getElementById('coWrap');
+if(checkoutStep === 'address'){
+wrap.innerHTML = '<div class="co-section"><h4>📍 Delivery Address</h4><input class="co-input" placeholder="Full Name" id="coName"><input class="co-input" placeholder="Phone Number" id="coPhone"><input class="co-input" placeholder="House No, Street, Area" id="coAddr"><div class="co-row2"><input class="co-input" placeholder="City" id="coCity" value="' + (areaData[selectedPin] ? areaData[selectedPin].city : '') + '"><input class="co-input" placeholder="Pincode" id="coPincode" value="' + (selectedPin || '') + '"></div></div><div class="co-section"><h4>🧾 Order Summary (' + items.length + ' items)</h4>' + items.map(function(i){ return '<div class="co-item-row"><span>' + i.name + ' × ' + i.qty + '</span><b>₹' + (i.price*i.qty).toLocaleString('en-IN') + '</b></div>'; }).join('') + '<div class="co-item-row"><span>Delivery Fee</span><b>' + (t.delivery===0?'FREE':'₹'+t.delivery) + '</b></div><div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>Total</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">Continue to Payment →</button>';
+document.getElementById('toPaymentBtn').addEventListener('click', function(){ checkoutStep = 'payment'; renderCheckout(); });
+}
+else if(checkoutStep === 'payment'){
+wrap.innerHTML = '<div class="co-section"><h4>💳 Select Payment Method</h4><div class="pay-option ' + (selectedPayMethod==='upi'?'selected':'') + '" data-pay="upi">📱 UPI</div><div class="pay-option ' + (selectedPayMethod==='card'?'selected':'') + '" data-pay="card">💳 Card</div><div class="pay-option ' + (selectedPayMethod==='cod'?'selected':'') + '" data-pay="cod">💵 Cash on Delivery</div></div><div class="co-section"><h4>🧾 Total Payable</h4><div class="co-item-row" style="font-size:15px;"><span>Amount</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="placeOrderBtn">' + (selectedPayMethod==='cod' ? 'Place Order' : 'Pay ₹'+t.total.toLocaleString('en-IN')+' via Razorpay') + '</button><div class="razorpay-note">🔒 Secured by Razorpay · Demo</div>';
+wrap.querySelectorAll('[data-pay]').forEach(function(el){ el.addEventListener('click', function(){ selectedPayMethod = el.getAttribute('data-pay'); renderCheckout(); }); });
+document.getElementById('placeOrderBtn').addEventListener('click', function(){ checkoutStep = 'success'; renderCheckout(); });
+}
+else if(checkoutStep === 'success'){
+wrap.innerHTML = '<div class="success-box"><div class="tick">✅</div><h2>Order Placed Successfully!</h2><p>Aapka order confirm ho gaya hai.</p><button id="closeSuccessBtn">Continue Shopping</button></div>';
+document.getElementById('closeSuccessBtn').addEventListener('click', function(){ cart = {}; refreshAll(); closeCheckout(); });
+}
+}
+const cats = [{icon:'🎧',label:'Headphones'},{icon:'📱',label:'Mobiles'},{icon:'🥬',label:'Grocery'},{icon:'🔊',label:'Speakers'},{icon:'🏠',label:'Home Decor'},{icon:'💊',label:'Health'},{icon:'👗',label:'Fashion'},{icon:'🧴',label:'Beauty'}];
+document.getElementById('quickCats').innerHTML = cats.map(function(c){ return '<div class="qc-item"><div class="qc-icon">' + c.icon + '</div><span>' + c.label + '</span></div>'; }).join('');
+async function setArea(pin){
+selectedPin = pin;
+selectedVendorId = 'all';
+const info = areaData[pin] || {city:'', area:'Your Area', eta:'20-30 mins'};
+document.getElementById('areaLabel').textContent = info.area + ', ' + info.city + ' 📍 ▾';
+document.getElementById('heroSub').textContent = info.area + ' ke best local sellers se, ' + info.eta + ' mein delivery 🚀';
+document.getElementById('pinModal').style.display = 'none';
+if (!dataLoaded) { await loadDataFromDatabase(); }
+renderVendors(pin);
+renderProducts(pin);
+renderCartDrawer();
+}
+document.querySelectorAll('.pin-chip').forEach(function(chip){ chip.addEventListener('click', function(){ const pin = chip.getAttribute('data-pin'); document.getElementById('pinInput').value = pin; setArea(pin); }); });
+document.getElementById('pinSubmit').addEventListener('click', function(){
+const val = document.getElementById('pinInput').value.trim();
+const errEl = document.getElementById('pinError');
+if(!/^\d{6}$/.test(val)){ errEl.textContent = 'Sahi 6-digit pincode daalein'; return; }
+errEl.textContent = '';
+setArea(val);
+});
+document.getElementById('areaBtn').addEventListener('click', function(){ document.getElementById('pinModal').style.display = 'flex'; });
+setArea('226001');
+</script>
+</body>
+</html>
