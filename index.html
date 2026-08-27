@@ -1,24 +1,75 @@
-```javascript
-// server.js
-const express = require('express');
-const cors = require('cors');
-
-const app = express();
-const PORT = 5000;
-
-// Middleware -- ye requests ko samajhne mein help karta hai
-app.use(cors());
-app.use(express.json());
-
-// Test route -- check karne ke liye server chal raha hai ya nahi
-app.get('/', function (req, res) {
-  res.send('Graspion Backend is running!');
-});
-
-// Server start karo
-app.listen(PORT, function () {
-  console.log('Server chal raha hai: http://localhost:' + PORT);
-});
-```
-
-**Note:** Is version mein backticks (template strings) aur emoji hata diye hain, kyunki copy-paste karte waqt kabhi kabhi ye characters sahi se transfer nahi hote aur error deते hain. Ye version 100% safe hai.
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graspion - Har Zarurat, Fast Delivery</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif; }
+body { background:#f6f5fb; color:#1e1b3a; }
+.modal-overlay { position:fixed; inset:0; background:rgba(15,10,30,0.8); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
+.modal-box { background:#fff; border-radius:24px; padding:36px 28px; max-width:380px; width:100%; text-align:center; }
+.modal-logo { font-size:24px; font-weight:900; margin-bottom:18px; }
+.modal-logo span { background:linear-gradient(90deg,#7c3aed,#ec4899); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.modal-box .emoji { font-size:44px; margin-bottom:8px; }
+.modal-box h2 { font-size:19px; font-weight:800; margin-bottom:6px; }
+.modal-box p { font-size:12.5px; color:#6b7280; margin-bottom:20px; }
+.pin-input { width:100%; padding:14px 16px; border:2px solid #f0eef7; border-radius:14px; font-size:16px; margin-bottom:10px; text-align:center; letter-spacing:2px; font-weight:800; }
+.pin-suggestions { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:18px; }
+.pin-chip { background:#f3f1f8; color:#6b3fb0; font-size:11px; font-weight:700; padding:7px 12px; border-radius:10px; cursor:pointer; }
+.pin-submit { width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:15px; border-radius:14px; font-weight:800; font-size:14px; cursor:pointer; }
+.pin-error { color:#ef4444; font-size:11px; margin-bottom:8px; min-height:14px; }
+header { position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.92); }
+.nav { max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:13px 20px; gap:16px; }
+.logo-wrap { display:flex; align-items:center; gap:8px; }
+.logo-mark { width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,#7c3aed,#ec4899); display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:900; color:#fff; }
+.logo { font-size:20px; font-weight:900; color:#1e1b3a; }
+.logo span { background:linear-gradient(90deg,#7c3aed,#ec4899); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.delivery-info { display:flex; flex-direction:column; cursor:pointer; padding:6px 12px; border-radius:10px; }
+.delivery-info .top { font-size:10px; color:#9ca3af; font-weight:600; }
+.delivery-info .bottom { font-size:13px; font-weight:800; color:#1e1b3a; }
+.search-box { flex:1; max-width:420px; background:#f3f1f8; border-radius:12px; padding:11px 16px; font-size:13px; color:#9ca3af; }
+.cart-btn { background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:11px 20px; border-radius:12px; font-weight:700; cursor:pointer; font-size:13px; position:relative; }
+.cart-count { position:absolute; top:-6px; right:-6px; background:#fff; color:#ec4899; font-size:10px; font-weight:900; width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+.promo-strip { background:linear-gradient(90deg,#1e1b3a,#7c3aed,#ec4899); color:#fff; text-align:center; font-size:11.5px; font-weight:700; padding:8px; }
+.hero { max-width:1200px; margin:0 auto; padding:22px 20px 0; }
+.hero-banner { background:linear-gradient(120deg,#1e1b3a 0%, #4c1d95 45%, #db2777 100%); border-radius:26px; padding:38px 32px; display:flex; align-items:center; justify-content:space-between; }
+.hero-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.15); color:#fde68a; font-size:11px; font-weight:800; padding:6px 14px; border-radius:20px; margin-bottom:14px; }
+.hero-banner h1 { font-size:clamp(24px,4vw,38px); font-weight:900; color:#fff; line-height:1.2; }
+.hero-banner p { font-size:13.5px; color:rgba(255,255,255,0.8); margin-top:10px; max-width:340px; }
+.hero-emoji { font-size:64px; }
+.trust-row { max-width:1200px; margin:16px auto 0; padding:0 20px; display:flex; gap:10px; overflow-x:auto; }
+.trust-item { flex:0 0 auto; display:flex; align-items:center; gap:8px; background:#fff; padding:10px 16px; border-radius:14px; font-size:11.5px; font-weight:700; color:#4b4b63; }
+.quick-cats { max-width:1200px; margin:0 auto; padding:24px 20px 4px; display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:14px; text-align:center; }
+.qc-icon { width:58px; height:58px; margin:0 auto 6px; border-radius:18px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; }
+.qc-item span { font-size:11px; font-weight:700; color:#4b4b63; }
+.vendor-strip { max-width:1200px; margin:0 auto; padding:24px 20px 4px; }
+.vendor-strip h2 { font-size:17px; font-weight:800; margin-bottom:12px; }
+.vendor-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
+.vendor-card { flex:0 0 auto; width:145px; background:#fff; border-radius:16px; padding:14px; text-align:center; border:1.5px solid transparent; cursor:pointer; }
+.vendor-card.active { border-color:#9333ea; background:linear-gradient(135deg,#faf5ff,#fff); }
+.vendor-card .v-icon { font-size:32px; margin-bottom:6px; }
+.vendor-card .v-name { font-size:12px; font-weight:700; }
+.vendor-card .v-eta { font-size:10px; color:#16a34a; font-weight:800; margin-top:4px; }
+.vendor-card .v-rating { font-size:9.5px; color:#9ca3af; margin-top:2px; }
+.deal-strip { max-width:1200px; margin:0 auto; padding:26px 20px 6px; display:flex; justify-content:space-between; align-items:center; }
+.deal-strip h2 { font-size:18px; font-weight:800; }
+.deal-strip .sub { font-size:11px; color:#9ca3af; font-weight:600; margin-top:2px; }
+.grid { max-width:1200px; margin:0 auto; padding:10px 20px 20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(165px,1fr)); gap:14px; }
+.card { background:#fff; border-radius:16px; overflow:hidden; position:relative; border:1px solid #f0eef7; }
+.badge { position:absolute; top:9px; left:9px; background:#ec4899; color:#fff; font-size:10px; font-weight:800; padding:4px 9px; border-radius:8px; z-index:2; }
+.badge.new { background:linear-gradient(90deg,#22c55e,#16a34a); }
+.img-wrap { height:132px; background:linear-gradient(135deg,#f3f1f8,#fde9ee); display:flex; align-items:center; justify-content:center; font-size:42px; }
+.card-body { padding:11px 13px 13px; }
+.vendor-tag { font-size:9.5px; color:#9333ea; font-weight:800; margin-bottom:5px; }
+.card-body h3 { font-size:12.5px; font-weight:700; margin-bottom:7px; line-height:1.35; height:34px; overflow:hidden; color:#1e1b3a; }
+.price-row { display:flex; align-items:baseline; gap:6px; }
+.price-new { font-size:16px; font-weight:900; color:#1e1b3a; }
+.price-old { font-size:11px; color:#9ca3af; text-decoration:line-through; }
+.off { font-size:11px; color:#16a34a; font-weight:800; }
+.rating-pill { display:inline-flex; align-items:center; gap:3px; background:linear-gradient(90deg,#16a34a,#22c55e); color:#fff; font-size:10px; font-weight:800; padding:3px 8px; border-radius:7px; margin-top:7px; }
+.free-del { font-size:10px; color:#6b7280; font-weight:700; margin-top:6px; }
+.add-btn { width:100%; margin-top:10px; background:#1e1b3a; color:#fff; border:none; padding:10px; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer; }
+.qty-row { display:flex; align-items:center; justify-content:space-between; margin-top:10px; background:#f3f1f8; border-radius:10px; padding:7px 12px; }
+.qty-btn { background:linear-gradient(135deg,#7c3aed,#ec4899); color:#fff; border:none; width:24px; height:24px; border-radius:7px; font-weight:800; cursor:pointer; font-size:14px; }
+.qty-val { fo
