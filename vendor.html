@@ -179,6 +179,23 @@
         <div class="radio-option selected" id="returnYes" data-return="true"><span class="ro-icon">✅</span>Returnable</div>
         <div class="radio-option" id="returnNo" data-return="false"><span class="ro-icon">🚫</span>Non-Returnable</div>
       </div>
+      <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+        <div style="font-size:10.5px; font-weight:800; color:#0369a1; margin-bottom:10px;">🔍 Google Shopping Info (Optional — helps future Google Ads/Search visibility)</div>
+        <div class="form-row">
+          <div class="form-group"><label>Brand</label><input class="form-input" id="pBrand" placeholder="e.g. Ubon"></div>
+          <div class="form-group"><label>GTIN / Barcode</label><input class="form-input" id="pGtin" placeholder="e.g. 8901234567890"></div>
+        </div>
+        <div class="form-row" style="margin-bottom:0;">
+          <div class="form-group"><label>Weight (for shipping)</label><input class="form-input" id="pWeight" placeholder="e.g. 250g"></div>
+          <div class="form-group"><label>Condition</label>
+            <select class="form-input" id="pCondition">
+              <option value="new" selected>New</option>
+              <option value="refurbished">Refurbished</option>
+              <option value="used">Used</option>
+            </select>
+          </div>
+        </div>
+      </div>
       <div class="seo-preview" id="seoPreview">
         <div class="lbl">🔍 SEO Preview (how this appears on Google)</div>
         <div class="ttl" id="seoTitlePreview"></div>
@@ -323,11 +340,12 @@ function renderProducts() {
     const hsnTag = p.hsn_code ? '<span class="prod-tag">HSN: ' + p.hsn_code + '</span>' : '';
     const gstTag = '<span class="prod-tag">GST: ' + (p.gst_percent || 0) + '%</span>';
     const returnTag = p.is_returnable === false ? '<span class="prod-tag">🚫 Non-Returnable</span>' : '<span class="prod-tag">✅ Returnable</span>';
+    const brandTag = p.brand ? '<span class="prod-tag">🏷️ ' + p.brand + '</span>' : '';
     const iconHtml = p.image_data ? '<img src="' + p.image_data + '">' : p.icon;
     return '<div class="prod-row">' +
       '<div class="prod-icon">' + iconHtml + '</div>' +
       '<div class="prod-info"><div class="prod-name">' + p.name + '</div><div class="prod-price">₹' + p.price + ' · Stock: ' + p.stock + '</div>' +
-      '<div class="prod-tags">' + modeTag + hsnTag + gstTag + returnTag + '</div></div>' +
+      '<div class="prod-tags">' + modeTag + hsnTag + gstTag + returnTag + brandTag + '</div></div>' +
       '<button class="del-btn" data-delid="' + p.id + '">✕</button>' +
     '</div>';
   }).join('');
@@ -460,6 +478,10 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   const hsn = document.getElementById('pHsn').value.trim();
   const gst = document.getElementById('pGst').value;
   const features = document.getElementById('pFeatures').value.trim();
+  const brand = document.getElementById('pBrand').value.trim();
+  const gtin = document.getElementById('pGtin').value.trim();
+  const weight = document.getElementById('pWeight').value.trim();
+  const condition = document.getElementById('pCondition').value;
 
   if (!name || !price || (selectedMode === 'local' && !pincode)) {
     alert('Product Name, Price, and Pincode (for Local mode) are required');
@@ -480,11 +502,12 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
         old_price: oldPrice ? Number(oldPrice) : null, stock: Number(stock), pincode: pincode,
         hsn_code: hsn, gst_percent: Number(gst),
         seo_title: seo.title, seo_description: seo.description,
-        image_data: uploadedPhotoBase64 || null, features: features, is_returnable: selectedReturnable
+        image_data: uploadedPhotoBase64 || null, features: features, is_returnable: selectedReturnable,
+        brand: brand || null, gtin: gtin || null, shipping_weight: weight || null, condition: condition
       })
     });
 
-    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures'].forEach(function(id) { document.getElementById(id).value = ''; });
+    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight'].forEach(function(id) { document.getElementById(id).value = ''; });
     document.getElementById('pIcon').value = '📦';
     document.getElementById('pPhoto').value = '';
     document.getElementById('photoPreview').style.display = 'none';
