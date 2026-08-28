@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graspion Rider App</title>
+<script src="graspion-logo.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:system-ui,sans-serif; }
+body { background:#0f1117; color:#fff; max-width:420px; margin:0 auto; min-height:100vh; }
+.login-overlay { position:fixed; inset:0; background:#0f1117; z-index:300; display:flex; align-items:center; justify-content:center; padding:20px; }
+.login-box { background:#181b25; border-radius:20px; padding:30px 24px; max-width:360px; width:100%; text-align:center; }
+.login-select, .login-btn { width:100%; padding:13px; border-radius:12px; font-size:14px; margin-bottom:12px; }
+.login-select { background:#0f1117; color:#fff; border:1px solid #333; }
+.login-btn { background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; font-weight:800; cursor:pointer; }
+.app-wrap { display:none; }
+.app-wrap.active { display:block; }
+.topbar { padding:16px 18px; display:flex; justify-content:space-between; align-items:center; }
+.name { font-size:15px; font-weight:800; }
+.logout { background:#262a38; color:#fca5a5; border:none; padding:8px 14px; border-radius:9px; font-size:11px; font-weight:700; }
+.order-card { margin:0 18px 14px; background:#181b25; border-radius:16px; padding:16px; }
+.order-top { display:flex; justify-content:space-between; margin-bottom:8px; }
+.order-id { font-size:12px; font-weight:800; color:#a78bfa; }
+.order-amt { font-size:14px; font-weight:900; }
+.order-addr { font-size:12px; color:#94a3b8; margin-bottom:10px; }
+.action-btn { width:100%; padding:11px; border-radius:10px; border:none; font-weight:800; font-size:12.5px; cursor:pointer; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; }
+.empty { text-align:center; padding:40px; color:#64748b; font-size:13px; }
+</style>
+</head>
+<body>
+
+<div class="login-overlay" id="loginOverlay">
+<div class="login-box">
+<div data-graspion-logo="full" data-size="20" style="justify-content:center; display:flex; margin-bottom:16px;"></div>
+<select class="login-select" id="riderName">
+<option value="">— Select your name —</option>
+<option value="Ravi Kumar">Ravi Kumar</option>
+<option value="Sunil Yadav">Sunil Yadav</option>
+<option value="Amit Patel">Amit Patel</option>
+</select>
+<select class="login-select" id="riderPin">
+<option value="">— Your delivery area pincode —</option>
+<option value="226001">226001 · Lucknow</option>
+<option value="110001">110001 · Delhi</option>
+<option value="400001">400001 · Mumbai</option>
+<option value="560001">560001 · Bengaluru</option>
+</select>
+<button class="login-btn" id="loginBtn">Start Delivering →</button>
+</div>
+</div>
+
+<div class="app-wrap" id="appWrap">
+<div class="topbar">
+<div class="name" id="riderLabel">👋</div>
+<button class="logout" id="logoutBtn">Logout</button>
+</div>
+<div style="padding:0 18px 10px; font-size:11px; color:#64748b; font-weight:700;">🚴 ORDERS TO DELIVER</div>
+<div id="orderList"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
+let riderName = '', riderPin = '';
+
+document.getElementById('loginBtn').addEventListener('click', function() {
+  riderName = document.getElementById('riderName').value;
+  riderPin = document.getElementById('riderPin').value;
+  if (!riderName || !riderPin) { alert('Please select your name and area'); return; }
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('appWrap').classList.add('active');
+  document.getElementById('riderLabel').textContent = '👋 ' + riderName;
+  loadOrders();
+});
+
+document.getElementById('logoutBtn').addEventListener('click', function() {
+  document.getElementById('appWrap').classList.remove('active');
+  document.getElementById('loginOverlay').style.display = 'flex';
+});
+
+async function loadOrders() {
+  const list = document.getElementById('orderList');
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/orders?pincode=eq.' + riderPin + '&status=in.(shipped,preparing)&select=*', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    });
+    const orders = await res.json();
+    if (orders.length === 0) {
+      list.innerHTML = '<div class="empty">No orders to deliver in your area right now 🎉</div>';
+      return;
+    }
+    list.innerHTML = orders.map(function(o) {
+      const nextAction = o.status === 'preparing' ? 'Mark Picked Up' : 'Mark Delivered';
+      const nextStatus = o.status === 'preparing' ? 'shipped' : 'delivered';
+      return '<div class="order-card">' +
+        '<div class="order-top"><span class="order-id">#' + o.id.slice(0,8) + '</span><span class="order-amt">₹' + o.total_amount + '</span></div>' +
+        '<div class="order-addr">' + (o.customer_name || 'Customer') + ' · ' + (o.customer_phone || '') + '<br>' + (o.address || '') + '</div>' +
+        '<button class="action-btn" data-id="' + o.id + '" data-next="' + nextStatus + '">' + nextAction + '</button>' +
+      '</div>';
+    }).join('');
+
+    document.querySelectorAll('[data-id]').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        const id = btn.getAttribute('data-id');
+        const next = btn.getAttribute('data-next');
+        const patchBody = { status: next };
+        if (next === 'delivered') {
+          const deadline = new Date(); deadline.setDate(deadline.getDate() + 7);
+          patchBody.delivered_at = new Date().toISOString();
+          patchBody.return_deadline = deadline.toISOString();
+        }
+        btn.textContent = '⏳ Updating...';
+        await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id, {
+          method: 'PATCH',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify(patchBody)
+        });
+        loadOrders();
+      });
+    });
+  } catch (err) {
+    list.innerHTML = '<div class="empty">Error loading orders</div>';
+  }
+}
+</script>
+
+</body>
+</html>
