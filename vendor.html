@@ -145,6 +145,10 @@
         <label>Product Photo (optional)</label>
         <input class="form-input" id="pPhoto" type="file" accept="image/*">
         <div id="photoPreview" style="margin-top:8px; display:none;"><img id="photoPreviewImg" style="width:70px; height:70px; object-fit:cover; border-radius:10px;"></div>
+        <div id="similarPhotoSuggestion" style="display:none; margin-top:10px; background:#faf5ff; border:1px solid #e9d5ff; border-radius:10px; padding:10px;">
+          <div style="font-size:10.5px; font-weight:800; color:#9333ea; margin-bottom:6px;">📸 A similar product already has a photo — reuse it?</div>
+          <div id="similarPhotoList" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Price (₹)</label><input class="form-input" id="pPrice" type="number" placeholder="699"></div>
@@ -272,6 +276,7 @@ document.getElementById('pPhoto').addEventListener('change', function(e) {
     uploadedPhotoBase64 = evt.target.result;
     document.getElementById('photoPreviewImg').src = uploadedPhotoBase64;
     document.getElementById('photoPreview').style.display = 'block';
+    document.getElementById('similarPhotoSuggestion').style.display = 'none';
   };
   reader.readAsDataURL(file);
 });
@@ -483,6 +488,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
     document.getElementById('pIcon').value = '📦';
     document.getElementById('pPhoto').value = '';
     document.getElementById('photoPreview').style.display = 'none';
+    document.getElementById('similarPhotoSuggestion').style.display = 'none';
     uploadedPhotoBase64 = '';
     setReturnable(true);
     document.getElementById('seoPreview').style.display = 'none';
@@ -525,6 +531,40 @@ function updateSEOPreview() {
 
 ['pName','pPrice','pOldPrice','pPincode'].forEach(function(id) {
   document.getElementById(id).addEventListener('input', updateSEOPreview);
+});
+
+let similarSearchTimeout = null;
+document.getElementById('pName').addEventListener('input', function() {
+  clearTimeout(similarSearchTimeout);
+  const query = this.value.trim();
+  const box = document.getElementById('similarPhotoSuggestion');
+  if (query.length < 3 || uploadedPhotoBase64) { box.style.display = 'none'; return; }
+  similarSearchTimeout = setTimeout(async function() {
+    try {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/products?name=ilike.*' + encodeURIComponent(query) + '*&image_data=not.is.null&select=id,name,image_data&limit=4', {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+      });
+      const matches = await res.json();
+      if (matches.length === 0) { box.style.display = 'none'; return; }
+      document.getElementById('similarPhotoList').innerHTML = matches.map(function(m) {
+        return '<div style="text-align:center; cursor:pointer;" data-usephoto="' + m.id + '">' +
+          '<img src="' + m.image_data + '" style="width:50px; height:50px; object-fit:cover; border-radius:8px; border:2px solid #e9d5ff;">' +
+          '<div style="font-size:8.5px; color:#6b7280; max-width:55px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + m.name + '</div></div>';
+      }).join('');
+      box.style.display = 'block';
+      document.querySelectorAll('[data-usephoto]').forEach(function(el) {
+        el.addEventListener('click', function() {
+          const match = matches.find(function(m) { return m.id === el.getAttribute('data-usephoto'); });
+          if (match) {
+            uploadedPhotoBase64 = match.image_data;
+            document.getElementById('photoPreviewImg').src = uploadedPhotoBase64;
+            document.getElementById('photoPreview').style.display = 'block';
+            box.style.display = 'none';
+          }
+        });
+      });
+    } catch (err) { box.style.display = 'none'; }
+  }, 600);
 });
 
 loadVendorList();
