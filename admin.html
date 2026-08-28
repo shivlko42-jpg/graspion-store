@@ -104,13 +104,13 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="app-wrap" id="appWrap">
 <div class="sidebar">
 <div class="side-logo-wrap"><div data-graspion-logo="full" data-size="18"></div></div>
-<div class="side-item active">📊 Dashboard</div>
-<div class="side-item">🏪 Vendors</div>
-<div class="side-item">📦 Orders</div>
-<div class="side-item">🎯 Ads Manager</div>
-<div class="side-item">🚴 Delivery Partners</div>
-<div class="side-item">👥 Customers</div>
-<div class="side-item">💰 Payments</div>
+<div class="side-item active" data-page="dashboard">📊 Dashboard</div>
+<div class="side-item" data-page="vendors">🏪 Vendors</div>
+<div class="side-item" data-page="orders">📦 Orders</div>
+<div class="side-item" data-page="ads">🎯 Ads Manager</div>
+<div class="side-item" data-page="delivery">🚴 Delivery Partners</div>
+<div class="side-item" data-page="customers">👥 Customers</div>
+<div class="side-item" data-page="payments">💰 Payments</div>
 <button class="logout-btn" id="logoutBtn">Logout</button>
 </div>
 <div class="main">
@@ -121,19 +121,23 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 </div>
 <span class="db-badge loading" id="dbBadge">⏳ Loading...</span>
 </div>
+
 <div class="insights-box" id="insightsBox"></div>
-<div class="kpi-grid">
+
+<div class="kpi-grid" id="pageDashboard">
 <div class="kpi-card kpi-c1"><div class="kpi-val" id="kpiRevenue">₹0</div><div class="kpi-label">Total Revenue</div></div>
 <div class="kpi-card kpi-c2"><div class="kpi-val" id="kpiOrders">0</div><div class="kpi-label">Total Orders</div></div>
 <div class="kpi-card kpi-c3"><div class="kpi-val" id="kpiVendors">0</div><div class="kpi-label">Active Vendors</div></div>
 <div class="kpi-card kpi-c4"><div class="kpi-val" id="kpiProducts">0</div><div class="kpi-label">Total Products</div></div>
 <div class="kpi-card kpi-c5"><div class="kpi-val" id="kpiSponsored">0</div><div class="kpi-label">Sponsored Products</div></div>
 </div>
-<div class="panel">
+
+<div class="panel" data-section="dashboard">
 <h3>📈 Revenue Trend (Last 7 Days)</h3>
 <div class="bar-chart" id="trendChart"></div>
 </div>
-<div class="panel-grid">
+
+<div class="panel-grid" data-section="orders">
 <div class="panel">
 <h3>📦 Recent Orders</h3>
 <table>
@@ -142,30 +146,45 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 </table>
 <div class="empty-state" id="ordersEmpty" style="display:none;">No orders yet</div>
 </div>
-<div class="panel">
+<div class="panel" data-section="vendors">
 <h3>🏪 Vendor Ranking (by Sales)</h3>
 <div id="vendorList"></div>
 <div class="empty-state" id="vendorEmpty" style="display:none;">No vendors found</div>
 </div>
 </div>
-<div class="panel-grid">
+
+<div class="panel-grid" data-section="customers">
 <div class="panel">
 <h3>👥 Customer Analytics <span id="custCount" style="font-size:11px;color:#9ca3af;"></span></h3>
 <div id="customerList"></div>
 <div class="empty-state" id="customerEmpty" style="display:none;">No customer data yet</div>
 </div>
-<div class="panel">
+<div class="panel" data-section="dashboard">
 <h3>📍 Orders by Area (Pincode)</h3>
 <div id="geoList"></div>
 <div class="empty-state" id="geoEmpty" style="display:none;">No location data yet</div>
 </div>
 </div>
-<div class="panel">
+
+<div class="panel" data-section="payments">
+<h3>💰 Vendor Payouts</h3>
+<div id="payoutList"></div>
+<div class="empty-state" id="payoutEmpty" style="display:none;">No payout data yet</div>
+</div>
+
+<div class="panel" data-section="delivery">
+<h3>🚴 Delivery Partners</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Riders currently active on the platform (from Rider App).</p>
+<div id="deliveryList"></div>
+</div>
+
+<div class="panel" data-section="ads">
 <h3>🎯 Ads Control Center — Sponsor a Product</h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Toggle "Sponsored" and set a bid amount to boost a product's visibility in customer search results.</p>
 <div id="adsList"></div>
 <div class="empty-state" id="adsEmpty" style="display:none;">No products found</div>
 </div>
+
 </div>
 </div>
 <script>
@@ -173,6 +192,21 @@ const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
 const ADMIN_PASSWORD = 'graspion2026';
 let allVendors = [], allProducts = [], allOrders = [];
+
+document.querySelectorAll('.side-item[data-page]').forEach(function(item) {
+  item.addEventListener('click', function() {
+    const page = item.getAttribute('data-page');
+    document.querySelectorAll('.side-item[data-page]').forEach(function(i) { i.classList.remove('active'); });
+    item.classList.add('active');
+
+    document.getElementById('pageDashboard').style.display = page === 'dashboard' ? 'grid' : 'none';
+    document.querySelectorAll('[data-section]').forEach(function(el) {
+      const sections = el.getAttribute('data-section').split(' ');
+      el.style.display = (page === 'dashboard' || sections.includes(page)) ? '' : 'none';
+    });
+  });
+});
+
 document.getElementById('adminLoginBtn').addEventListener('click', function() {
 const pass = document.getElementById('adminPass').value;
 if (pass !== ADMIN_PASSWORD) { document.getElementById('loginError').textContent = 'Incorrect password'; return; }
@@ -204,6 +238,8 @@ renderVendorRanking();
 renderAdsControlCenter();
 renderCustomerAnalytics();
 renderGeoAnalytics();
+renderPayouts();
+renderDeliveryPartners();
 } catch (err) {
 badge.className = 'db-badge loading';
 badge.textContent = '❌ Error: ' + err.message;
@@ -339,6 +375,39 @@ list.innerHTML = areaList.slice(0, 10).map(function(a) {
 return '<div class="vendor-row-item"><div class="v-icon2" style="background:linear-gradient(135deg,#22c55e,#4ade80);">📍</div>' +
 '<div class="v-info"><div class="vn">' + a.pincode + '</div><div class="vs">' + a.orders + ' order(s) · ₹' + a.revenue.toLocaleString('en-IN') + ' revenue</div></div></div>';
 }).join('');
+}
+function renderPayouts() {
+const list = document.getElementById('payoutList');
+const empty = document.getElementById('payoutEmpty');
+const vendorPayout = {};
+allOrders.forEach(function(o) {
+if (!vendorPayout[o.vendor_id]) vendorPayout[o.vendor_id] = { pending: 0, paid: 0 };
+if (o.payout_status === 'paid') vendorPayout[o.vendor_id].paid += Number(o.total_amount || 0);
+else vendorPayout[o.vendor_id].pending += Number(o.total_amount || 0);
+});
+const keys = Object.keys(vendorPayout);
+if (keys.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = keys.map(function(vid) {
+const vendor = allVendors.find(function(v) { return v.id === vid; });
+const p = vendorPayout[vid];
+return '<div class="vendor-row-item"><div class="v-icon2">' + (vendor ? vendor.icon : '🏪') + '</div>' +
+'<div class="v-info"><div class="vn">' + (vendor ? vendor.name : 'Vendor') + '</div><div class="vs">Paid: ₹' + p.paid.toLocaleString('en-IN') + ' · Pending: ₹' + p.pending.toLocaleString('en-IN') + '</div></div></div>';
+}).join('');
+}
+function renderDeliveryPartners() {
+const list = document.getElementById('deliveryList');
+const riders = [
+{ name: 'Ravi Kumar', status: 'online' },
+{ name: 'Sunil Yadav', status: 'busy' },
+{ name: 'Amit Patel', status: 'offline' }
+];
+const activeOrders = allOrders.filter(function(o) { return o.status === 'shipped'; }).length;
+list.innerHTML = riders.map(function(r) {
+const color = r.status === 'online' ? '#22c55e' : r.status === 'busy' ? '#f59e0b' : '#9ca3af';
+return '<div class="vendor-row-item"><div class="v-icon2" style="background:' + color + ';">🚴</div>' +
+'<div class="v-info"><div class="vn">' + r.name + '</div><div class="vs">Status: ' + r.status + '</div></div></div>';
+}).join('') + '<div style="font-size:10.5px; color:#9ca3af; margin-top:10px;">' + activeOrders + ' order(s) currently out for delivery (status: Shipped)</div>';
 }
 function renderVendorRanking() {
 const vendorList = document.getElementById('vendorList');
