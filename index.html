@@ -1,37 +1,37 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Graspion - Har Zarurat, Fast Delivery</title>
+<title>Graspion - Every Need, Fast Delivery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="graspion-logo.js"></script>
+<script src="graspion-lang.js"></script>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif; }
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',system-ui,sans-serif; }
 body { background:#f6f5fb; color:#1e1b3a; }
 .modal-overlay { position:fixed; inset:0; background:rgba(15,10,30,0.8); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
 .modal-box { background:#fff; border-radius:24px; padding:36px 28px; max-width:380px; width:100%; text-align:center; }
-.modal-logo { font-size:24px; font-weight:900; margin-bottom:18px; }
-.modal-logo span { background:linear-gradient(90deg,#7c3aed,#ec4899); -webkit-background-clip:text; background-clip:text; color:transparent; }
 .modal-box .emoji { font-size:44px; margin-bottom:8px; }
 .modal-box h2 { font-size:19px; font-weight:800; margin-bottom:6px; }
 .modal-box p { font-size:12.5px; color:#6b7280; margin-bottom:20px; }
+.modal-lang { display:flex; justify-content:center; margin-bottom:16px; }
 .pin-input { width:100%; padding:14px 16px; border:2px solid #f0eef7; border-radius:14px; font-size:16px; margin-bottom:10px; text-align:center; letter-spacing:2px; font-weight:800; }
 .pin-suggestions { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:18px; }
 .pin-chip { background:#f3f1f8; color:#6b3fb0; font-size:11px; font-weight:700; padding:7px 12px; border-radius:10px; cursor:pointer; }
-.pin-submit { width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:15px; border-radius:14px; font-weight:800; font-size:14px; cursor:pointer; }
+.pin-submit { width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:15px; border-radius:14px; font-weight:800; font-size:14px; cursor:pointer; margin-bottom:10px; }
 .pin-error { color:#ef4444; font-size:11px; margin-bottom:8px; min-height:14px; }
 header { position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.92); }
 .nav { max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:13px 20px; gap:16px; }
-.logo-wrap { display:flex; align-items:center; gap:8px; }
-.logo-mark { width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,#7c3aed,#ec4899); display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:900; color:#fff; }
-.logo { font-size:20px; font-weight:900; color:#1e1b3a; }
-.logo span { background:linear-gradient(90deg,#7c3aed,#ec4899); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.nav-right { display:flex; align-items:center; gap:12px; }
 .delivery-info { display:flex; flex-direction:column; cursor:pointer; padding:6px 12px; border-radius:10px; }
 .delivery-info .top { font-size:10px; color:#9ca3af; font-weight:600; }
 .delivery-info .bottom { font-size:13px; font-weight:800; color:#1e1b3a; }
 .search-box { flex:1; max-width:420px; background:#f3f1f8; border-radius:12px; padding:11px 16px; font-size:13px; color:#9ca3af; }
 .cart-btn { background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:11px 20px; border-radius:12px; font-weight:700; cursor:pointer; font-size:13px; position:relative; }
 .cart-count { position:absolute; top:-6px; right:-6px; background:#fff; color:#ec4899; font-size:10px; font-weight:900; width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
-.promo-strip { background:linear-gradient(90deg,#1e1b3a,#7c3aed,#ec4899); color:#fff; text-align:center; font-size:11.5px; font-weight:700; padding:8px; }
 .hero { max-width:1200px; margin:0 auto; padding:22px 20px 0; }
 .hero-banner { background:linear-gradient(120deg,#1e1b3a 0%, #4c1d95 45%, #db2777 100%); border-radius:26px; padding:38px 32px; display:flex; align-items:center; justify-content:space-between; }
 .hero-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.15); color:#fde68a; font-size:11px; font-weight:800; padding:6px 14px; border-radius:20px; margin-bottom:14px; }
@@ -97,6 +97,7 @@ header { position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.92); 
 .cta-banner p { font-size:12.5px; color:#cbd5e1; margin-bottom:18px; }
 .cta-banner button { background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:13px 30px; border-radius:12px; font-weight:800; cursor:pointer; }
 footer { max-width:1200px; margin:0 auto; padding:28px 20px 44px; text-align:center; color:#9ca3af; font-size:11.5px; }
+footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 .no-vendor { max-width:1200px; margin:30px auto; padding:0 20px; text-align:center; color:#9ca3af; font-size:13px; }
 .drawer-overlay { position:fixed; inset:0; background:rgba(15,10,30,0.55); z-index:250; display:none; }
 .drawer-overlay.open { display:block; }
@@ -129,8 +130,12 @@ footer { max-width:1200px; margin:0 auto; padding:28px 20px 44px; text-align:cen
 .co-row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .co-item-row { display:flex; justify-content:space-between; font-size:12.5px; padding:7px 0; color:#4b4b63; }
 .co-item-row b { color:#1e1b3a; }
-.pay-option { display:flex; align-items:center; gap:10px; padding:13px; border:1.5px solid #f0eef7; border-radius:11px; margin-bottom:8px; cursor:pointer; font-size:13px; font-weight:600; }
+.pay-option { display:flex; align-items:center; gap:10px; padding:13px; border:1.5px solid #f0eef7; border-radius:11px; margin-bottom:8px; cursor:pointer; font-size:13px; font-weight:600; position:relative; }
 .pay-option.selected { border-color:#9333ea; background:#faf5ff; }
+.pay-recommended { position:relative; border-color:#22c55e !important; background:#f0fdf4 !important; }
+.pay-recommended.selected { border-color:#7c3aed !important; background:#faf5ff !important; }
+.pay-badge-tag { position:absolute; top:-9px; right:12px; background:#22c55e; color:#fff; font-size:9px; font-weight:800; padding:2px 8px; border-radius:8px; }
+.pay-sub { font-size:10px; color:#16a34a; font-weight:600; margin-left:auto; }
 .place-order-btn { width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:16px; border-radius:14px; font-weight:800; font-size:14px; cursor:pointer; }
 .razorpay-note { font-size:10.5px; color:#9ca3af; text-align:center; margin-top:10px; }
 .success-box { text-align:center; padding:60px 20px; }
@@ -147,100 +152,117 @@ footer { max-width:1200px; margin:0 auto; padding:28px 20px 44px; text-align:cen
 </style>
 </head>
 <body>
+
 <div id="pinModal" class="modal-overlay">
 <div class="modal-box">
-<div class="modal-logo">Grasp<span>ion</span></div>
+<div data-graspion-logo="full" data-size="22" style="justify-content:center; display:flex; margin-bottom:16px;"></div>
+<div class="modal-lang" id="modalLangSwitcher"></div>
 <div class="emoji">📍</div>
-<h2>Apna area select karo</h2>
-<p>Pincode ke hisab se aapke area ke vendors aur delivery time dikhayenge</p>
-<input type="text" id="pinInput" class="pin-input" placeholder="Pincode e.g. 226001" maxlength="6">
+<h2 data-i18n="selectLocation">Select Your Delivery Location</h2>
+<p data-i18n="selectLocationDesc">We'll show vendors and delivery time based on your pincode</p>
+<input type="text" id="pinInput" class="pin-input" data-i18n-placeholder="pincodePlaceholder" placeholder="Enter Pincode e.g. 226001" maxlength="6">
 <div class="pin-error" id="pinError"></div>
+<button class="pin-submit" id="detectLocationBtn" style="background:#fff; color:#7c3aed; border:1.5px solid #7c3aed; margin-bottom:10px;">📍 Use My Current Location</button>
 <div class="pin-suggestions">
 <div class="pin-chip" data-pin="226001">226001 · Lucknow</div>
 <div class="pin-chip" data-pin="110001">110001 · Delhi</div>
 <div class="pin-chip" data-pin="400001">400001 · Mumbai</div>
 <div class="pin-chip" data-pin="560001">560001 · Bengaluru</div>
 </div>
-<button class="pin-submit" id="pinSubmit">Continue →</button>
+<button class="pin-submit" id="pinSubmit" data-i18n="continue">Continue</button>
 </div>
 </div>
-<div class="promo-strip">🎉 FLAT 50% OFF pehle order pe · Free Delivery ₹199+ pe · Code: GRAB50</div>
+
 <header>
 <div class="nav">
-<div class="logo-wrap">
-<div class="logo-mark">G</div>
-<div class="logo">Grasp<span>ion</span></div>
-</div>
+<a href="index.html" style="text-decoration:none;"><div data-graspion-logo="full" data-size="20"></div></a>
 <div class="delivery-info" id="areaBtn">
-<div class="top">Delivering to</div>
-<div class="bottom" id="areaLabel">Select area 📍 ▾</div>
+<div class="top" data-i18n="deliveringTo">Delivering to</div>
+<div class="bottom" id="areaLabel">Select location 📍 ▾</div>
 </div>
-<div class="search-box">🔍 Search karo products, brands...</div>
-<button class="cart-btn" id="cartOpenBtn">🛒 Cart <span class="cart-count" id="cartCount">0</span></button>
+<div class="search-box" data-i18n="searchPlaceholder">Search for products, brands...</div>
+<div class="nav-right">
+<div id="headerLangSwitcher"></div>
+<button class="cart-btn" id="cartOpenBtn">🛒 <span data-i18n="cart">Cart</span> <span class="cart-count" id="cartCount">0</span></button>
+</div>
 </div>
 </header>
+
 <section class="hero">
 <div class="hero-banner">
 <div class="hero-text">
-<div class="hero-badge">⚡ 10-20 Min Delivery</div>
-<h1>Har Zarurat.<br>Har Area. Fast.</h1>
-<p id="heroSub">Apne area ke best local sellers se, lightning-fast delivery ke saath 🚀</p>
+<div class="hero-badge">⚡ <span data-i18n="deliveryBadge">10-20 Min Delivery</span></div>
+<h1 data-i18n="tagline">Every Need. Every Area. Fast.</h1>
+<p id="heroSub" data-i18n="heroDesc">Shop from the best local sellers in your area, with lightning-fast delivery</p>
 </div>
 <div class="hero-emoji">🛍️</div>
 </div>
 </section>
+
 <div class="trust-row">
-<div class="trust-item">✅ 100% Genuine Products</div>
-<div class="trust-item">🔒 Secure Payments</div>
-<div class="trust-item">🔄 Easy Returns</div>
-<div class="trust-item">🏪 Local Vendors</div>
+<div class="trust-item">✅ <span data-i18n="genuineProducts">100% Genuine Products</span></div>
+<div class="trust-item">🔒 <span data-i18n="securePayments">Secure Payments</span></div>
+<div class="trust-item">🔄 <span data-i18n="easyReturns">Easy Returns</span></div>
+<div class="trust-item">🏪 <span data-i18n="localVendors">Local Vendors</span></div>
 </div>
+
 <div class="db-status">
-<span class="db-status-badge loading" id="dbStatusBadge">⏳ Connecting to Graspion Cloud...</span>
+<span class="db-status-badge loading" id="dbStatusBadge">⏳ Connecting...</span>
 </div>
+
 <div class="quick-cats" id="quickCats"></div>
+
 <div class="vendor-strip">
-<h2 id="vendorHeading">🏪 Vendors near you</h2>
+<h2 id="vendorHeading" data-i18n="vendorsNearYou">🏪 Vendors Near You</h2>
 <div class="vendor-row" id="vendorRow"></div>
 </div>
+
 <div id="mainContent">
 <div class="deal-strip">
 <div>
-<h2>🔥 Products</h2>
-<div class="sub">Live from Graspion database</div>
+<h2 data-i18n="products">🔥 Products</h2>
+<div class="sub" data-i18n="liveFromDb">Live Catalog</div>
 </div>
 </div>
 <div class="grid" id="dealGrid"></div>
 </div>
+
 <div class="bottom-cta">
 <div class="cta-banner">
-<h2>Become a Graspion Vendor</h2>
-<p>Apna area select karke apni dukaan online lao · Zero commission for first 3 months</p>
-<button>Start Selling</button>
+<h2 data-i18n="becomeVendor">Become a Graspion Partner</h2>
+<p data-i18n="becomeVendorDesc">List your store and start selling online — zero commission for the first 3 months</p>
+<button data-i18n="startSelling">Start Selling</button>
 </div>
 </div>
-<footer><b>Graspion</b> © 2026 — Multi-Vendor Quick Commerce · Lucknow, Uttar Pradesh</footer>
+
+<footer>
+© 2026 Grasp Infotech — Graspion<br>
+<a href="policies.html#about">About Us</a> · <a href="policies.html#contact">Contact</a> · <a href="policies.html#terms">Terms</a> · <a href="policies.html#privacy">Privacy</a> · <a href="policies.html#shipping">Shipping</a> · <a href="policies.html#refund">Refunds</a>
+</footer>
+
 <div class="drawer-overlay" id="drawerOverlay"></div>
 <div class="cart-drawer" id="cartDrawer">
 <div class="drawer-head">
-<h3>Your Cart</h3>
+<h3 data-i18n="yourCart">Your Cart</h3>
 <button class="drawer-close" id="drawerClose">✕</button>
 </div>
 <div class="drawer-body" id="drawerBody"></div>
 <div class="drawer-foot" id="drawerFoot" style="display:none;">
-<div class="foot-row"><span>Item Total</span><span id="fItemTotal">₹0</span></div>
-<div class="foot-row"><span>Delivery Fee</span><span id="fDelivery">₹0</span></div>
-<div class="foot-row total"><span>To Pay</span><span id="fTotal">₹0</span></div>
-<button class="checkout-btn" id="goCheckoutBtn">Proceed to Checkout</button>
+<div class="foot-row"><span data-i18n="itemTotal">Item Total</span><span id="fItemTotal">₹0</span></div>
+<div class="foot-row"><span data-i18n="deliveryFee">Delivery Fee</span><span id="fDelivery">₹0</span></div>
+<div class="foot-row total"><span data-i18n="toPay">To Pay</span><span id="fTotal">₹0</span></div>
+<button class="checkout-btn" id="goCheckoutBtn" data-i18n="proceedCheckout">Proceed to Checkout</button>
 </div>
 </div>
+
 <div class="checkout-overlay" id="checkoutOverlay">
 <div class="co-header">
 <button class="co-back" id="coBack">←</button>
-<h2>Checkout</h2>
+<h2 data-i18n="checkout">Checkout</h2>
 </div>
 <div class="co-wrap" id="coWrap"></div>
 </div>
+
 <script>
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
@@ -260,6 +282,14 @@ let cart = {};
 let checkoutStep = 'address';
 let selectedPayMethod = 'upi';
 let customerInfo = { name:'', phone:'', address:'', city:'', pincode:'' };
+
+renderLanguageSwitcher('modalLangSwitcher');
+renderLanguageSwitcher('headerLangSwitcher');
+document.addEventListener('graspionLanguageChanged', function() {
+  if (checkoutStep) renderCheckout();
+  if (selectedPin) renderProducts(selectedPin);
+});
+
 async function loadDataFromDatabase(){
 const badge = document.getElementById('dbStatusBadge');
 try {
@@ -267,7 +297,7 @@ const vendorRes = await fetch(SUPABASE_URL + '/rest/v1/vendors?select=*', { head
 const productRes = await fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const vendorData = await vendorRes.json();
 const productData = await productRes.json();
-vendors = vendorData.map(function(v){ return { id: v.id, name: v.name, icon: v.icon, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode] }; });
+vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){ return { id: v.id, name: v.name, icon: v.icon, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode] }; });
 productPool = productData.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
 return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null };
@@ -278,31 +308,31 @@ badge.textContent = '✅ Live · ' + vendors.length + ' vendors, ' + productPool
 } catch (err) {
 dataLoaded = false;
 badge.className = 'db-status-badge error';
-badge.textContent = '❌ Connection failed: ' + err.message;
+badge.textContent = '❌ Connection error';
 }
 }
 function renderVendors(pin){
-const list = vendors.filter(function(v){ return v.pincodes.includes(pin); });
+const list = vendors.filter(function(v){ return v.pincodes.includes(pin) || v.pincodes.includes('ALL'); });
 const row = document.getElementById('vendorRow');
-document.getElementById('vendorHeading').textContent = '🏪 ' + list.length + ' Vendors near you';
-if(list.length === 0){ row.innerHTML = '<div style="font-size:12px;color:#9ca3af;">Is area mein abhi koi vendor available nahi hai.</div>'; return; }
-row.innerHTML = '<div class="vendor-card ' + (selectedVendorId==='all'?'active':'') + '" data-v="all"><div class="v-icon">🏬</div><div class="v-name">All Vendors</div><div class="v-eta">' + list.length + ' stores</div></div>' +
+document.getElementById('vendorHeading').textContent = '🏪 ' + list.length + ' ' + graspionT('vendorsNearYou').replace('🏪 ','');
+if(list.length === 0){ row.innerHTML = '<div style="font-size:12px;color:#9ca3af;">' + graspionT('noVendorArea') + '</div>'; return; }
+row.innerHTML = '<div class="vendor-card ' + (selectedVendorId==='all'?'active':'') + '" data-v="all"><div class="v-icon">🏬</div><div class="v-name">' + graspionT('allVendors') + '</div><div class="v-eta">' + list.length + ' stores</div></div>' +
 list.map(function(v){ return '<div class="vendor-card ' + (selectedVendorId===v.id?'active':'') + '" data-v="' + v.id + '"><div class="v-icon">' + v.icon + '</div><div class="v-name">' + v.name + '</div><div class="v-eta">⏱ ' + v.eta + '</div><div class="v-rating">★ ' + v.rating + '</div></div>'; }).join('');
 row.querySelectorAll('.vendor-card').forEach(function(el){ el.addEventListener('click', function(){ selectedVendorId = el.getAttribute('data-v'); renderVendors(pin); renderProducts(pin); }); });
 }
 function renderProducts(pin){
-let filtered = productPool.filter(function(p){ return p.pincode === pin; });
+let filtered = productPool.filter(function(p){ return p.pincode === pin || p.pincode === 'ALL'; });
 if(selectedVendorId !== 'all') filtered = filtered.filter(function(p){ return p.vendorId === selectedVendorId; });
 const dealGrid = document.getElementById('dealGrid');
-if(filtered.length === 0){ dealGrid.innerHTML = '<div class="no-vendor" style="grid-column:1/-1;">Is area/vendor ke liye abhi products available nahi hain.</div>'; return; }
+if(filtered.length === 0){ dealGrid.innerHTML = '<div class="no-vendor" style="grid-column:1/-1;">' + graspionT('noVendorArea') + '</div>'; return; }
 dealGrid.innerHTML = filtered.map(function(p){
 const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
 const qty = cart[p.id] || 0;
 return '<div class="card">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') +
 '<div class="img-wrap">' + p.icon + '</div><div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
 '<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
-'<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span><div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' delivery</div>' +
-(qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">Add to Cart</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '">+</button></div>') +
+'<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span><div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div>' +
+(qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '">+</button></div>') +
 '</div></div>';
 }).join('');
 document.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(){ cart[btn.getAttribute('data-add')] = 1; refreshAll(); }); });
@@ -317,14 +347,14 @@ const body = document.getElementById('drawerBody');
 const foot = document.getElementById('drawerFoot');
 const t = cartTotals();
 document.getElementById('cartCount').textContent = t.count;
-if(items.length === 0){ body.innerHTML = '<div class="empty-cart">🛒<br><br>Aapka cart khaali hai</div>'; foot.style.display = 'none'; return; }
+if(items.length === 0){ body.innerHTML = '<div class="empty-cart">🛒<br><br>' + graspionT('emptyCart') + '</div>'; foot.style.display = 'none'; return; }
 body.innerHTML = items.map(function(i){
 const vendor = vendors.find(function(v){ return v.id === i.vendorId; });
 return '<div class="cart-item"><div class="ci-icon">' + i.icon + '</div><div class="ci-info"><div class="ci-name">' + i.name + '</div><div class="ci-vendor">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><div class="ci-price">₹' + (i.price*i.qty).toLocaleString('en-IN') + '</div><div class="ci-qty"><button class="qty-btn" data-dec2="' + i.id + '">−</button><span class="qty-val">' + i.qty + '</span><button class="qty-btn" data-inc2="' + i.id + '">+</button></div></div></div>';
 }).join('');
 foot.style.display = 'block';
 document.getElementById('fItemTotal').textContent = '₹' + t.itemTotal.toLocaleString('en-IN');
-document.getElementById('fDelivery').textContent = t.delivery === 0 ? 'FREE' : '₹' + t.delivery;
+document.getElementById('fDelivery').textContent = t.delivery === 0 ? graspionT('free') : '₹' + t.delivery;
 document.getElementById('fTotal').textContent = '₹' + t.total.toLocaleString('en-IN');
 document.querySelectorAll('[data-inc2]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=btn.getAttribute('data-inc2'); cart[id]=(cart[id]||0)+1; refreshAll(); }); });
 document.querySelectorAll('[data-dec2]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=btn.getAttribute('data-dec2'); cart[id]=(cart[id]||0)-1; if(cart[id]<=0) delete cart[id]; refreshAll(); }); });
@@ -346,7 +376,7 @@ try {
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-body: JSON.stringify({ customer_name: customerInfo.name, customer_phone: customerInfo.phone, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city })
+body: JSON.stringify({ customer_name: customerInfo.name, customer_phone: customerInfo.phone, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', payment_status: selectedPayMethod === 'cod' ? 'pending' : 'paid', pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city })
 });
 const orderData = await orderRes.json();
 const orderId = orderData[0] ? orderData[0].id : null;
@@ -361,31 +391,35 @@ body: JSON.stringify({ order_id: orderId, product_id: i.id, quantity: i.qty, pri
 await Promise.all(itemInserts);
 }
 return true;
-} catch (err) { console.error('Order save failed:', err); return false; }
+} catch (err) { return false; }
 }
 function renderCheckout(){
 const t = cartTotals();
 const items = cartItemsList();
 const wrap = document.getElementById('coWrap');
 if(checkoutStep === 'address'){
-wrap.innerHTML = '<div class="co-section"><h4>📍 Delivery Address</h4><input class="co-input" placeholder="Full Name" id="coName" value="' + customerInfo.name + '"><input class="co-input" placeholder="Phone Number" id="coPhone" value="' + customerInfo.phone + '"><input class="co-input" placeholder="House No, Street, Area" id="coAddr" value="' + customerInfo.address + '"><div class="co-row2"><input class="co-input" placeholder="City" id="coCity" value="' + (customerInfo.city || (areaData[selectedPin] ? areaData[selectedPin].city : '')) + '"><input class="co-input" placeholder="Pincode" id="coPincode" value="' + (customerInfo.pincode || selectedPin || '') + '"></div></div><div class="co-section"><h4>🧾 Order Summary (' + items.length + ' items)</h4>' + items.map(function(i) { return '<div class="co-item-row"><span>' + i.name + ' × ' + i.qty + '</span><b>₹' + (i.price*i.qty).toLocaleString('en-IN') + '</b></div>'; }).join('') + '<div class="co-item-row"><span>Delivery Fee</span><b>' + (t.delivery===0?'FREE':'₹'+t.delivery) + '</b></div><div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>Total</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">Continue to Payment →</button>';
+wrap.innerHTML = '<div class="co-section"><h4>📍 ' + graspionT('deliveryAddress') + '</h4><input class="co-input" placeholder="' + graspionT('fullName') + '" id="coName" value="' + customerInfo.name + '"><input class="co-input" placeholder="' + graspionT('phoneNumber') + '" id="coPhone" value="' + customerInfo.phone + '"><input class="co-input" placeholder="' + graspionT('addressPlaceholder') + '" id="coAddr" value="' + customerInfo.address + '"><div class="co-row2"><input class="co-input" placeholder="' + graspionT('city') + '" id="coCity" value="' + (customerInfo.city || (areaData[selectedPin] ? areaData[selectedPin].city : '')) + '"><input class="co-input" placeholder="' + graspionT('pincode') + '" id="coPincode" value="' + (customerInfo.pincode || selectedPin || '') + '"></div></div><div class="co-section"><h4>🧾 ' + graspionT('orderSummary') + ' (' + items.length + ')</h4>' + items.map(function(i) { return '<div class="co-item-row"><span>' + i.name + ' × ' + i.qty + '</span><b>₹' + (i.price*i.qty).toLocaleString('en-IN') + '</b></div>'; }).join('') + '<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?graspionT('free'):'₹'+t.delivery) + '</b></div><div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
 document.getElementById('toPaymentBtn').addEventListener('click', function() {
 customerInfo.name = document.getElementById('coName').value.trim();
 customerInfo.phone = document.getElementById('coPhone').value.trim();
 customerInfo.address = document.getElementById('coAddr').value.trim();
 customerInfo.city = document.getElementById('coCity').value.trim();
 customerInfo.pincode = document.getElementById('coPincode').value.trim();
-if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) { alert('Naam, phone aur address zaroori hai'); return; }
+if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) { alert(graspionT('requiredFields')); return; }
 checkoutStep = 'payment';
 renderCheckout();
 });
 }
 else if(checkoutStep === 'payment'){
-wrap.innerHTML = '<div class="co-section"><h4>💳 Select Payment Method</h4><div class="pay-option ' + (selectedPayMethod==='upi'?'selected':'') + '" data-pay="upi">📱 UPI (Google Pay / PhonePe / Paytm)</div><div class="pay-option ' + (selectedPayMethod==='card'?'selected':'') + '" data-pay="card">💳 Credit / Debit Card</div><div class="pay-option ' + (selectedPayMethod==='cod'?'selected':'') + '" data-pay="cod">💵 Cash on Delivery</div></div><div class="co-section"><h4>🧾 Total Payable</h4><div class="co-item-row" style="font-size:15px;"><span>Amount</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="placeOrderBtn">' + (selectedPayMethod==='cod' ? 'Place Order' : 'Pay ₹'+t.total.toLocaleString('en-IN')+' via Razorpay') + '</button><div class="razorpay-note">🔒 Secured by Razorpay · Demo</div>';
+wrap.innerHTML = '<div class="co-section"><h4>💳 ' + graspionT('selectPayment') + '</h4>' +
+'<div class="pay-option pay-recommended ' + (selectedPayMethod==='upi'?'selected':'') + '" data-pay="upi"><span class="pay-badge-tag">FASTEST</span>📱 ' + graspionT('upi') + '<span class="pay-sub">Instant confirmation</span></div>' +
+'<div class="pay-option ' + (selectedPayMethod==='card'?'selected':'') + '" data-pay="card">💳 ' + graspionT('card') + '</div>' +
+'<div class="pay-option ' + (selectedPayMethod==='cod'?'selected':'') + '" data-pay="cod">💵 ' + graspionT('cod') + '<span class="pay-sub" style="color:#9ca3af;">Pay at doorstep</span></div>' +
+'</div><div class="co-section"><h4>🧾 ' + graspionT('totalPayable') + '</h4><div class="co-item-row" style="font-size:15px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="placeOrderBtn">' + (selectedPayMethod==='cod' ? graspionT('placeOrder') : '₹'+t.total.toLocaleString('en-IN')+' — ' + graspionT('payVia')) + '</button><div class="razorpay-note">🔒 ' + graspionT('securedBy') + '</div>';
 wrap.querySelectorAll('[data-pay]').forEach(function(el) { el.addEventListener('click', function() { selectedPayMethod = el.getAttribute('data-pay'); renderCheckout(); }); });
 document.getElementById('placeOrderBtn').addEventListener('click', async function() {
 const btn = document.getElementById('placeOrderBtn');
-btn.textContent = '⏳ Order save ho raha hai...';
+btn.textContent = '⏳ ' + graspionT('processingOrder');
 btn.disabled = true;
 const saved = await saveOrderToDatabase();
 checkoutStep = saved ? 'success' : 'error';
@@ -393,11 +427,24 @@ renderCheckout();
 });
 }
 else if(checkoutStep === 'success'){
-wrap.innerHTML = '<div class="success-box"><div class="tick">✅</div><h2>Order Placed Successfully!</h2><p>Aapka order database mein save ho gaya hai. Vendor jaldi pack karega.</p><button id="closeSuccessBtn">Continue Shopping</button></div>';
+const items = cartItemsList();
+const firstVendor = vendors.find(function(v){ return v.id === items[0].vendorId; });
+const isPanIndia = items.some(function(i){ return i.pincode === 'ALL'; });
+let deliveryEstimate = '';
+if (isPanIndia) {
+const d1 = new Date(); d1.setDate(d1.getDate() + 3);
+const d2 = new Date(); d2.setDate(d2.getDate() + 7);
+deliveryEstimate = d1.toLocaleDateString('en-IN', {day:'numeric', month:'short'}) + ' – ' + d2.toLocaleDateString('en-IN', {day:'numeric', month:'short'});
+} else {
+deliveryEstimate = firstVendor ? firstVendor.eta : '20-30 min';
+}
+wrap.innerHTML = '<div class="success-box"><div class="tick">✅</div><h2>' + graspionT('orderSuccess') + '</h2><p>' + graspionT('orderSuccessDesc') + '</p>' +
+'<div style="background:#faf5ff; border-radius:14px; padding:16px; margin:16px 0; display:inline-block;"><div style="font-size:11px; color:#9333ea; font-weight:800;">⏱ ' + (isPanIndia ? 'Expected Delivery Date' : 'Expected Delivery Time') + '</div><div style="font-size:18px; font-weight:900; color:#1e1b3a; margin-top:4px;">' + deliveryEstimate + '</div></div><br>' +
+'<button id="closeSuccessBtn">' + graspionT('continueShopping') + '</button></div>';
 document.getElementById('closeSuccessBtn').addEventListener('click', function() { cart = {}; customerInfo = { name:'', phone:'', address:'', city:'', pincode:'' }; refreshAll(); closeCheckout(); });
 }
 else if(checkoutStep === 'error'){
-wrap.innerHTML = '<div class="success-box"><div class="tick">⚠️</div><h2>Order Save Nahi Hua</h2><p>Kuch dikkat aayi. Dubara try karo.</p><button id="retryBtn">Try Again</button></div>';
+wrap.innerHTML = '<div class="success-box"><div class="tick">⚠️</div><h2>' + graspionT('orderFailed') + '</h2><p>' + graspionT('orderFailedDesc') + '</p><button id="retryBtn">' + graspionT('tryAgain') + '</button></div>';
 document.getElementById('retryBtn').addEventListener('click', function() { checkoutStep = 'payment'; renderCheckout(); });
 }
 }
@@ -408,7 +455,7 @@ selectedPin = pin;
 selectedVendorId = 'all';
 const info = areaData[pin] || {city:'', area:'Your Area', eta:'20-30 mins'};
 document.getElementById('areaLabel').textContent = info.area + ', ' + info.city + ' 📍 ▾';
-document.getElementById('heroSub').textContent = info.area + ' ke best local sellers se, ' + info.eta + ' mein delivery 🚀';
+document.getElementById('heroSub').textContent = info.area + ' — ' + info.eta + ' ' + graspionT('heroDesc');
 document.getElementById('pinModal').style.display = 'none';
 if (!dataLoaded) { await loadDataFromDatabase(); }
 renderVendors(pin);
@@ -419,12 +466,37 @@ document.querySelectorAll('.pin-chip').forEach(function(chip){ chip.addEventList
 document.getElementById('pinSubmit').addEventListener('click', function(){
 const val = document.getElementById('pinInput').value.trim();
 const errEl = document.getElementById('pinError');
-if(!/^\d{6}$/.test(val)){ errEl.textContent = 'Sahi 6-digit pincode daalein'; return; }
+if(!/^\d{6}$/.test(val)){ errEl.textContent = graspionT('invalidPincode'); return; }
 errEl.textContent = '';
 setArea(val);
 });
 document.getElementById('areaBtn').addEventListener('click', function(){ document.getElementById('pinModal').style.display = 'flex'; });
+document.getElementById('detectLocationBtn').addEventListener('click', function() {
+const btn = document.getElementById('detectLocationBtn');
+const errEl = document.getElementById('pinError');
+if (!navigator.geolocation) { errEl.textContent = 'Location detection is not supported on this device'; return; }
+btn.textContent = '⏳ Detecting your location...';
+errEl.textContent = '';
+navigator.geolocation.getCurrentPosition(async function(pos) {
+try {
+const res = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + pos.coords.latitude + '&lon=' + pos.coords.longitude);
+const data = await res.json();
+const detectedPincode = data.address && data.address.postcode ? data.address.postcode.replace(/\D/g,'').slice(0,6) : null;
+if (detectedPincode && detectedPincode.length === 6) {
+document.getElementById('pinInput').value = detectedPincode;
+setArea(detectedPincode);
+} else {
+errEl.textContent = 'Could not detect a valid pincode. Please enter it manually.';
+}
+} catch (err) { errEl.textContent = 'Location lookup failed. Please enter your pincode manually.'; }
+btn.textContent = '📍 Use My Current Location';
+}, function() {
+errEl.textContent = 'Location access denied. Please enter your pincode manually.';
+btn.textContent = '📍 Use My Current Location';
+});
+});
 setArea('226001');
 </script>
+
 </body>
 </html>
