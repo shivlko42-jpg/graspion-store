@@ -29,7 +29,8 @@ header { position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.92); 
 .delivery-info { display:flex; flex-direction:column; cursor:pointer; padding:6px 8px; border-radius:10px; min-width:0; overflow:hidden; }
 .delivery-info .top { font-size:10px; color:#9ca3af; font-weight:600; }
 .delivery-info .bottom { font-size:13px; font-weight:800; color:#1e1b3a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px; }
-.search-box { flex:1; max-width:420px; background:#f3f1f8; border-radius:12px; padding:11px 16px; font-size:13px; color:#9ca3af; }
+.search-box { flex:1; max-width:420px; background:#f3f1f8; border-radius:12px; padding:11px 16px; font-size:13px; color:#1e1b3a; border:none; outline:none; font-family:inherit; }
+.search-box::placeholder { color:#9ca3af; }
 .cart-btn { background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:11px 16px; border-radius:12px; font-weight:700; cursor:pointer; font-size:13px; position:relative; flex:0 0 auto; white-space:nowrap; }
 .cart-count { position:absolute; top:-6px; right:-6px; background:#fff; color:#ec4899; font-size:10px; font-weight:900; width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
 .hero { max-width:1200px; margin:0 auto; padding:22px 20px 0; }
@@ -153,7 +154,7 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 .db-status-badge.loading { background:#fef3c7; color:#b45309; }
 .db-status-badge.live { background:#dcfce7; color:#15803d; }
 .db-status-badge.error { background:#fee2e2; color:#dc2626; }
-@media(max-width:600px){ .search-box{display:none;} .hero-emoji{font-size:44px;} .logo-wrap .logo{font-size:16px;} .logo-mark{width:26px;height:26px;font-size:13px;} .delivery-info{max-width:150px;} .delivery-info .bottom{max-width:150px; font-size:11.5px;} #headerLangSwitcher select{font-size:10px; padding:5px 6px;} .cart-btn{padding:10px 14px; font-size:12px;} }
+@media(max-width:600px){ .search-box{display:block; font-size:11.5px; padding:9px 12px;} .hero-emoji{font-size:44px;} .logo-wrap .logo{font-size:16px;} .logo-mark{width:26px;height:26px;font-size:13px;} .delivery-info{max-width:110px;} .delivery-info .bottom{max-width:110px; font-size:11px;} .cart-btn{padding:10px 12px; font-size:12px;} }
 </style>
 </head>
 <body>
@@ -168,12 +169,7 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 <input type="text" id="pinInput" class="pin-input" data-i18n-placeholder="pincodePlaceholder" placeholder="Enter Pincode e.g. 226001" maxlength="6">
 <div class="pin-error" id="pinError"></div>
 <button class="pin-submit" id="detectLocationBtn" style="background:#fff; color:#7c3aed; border:1.5px solid #7c3aed; margin-bottom:10px;">📍 Use My Current Location</button>
-<div class="pin-suggestions">
-<div class="pin-chip" data-pin="226001">226001 · Lucknow</div>
-<div class="pin-chip" data-pin="110001">110001 · Delhi</div>
-<div class="pin-chip" data-pin="400001">400001 · Mumbai</div>
-<div class="pin-chip" data-pin="560001">560001 · Bengaluru</div>
-</div>
+<div class="pin-suggestions" id="pinSuggestions"></div>
 <button class="pin-submit" id="pinSubmit" data-i18n="continue">Continue</button>
 </div>
 </div>
@@ -185,9 +181,8 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 <div class="top" data-i18n="deliveringTo">Delivering to</div>
 <div class="bottom" id="areaLabel">Select location 📍 ▾</div>
 </div>
-<div class="search-box" data-i18n="searchPlaceholder">Search for products, brands...</div>
+<input class="search-box" id="searchInput" data-i18n-placeholder="searchPlaceholder" placeholder="Search for products, brands..." autocomplete="off">
 <div class="nav-right">
-<div id="headerLangSwitcher"></div>
 <button class="cart-btn" id="cartOpenBtn">🛒 <span data-i18n="cart">Cart</span> <span class="cart-count" id="cartCount">0</span></button>
 </div>
 </div>
@@ -271,13 +266,7 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 <script>
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
-const areaData = {
-'226001': { city:'Lucknow', area:'Hazratganj', eta:'12 mins' },
-'226010': { city:'Lucknow', area:'Indira Nagar', eta:'15 mins' },
-'110001': { city:'Delhi', area:'Connaught Place', eta:'10 mins' },
-'400001': { city:'Mumbai', area:'Fort', eta:'14 mins' },
-'560001': { city:'Bengaluru', area:'MG Road', eta:'11 mins' },
-};
+const areaData = {}; // populated dynamically from real warehouse/geocode data — nothing pre-seeded
 let vendors = [];
 let productPool = [];
 let warehouses = [];
@@ -287,6 +276,7 @@ let selectedPin = null;
 let selectedVendorId = 'all';
 let selectedWarehouseId = null;   // set when customer is inside a dark store's service radius
 let isInstantZone = false;        // true = dark store instant delivery available here
+let siteSettings = { instant_delivery_minutes: 20, standard_delivery_days_min: 2, standard_delivery_days_max: 7 };
 
 // distance in km between two lat/lng points
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -312,7 +302,7 @@ let selectedPayMethod = 'upi';
 let customerInfo = { name:'', phone:'', address:'', city:'', pincode:'' };
 
 renderLanguageSwitcher('modalLangSwitcher');
-renderLanguageSwitcher('headerLangSwitcher');
+loadDataFromDatabase(); // load proactively so the location modal can show real dark-store pincode suggestions right away
 document.addEventListener('graspionLanguageChanged', function() {
   if (checkoutStep) renderCheckout();
   if (selectedPin) renderProducts(selectedPin);
@@ -326,12 +316,17 @@ const productRes = await fetch(SUPABASE_URL + '/rest/v1/products?select=*', { he
 const warehouseRes = await fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const categoryRes = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&status=eq.active&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const bannerRes = await fetch(SUPABASE_URL + '/rest/v1/banners?select=*&status=eq.active&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const settingsRes = await fetch(SUPABASE_URL + '/rest/v1/settings?select=key,value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const vendorData = await vendorRes.json();
 const productData = await productRes.json();
 warehouses = warehouseRes.ok ? await warehouseRes.json() : [];
 categoryList = categoryRes.ok ? await categoryRes.json() : [];
 const bannerList = bannerRes.ok ? await bannerRes.json() : [];
 applyActiveBanner(bannerList);
+if (settingsRes.ok) {
+const settingsRows = await settingsRes.json();
+settingsRows.forEach(function(s){ siteSettings[s.key] = s.value; });
+}
 vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){ return { id: v.id, name: v.name, icon: v.icon, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode], vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null }; });
 productPool = productData.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
@@ -339,6 +334,7 @@ const firstFeature = p.features ? p.features.split('\n')[0].trim() : '';
 return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard' };
 });
 renderQuickCategories();
+renderPinSuggestions();
 dataLoaded = true;
 badge.className = 'db-status-badge live';
 badge.textContent = '✅ Live · ' + vendors.length + ' vendors, ' + productPool.length + ' products';
@@ -347,6 +343,16 @@ dataLoaded = false;
 badge.className = 'db-status-badge error';
 badge.textContent = '❌ Connection error';
 }
+}
+function renderPinSuggestions(){
+const wrap = document.getElementById('pinSuggestions');
+if (!wrap) return;
+const withPincode = warehouses.filter(function(w){ return w.pincode && w.status === 'active'; });
+if (withPincode.length === 0) { wrap.innerHTML = ''; return; }
+wrap.innerHTML = withPincode.slice(0, 6).map(function(w){
+return '<div class="pin-chip" data-pin="' + w.pincode + '">' + w.pincode + ' · ' + w.name + '</div>';
+}).join('');
+wrap.querySelectorAll('.pin-chip').forEach(function(chip){ chip.addEventListener('click', function(){ const pin = chip.getAttribute('data-pin'); document.getElementById('pinInput').value = pin; setArea(pin); }); });
 }
 function applyActiveBanner(bannerList){
 const now = new Date();
@@ -383,6 +389,11 @@ return '<div class="qc-item" data-cat="' + c.id + '"><div class="qc-icon">' + in
 wrap.querySelectorAll('[data-cat]').forEach(function(el){ el.addEventListener('click', function(){ filterByCategory(el.getAttribute('data-cat')); }); });
 }
 let activeCategoryId = null;
+let searchQuery = '';
+document.getElementById('searchInput').addEventListener('input', function(){
+searchQuery = this.value.trim().toLowerCase();
+if (selectedPin) renderProducts(selectedPin);
+});
 function filterByCategory(catId){ activeCategoryId = (activeCategoryId === catId) ? null : catId; renderProducts(selectedPin); }
 function renderVendors(pin){
 const list = vendors.filter(function(v){ return v.pincodes.includes(pin) || v.pincodes.includes('ALL'); });
@@ -397,6 +408,7 @@ function renderProducts(pin){
 let filtered = productPool.filter(function(p){ return p.pincode === pin || p.pincode === 'ALL'; });
 if(selectedVendorId !== 'all') filtered = filtered.filter(function(p){ return p.vendorId === selectedVendorId; });
 if(activeCategoryId) filtered = filtered.filter(function(p){ return p.categoryId === activeCategoryId; });
+if(searchQuery) filtered = filtered.filter(function(p){ return p.name.toLowerCase().indexOf(searchQuery) !== -1; });
 // in a dark-store zone, instant items lead; standard (pan-India) items still show below, clearly labelled
 if (isInstantZone) {
 filtered = filtered.slice().sort(function(a,b){ return (a.fulfillmentType==='instant'?0:1) - (b.fulfillmentType==='instant'?0:1); });
@@ -545,15 +557,35 @@ wrap.innerHTML = '<div class="success-box"><div class="tick">⚠️</div><h2>' +
 document.getElementById('retryBtn').addEventListener('click', function() { checkoutStep = 'payment'; renderCheckout(); });
 }
 }
-async function setArea(pin){
+async function setArea(pin, resolvedWarehouseId){
 selectedPin = pin;
 selectedVendorId = 'all';
 activeCategoryId = null;
-// if entered/selected pin matches a known dark-store pincode exactly, treat as instant zone
+if (resolvedWarehouseId !== undefined) {
+// caller (e.g. GPS radius match) already resolved this explicitly
+selectedWarehouseId = resolvedWarehouseId;
+isInstantZone = !!resolvedWarehouseId;
+} else {
+// manual entry / pincode chip — only treat as instant zone on an exact pincode match
 const matchedWarehouse = warehouses.find(function(w){ return w.pincode === pin; });
-if (matchedWarehouse) { selectedWarehouseId = matchedWarehouse.id; isInstantZone = true; }
-else if (!(selectedWarehouseId && areaData[pin] && areaData[pin].area === (warehouses.find(function(w){return w.id===selectedWarehouseId;})||{}).name)) { selectedWarehouseId = null; isInstantZone = false; }
-const info = areaData[pin] || {city:'', area:'Your Area', eta:'20-30 mins'};
+selectedWarehouseId = matchedWarehouse ? matchedWarehouse.id : null;
+isInstantZone = !!matchedWarehouse;
+}
+const standardEtaText = siteSettings.standard_delivery_days_min + '-' + siteSettings.standard_delivery_days_max + ' days';
+if (!areaData[pin]) {
+// try to resolve a real locality name (e.g. "Indira Nagar") for manually entered pincodes too
+try {
+const geoRes = await fetch('https://nominatim.openstreetmap.org/search?postalcode=' + encodeURIComponent(pin) + '&country=India&format=json&addressdetails=1&limit=1');
+const geoData = await geoRes.json();
+if (geoData && geoData[0] && geoData[0].address) {
+const addr = geoData[0].address;
+const localityName = addr.suburb || addr.neighbourhood || addr.city_district || addr.road || addr.county || 'Your Area';
+const cityName = addr.city || addr.town || addr.village || addr.state_district || '';
+areaData[pin] = { city: cityName, area: localityName, eta: isInstantZone ? (siteSettings.instant_delivery_minutes + ' mins') : standardEtaText };
+}
+} catch (e) { /* fall through to generic fallback below */ }
+}
+const info = areaData[pin] || {city:'', area:'Your Area', eta: isInstantZone ? (siteSettings.instant_delivery_minutes + ' mins') : standardEtaText};
 document.getElementById('areaLabel').textContent = info.area + ', ' + info.city + ' 📍 ▾';
 document.getElementById('heroSub').textContent = info.area + ' — ' + info.eta + ' ' + graspionT('heroDesc');
 document.getElementById('pinModal').style.display = 'none';
@@ -562,7 +594,6 @@ renderVendors(pin);
 renderProducts(pin);
 renderCartDrawer();
 }
-document.querySelectorAll('.pin-chip').forEach(function(chip){ chip.addEventListener('click', function(){ const pin = chip.getAttribute('data-pin'); document.getElementById('pinInput').value = pin; setArea(pin); }); });
 document.getElementById('pinSubmit').addEventListener('click', function(){
 const val = document.getElementById('pinInput').value.trim();
 const errEl = document.getElementById('pinError');
@@ -585,25 +616,26 @@ const lat = pos.coords.latitude, lng = pos.coords.longitude;
 // Step 1: is the customer inside a dark store's service radius? -> instant delivery zone
 const nearestWarehouse = findNearestWarehouse(lat, lng);
 
-// Step 2: reverse-geocode for pincode (needed either way, for address/pan-India matching)
+// Step 2: reverse-geocode for the real locality name (e.g. "Indira Nagar") and pincode —
+// used for the header label regardless of which vendor/store actually serves this area
 const res = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng);
 const data = await res.json();
-const detectedPincode = data.address && data.address.postcode ? data.address.postcode.replace(/\D/g,'').slice(0,6) : null;
+const addr = data.address || {};
+const detectedPincode = addr.postcode ? addr.postcode.replace(/\D/g,'').slice(0,6) : null;
+const localityName = addr.suburb || addr.neighbourhood || addr.city_district || addr.road || 'Your Area';
+const cityName = addr.city || addr.town || addr.village || addr.state_district || '';
 
 if (nearestWarehouse) {
-// Instant delivery zone found — use the warehouse's own pincode as the area key
-selectedWarehouseId = nearestWarehouse.id;
-isInstantZone = true;
+// Instant delivery zone found — real locality name shown, not the store's business name
 const pin = detectedPincode || nearestWarehouse.pincode || '000000';
 document.getElementById('pinInput').value = pin;
-areaData[pin] = { city: nearestWarehouse.address || '', area: nearestWarehouse.name, eta: (window.GRASPION_INSTANT_MIN || 20) + ' mins' };
-setArea(pin);
+areaData[pin] = { city: cityName, area: localityName, eta: siteSettings.instant_delivery_minutes + ' mins' };
+setArea(pin, nearestWarehouse.id);
 } else if (detectedPincode && detectedPincode.length === 6) {
 // No nearby dark store — customer still served via pan-India marketplace vendors
-selectedWarehouseId = null;
-isInstantZone = false;
 document.getElementById('pinInput').value = detectedPincode;
-setArea(detectedPincode);
+areaData[detectedPincode] = { city: cityName, area: localityName, eta: siteSettings.standard_delivery_days_min + '-' + siteSettings.standard_delivery_days_max + ' days' };
+setArea(detectedPincode, null);
 } else {
 errEl.textContent = 'Could not detect a valid location. Please enter your pincode manually.';
 }
