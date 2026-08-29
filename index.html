@@ -614,7 +614,8 @@ errEl.textContent = 'Location access denied. Please enter your pincode manually.
 btn.textContent = '📍 Use My Current Location';
 });
 });
-setArea('226001');
+// Modal stays open on load so the user can either detect their location
+// or pick/enter a pincode manually — no default area is auto-selected.
 </script>
 
 </body>
