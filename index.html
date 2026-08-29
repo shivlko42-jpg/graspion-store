@@ -24,12 +24,13 @@ body { background:#f6f5fb; color:#1e1b3a; }
 .pin-submit { width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:15px; border-radius:14px; font-weight:800; font-size:14px; cursor:pointer; margin-bottom:10px; }
 .pin-error { color:#ef4444; font-size:11px; margin-bottom:8px; min-height:14px; }
 header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.97); backdrop-filter:blur(8px); box-shadow:0 1px 0 rgba(0,0,0,0.04); }
-.nav { max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:10px 14px; gap:8px; width:100%; box-sizing:border-box; }
-.nav-right { display:flex; align-items:center; gap:6px; flex:0 0 auto; }
-.delivery-info { display:flex; flex-direction:column; cursor:pointer; padding:6px 8px; border-radius:10px; flex:0 1 auto; min-width:64px; overflow:hidden; }
+.nav { max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:12px 16px 8px; gap:10px; width:100%; box-sizing:border-box; }
+.nav-right { display:flex; align-items:center; gap:6px; flex:0 0 auto; margin-right:2px; }
+.delivery-info { display:flex; flex-direction:column; cursor:pointer; padding:6px 8px; border-radius:10px; flex:1 1 auto; min-width:64px; overflow:hidden; }
 .delivery-info .top { font-size:10px; color:#9ca3af; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.delivery-info .bottom { font-size:13px; font-weight:800; color:#1e1b3a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px; }
-.search-box { flex:1 1 auto; min-width:0; max-width:420px; background:#f3f1f8; border-radius:12px; padding:11px 16px; font-size:13px; color:#1e1b3a; border:none; outline:none; font-family:inherit; }
+.delivery-info .bottom { font-size:13px; font-weight:800; color:#1e1b3a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:220px; }
+.nav-search-row { max-width:1200px; margin:0 auto; padding:0 16px 12px; box-sizing:border-box; }
+.search-box { display:block; width:100%; box-sizing:border-box; background:#f3f1f8; border-radius:12px; padding:11px 16px; font-size:13px; color:#1e1b3a; border:none; outline:none; font-family:inherit; }
 .search-box::placeholder { color:#9ca3af; }
 .cart-btn { background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:11px 16px; border-radius:12px; font-weight:700; cursor:pointer; font-size:13px; position:relative; flex:0 0 auto; white-space:nowrap; }
 .cart-count { position:absolute; top:-6px; right:-6px; background:#fff; color:#ec4899; font-size:10px; font-weight:900; width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
@@ -155,20 +156,16 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 .db-status-badge.live { background:#dcfce7; color:#15803d; }
 .db-status-badge.error { background:#fee2e2; color:#dc2626; }
 @media(max-width:600px){
-  .nav{ padding:8px 10px; gap:6px; }
-  .search-box{ display:block; font-size:11px; padding:9px 10px; max-width:none; }
+  .nav{ padding:10px 12px 6px; gap:8px; }
+  .nav-search-row{ padding:0 12px 10px; }
+  .search-box{ font-size:12.5px; padding:9px 12px; }
   .hero-emoji{font-size:44px;}
   .logo-wrap .logo{font-size:16px;}
   .logo-mark{width:26px;height:26px;font-size:13px;}
-  .delivery-info{ min-width:56px; max-width:88px; padding:4px 4px; }
-  .delivery-info .bottom{ max-width:88px; font-size:10.5px; }
+  .delivery-info{ min-width:70px; max-width:160px; padding:4px 6px; }
+  .delivery-info .bottom{ max-width:160px; font-size:11px; }
   .delivery-info .top{ font-size:9px; }
-  .cart-btn{ padding:9px 11px; font-size:12px; }
-}
-@media(max-width:400px){
-  .search-box{ display:none; } /* extremely narrow screens: search reachable via the search icon area label click is not needed — area+cart stay usable */
-  .delivery-info{ max-width:150px; }
-  .delivery-info .bottom{ max-width:150px; }
+  .cart-btn{ padding:9px 12px; font-size:12px; margin-right:2px; }
 }
 </style>
 </head>
@@ -196,9 +193,12 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 <div class="top" data-i18n="deliveringTo">Delivering to</div>
 <div class="bottom" id="areaLabel">Select location 📍 ▾</div>
 </div>
-<input class="search-box" id="searchInput" data-i18n-placeholder="searchPlaceholder" placeholder="Search for products, brands..." autocomplete="off">
 <div class="nav-right">
 <button class="cart-btn" id="cartOpenBtn">🛒 <span data-i18n="cart">Cart</span> <span class="cart-count" id="cartCount">0</span></button>
+</div>
+</div>
+<div class="nav-search-row">
+<input class="search-box" id="searchInput" data-i18n-placeholder="searchPlaceholder" placeholder="Search for products, brands..." autocomplete="off">
 </div>
 </div>
 </header>
@@ -596,13 +596,14 @@ if (geoData && geoData[0] && geoData[0].address) {
 const addr = geoData[0].address;
 const localityName = addr.suburb || addr.neighbourhood || addr.city_district || addr.road || addr.county || 'Your Area';
 const cityName = addr.city || addr.town || addr.village || addr.state_district || '';
-areaData[pin] = { city: cityName, area: localityName, eta: isInstantZone ? (siteSettings.instant_delivery_minutes + ' mins') : standardEtaText };
+const fullAddress = [localityName, cityName].filter(Boolean).join(', ');
+areaData[pin] = { city: cityName, area: localityName, fullAddress: fullAddress, eta: isInstantZone ? (siteSettings.instant_delivery_minutes + ' mins') : standardEtaText };
 }
 } catch (e) { /* fall through to generic fallback below */ }
 }
 const info = areaData[pin] || {city:'', area:'Your Area', eta: isInstantZone ? (siteSettings.instant_delivery_minutes + ' mins') : standardEtaText};
 document.getElementById('areaLabel').textContent = info.area + ', ' + info.city + ' 📍 ▾';
-document.getElementById('heroSub').textContent = info.area + ' — ' + info.eta + ' ' + graspionT('heroDesc');
+document.getElementById('heroSub').textContent = (info.fullAddress || info.area) + ' — ' + info.eta + ' ' + graspionT('heroDesc');
 document.getElementById('pinModal').style.display = 'none';
 if (!dataLoaded) { await loadDataFromDatabase(); }
 renderVendors(pin);
@@ -639,17 +640,19 @@ const addr = data.address || {};
 const detectedPincode = addr.postcode ? addr.postcode.replace(/\D/g,'').slice(0,6) : null;
 const localityName = addr.suburb || addr.neighbourhood || addr.city_district || addr.road || 'Your Area';
 const cityName = addr.city || addr.town || addr.village || addr.state_district || '';
+const streetPart = [addr.house_number, addr.road].filter(Boolean).join(' ');
+const fullAddress = [streetPart, localityName, cityName].filter(Boolean).join(', ');
 
 if (nearestWarehouse) {
 // Instant delivery zone found — real locality name shown, not the store's business name
 const pin = detectedPincode || nearestWarehouse.pincode || '000000';
 document.getElementById('pinInput').value = pin;
-areaData[pin] = { city: cityName, area: localityName, eta: siteSettings.instant_delivery_minutes + ' mins' };
+areaData[pin] = { city: cityName, area: localityName, fullAddress: fullAddress, eta: siteSettings.instant_delivery_minutes + ' mins' };
 setArea(pin, nearestWarehouse.id);
 } else if (detectedPincode && detectedPincode.length === 6) {
 // No nearby dark store — customer still served via pan-India marketplace vendors
 document.getElementById('pinInput').value = detectedPincode;
-areaData[detectedPincode] = { city: cityName, area: localityName, eta: siteSettings.standard_delivery_days_min + '-' + siteSettings.standard_delivery_days_max + ' days' };
+areaData[detectedPincode] = { city: cityName, area: localityName, fullAddress: fullAddress, eta: siteSettings.standard_delivery_days_min + '-' + siteSettings.standard_delivery_days_max + ' days' };
 setArea(detectedPincode, null);
 } else {
 errEl.textContent = 'Could not detect a valid location. Please enter your pincode manually.';

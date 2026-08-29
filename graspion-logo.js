@@ -12,9 +12,10 @@ function graspionFullLogoHTML(textColor, fontSize) {
     '<div style="font-size:' + fontSize + 'px; font-weight:900; color:' + textColor + ';">Grasp<span style="background:linear-gradient(90deg,' + GRASPION_COLORS.gradientStart + ',' + GRASPION_COLORS.gradientEnd + '); -webkit-background-clip:text; background-clip:text; color:transparent;">ion</span></div></div>';
 }
 
-function graspionTextLogoHTML(fontSize) {
+function graspionTextLogoHTML(fontSize, textColor) {
   fontSize = fontSize || 22;
-  return '<div style="font-size:' + fontSize + 'px; font-weight:900; color:#1e1b3a;">Grasp<span style="background:linear-gradient(90deg,' + GRASPION_COLORS.gradientStart + ',' + GRASPION_COLORS.gradientEnd + '); -webkit-background-clip:text; background-clip:text; color:transparent;">ion</span></div>';
+  textColor = textColor || '#1e1b3a';
+  return '<div style="font-size:' + fontSize + 'px; font-weight:900; color:' + textColor + ';">Grasp<span style="background:linear-gradient(90deg,' + GRASPION_COLORS.gradientStart + ',' + GRASPION_COLORS.gradientEnd + '); -webkit-background-clip:text; background-clip:text; color:transparent;">ion</span></div>';
 }
 
 function renderAllGraspionLogos() {
@@ -25,7 +26,7 @@ function renderAllGraspionLogos() {
     el.innerHTML = graspionIconHTML(el.getAttribute('data-size') || 32);
   });
   document.querySelectorAll('[data-graspion-logo="text"]').forEach(function(el) {
-    el.innerHTML = graspionTextLogoHTML(el.getAttribute('data-size') || 22);
+    el.innerHTML = graspionTextLogoHTML(el.getAttribute('data-size') || 22, el.getAttribute('data-color'));
   });
 }
 
