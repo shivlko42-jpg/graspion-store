@@ -77,7 +77,12 @@ header { position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.92); 
 .card { background:#fff; border-radius:16px; overflow:hidden; position:relative; border:1px solid #f0eef7; }
 .badge { position:absolute; top:9px; left:9px; background:#ec4899; color:#fff; font-size:10px; font-weight:800; padding:4px 9px; border-radius:8px; z-index:2; }
 .badge.new { background:linear-gradient(90deg,#22c55e,#16a34a); }
-.img-wrap { height:132px; background:linear-gradient(135deg,#f3f1f8,#fde9ee); display:flex; align-items:center; justify-content:center; font-size:42px; }
+.img-wrap { height:132px; background:linear-gradient(135deg,#f3f1f8,#fde9ee); display:flex; align-items:center; justify-content:center; font-size:42px; overflow:hidden; }
+.img-wrap img { width:100%; height:100%; object-fit:cover; }
+.feature-tag { font-size:9px; color:#6b7280; background:#f3f1f8; padding:2px 7px; border-radius:6px; margin-top:5px; display:inline-block; }
+.return-tag { font-size:9px; font-weight:700; padding:2px 7px; border-radius:6px; margin-top:5px; display:inline-block; margin-left:4px; }
+.return-yes { background:#dcfce7; color:#15803d; }
+.return-no { background:#fee2e2; color:#dc2626; }
 .card-body { padding:11px 13px 13px; }
 .vendor-tag { font-size:9.5px; color:#9333ea; font-weight:800; margin-bottom:5px; }
 .card-body h3 { font-size:12.5px; font-weight:700; margin-bottom:7px; line-height:1.35; height:34px; overflow:hidden; color:#1e1b3a; }
@@ -300,7 +305,8 @@ const productData = await productRes.json();
 vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){ return { id: v.id, name: v.name, icon: v.icon, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode] }; });
 productPool = productData.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
-return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null };
+const firstFeature = p.features ? p.features.split('\n')[0].trim() : '';
+return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0 };
 });
 dataLoaded = true;
 badge.className = 'db-status-badge live';
@@ -329,10 +335,13 @@ dealGrid.innerHTML = filtered.map(function(p){
 const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
 const qty = cart[p.id] || 0;
 return '<div class="card">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') +
-'<div class="img-wrap">' + p.icon + '</div><div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
+'<div class="img-wrap">' + (p.image ? '<img src="' + p.image + '">' : p.icon) + '</div><div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
 '<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
 '<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span><div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div>' +
-(qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '">+</button></div>') +
+(p.feature ? '<div class="feature-tag">✓ ' + p.feature + '</div>' : '') +
+'<div><span class="return-tag ' + (p.returnable ? 'return-yes' : 'return-no') + '">' + (p.returnable ? '↩️ Returnable' : '🚫 No Return') + '</span></div>' +
+(p.stock <= 0 ? '<div style="text-align:center; margin-top:10px; background:#fee2e2; color:#dc2626; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">Out of Stock</div>' :
+(qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '" ' + (qty >= p.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>')) +
 '</div></div>';
 }).join('');
 document.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(){ cart[btn.getAttribute('data-add')] = 1; refreshAll(); }); });
@@ -389,6 +398,21 @@ body: JSON.stringify({ order_id: orderId, product_id: i.id, quantity: i.qty, pri
 });
 });
 await Promise.all(itemInserts);
+
+const stockUpdates = items.map(async function(i) {
+const productRes = await fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + i.id + '&select=stock', {
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+});
+const productData = await productRes.json();
+const currentStock = productData[0] ? Number(productData[0].stock) : 0;
+const newStock = Math.max(0, currentStock - i.qty);
+return fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + i.id, {
+method: 'PATCH',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({ stock: newStock })
+});
+});
+await Promise.all(stockUpdates);
 }
 return true;
 } catch (err) { return false; }
