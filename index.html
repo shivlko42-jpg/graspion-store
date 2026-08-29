@@ -6,11 +6,11 @@
 <title>Graspion - Every Need, Fast Delivery</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="graspion-logo.js"></script>
 <script src="graspion-lang.js"></script>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',system-ui,sans-serif; }
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif; }
 body { background:#f6f5fb; color:#1e1b3a; }
 .modal-overlay { position:fixed; inset:0; background:rgba(15,10,30,0.8); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
 .modal-box { background:#fff; border-radius:24px; padding:36px 28px; max-width:380px; width:100%; text-align:center; }
@@ -23,13 +23,13 @@ body { background:#f6f5fb; color:#1e1b3a; }
 .pin-chip { background:#f3f1f8; color:#6b3fb0; font-size:11px; font-weight:700; padding:7px 12px; border-radius:10px; cursor:pointer; }
 .pin-submit { width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:15px; border-radius:14px; font-weight:800; font-size:14px; cursor:pointer; margin-bottom:10px; }
 .pin-error { color:#ef4444; font-size:11px; margin-bottom:8px; min-height:14px; }
-header { position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.92); }
-.nav { max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:13px 14px; gap:8px; }
+header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.97); backdrop-filter:blur(8px); box-shadow:0 1px 0 rgba(0,0,0,0.04); }
+.nav { max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:10px 14px; gap:8px; width:100%; box-sizing:border-box; }
 .nav-right { display:flex; align-items:center; gap:6px; flex:0 0 auto; }
-.delivery-info { display:flex; flex-direction:column; cursor:pointer; padding:6px 8px; border-radius:10px; min-width:0; overflow:hidden; }
-.delivery-info .top { font-size:10px; color:#9ca3af; font-weight:600; }
+.delivery-info { display:flex; flex-direction:column; cursor:pointer; padding:6px 8px; border-radius:10px; flex:0 1 auto; min-width:64px; overflow:hidden; }
+.delivery-info .top { font-size:10px; color:#9ca3af; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .delivery-info .bottom { font-size:13px; font-weight:800; color:#1e1b3a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px; }
-.search-box { flex:1; max-width:420px; background:#f3f1f8; border-radius:12px; padding:11px 16px; font-size:13px; color:#1e1b3a; border:none; outline:none; font-family:inherit; }
+.search-box { flex:1 1 auto; min-width:0; max-width:420px; background:#f3f1f8; border-radius:12px; padding:11px 16px; font-size:13px; color:#1e1b3a; border:none; outline:none; font-family:inherit; }
 .search-box::placeholder { color:#9ca3af; }
 .cart-btn { background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:11px 16px; border-radius:12px; font-weight:700; cursor:pointer; font-size:13px; position:relative; flex:0 0 auto; white-space:nowrap; }
 .cart-count { position:absolute; top:-6px; right:-6px; background:#fff; color:#ec4899; font-size:10px; font-weight:900; width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
@@ -154,7 +154,22 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 .db-status-badge.loading { background:#fef3c7; color:#b45309; }
 .db-status-badge.live { background:#dcfce7; color:#15803d; }
 .db-status-badge.error { background:#fee2e2; color:#dc2626; }
-@media(max-width:600px){ .search-box{display:block; font-size:11.5px; padding:9px 12px;} .hero-emoji{font-size:44px;} .logo-wrap .logo{font-size:16px;} .logo-mark{width:26px;height:26px;font-size:13px;} .delivery-info{max-width:110px;} .delivery-info .bottom{max-width:110px; font-size:11px;} .cart-btn{padding:10px 12px; font-size:12px;} }
+@media(max-width:600px){
+  .nav{ padding:8px 10px; gap:6px; }
+  .search-box{ display:block; font-size:11px; padding:9px 10px; max-width:none; }
+  .hero-emoji{font-size:44px;}
+  .logo-wrap .logo{font-size:16px;}
+  .logo-mark{width:26px;height:26px;font-size:13px;}
+  .delivery-info{ min-width:56px; max-width:88px; padding:4px 4px; }
+  .delivery-info .bottom{ max-width:88px; font-size:10.5px; }
+  .delivery-info .top{ font-size:9px; }
+  .cart-btn{ padding:9px 11px; font-size:12px; }
+}
+@media(max-width:400px){
+  .search-box{ display:none; } /* extremely narrow screens: search reachable via the search icon area label click is not needed — area+cart stay usable */
+  .delivery-info{ max-width:150px; }
+  .delivery-info .bottom{ max-width:150px; }
+}
 </style>
 </head>
 <body>
@@ -176,7 +191,7 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 
 <header>
 <div class="nav">
-<a href="index.html" style="text-decoration:none;"><div data-graspion-logo="text" data-size="19"></div></a>
+<a href="index.html" style="text-decoration:none; flex:0 0 auto;"><div data-graspion-logo="text" data-size="19"></div></a>
 <div class="delivery-info" id="areaBtn">
 <div class="top" data-i18n="deliveringTo">Delivering to</div>
 <div class="bottom" id="areaLabel">Select location 📍 ▾</div>
