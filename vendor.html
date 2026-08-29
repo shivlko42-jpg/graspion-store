@@ -155,6 +155,7 @@
         <div class="radio-option selected" id="modeLocal" data-mode="local"><span class="ro-icon">📍</span>Local Area Only</div>
         <div class="radio-option" id="modePanIndia" data-mode="pan_india"><span class="ro-icon">🇮🇳</span>Ship Pan-India</div>
       </div>
+      <p id="modeExplainer" style="font-size:10px; color:#9ca3af; margin:-4px 0 12px;"></p>
       <div class="form-row">
         <div class="form-group"><label>Product Name</label><input class="form-input" id="pName" placeholder="e.g. Bluetooth Speaker"></div>
         <div class="form-group"><label>Icon (emoji, backup if no photo)</label><input class="form-input" id="pIcon" placeholder="🎧" value="📦"></div>
@@ -285,6 +286,7 @@ document.getElementById('vendorLoginBtn').addEventListener('click', function() {
   populateSettingsForm();
   loadVendorData();
   loadCategoriesForVendor();
+  configureSellingModeUI();
 });
 document.getElementById('navSettings').addEventListener('click', function() {
   document.getElementById('storeSettingsPanel').scrollIntoView({ behavior: 'smooth' });
@@ -338,6 +340,20 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
   document.getElementById('loginOverlay').style.display = 'flex';
 });
 
+function configureSellingModeUI() {
+  const isDarkStore = currentVendor.vendor_type === 'dark_store';
+  const explainer = document.getElementById('modeExplainer');
+  const panIndiaOption = document.getElementById('modePanIndia');
+  if (isDarkStore) {
+    // dark stores only serve their own local radius — instant delivery, no pan-India shipping
+    panIndiaOption.style.display = 'none';
+    setMode('local');
+    explainer.textContent = '⚡ Your store is a Dark Store — products are delivered instantly within your service radius.';
+  } else {
+    panIndiaOption.style.display = '';
+    explainer.textContent = 'ℹ️ "Local Area Only" restricts which pincode sees this product, but delivery is still standard (courier), not instant — instant delivery is only available to registered Dark Stores.';
+  }
+}
 document.getElementById('modeLocal').addEventListener('click', function() { setMode('local'); });
 document.getElementById('modePanIndia').addEventListener('click', function() { setMode('pan_india'); });
 function setMode(mode) {
@@ -557,7 +573,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   const condition = document.getElementById('pCondition').value;
   const categoryId = document.getElementById('pCategory').value || null;
   const sku = document.getElementById('pSku').value.trim() || ('GRS-' + Date.now().toString().slice(-8));
-  const fulfillmentType = selectedMode === 'pan_india' ? 'standard' : 'instant';
+  const fulfillmentType = currentVendor.vendor_type === 'dark_store' ? 'instant' : 'standard';
 
   if (!name || !price || (selectedMode === 'local' && !pincode)) {
     alert('Product Name, Price, and Pincode (for Local mode) are required');
