@@ -86,6 +86,23 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 .ad-toggle.off { background:#f3f1f8; color:#6b7280; }
 .empty-state { text-align:center; padding:30px 20px; color:#9ca3af; font-size:12.5px; }
 .panel-grid { display:grid; grid-template-columns:1.4fr 1fr; gap:16px; margin-bottom:16px; }
+.form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; }
+.form-input { padding:11px 13px; border:1.5px solid #f0eef7; border-radius:10px; font-size:12.5px; outline:none; font-family:inherit; }
+.form-input:focus { border-color:#7c3aed; }
+.setting-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f7f6fb; flex-wrap:wrap; }
+.setting-row:last-child { border-bottom:none; }
+.setting-label { flex:1; min-width:180px; font-size:12.5px; font-weight:700; }
+.setting-desc { font-size:10px; color:#9ca3af; font-weight:500; }
+.setting-input { padding:8px 10px; border:1.5px solid #f0eef7; border-radius:8px; font-size:12px; width:140px; }
+.item-card { border:1px solid #f0eef7; border-radius:12px; padding:12px; margin-bottom:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.item-card .ic-info { flex:1; min-width:160px; }
+.item-card .ic-title { font-size:12.5px; font-weight:700; }
+.item-card .ic-sub { font-size:10.5px; color:#9ca3af; margin-top:2px; }
+.item-actions { display:flex; gap:6px; }
+.icon-btn { font-size:11px; padding:6px 11px; border-radius:7px; border:none; font-weight:700; cursor:pointer; }
+.icon-btn.on-btn { background:#dcfce7; color:#15803d; }
+.icon-btn.off-btn { background:#fee2e2; color:#dc2626; }
+.icon-btn.del-btn { background:#f3f1f8; color:#6b7280; }
 @media(max-width:900px){ .panel-grid{grid-template-columns:1fr;} }
 @media(max-width:700px){ .sidebar{display:none;} }
 </style>
@@ -111,6 +128,10 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="side-item" data-page="delivery">🚴 Delivery Partners</div>
 <div class="side-item" data-page="customers">👥 Customers</div>
 <div class="side-item" data-page="payments">💰 Payments</div>
+<div class="side-item" data-page="warehouses">🏬 Dark Stores</div>
+<div class="side-item" data-page="categories">📁 Categories</div>
+<div class="side-item" data-page="banners">🖼️ Banners</div>
+<div class="side-item" data-page="settings">⚙️ Settings</div>
 <button class="logout-btn" id="logoutBtn">Logout</button>
 </div>
 <div class="main">
@@ -185,6 +206,61 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="empty-state" id="adsEmpty" style="display:none;">No products found</div>
 </div>
 
+<div class="panel" data-section="warehouses">
+<h3>🏬 Dark Stores (Instant Delivery Warehouses)</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Customers inside a store's radius automatically get instant delivery. Outside it, they fall back to Pan-India marketplace delivery.</p>
+<div class="form-grid">
+<input class="form-input" id="whName" placeholder="Store name e.g. Graspion Hazratganj">
+<input class="form-input" id="whAddress" placeholder="Address">
+<input class="form-input" id="whPincode" placeholder="Pincode">
+<input class="form-input" id="whLat" placeholder="Latitude" type="number" step="any">
+<input class="form-input" id="whLng" placeholder="Longitude" type="number" step="any">
+<button class="mini-btn" id="whUseLocationBtn" style="background:#dbeafe;color:#1d4ed8;">📍 Use My Current Location</button>
+<input class="form-input" id="whRadius" placeholder="Service radius (km)" type="number" value="3">
+</div>
+<button class="login-btn" id="whAddBtn" style="margin-top:10px;">+ Add Dark Store</button>
+<div id="whList" style="margin-top:16px;"></div>
+<div class="empty-state" id="whEmpty" style="display:none;">No dark stores added yet</div>
+</div>
+
+<div class="panel" data-section="categories">
+<h3>📁 Categories</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">These appear as quick-category tiles on the customer homepage automatically.</p>
+<div class="form-grid">
+<input class="form-input" id="catName" placeholder="Category name e.g. Grocery">
+<input class="form-input" id="catImage" placeholder="Image URL (optional)">
+<select class="form-input" id="catParent"><option value="">No parent (top-level)</option></select>
+<input class="form-input" id="catOrder" placeholder="Display order (0,1,2...)" type="number" value="0">
+</div>
+<button class="login-btn" id="catAddBtn" style="margin-top:10px;">+ Add Category</button>
+<div id="catList" style="margin-top:16px;"></div>
+<div class="empty-state" id="catEmpty" style="display:none;">No categories added yet</div>
+</div>
+
+<div class="panel" data-section="banners">
+<h3>🖼️ Homepage Banners</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Control the hero banners shown on the customer site — no code changes needed.</p>
+<div class="form-grid">
+<input class="form-input" id="banTitle" placeholder="Title">
+<input class="form-input" id="banSubtitle" placeholder="Subtitle">
+<input class="form-input" id="banDesktopImg" placeholder="Desktop image URL">
+<input class="form-input" id="banMobileImg" placeholder="Mobile image URL">
+<input class="form-input" id="banButtonText" placeholder="Button text e.g. Shop Now">
+<input class="form-input" id="banLink" placeholder="Link URL">
+<input class="form-input" id="banPriority" placeholder="Priority (lower = shown first)" type="number" value="0">
+</div>
+<button class="login-btn" id="banAddBtn" style="margin-top:10px;">+ Add Banner</button>
+<div id="banList" style="margin-top:16px;"></div>
+<div class="empty-state" id="banEmpty" style="display:none;">No banners added yet</div>
+</div>
+
+<div class="panel" data-section="settings">
+<h3>⚙️ General Settings</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Change these values without touching any code — the whole platform reads from here.</p>
+<div id="settingsList"></div>
+<div class="empty-state" id="settingsEmpty" style="display:none;">Loading settings...</div>
+</div>
+
 </div>
 </div>
 <script>
@@ -192,6 +268,7 @@ const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
 const ADMIN_PASSWORD = 'graspion2026';
 let allVendors = [], allProducts = [], allOrders = [];
+let allWarehouses = [], allCategories = [], allBanners = [], allSettings = [];
 
 document.querySelectorAll('.side-item[data-page]').forEach(function(item) {
   item.addEventListener('click', function() {
@@ -225,9 +302,17 @@ try {
 const vendorRes = await fetch(SUPABASE_URL + '/rest/v1/vendors?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const productRes = await fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const warehouseRes = await fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const categoryRes = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const bannerRes = await fetch(SUPABASE_URL + '/rest/v1/banners?select=*&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const settingsRes = await fetch(SUPABASE_URL + '/rest/v1/settings?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 allVendors = await vendorRes.json();
 allProducts = await productRes.json();
 allOrders = await orderRes.json();
+allWarehouses = warehouseRes.ok ? await warehouseRes.json() : [];
+allCategories = categoryRes.ok ? await categoryRes.json() : [];
+allBanners = bannerRes.ok ? await bannerRes.json() : [];
+allSettings = settingsRes.ok ? await settingsRes.json() : [];
 badge.className = 'db-badge live';
 badge.textContent = '✅ Live';
 renderKPIs();
@@ -240,6 +325,10 @@ renderCustomerAnalytics();
 renderGeoAnalytics();
 renderPayouts();
 renderDeliveryPartners();
+renderWarehouses();
+renderCategories();
+renderBanners();
+renderSettings();
 } catch (err) {
 badge.className = 'db-badge loading';
 badge.textContent = '❌ Error: ' + err.message;
@@ -478,6 +567,192 @@ method: 'PATCH',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
 body: JSON.stringify({ ad_bid: Number(input.value) || 0 })
 });
+});
+});
+}
+
+// ===================== DARK STORES (WAREHOUSES) =====================
+function renderWarehouses() {
+const list = document.getElementById('whList');
+const empty = document.getElementById('whEmpty');
+if (allWarehouses.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = allWarehouses.map(function(w) {
+const isActive = w.status !== 'inactive';
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">🏬 ' + w.name + '</div><div class="ic-sub">' + (w.address || '') + ' · ' + (w.pincode || '') + ' · radius ' + w.service_radius_km + 'km · (' + Number(w.lat).toFixed(4) + ', ' + Number(w.lng).toFixed(4) + ')</div></div>' +
+'<div class="item-actions"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-whtoggle="' + w.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button>' +
+'<button class="icon-btn del-btn" data-whdel="' + w.id + '">Delete</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-whtoggle]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-whtoggle');
+const isActive = btn.getAttribute('data-current') === 'true';
+await fetch(SUPABASE_URL + '/rest/v1/warehouses?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: isActive ? 'inactive' : 'active' }) });
+loadAllData();
+});
+});
+document.querySelectorAll('[data-whdel]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Delete this dark store?')) return;
+const id = btn.getAttribute('data-whdel');
+await fetch(SUPABASE_URL + '/rest/v1/warehouses?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+loadAllData();
+});
+});
+}
+document.getElementById('whUseLocationBtn').addEventListener('click', function() {
+const btn = document.getElementById('whUseLocationBtn');
+if (!navigator.geolocation) { alert('Location not supported on this device'); return; }
+btn.textContent = '⏳ Detecting...';
+navigator.geolocation.getCurrentPosition(function(pos) {
+document.getElementById('whLat').value = pos.coords.latitude;
+document.getElementById('whLng').value = pos.coords.longitude;
+btn.textContent = '📍 Use My Current Location';
+}, function() {
+alert('Location access denied');
+btn.textContent = '📍 Use My Current Location';
+});
+});
+document.getElementById('whAddBtn').addEventListener('click', async function() {
+const name = document.getElementById('whName').value.trim();
+const lat = parseFloat(document.getElementById('whLat').value);
+const lng = parseFloat(document.getElementById('whLng').value);
+if (!name || isNaN(lat) || isNaN(lng)) { alert('Store name, latitude and longitude are required'); return; }
+const btn = document.getElementById('whAddBtn');
+btn.textContent = '⏳ Adding...';
+await fetch(SUPABASE_URL + '/rest/v1/warehouses', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({ name: name, address: document.getElementById('whAddress').value.trim(), pincode: document.getElementById('whPincode').value.trim(), lat: lat, lng: lng, service_radius_km: parseFloat(document.getElementById('whRadius').value) || 3, status: 'active' })
+});
+['whName','whAddress','whPincode','whLat','whLng'].forEach(function(id){ document.getElementById(id).value = ''; });
+document.getElementById('whRadius').value = 3;
+btn.textContent = '+ Add Dark Store';
+loadAllData();
+});
+
+// ===================== CATEGORIES =====================
+function renderCategories() {
+const list = document.getElementById('catList');
+const empty = document.getElementById('catEmpty');
+const parentSelect = document.getElementById('catParent');
+parentSelect.innerHTML = '<option value="">No parent (top-level)</option>' + allCategories.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
+if (allCategories.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = allCategories.map(function(c) {
+const isActive = c.status !== 'inactive';
+const parent = allCategories.find(function(p) { return p.id === c.parent_id; });
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">📁 ' + c.name + '</div><div class="ic-sub">' + (parent ? 'Sub-category of ' + parent.name : 'Top-level') + ' · order: ' + c.display_order + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-cattoggle="' + c.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button>' +
+'<button class="icon-btn del-btn" data-catdel="' + c.id + '">Delete</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-cattoggle]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-cattoggle');
+const isActive = btn.getAttribute('data-current') === 'true';
+await fetch(SUPABASE_URL + '/rest/v1/categories?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: isActive ? 'inactive' : 'active' }) });
+loadAllData();
+});
+});
+document.querySelectorAll('[data-catdel]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Delete this category?')) return;
+const id = btn.getAttribute('data-catdel');
+await fetch(SUPABASE_URL + '/rest/v1/categories?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+loadAllData();
+});
+});
+}
+document.getElementById('catAddBtn').addEventListener('click', async function() {
+const name = document.getElementById('catName').value.trim();
+if (!name) { alert('Category name is required'); return; }
+const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+const btn = document.getElementById('catAddBtn');
+btn.textContent = '⏳ Adding...';
+await fetch(SUPABASE_URL + '/rest/v1/categories', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({ name: name, slug: slug, image_url: document.getElementById('catImage').value.trim() || null, parent_id: document.getElementById('catParent').value || null, display_order: parseInt(document.getElementById('catOrder').value) || 0, status: 'active' })
+});
+['catName','catImage'].forEach(function(id){ document.getElementById(id).value = ''; });
+document.getElementById('catOrder').value = 0;
+btn.textContent = '+ Add Category';
+loadAllData();
+});
+
+// ===================== BANNERS =====================
+function renderBanners() {
+const list = document.getElementById('banList');
+const empty = document.getElementById('banEmpty');
+if (allBanners.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = allBanners.map(function(b) {
+const isActive = b.status !== 'inactive';
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">🖼️ ' + (b.title || 'Untitled banner') + '</div><div class="ic-sub">' + (b.subtitle || '') + ' · priority: ' + b.priority + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-bantoggle="' + b.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button>' +
+'<button class="icon-btn del-btn" data-bandel="' + b.id + '">Delete</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-bantoggle]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-bantoggle');
+const isActive = btn.getAttribute('data-current') === 'true';
+await fetch(SUPABASE_URL + '/rest/v1/banners?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: isActive ? 'inactive' : 'active' }) });
+loadAllData();
+});
+});
+document.querySelectorAll('[data-bandel]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Delete this banner?')) return;
+const id = btn.getAttribute('data-bandel');
+await fetch(SUPABASE_URL + '/rest/v1/banners?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+loadAllData();
+});
+});
+}
+document.getElementById('banAddBtn').addEventListener('click', async function() {
+const title = document.getElementById('banTitle').value.trim();
+if (!title) { alert('Banner title is required'); return; }
+const btn = document.getElementById('banAddBtn');
+btn.textContent = '⏳ Adding...';
+await fetch(SUPABASE_URL + '/rest/v1/banners', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({ title: title, subtitle: document.getElementById('banSubtitle').value.trim(), desktop_image: document.getElementById('banDesktopImg').value.trim(), mobile_image: document.getElementById('banMobileImg').value.trim(), button_text: document.getElementById('banButtonText').value.trim(), link_url: document.getElementById('banLink').value.trim(), priority: parseInt(document.getElementById('banPriority').value) || 0, status: 'active' })
+});
+['banTitle','banSubtitle','banDesktopImg','banMobileImg','banButtonText','banLink'].forEach(function(id){ document.getElementById(id).value = ''; });
+document.getElementById('banPriority').value = 0;
+btn.textContent = '+ Add Banner';
+loadAllData();
+});
+
+// ===================== GENERAL SETTINGS =====================
+function renderSettings() {
+const list = document.getElementById('settingsList');
+const empty = document.getElementById('settingsEmpty');
+if (allSettings.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = allSettings.map(function(s) {
+let rawVal = s.value;
+try { rawVal = JSON.parse(s.value); } catch(e) {}
+const displayVal = (typeof rawVal === 'object' && rawVal !== null) ? JSON.stringify(rawVal) : rawVal;
+return '<div class="setting-row"><div class="setting-label">' + (s.label || s.key) + '<div class="setting-desc">' + s.key + '</div></div>' +
+'<input class="setting-input" data-settingkey="' + s.key + '" value=\'' + String(displayVal).replace(/'/g,"&#39;") + '\'>' +
+'<button class="icon-btn on-btn" data-settingsave="' + s.key + '">Save</button></div>';
+}).join('');
+document.querySelectorAll('[data-settingsave]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const key = btn.getAttribute('data-settingsave');
+const input = document.querySelector('[data-settingkey="' + key + '"]');
+let newVal = input.value;
+if (newVal === 'true' || newVal === 'false' || (!isNaN(newVal) && newVal.trim() !== '')) {
+// leave as-is: valid raw JSON (boolean/number)
+} else {
+newVal = JSON.stringify(newVal);
+}
+btn.textContent = '⏳';
+await fetch(SUPABASE_URL + '/rest/v1/settings?key=eq.' + key, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ value: newVal, updated_at: new Date().toISOString() }) });
+btn.textContent = '✓ Saved';
+setTimeout(function(){ btn.textContent = 'Save'; }, 1500);
 });
 });
 }

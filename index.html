@@ -194,10 +194,10 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 </header>
 
 <section class="hero">
-<div class="hero-banner">
+<div class="hero-banner" id="heroBanner">
 <div class="hero-text">
 <div class="hero-badge">⚡ <span data-i18n="deliveryBadge">10-20 Min Delivery</span></div>
-<h1 data-i18n="tagline">Every Need. Every Area. Fast.</h1>
+<h1 id="heroTitle" data-i18n="tagline">Every Need. Every Area. Fast.</h1>
 <p id="heroSub" data-i18n="heroDesc">Shop from the best local sellers in your area, with lightning-fast delivery</p>
 </div>
 <div class="hero-emoji">🛍️</div>
@@ -325,10 +325,13 @@ const vendorRes = await fetch(SUPABASE_URL + '/rest/v1/vendors?select=*', { head
 const productRes = await fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const warehouseRes = await fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const categoryRes = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&status=eq.active&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const bannerRes = await fetch(SUPABASE_URL + '/rest/v1/banners?select=*&status=eq.active&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const vendorData = await vendorRes.json();
 const productData = await productRes.json();
 warehouses = warehouseRes.ok ? await warehouseRes.json() : [];
 categoryList = categoryRes.ok ? await categoryRes.json() : [];
+const bannerList = bannerRes.ok ? await bannerRes.json() : [];
+applyActiveBanner(bannerList);
 vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){ return { id: v.id, name: v.name, icon: v.icon, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode], vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null }; });
 productPool = productData.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
@@ -344,6 +347,25 @@ dataLoaded = false;
 badge.className = 'db-status-badge error';
 badge.textContent = '❌ Connection error';
 }
+}
+function applyActiveBanner(bannerList){
+const now = new Date();
+const eligible = bannerList.filter(function(b){
+const startsOk = !b.start_date || new Date(b.start_date) <= now;
+const endsOk = !b.end_date || new Date(b.end_date) >= now;
+return startsOk && endsOk;
+});
+if (eligible.length === 0) return; // keep default hero text
+const b = eligible[0];
+if (b.title) document.getElementById('heroTitle').textContent = b.title;
+if (b.subtitle) document.getElementById('heroSub').textContent = b.subtitle;
+const banner = document.getElementById('heroBanner');
+const desktopImg = window.matchMedia('(min-width:700px)').matches ? b.desktop_image : (b.mobile_image || b.desktop_image);
+if (desktopImg) banner.style.backgroundImage = 'linear-gradient(120deg,rgba(30,27,58,0.75),rgba(219,39,119,0.55)), url(' + desktopImg + ')';
+banner.style.backgroundSize = 'cover';
+banner.style.backgroundPosition = 'center';
+if (b.link_url) banner.style.cursor = 'pointer';
+if (b.link_url) banner.addEventListener('click', function(){ window.location.href = b.link_url; });
 }
 function renderQuickCategories(){
 const wrap = document.getElementById('quickCats');
