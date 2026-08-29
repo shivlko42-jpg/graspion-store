@@ -148,9 +148,19 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="kpi-grid" id="pageDashboard">
 <div class="kpi-card kpi-c1"><div class="kpi-val" id="kpiRevenue">₹0</div><div class="kpi-label">Total Revenue</div></div>
 <div class="kpi-card kpi-c2"><div class="kpi-val" id="kpiOrders">0</div><div class="kpi-label">Total Orders</div></div>
-<div class="kpi-card kpi-c3"><div class="kpi-val" id="kpiVendors">0</div><div class="kpi-label">Active Vendors</div></div>
-<div class="kpi-card kpi-c4"><div class="kpi-val" id="kpiProducts">0</div><div class="kpi-label">Total Products</div></div>
-<div class="kpi-card kpi-c5"><div class="kpi-val" id="kpiSponsored">0</div><div class="kpi-label">Sponsored Products</div></div>
+<div class="kpi-card kpi-c3"><div class="kpi-val" id="kpiCustomers">0</div><div class="kpi-label">Total Customers</div></div>
+<div class="kpi-card kpi-c4"><div class="kpi-val" id="kpiVendors">0</div><div class="kpi-label">Active Vendors</div></div>
+<div class="kpi-card kpi-c5"><div class="kpi-val" id="kpiProducts">0</div><div class="kpi-label">Total Products</div></div>
+</div>
+
+<div class="panel" data-section="dashboard">
+<h3>⚡ Today's Snapshot</h3>
+<div class="kpi-grid" style="margin-bottom:0;">
+<div class="kpi-card" style="background:linear-gradient(135deg,#f59e0b,#fbbf24); color:#fff;"><div class="kpi-val" id="snapPending">0</div><div class="kpi-label">Pending Orders</div></div>
+<div class="kpi-card" style="background:linear-gradient(135deg,#22c55e,#4ade80); color:#fff;"><div class="kpi-val" id="snapTodayRevenue">₹0</div><div class="kpi-label">Today's Revenue</div></div>
+<div class="kpi-card" style="background:linear-gradient(135deg,#ef4444,#f87171); color:#fff;"><div class="kpi-val" id="snapLowStock">0</div><div class="kpi-label">Low Stock Products</div></div>
+<div class="kpi-card" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8); color:#fff;"><div class="kpi-val" id="snapInstantSplit">0 / 0</div><div class="kpi-label">⚡ Instant vs 📦 Pan-India Orders</div></div>
+</div>
 </div>
 
 <div class="panel" data-section="dashboard">
@@ -269,6 +279,7 @@ const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
 const ADMIN_PASSWORD = 'graspion2026';
 let allVendors = [], allProducts = [], allOrders = [];
 let allWarehouses = [], allCategories = [], allBanners = [], allSettings = [];
+let allRiders = [];
 
 document.querySelectorAll('.side-item[data-page]').forEach(function(item) {
   item.addEventListener('click', function() {
@@ -306,6 +317,7 @@ const warehouseRes = await fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&or
 const categoryRes = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const bannerRes = await fetch(SUPABASE_URL + '/rest/v1/banners?select=*&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const settingsRes = await fetch(SUPABASE_URL + '/rest/v1/settings?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const ridersRes = await fetch(SUPABASE_URL + '/rest/v1/riders?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 allVendors = await vendorRes.json();
 allProducts = await productRes.json();
 allOrders = await orderRes.json();
@@ -313,9 +325,11 @@ allWarehouses = warehouseRes.ok ? await warehouseRes.json() : [];
 allCategories = categoryRes.ok ? await categoryRes.json() : [];
 allBanners = bannerRes.ok ? await bannerRes.json() : [];
 allSettings = settingsRes.ok ? await settingsRes.json() : [];
+allRiders = ridersRes.ok ? await ridersRes.json() : [];
 badge.className = 'db-badge live';
 badge.textContent = '✅ Live';
 renderKPIs();
+renderSnapshot();
 renderInsights();
 renderTrendChart();
 renderOrders();
@@ -338,9 +352,21 @@ function renderKPIs() {
 const totalRevenue = allOrders.reduce(function(s, o) { return s + Number(o.total_amount || 0); }, 0);
 document.getElementById('kpiRevenue').textContent = '₹' + totalRevenue.toLocaleString('en-IN');
 document.getElementById('kpiOrders').textContent = allOrders.length;
+const uniqueCustomers = {};
+allOrders.forEach(function(o) { const key = o.customer_phone || o.customer_name; if (key) uniqueCustomers[key] = true; });
+document.getElementById('kpiCustomers').textContent = Object.keys(uniqueCustomers).length;
 document.getElementById('kpiVendors').textContent = allVendors.filter(function(v) { return v.status !== 'blocked'; }).length;
 document.getElementById('kpiProducts').textContent = allProducts.length;
-document.getElementById('kpiSponsored').textContent = allProducts.filter(function(p) { return p.is_sponsored; }).length;
+}
+function renderSnapshot() {
+document.getElementById('snapPending').textContent = allOrders.filter(function(o) { return o.status === 'pending'; }).length;
+const todayStr = new Date().toDateString();
+const todayRevenue = allOrders.filter(function(o) { return o.created_at && new Date(o.created_at).toDateString() === todayStr; }).reduce(function(s, o) { return s + Number(o.total_amount || 0); }, 0);
+document.getElementById('snapTodayRevenue').textContent = '₹' + todayRevenue.toLocaleString('en-IN');
+document.getElementById('snapLowStock').textContent = allProducts.filter(function(p) { return Number(p.stock) <= 5; }).length;
+const instantCount = allOrders.filter(function(o) { return o.delivery_type === 'instant'; }).length;
+const standardCount = allOrders.filter(function(o) { return o.delivery_type === 'standard'; }).length;
+document.getElementById('snapInstantSplit').textContent = instantCount + ' / ' + standardCount;
 }
 function renderInsights() {
 const box = document.getElementById('insightsBox');
@@ -486,16 +512,19 @@ return '<div class="vendor-row-item"><div class="v-icon2">' + (vendor ? vendor.i
 }
 function renderDeliveryPartners() {
 const list = document.getElementById('deliveryList');
-const riders = [
-{ name: 'Ravi Kumar', status: 'online' },
-{ name: 'Sunil Yadav', status: 'busy' },
-{ name: 'Amit Patel', status: 'offline' }
-];
 const activeOrders = allOrders.filter(function(o) { return o.status === 'shipped'; }).length;
-list.innerHTML = riders.map(function(r) {
-const color = r.status === 'online' ? '#22c55e' : r.status === 'busy' ? '#f59e0b' : '#9ca3af';
+if (allRiders.length === 0) {
+list.innerHTML = '<div class="empty-state">No riders registered yet</div>';
+return;
+}
+list.innerHTML = allRiders.map(function(r) {
+const isActive = r.status !== 'inactive' && r.status !== 'blocked';
+const hasActiveDelivery = allOrders.some(function(o) { return o.rider_id === r.id && o.status === 'shipped'; });
+const statusLabel = hasActiveDelivery ? 'On delivery' : (isActive ? 'Active' : 'Inactive');
+const color = hasActiveDelivery ? '#f59e0b' : (isActive ? '#22c55e' : '#9ca3af');
+const totalDelivered = allOrders.filter(function(o) { return o.rider_id === r.id && o.status === 'delivered'; }).length;
 return '<div class="vendor-row-item"><div class="v-icon2" style="background:' + color + ';">🚴</div>' +
-'<div class="v-info"><div class="vn">' + r.name + '</div><div class="vs">Status: ' + r.status + '</div></div></div>';
+'<div class="v-info"><div class="vn">' + r.name + (r.bike_number ? ' · ' + r.bike_number : '') + '</div><div class="vs">' + statusLabel + ' · ' + totalDelivered + ' delivered</div></div></div>';
 }).join('') + '<div style="font-size:10.5px; color:#9ca3af; margin-top:10px;">' + activeOrders + ' order(s) currently out for delivery (status: Shipped)</div>';
 }
 function renderVendorRanking() {
@@ -620,15 +649,26 @@ const lng = parseFloat(document.getElementById('whLng').value);
 if (!name || isNaN(lat) || isNaN(lng)) { alert('Store name, latitude and longitude are required'); return; }
 const btn = document.getElementById('whAddBtn');
 btn.textContent = '⏳ Adding...';
-await fetch(SUPABASE_URL + '/rest/v1/warehouses', {
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/warehouses', {
 method: 'POST',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
 body: JSON.stringify({ name: name, address: document.getElementById('whAddress').value.trim(), pincode: document.getElementById('whPincode').value.trim(), lat: lat, lng: lng, service_radius_km: parseFloat(document.getElementById('whRadius').value) || 3, status: 'active' })
 });
+if (!res.ok) {
+const errText = await res.text();
+alert('Could not add dark store (status ' + res.status + '):\n' + errText);
+btn.textContent = '+ Add Dark Store';
+return;
+}
 ['whName','whAddress','whPincode','whLat','whLng'].forEach(function(id){ document.getElementById(id).value = ''; });
 document.getElementById('whRadius').value = 3;
 btn.textContent = '+ Add Dark Store';
 loadAllData();
+} catch (err) {
+alert('Network/connection error while adding dark store: ' + err.message);
+btn.textContent = '+ Add Dark Store';
+}
 });
 
 // ===================== CATEGORIES =====================
@@ -743,12 +783,12 @@ document.querySelectorAll('[data-settingsave]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 const key = btn.getAttribute('data-settingsave');
 const input = document.querySelector('[data-settingkey="' + key + '"]');
-let newVal = input.value;
-if (newVal === 'true' || newVal === 'false' || (!isNaN(newVal) && newVal.trim() !== '')) {
-// leave as-is: valid raw JSON (boolean/number)
-} else {
-newVal = JSON.stringify(newVal);
-}
+const raw = input.value.trim();
+let newVal;
+if (raw === 'true') newVal = true;
+else if (raw === 'false') newVal = false;
+else if (raw !== '' && !isNaN(raw)) newVal = Number(raw);
+else newVal = raw;
 btn.textContent = '⏳';
 await fetch(SUPABASE_URL + '/rest/v1/settings?key=eq.' + key, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ value: newVal, updated_at: new Date().toISOString() }) });
 btn.textContent = '✓ Saved';
