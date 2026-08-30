@@ -3,13 +3,19 @@
 // Product/order data always comes fresh from Supabase (never cached here),
 // only the static shell (HTML/CSS/JS/icon) is cached for fast reloads.
 
-const CACHE_NAME = 'graspion-shell-v1';
+const CACHE_NAME = 'graspion-shell-v2';
 const SHELL_FILES = [
   './index.html',
+  './admin.html',
+  './vendor.html',
+  './rider.html',
   './graspion-lang.js',
   './graspion-logo.js',
   './icon.svg',
-  './manifest.json'
+  './manifest.json',
+  './manifest-admin.json',
+  './manifest-vendor.json',
+  './manifest-rider.json'
 ];
 
 self.addEventListener('install', function(event) {

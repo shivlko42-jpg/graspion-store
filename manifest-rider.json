@@ -1,0 +1,16 @@
+{
+  "name": "Graspion Rider",
+  "short_name": "Graspion Rider",
+  "description": "Graspion delivery partner app — accept and deliver orders.",
+  "start_url": "./rider.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#0E3D63",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

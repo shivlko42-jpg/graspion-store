@@ -165,6 +165,18 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 .pair-name { font-size:10.5px; font-weight:700; color:#1e1b3a; margin:6px 0 2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pair-price { font-size:11px; font-weight:800; color:#0E3D63; margin-bottom:6px; }
 .pair-add-btn { width:100%; background:#6BAA4C; color:#fff; border:none; padding:6px; border-radius:8px; font-size:10.5px; font-weight:700; cursor:pointer; }
+.search-suggestions { position:absolute; top:100%; left:16px; right:16px; background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.12); z-index:60; max-height:320px; overflow-y:auto; display:none; }
+.search-suggestions.open { display:block; }
+.sugg-item { display:flex; align-items:center; gap:10px; padding:10px 14px; cursor:pointer; border-bottom:1px solid #f7f6fb; }
+.sugg-item:last-child { border-bottom:none; }
+.sugg-item:hover, .sugg-item.active { background:#F1F8ED; }
+.sugg-icon { font-size:20px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; background:#f3f1f8; border-radius:8px; overflow:hidden; }
+.sugg-icon img { width:100%; height:100%; object-fit:cover; }
+.sugg-text { flex:1; min-width:0; }
+.sugg-name { font-size:12.5px; font-weight:700; color:#1e1b3a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sugg-name mark { background:#E7F3E0; color:#0E3D63; padding:0 1px; }
+.sugg-meta { font-size:10.5px; color:#9ca3af; margin-top:1px; }
+.sugg-price { font-size:12px; font-weight:800; color:#0E3D63; flex:0 0 auto; }
 .cart-item .ci-icon { width:52px; height:52px; background:linear-gradient(135deg,#f3f1f8,#fde9ee); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; }
 .cart-item .ci-name { font-size:12.5px; font-weight:700; margin-bottom:2px; }
 .cart-item .ci-vendor { font-size:10.5px; color:#0E3D63; margin-bottom:6px; font-weight:600; }
@@ -247,8 +259,9 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 <button class="cart-btn" id="cartOpenBtn">🛒 <span data-i18n="cart">Cart</span> <span class="cart-count" id="cartCount">0</span></button>
 </div>
 </div>
-<div class="nav-search-row">
+<div class="nav-search-row" style="position:relative;">
 <input class="search-box" id="searchInput" data-i18n-placeholder="searchPlaceholder" placeholder="Search for products, brands..." autocomplete="off">
+<div id="searchSuggestions" class="search-suggestions"></div>
 </div>
 </div>
 </header>
@@ -399,7 +412,7 @@ vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(f
 productPool = productData.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
 const firstFeature = p.features ? p.features.split('\n')[0].trim() : '';
-return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [] };
+return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '' };
 });
 renderQuickCategories();
 renderPinSuggestions();
@@ -456,6 +469,7 @@ if (b.link_url) banner.addEventListener('click', function(){ window.location.hre
 function renderQuickCategories(){
 const wrap = document.getElementById('quickCats');
 if (!wrap) return;
+updateCategoryNameMap();
 if (categoryList.length === 0) {
 // fallback so the section never looks broken if admin hasn't added categories yet
 const fallback = [{icon:'🎧',label:'Headphones'},{icon:'📱',label:'Mobiles'},{icon:'🥬',label:'Grocery'},{icon:'🏠',label:'Home'}];
@@ -470,9 +484,103 @@ wrap.querySelectorAll('[data-cat]').forEach(function(el){ el.addEventListener('c
 }
 let activeCategoryId = null;
 let searchQuery = '';
+
+// Effective (non-AI) search: matches name/brand/features/category, tolerates
+// small typos (1-character-off matching on individual words), and ranks
+// results so the best match shows first.
+function levenshteinDistance(a, b) {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) matrix[i][j] = matrix[i - 1][j - 1];
+      else matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
+    }
+  }
+  return matrix[b.length][a.length];
+}
+function scoreProductMatch(p, query) {
+  const q = query.toLowerCase().trim();
+  if (!q) return 0;
+  const name = p.name.toLowerCase();
+  const brand = (p.brand || '').toLowerCase();
+  const features = (p.fullFeatures || '').toLowerCase();
+  const category = (allCategoryNamesById[p.categoryId] || '').toLowerCase();
+  let score = 0;
+  if (name === q) score = Math.max(score, 100);
+  else if (name.startsWith(q)) score = Math.max(score, 80);
+  else if (name.indexOf(q) !== -1) score = Math.max(score, 60);
+  if (brand.indexOf(q) !== -1) score = Math.max(score, 45);
+  if (category.indexOf(q) !== -1) score = Math.max(score, 35);
+  if (features.indexOf(q) !== -1) score = Math.max(score, 25);
+  // typo tolerance: check each word in the product name against each query word
+  if (score === 0) {
+    const qWords = q.split(/\s+/).filter(Boolean);
+    const nameWords = name.split(/\s+/).filter(Boolean);
+    let bestTypoScore = 0;
+    qWords.forEach(function(qw) {
+      if (qw.length < 3) return;
+      nameWords.forEach(function(nw) {
+        const dist = levenshteinDistance(qw, nw);
+        const maxAllowed = qw.length <= 4 ? 1 : 2;
+        if (dist <= maxAllowed) bestTypoScore = Math.max(bestTypoScore, 40 - dist * 10);
+      });
+    });
+    score = bestTypoScore;
+  }
+  return score;
+}
+let allCategoryNamesById = {};
+function updateCategoryNameMap() {
+  allCategoryNamesById = {};
+  categoryList.forEach(function(c) { allCategoryNamesById[c.id] = c.name; });
+}
+function renderSearchSuggestions(query) {
+  const box = document.getElementById('searchSuggestions');
+  if (!query || query.trim().length < 2) { box.classList.remove('open'); box.innerHTML = ''; return; }
+  const scored = productPool
+    .filter(function(p) { return p.pincode === selectedPin || p.pincode === 'ALL'; })
+    .map(function(p) { return { p: p, score: scoreProductMatch(p, query) }; })
+    .filter(function(x) { return x.score > 0; })
+    .sort(function(a, b) { return b.score - a.score; })
+    .slice(0, 6);
+  if (scored.length === 0) { box.classList.remove('open'); box.innerHTML = '<div class="sugg-item" style="cursor:default;"><div class="sugg-text"><div class="sugg-name">No matches found</div></div></div>'; box.classList.add('open'); return; }
+  const q = query.toLowerCase();
+  box.innerHTML = scored.map(function(x) {
+    const p = x.p;
+    const idx = p.name.toLowerCase().indexOf(q);
+    const highlighted = idx !== -1 ? p.name.slice(0, idx) + '<mark>' + p.name.slice(idx, idx + q.length) + '</mark>' + p.name.slice(idx + q.length) : p.name;
+    const iconHtml = p.image ? '<img src="' + p.image + '">' : p.icon;
+    return '<div class="sugg-item" data-suggid="' + p.id + '"><div class="sugg-icon">' + iconHtml + '</div><div class="sugg-text"><div class="sugg-name">' + highlighted + '</div><div class="sugg-meta">' + (p.brand || '') + '</div></div><div class="sugg-price">₹' + p.price + '</div></div>';
+  }).join('');
+  box.classList.add('open');
+  box.querySelectorAll('[data-suggid]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      const id = el.getAttribute('data-suggid');
+      const p = productPool.find(function(pp) { return pp.id === id; });
+      if (!p) return;
+      document.getElementById('searchInput').value = p.name;
+      searchQuery = p.name.toLowerCase();
+      box.classList.remove('open');
+      if (selectedPin) renderProducts(selectedPin);
+      document.getElementById('dealGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+}
 document.getElementById('searchInput').addEventListener('input', function(){
 searchQuery = this.value.trim().toLowerCase();
+renderSearchSuggestions(this.value);
 if (selectedPin) renderProducts(selectedPin);
+});
+document.getElementById('searchInput').addEventListener('blur', function(){
+setTimeout(function(){ document.getElementById('searchSuggestions').classList.remove('open'); }, 150);
+});
+document.getElementById('searchInput').addEventListener('focus', function(){
+if (this.value.trim().length >= 2) renderSearchSuggestions(this.value);
 });
 function filterByCategory(catId){ activeCategoryId = (activeCategoryId === catId) ? null : catId; renderProducts(selectedPin); }
 function renderVendors(pin){
@@ -488,7 +596,7 @@ function renderProducts(pin){
 let filtered = productPool.filter(function(p){ return p.pincode === pin || p.pincode === 'ALL'; });
 if(selectedVendorId !== 'all') filtered = filtered.filter(function(p){ return p.vendorId === selectedVendorId; });
 if(activeCategoryId) filtered = filtered.filter(function(p){ return p.categoryId === activeCategoryId; });
-if(searchQuery) filtered = filtered.filter(function(p){ return p.name.toLowerCase().indexOf(searchQuery) !== -1; });
+if(searchQuery) filtered = filtered.filter(function(p){ return scoreProductMatch(p, searchQuery) > 0; }).sort(function(a,b){ return scoreProductMatch(b, searchQuery) - scoreProductMatch(a, searchQuery); });
 // in a dark-store zone, instant items lead; standard (pan-India) items still show below, clearly labelled
 if (isInstantZone) {
 filtered = filtered.slice().sort(function(a,b){ return (a.fulfillmentType==='instant'?0:1) - (b.fulfillmentType==='instant'?0:1); });
