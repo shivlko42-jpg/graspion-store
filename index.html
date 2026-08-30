@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="graspion-logo.js"></script>
 <script src="graspion-lang.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif; }
 body { background:#f6f5fb; color:#1e1b3a; }
@@ -477,7 +478,7 @@ function openCheckout(){ closeDrawer(); checkoutStep = 'address'; document.getEl
 function closeCheckout(){ document.getElementById('checkoutOverlay').classList.remove('open'); }
 document.getElementById('goCheckoutBtn').addEventListener('click', openCheckout);
 document.getElementById('coBack').addEventListener('click', function(){ if(checkoutStep === 'payment'){ checkoutStep='address'; renderCheckout(); } else { closeCheckout(); } });
-async function saveOrderToDatabase(){
+async function createOrderRecord(paymentStatus){
 const t = cartTotals();
 const items = cartItemsList();
 const firstVendorId = items.length > 0 ? items[0].vendorId : null;
@@ -485,7 +486,7 @@ try {
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-body: JSON.stringify({ customer_name: customerInfo.name, customer_phone: customerInfo.phone, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', payment_status: selectedPayMethod === 'cod' ? 'pending' : 'paid', payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null })
+body: JSON.stringify({ customer_name: customerInfo.name, customer_phone: customerInfo.phone, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null })
 });
 const orderData = await orderRes.json();
 const orderId = orderData[0] ? orderData[0].id : null;
@@ -514,8 +515,64 @@ body: JSON.stringify({ stock: newStock })
 });
 await Promise.all(stockUpdates);
 }
-return true;
-} catch (err) { return false; }
+return orderId;
+} catch (err) { return null; }
+}
+async function saveOrderToDatabase(){
+const orderId = await createOrderRecord(selectedPayMethod === 'cod' ? 'pending' : 'paid');
+return !!orderId;
+}
+async function startRazorpayPayment(){
+const t = cartTotals();
+// Step 1: create our own order row first (payment_status starts as 'pending')
+const orderId = await createOrderRecord('pending');
+if (!orderId) { return { success: false }; }
+try {
+// Step 2: ask our Edge Function to create a Razorpay order (Key Secret never touches this browser)
+const createRes = await fetch(SUPABASE_URL + '/functions/v1/create-razorpay-order', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY, 'apikey': SUPABASE_KEY },
+body: JSON.stringify({ amount: t.total, currency: 'INR', receipt: orderId })
+});
+const createData = await createRes.json();
+if (!createRes.ok || !createData.orderId) { return { success: false }; }
+
+// Step 3: open the Razorpay checkout popup
+return await new Promise(function(resolve){
+const rzp = new Razorpay({
+key: createData.keyId,
+amount: createData.amount,
+currency: createData.currency,
+order_id: createData.orderId,
+name: 'Graspion',
+description: 'Order payment',
+prefill: { name: customerInfo.name, contact: customerInfo.phone },
+theme: { color: '#7c3aed' },
+handler: async function(response){
+// Step 4: server-side signature verification — never trust this popup's success alone
+try {
+const verifyRes = await fetch(SUPABASE_URL + '/functions/v1/verify-razorpay-payment', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY, 'apikey': SUPABASE_KEY },
+body: JSON.stringify({
+razorpay_order_id: response.razorpay_order_id,
+razorpay_payment_id: response.razorpay_payment_id,
+razorpay_signature: response.razorpay_signature,
+graspion_order_id: orderId
+})
+});
+const verifyData = await verifyRes.json();
+resolve({ success: !!verifyData.verified });
+} catch (e) { resolve({ success: false }); }
+},
+modal: {
+ondismiss: function(){ resolve({ success: false, dismissed: true }); }
+}
+});
+rzp.on('payment.failed', function(){ resolve({ success: false }); });
+rzp.open();
+});
+} catch (err) { return { success: false }; }
 }
 function renderCheckout(){
 const t = cartTotals();
@@ -545,9 +602,24 @@ document.getElementById('placeOrderBtn').addEventListener('click', async functio
 const btn = document.getElementById('placeOrderBtn');
 btn.textContent = '⏳ ' + graspionT('processingOrder');
 btn.disabled = true;
+if (selectedPayMethod === 'cod') {
 const saved = await saveOrderToDatabase();
 checkoutStep = saved ? 'success' : 'error';
 renderCheckout();
+} else {
+const result = await startRazorpayPayment();
+if (result.success) {
+checkoutStep = 'success';
+} else if (result.dismissed) {
+// user closed the Razorpay popup without paying — let them try again, don't show a scary error
+btn.textContent = '₹' + cartTotals().total.toLocaleString('en-IN') + ' — ' + graspionT('payVia');
+btn.disabled = false;
+return;
+} else {
+checkoutStep = 'error';
+}
+renderCheckout();
+}
 });
 }
 else if(checkoutStep === 'success'){
