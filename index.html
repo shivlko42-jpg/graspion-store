@@ -539,7 +539,10 @@ headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA
 body: JSON.stringify({ amount: t.total, currency: 'INR', receipt: orderId })
 });
 const createData = await createRes.json();
-if (!createRes.ok || !createData.orderId) { return { success: false }; }
+if (!createRes.ok || !createData.orderId) {
+window.lastOrderDebug = 'Edge Function create-razorpay-order failed — HTTP ' + createRes.status + ': ' + JSON.stringify(createData);
+return { success: false };
+}
 
 // Step 3: open the Razorpay checkout popup
 return await new Promise(function(resolve){
@@ -566,6 +569,7 @@ graspion_order_id: orderId
 })
 });
 const verifyData = await verifyRes.json();
+if (!verifyData.verified) { window.lastOrderDebug = 'Payment verification failed — HTTP ' + verifyRes.status + ': ' + JSON.stringify(verifyData); }
 resolve({ success: !!verifyData.verified });
 } catch (e) { resolve({ success: false }); }
 },
@@ -576,7 +580,7 @@ ondismiss: function(){ resolve({ success: false, dismissed: true }); }
 rzp.on('payment.failed', function(){ resolve({ success: false }); });
 rzp.open();
 });
-} catch (err) { return { success: false }; }
+} catch (err) { window.lastOrderDebug = 'Exception in payment flow: ' + err.message; return { success: false }; }
 }
 function renderCheckout(){
 const t = cartTotals();
