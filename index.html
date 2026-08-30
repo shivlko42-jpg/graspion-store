@@ -492,6 +492,7 @@ const orderData = await orderRes.json();
 const orderId = orderData[0] ? orderData[0].id : null;
 if (!orderId) {
 window.lastOrderDebug = 'HTTP ' + orderRes.status + ': ' + JSON.stringify(orderData);
+console.error('[Graspion order debug]', window.lastOrderDebug);
 return null;
 }
 if (orderId) {
@@ -520,7 +521,7 @@ body: JSON.stringify({ stock: newStock })
 await Promise.all(stockUpdates);
 }
 return orderId;
-} catch (err) { window.lastOrderDebug = 'Exception: ' + err.message; return null; }
+} catch (err) { window.lastOrderDebug = 'Exception: ' + err.message; console.error('[Graspion order debug]', window.lastOrderDebug); return null; }
 }
 async function saveOrderToDatabase(){
 const orderId = await createOrderRecord(selectedPayMethod === 'cod' ? 'pending' : 'paid');
@@ -541,6 +542,7 @@ body: JSON.stringify({ amount: t.total, currency: 'INR', receipt: orderId })
 const createData = await createRes.json();
 if (!createRes.ok || !createData.orderId) {
 window.lastOrderDebug = 'Edge Function create-razorpay-order failed — HTTP ' + createRes.status + ': ' + JSON.stringify(createData);
+console.error('[Graspion order debug]', window.lastOrderDebug);
 return { success: false };
 }
 
@@ -569,7 +571,7 @@ graspion_order_id: orderId
 })
 });
 const verifyData = await verifyRes.json();
-if (!verifyData.verified) { window.lastOrderDebug = 'Payment verification failed — HTTP ' + verifyRes.status + ': ' + JSON.stringify(verifyData); }
+if (!verifyData.verified) { window.lastOrderDebug = 'Payment verification failed — HTTP ' + verifyRes.status + ': ' + JSON.stringify(verifyData); console.error('[Graspion order debug]', window.lastOrderDebug); }
 resolve({ success: !!verifyData.verified });
 } catch (e) { resolve({ success: false }); }
 },
@@ -580,7 +582,7 @@ ondismiss: function(){ resolve({ success: false, dismissed: true }); }
 rzp.on('payment.failed', function(){ resolve({ success: false }); });
 rzp.open();
 });
-} catch (err) { window.lastOrderDebug = 'Exception in payment flow: ' + err.message; return { success: false }; }
+} catch (err) { window.lastOrderDebug = 'Exception in payment flow: ' + err.message; console.error('[Graspion order debug]', window.lastOrderDebug); return { success: false }; }
 }
 function renderCheckout(){
 const t = cartTotals();
@@ -648,7 +650,8 @@ wrap.innerHTML = '<div class="success-box"><div class="tick">✅</div><h2>' + gr
 document.getElementById('closeSuccessBtn').addEventListener('click', function() { cart = {}; customerInfo = { name:'', phone:'', address:'', city:'', pincode:'' }; refreshAll(); closeCheckout(); });
 }
 else if(checkoutStep === 'error'){
-wrap.innerHTML = '<div class="success-box"><div class="tick">⚠️</div><h2>' + graspionT('orderFailed') + '</h2><p>' + graspionT('orderFailedDesc') + '</p><p style="font-size:10px; color:#dc2626; background:#fef2f2; padding:10px; border-radius:8px; margin-top:10px; word-break:break-all; text-align:left;">' + (window.lastOrderDebug || 'No debug info captured') + '</p><button id="retryBtn">' + graspionT('tryAgain') + '</button></div>';
+const showDebug = new URLSearchParams(window.location.search).get('debug') === '1';
+wrap.innerHTML = '<div class="success-box"><div class="tick">⚠️</div><h2>' + graspionT('orderFailed') + '</h2><p>' + graspionT('orderFailedDesc') + '</p>' + (showDebug ? '<p style="font-size:10px; color:#dc2626; background:#fef2f2; padding:10px; border-radius:8px; margin-top:10px; word-break:break-all; text-align:left;">' + (window.lastOrderDebug || 'No debug info captured') + '</p>' : '') + '<button id="retryBtn">' + graspionT('tryAgain') + '</button></div>';
 document.getElementById('retryBtn').addEventListener('click', function() { checkoutStep = 'payment'; renderCheckout(); });
 }
 }

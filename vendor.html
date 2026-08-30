@@ -263,7 +263,7 @@ let uploadedPhotoBase64 = '';
 let allCategories = [];
 
 const STATUS_STEPS = ['pending', 'preparing', 'shipped', 'delivered'];
-const STATUS_LABELS = { pending:'Placed', preparing:'Preparing', shipped:'Shipped', delivered:'Delivered' };
+const STATUS_LABELS = { pending:'Placed', preparing:'Preparing', shipped:'Shipped', delivered:'Delivered', cancelled:'Cancelled' };
 
 async function loadVendorList() {
   try {
@@ -481,6 +481,7 @@ function renderOrders() {
     return '<div class="order-card">' +
       '<div class="order-top"><div><div class="order-cust">' + (o.customer_name || 'Customer') + '</div><div class="order-meta">' + (o.customer_phone || '') + ' · ' + (o.pincode || '') + '</div>' + payBadge + returnInfo + '</div><div class="order-amt">₹' + o.total_amount + '</div></div>' +
       '<div class="pipeline">' + stepsHtml + '</div>' +
+      (o.status !== 'delivered' && o.status !== 'cancelled' ? '<button class="mini-btn" data-cancelid="' + o.id + '" style="background:#fee2e2;color:#dc2626;margin-top:8px;">✕ Cancel Order</button>' : (o.status === 'cancelled' ? '<div style="font-size:11px;color:#dc2626;font-weight:700;margin-top:8px;">✕ Cancelled</div>' : '')) +
     '</div>';
   }).join('');
 
@@ -501,6 +502,31 @@ function renderOrders() {
         method: 'PATCH',
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
         body: JSON.stringify(patchBody)
+      });
+      // Log a notification record (actual SMS/WhatsApp/Email sending is a later phase —
+      // this just creates the queued record so nothing is lost once that's wired up)
+      fetch(SUPABASE_URL + '/rest/v1/notifications', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient_type: 'customer', channel: 'sms', template_key: 'order_' + newStatus, payload: { order_id: orderId, status: newStatus }, status: 'pending' })
+      });
+      loadVendorData();
+    });
+  });
+  document.querySelectorAll('[data-cancelid]').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      if (!confirm('Cancel this order? This cannot be undone.')) return;
+      const orderId = btn.getAttribute('data-cancelid');
+      btn.textContent = '⏳';
+      await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId, {
+        method: 'PATCH',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' })
+      });
+      fetch(SUPABASE_URL + '/rest/v1/notifications', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient_type: 'customer', channel: 'sms', template_key: 'order_cancelled', payload: { order_id: orderId }, status: 'pending' })
       });
       loadVendorData();
     });
