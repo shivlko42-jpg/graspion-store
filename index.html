@@ -119,6 +119,10 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .badge.new { background:linear-gradient(90deg,#22c55e,#16a34a); }
 .img-wrap { height:132px; background:linear-gradient(135deg,#f3f1f8,#fde9ee); display:flex; align-items:center; justify-content:center; font-size:42px; overflow:hidden; }
 .img-wrap img { width:100%; height:100%; object-fit:cover; }
+.thumb-strip { display:flex; gap:4px; padding:6px 8px 0; overflow-x:auto; }
+.thumb-img { width:28px; height:28px; object-fit:cover; border-radius:6px; opacity:0.55; cursor:pointer; flex:0 0 auto; border:1.5px solid transparent; }
+.thumb-img.active { opacity:1; border-color:#6BAA4C; }
+.img-wrap img { width:100%; height:100%; object-fit:cover; }
 .feature-tag { font-size:9px; color:#6b7280; background:#f3f1f8; padding:2px 7px; border-radius:6px; margin-top:5px; display:inline-block; }
 .return-tag { font-size:9px; font-weight:700; padding:2px 7px; border-radius:6px; margin-top:5px; display:inline-block; margin-left:4px; }
 .return-yes { background:#dcfce7; color:#15803d; }
@@ -395,7 +399,7 @@ vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(f
 productPool = productData.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
 const firstFeature = p.features ? p.features.split('\n')[0].trim() : '';
-return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard' };
+return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [] };
 });
 renderQuickCategories();
 renderPinSuggestions();
@@ -495,8 +499,10 @@ dealGrid.innerHTML = filtered.map(function(p){
 const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
 const qty = cart[p.id] || 0;
 const deliveryBadge = p.fulfillmentType === 'instant' ? '⚡ ' + graspionT('instantTag') : '📦 ' + graspionT('standardTag');
+const allPhotos = [p.image].concat(p.additionalImages || []).filter(Boolean);
+const thumbStripHtml = allPhotos.length > 1 ? '<div class="thumb-strip">' + allPhotos.map(function(src, idx){ return '<img class="thumb-img' + (idx===0?' active':'') + '" src="' + src + '" data-thumbswap="' + p.id + '" data-src="' + src + '">'; }).join('') + '</div>' : '';
 return '<div class="card">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') +
-'<div class="img-wrap">' + (p.image ? '<img src="' + p.image + '">' : p.icon) + '</div><div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
+'<div class="img-wrap">' + (allPhotos.length > 0 ? '<img data-mainimg="' + p.id + '" src="' + allPhotos[0] + '">' : p.icon) + '</div>' + thumbStripHtml + '<div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
 '<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
 '<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span><div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div><div class="feature-tag" style="margin-left:0;">' + deliveryBadge + '</div>' +
 (p.feature ? '<div class="feature-tag">✓ ' + p.feature + '</div>' : '') +
@@ -508,6 +514,7 @@ return '<div class="card">' + (p.badge ? '<div class="badge new">' + p.badge + '
 document.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(){ cart[btn.getAttribute('data-add')] = 1; refreshAll(); }); });
 document.querySelectorAll('[data-inc]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=btn.getAttribute('data-inc'); cart[id]=(cart[id]||0)+1; refreshAll(); }); });
 document.querySelectorAll('[data-dec]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=btn.getAttribute('data-dec'); cart[id]=(cart[id]||0)-1; if(cart[id]<=0) delete cart[id]; refreshAll(); }); });
+document.querySelectorAll('[data-thumbswap]').forEach(function(thumb){ thumb.addEventListener('click', function(e){ e.stopPropagation(); const id = thumb.getAttribute('data-thumbswap'); const src = thumb.getAttribute('data-src'); const mainImg = document.querySelector('[data-mainimg="' + id + '"]'); if (mainImg) mainImg.src = src; thumb.parentElement.querySelectorAll('.thumb-img').forEach(function(t){ t.classList.remove('active'); }); thumb.classList.add('active'); }); });
 }
 function cartItemsList(){ return Object.keys(cart).map(function(id){ const p = productPool.find(function(pp){ return pp.id === id; }); return Object.assign({}, p, { qty: cart[id] }); }); }
 function cartTotals(){ const items = cartItemsList(); const itemTotal = items.reduce(function(s,i){ return s + i.price*i.qty; }, 0); const delivery = itemTotal > 199 || itemTotal === 0 ? 0 : 29; return { itemTotal: itemTotal, delivery: delivery, total: itemTotal + delivery, count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
@@ -681,10 +688,14 @@ renderCheckout();
 });
 }
 else if(checkoutStep === 'payment'){
+const cartHasCodBlockedItem = items.some(function(i){ return i.codAllowed === false; });
+if (cartHasCodBlockedItem && selectedPayMethod === 'cod') { selectedPayMethod = 'upi'; }
+const codOptionHtml = cartHasCodBlockedItem ? '' : '<div class="pay-option ' + (selectedPayMethod==='cod'?'selected':'') + '" data-pay="cod">💵 ' + graspionT('cod') + '<span class="pay-sub" style="color:#9ca3af;">Pay at doorstep</span></div>';
+const codNoticeHtml = cartHasCodBlockedItem ? '<p style="font-size:10.5px; color:#9ca3af; margin:-6px 0 10px;">💳 One or more items in your cart are prepaid-only — COD isn\'t available for this order.</p>' : '';
 wrap.innerHTML = '<div class="co-section"><h4>💳 ' + graspionT('selectPayment') + '</h4>' +
 '<div class="pay-option pay-recommended ' + (selectedPayMethod==='upi'?'selected':'') + '" data-pay="upi"><span class="pay-badge-tag">FASTEST</span>📱 ' + graspionT('upi') + '<span class="pay-sub">Instant confirmation</span></div>' +
 '<div class="pay-option ' + (selectedPayMethod==='card'?'selected':'') + '" data-pay="card">💳 ' + graspionT('card') + '</div>' +
-'<div class="pay-option ' + (selectedPayMethod==='cod'?'selected':'') + '" data-pay="cod">💵 ' + graspionT('cod') + '<span class="pay-sub" style="color:#9ca3af;">Pay at doorstep</span></div>' +
+codOptionHtml + codNoticeHtml +
 '</div><div class="co-section"><h4>🧾 ' + graspionT('totalPayable') + '</h4><div class="co-item-row" style="font-size:15px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="placeOrderBtn">' + (selectedPayMethod==='cod' ? graspionT('placeOrder') : '₹'+t.total.toLocaleString('en-IN')+' — ' + graspionT('payVia')) + '</button><div class="razorpay-note">🔒 ' + graspionT('securedBy') + '</div>';
 wrap.querySelectorAll('[data-pay]').forEach(function(el) { el.addEventListener('click', function() { selectedPayMethod = el.getAttribute('data-pay'); renderCheckout(); }); });
 document.getElementById('placeOrderBtn').addEventListener('click', async function() {

@@ -162,6 +162,13 @@
     </div>
 
     <div class="panel">
+      <h3>🔗 Shared Product Catalog</h3>
+      <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Some products are shared across vendors in the same category (e.g. a common grocery item) — request permission to sell one instead of creating it from scratch. Admin must approve each request.</p>
+      <div id="catalogBrowseList"></div>
+      <div class="empty-state" id="catalogBrowseEmpty" style="display:none;">No shared catalog items yet.</div>
+    </div>
+
+    <div class="panel">
       <h3>➕ Add New Product</h3>
       <label style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:8px; display:block;">Selling Mode</label>
       <div class="radio-row">
@@ -177,14 +184,21 @@
         <div class="form-group"><label>Category</label><select class="form-input" id="pCategory"><option value="">— Select category —</option></select></div>
         <div class="form-group"><label>SKU (optional, auto-generated if blank)</label><input class="form-input" id="pSku" placeholder="e.g. GRS-SPK-001"></div>
       </div>
+      <div id="catalogListingBanner" style="display:none; background:#E7F3E0; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:11px; color:#0E3D63; font-weight:700;">🔗 Listing from Shared Catalog — set your own price/stock below. <span id="catalogListingCancel" style="color:#dc2626; cursor:pointer; text-decoration:underline; font-weight:700;">Cancel</span></div>
+      <label style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:#6b7280; margin-bottom:12px;"><input type="checkbox" id="publishToCatalog"> 📢 Also publish as a Shared Catalog item (other vendors in this category can request to sell it too)</label>
       <div class="form-group" style="margin-bottom:12px;">
-        <label>Product Photo (optional)</label>
+        <label>Product Photo (main, optional)</label>
         <input class="form-input" id="pPhoto" type="file" accept="image/*">
         <div id="photoPreview" style="margin-top:8px; display:none;"><img id="photoPreviewImg" style="width:70px; height:70px; object-fit:cover; border-radius:10px;"></div>
         <div id="similarPhotoSuggestion" style="display:none; margin-top:10px; background:#F1F8ED; border:1px solid #C7E6B8; border-radius:10px; padding:10px;">
           <div style="font-size:10.5px; font-weight:800; color:#0E3D63; margin-bottom:6px;">📸 A similar product already has a photo — reuse it?</div>
           <div id="similarPhotoList" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
         </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Additional Photos (optional, up to 3 more)</label>
+        <input class="form-input" id="pExtraPhotos" type="file" accept="image/*" multiple>
+        <div id="extraPhotoPreview" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Price (₹)</label><input class="form-input" id="pPrice" type="number" placeholder="699"></div>
@@ -214,6 +228,11 @@
       <div class="radio-row">
         <div class="radio-option selected" id="returnYes" data-return="true"><span class="ro-icon">✅</span>Returnable</div>
         <div class="radio-option" id="returnNo" data-return="false"><span class="ro-icon">🚫</span>Non-Returnable</div>
+      </div>
+      <label style="font-size:11px; font-weight:700; color:#6b7280; margin:12px 0 8px; display:block;">Payment options for this item</label>
+      <div class="radio-row">
+        <div class="radio-option selected" id="codYes" data-cod="true"><span class="ro-icon">💵</span>COD + Prepaid</div>
+        <div class="radio-option" id="codNo" data-cod="false"><span class="ro-icon">💳</span>Prepaid Only</div>
       </div>
       <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
         <div style="font-size:10.5px; font-weight:800; color:#0369a1; margin-bottom:10px;">🔍 Google Shopping Info (Optional — helps future Google Ads/Search visibility)</div>
@@ -272,8 +291,13 @@ let vendorProducts = [];
 let vendorOrders = [];
 let selectedMode = 'local';
 let selectedReturnable = true;
+let selectedCod = true;
+let extraPhotosBase64 = [];
 let uploadedPhotoBase64 = '';
 let allCategories = [];
+let allCatalogItems = [];
+let myCatalogPermissions = [];
+let selectedCatalogItemId = null;
 
 const STATUS_STEPS = ['pending', 'preparing', 'shipped', 'delivered'];
 const STATUS_LABELS = { pending:'Placed', preparing:'Preparing', shipped:'Shipped', delivered:'Delivered', cancelled:'Cancelled' };
@@ -299,6 +323,7 @@ document.getElementById('vendorLoginBtn').addEventListener('click', function() {
   populateSettingsForm();
   loadVendorData();
   loadCategoriesForVendor();
+  loadCatalogData();
   configureSellingModeUI();
 });
 document.getElementById('navSettings').addEventListener('click', function() {
@@ -324,6 +349,69 @@ async function loadCategoriesForVendor() {
     document.getElementById('pCategory').innerHTML = '<option value="">— Select category —</option>' + allCategories.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
   } catch (err) { allCategories = []; }
 }
+async function loadCatalogData() {
+  try {
+    const catRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_items?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+    allCatalogItems = catRes.ok ? await catRes.json() : [];
+    const permRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?vendor_id=eq.' + currentVendor.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+    myCatalogPermissions = permRes.ok ? await permRes.json() : [];
+    renderCatalogBrowse();
+  } catch (err) { allCatalogItems = []; myCatalogPermissions = []; }
+}
+function renderCatalogBrowse() {
+  const list = document.getElementById('catalogBrowseList');
+  const empty = document.getElementById('catalogBrowseEmpty');
+  if (allCatalogItems.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = allCatalogItems.map(function(item) {
+    const cat = allCategories.find(function(c) { return c.id === item.category_id; });
+    const perm = myCatalogPermissions.find(function(p) { return p.catalog_item_id === item.id; });
+    let actionHtml;
+    if (perm && perm.status === 'approved') {
+      actionHtml = '<button class="mini-btn" data-listcatalog="' + item.id + '" style="background:#dcfce7;color:#15803d;">+ List This Product</button>';
+    } else if (perm && perm.status === 'pending') {
+      actionHtml = '<span style="font-size:10.5px; color:#b45309; font-weight:700;">⏳ Approval pending</span>';
+    } else if (perm && perm.status === 'rejected') {
+      actionHtml = '<span style="font-size:10.5px; color:#dc2626; font-weight:700;">✕ Request rejected</span>';
+    } else {
+      actionHtml = '<button class="mini-btn" data-requestcatalog="' + item.id + '" style="background:#dbeafe;color:#1d4ed8;">Request to Sell</button>';
+    }
+    return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + item.name + '</div><div class="ic-sub">' + (cat ? cat.name : 'Uncategorized') + (item.brand ? ' · ' + item.brand : '') + '</div></div><div class="item-actions">' + actionHtml + '</div></div>';
+  }).join('');
+  document.querySelectorAll('[data-requestcatalog]').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      const catalogItemId = btn.getAttribute('data-requestcatalog');
+      btn.textContent = '⏳';
+      await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ catalog_item_id: catalogItemId, vendor_id: currentVendor.id, status: 'pending' })
+      });
+      loadCatalogData();
+    });
+  });
+  document.querySelectorAll('[data-listcatalog]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const catalogItemId = btn.getAttribute('data-listcatalog');
+      const item = allCatalogItems.find(function(x) { return x.id === catalogItemId; });
+      if (!item) return;
+      selectedCatalogItemId = item.id;
+      document.getElementById('pName').value = item.name;
+      document.getElementById('pCategory').value = item.category_id || '';
+      document.getElementById('pBrand').value = item.brand || '';
+      document.getElementById('pGtin').value = item.gtin || '';
+      document.getElementById('pHsn').value = item.hsn_code || '';
+      document.getElementById('pGst').value = item.gst_percent || 18;
+      if (item.image_data) { uploadedPhotoBase64 = item.image_data; document.getElementById('photoPreviewImg').src = item.image_data; document.getElementById('photoPreview').style.display = 'block'; }
+      document.getElementById('catalogListingBanner').style.display = 'block';
+      document.getElementById('pName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  });
+}
+document.getElementById('catalogListingCancel').addEventListener('click', function() {
+  selectedCatalogItemId = null;
+  document.getElementById('catalogListingBanner').style.display = 'none';
+});
 document.getElementById('saveSettingsBtn').addEventListener('click', async function() {
   const btn = document.getElementById('saveSettingsBtn');
   btn.textContent = '⏳ Saving...';
@@ -383,6 +471,30 @@ function setReturnable(val) {
   document.getElementById('returnYes').classList.toggle('selected', val === true);
   document.getElementById('returnNo').classList.toggle('selected', val === false);
 }
+function setCod(val) {
+  selectedCod = val;
+  document.getElementById('codYes').classList.toggle('selected', val === true);
+  document.getElementById('codNo').classList.toggle('selected', val === false);
+}
+document.getElementById('codYes').addEventListener('click', function() { setCod(true); });
+document.getElementById('codNo').addEventListener('click', function() { setCod(false); });
+document.getElementById('pExtraPhotos').addEventListener('change', function(e) {
+  const files = Array.from(e.target.files).slice(0, 3);
+  extraPhotosBase64 = [];
+  const preview = document.getElementById('extraPhotoPreview');
+  preview.innerHTML = '';
+  files.forEach(function(file) {
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      extraPhotosBase64.push(evt.target.result);
+      const img = document.createElement('img');
+      img.src = evt.target.result;
+      img.style.cssText = 'width:50px;height:50px;object-fit:cover;border-radius:8px;';
+      preview.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+});
 
 document.getElementById('pPhoto').addEventListener('change', function(e) {
   const file = e.target.files[0];
@@ -439,6 +551,7 @@ function renderProducts() {
     const hsnTag = p.hsn_code ? '<span class="prod-tag">HSN: ' + p.hsn_code + '</span>' : '';
     const gstTag = '<span class="prod-tag">GST: ' + (p.gst_percent || 0) + '%</span>';
     const returnTag = p.is_returnable === false ? '<span class="prod-tag">🚫 Non-Returnable</span>' : '<span class="prod-tag">✅ Returnable</span>';
+    const codTag = p.cod_allowed === false ? '<span class="prod-tag">💳 Prepaid Only</span>' : '<span class="prod-tag">💵 COD Available</span>';
     const brandTag = p.brand ? '<span class="prod-tag">🏷️ ' + p.brand + '</span>' : '';
     const fulfillTag = p.fulfillment_type === 'instant' ? '<span class="prod-tag">⚡ Instant</span>' : '<span class="prod-tag">📦 Standard</span>';
     const catObj = allCategories.find(function(c){ return c.id === p.category_id; });
@@ -447,7 +560,7 @@ function renderProducts() {
     return '<div class="prod-row">' +
       '<div class="prod-icon">' + iconHtml + '</div>' +
       '<div class="prod-info"><div class="prod-name">' + p.name + '</div><div class="prod-price">₹' + p.price + ' · Stock: ' + p.stock + '</div>' +
-      '<div class="prod-tags">' + modeTag + hsnTag + gstTag + returnTag + brandTag + fulfillTag + catTag + '</div></div>' +
+      '<div class="prod-tags">' + modeTag + hsnTag + gstTag + returnTag + codTag + brandTag + fulfillTag + catTag + '</div></div>' +
       '<button class="del-btn" data-delid="' + p.id + '">✕</button>' +
     '</div>';
   }).join('');
@@ -654,19 +767,41 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   btn.disabled = true;
 
   try {
-    await fetch(SUPABASE_URL + '/rest/v1/products', {
+    const insertRes = await fetch(SUPABASE_URL + '/rest/v1/products', {
       method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
       body: JSON.stringify({
         vendor_id: currentVendor.id, name: name, icon: icon, price: Number(price),
         old_price: oldPrice ? Number(oldPrice) : null, stock: Number(stock), pincode: pincode,
         hsn_code: hsn, gst_percent: Number(gst),
         seo_title: seo.title, seo_description: seo.description,
         image_data: uploadedPhotoBase64 || null, features: features, is_returnable: selectedReturnable,
+        cod_allowed: selectedCod, additional_images: extraPhotosBase64.length > 0 ? extraPhotosBase64 : [],
         brand: brand || null, gtin: gtin || null, shipping_weight: weight || null, condition: condition,
-        category_id: categoryId, sku: sku, fulfillment_type: fulfillmentType, mrp: oldPrice ? Number(oldPrice) : Number(price), selling_price: Number(price)
+        category_id: categoryId, sku: sku, fulfillment_type: fulfillmentType, mrp: oldPrice ? Number(oldPrice) : Number(price), selling_price: Number(price),
+        catalog_item_id: selectedCatalogItemId || null
       })
     });
+    const insertedData = await insertRes.json();
+    const newProductId = insertedData[0] ? insertedData[0].id : null;
+
+    // If vendor opted to publish this as a shared catalog item (and it wasn't
+    // already listed FROM the catalog), create the catalog_items row and
+    // auto-approve this vendor as its first seller.
+    const shouldPublish = document.getElementById('publishToCatalog').checked && !selectedCatalogItemId && newProductId;
+    if (shouldPublish) {
+      const catalogRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_items', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        body: JSON.stringify({ name: name, image_data: uploadedPhotoBase64 || null, category_id: categoryId, brand: brand || null, gtin: gtin || null, hsn_code: hsn, gst_percent: Number(gst), created_by_vendor_id: currentVendor.id, status: 'active' })
+      });
+      const catalogData = await catalogRes.json();
+      const newCatalogId = catalogData[0] ? catalogData[0].id : null;
+      if (newCatalogId) {
+        await fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + newProductId, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ catalog_item_id: newCatalogId }) });
+        await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ catalog_item_id: newCatalogId, vendor_id: currentVendor.id, status: 'approved' }) });
+      }
+    }
 
     ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku'].forEach(function(id) { document.getElementById(id).value = ''; });
     document.getElementById('pCategory').value = '';
@@ -675,10 +810,18 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
     document.getElementById('photoPreview').style.display = 'none';
     document.getElementById('similarPhotoSuggestion').style.display = 'none';
     uploadedPhotoBase64 = '';
+    document.getElementById('pExtraPhotos').value = '';
+    document.getElementById('extraPhotoPreview').innerHTML = '';
+    extraPhotosBase64 = [];
+    document.getElementById('publishToCatalog').checked = false;
+    selectedCatalogItemId = null;
+    document.getElementById('catalogListingBanner').style.display = 'none';
     setReturnable(true);
+    setCod(true);
     document.getElementById('seoPreview').style.display = 'none';
 
     await loadVendorData();
+    await loadCatalogData();
   } catch (err) {
     alert('Could not add product: ' + err.message);
   }

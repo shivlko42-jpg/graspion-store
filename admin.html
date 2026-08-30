@@ -133,6 +133,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="side-item" data-page="banners">🖼️ Banners</div>
 <div class="side-item" data-page="settings">⚙️ Settings</div>
 <div class="side-item" data-page="pairings">🔗 Pairings</div>
+<div class="side-item" data-page="catalog">📋 Catalog Requests</div>
 <button class="logout-btn" id="logoutBtn">Logout</button>
 </div>
 <div class="main">
@@ -319,6 +320,13 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="empty-state" id="pairEmpty" style="display:none;">No pairings added yet</div>
 </div>
 
+<div class="panel" data-section="catalog">
+<h3>📋 Shared Catalog — Vendor Permission Requests</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Vendors request permission to sell a shared catalog product. Approve only vendors genuinely relevant to that product's category.</p>
+<div id="catalogRequestsList"></div>
+<div class="empty-state" id="catalogRequestsEmpty" style="display:none;">No pending requests</div>
+</div>
+
 </div>
 </div>
 <script>
@@ -329,6 +337,7 @@ let allVendors = [], allProducts = [], allOrders = [], allOrderItems = [];
 let allWarehouses = [], allCategories = [], allBanners = [], allSettings = [];
 let allRiders = [];
 let allPairings = [];
+let allCatalogItems = [], allCatalogPermissions = [];
 
 document.querySelectorAll('.side-item[data-page]').forEach(function(item) {
   item.addEventListener('click', function() {
@@ -369,6 +378,8 @@ const bannerRes = await fetch(SUPABASE_URL + '/rest/v1/banners?select=*&order=pr
 const settingsRes = await fetch(SUPABASE_URL + '/rest/v1/settings?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const ridersRes = await fetch(SUPABASE_URL + '/rest/v1/riders?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const pairingsRes = await fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const catalogItemsRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const catalogPermsRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?select=*&order=requested_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 allVendors = await vendorRes.json();
 allProducts = await productRes.json();
 allOrders = await orderRes.json();
@@ -379,6 +390,8 @@ allBanners = bannerRes.ok ? await bannerRes.json() : [];
 allSettings = settingsRes.ok ? await settingsRes.json() : [];
 allRiders = ridersRes.ok ? await ridersRes.json() : [];
 allPairings = pairingsRes.ok ? await pairingsRes.json() : [];
+allCatalogItems = catalogItemsRes.ok ? await catalogItemsRes.json() : [];
+allCatalogPermissions = catalogPermsRes.ok ? await catalogPermsRes.json() : [];
 badge.className = 'db-badge live';
 badge.textContent = '✅ Live';
 renderKPIs();
@@ -400,6 +413,7 @@ renderCategories();
 renderBanners();
 renderSettings();
 renderPairings();
+renderCatalogRequests();
 } catch (err) {
 badge.className = 'db-badge loading';
 badge.textContent = '❌ Error: ' + err.message;
@@ -1023,6 +1037,35 @@ document.getElementById('riderWarehouse').value = '';
 btn.textContent = '+ Add Rider';
 loadAllData();
 });
+
+// ===================== SHARED CATALOG PERMISSION REQUESTS =====================
+function renderCatalogRequests() {
+const list = document.getElementById('catalogRequestsList');
+const empty = document.getElementById('catalogRequestsEmpty');
+const pending = allCatalogPermissions.filter(function(p) { return p.status === 'pending'; });
+if (pending.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = pending.map(function(p) {
+const item = allCatalogItems.find(function(c) { return c.id === p.catalog_item_id; });
+const vendor = allVendors.find(function(v) { return v.id === p.vendor_id; });
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + (vendor ? vendor.icon + ' ' + vendor.name : 'Vendor') + ' wants to sell "' + (item ? item.name : 'Unknown item') + '"</div><div class="ic-sub">Requested ' + new Date(p.requested_at).toLocaleDateString('en-IN') + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn on-btn" data-approvecat="' + p.id + '">✓ Approve</button><button class="icon-btn off-btn" data-rejectcat="' + p.id + '">✕ Reject</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-approvecat]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-approvecat');
+await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'approved', decided_at: new Date().toISOString() }) });
+loadAllData();
+});
+});
+document.querySelectorAll('[data-rejectcat]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-rejectcat');
+await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected', decided_at: new Date().toISOString() }) });
+loadAllData();
+});
+});
+}
 </script>
 </body>
 </html>
