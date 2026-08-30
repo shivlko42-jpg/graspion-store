@@ -490,6 +490,10 @@ body: JSON.stringify({ customer_name: customerInfo.name, customer_phone: custome
 });
 const orderData = await orderRes.json();
 const orderId = orderData[0] ? orderData[0].id : null;
+if (!orderId) {
+alert('DEBUG — order insert failed:\n' + JSON.stringify(orderData));
+return null;
+}
 if (orderId) {
 const itemInserts = items.map(function(i) {
 return fetch(SUPABASE_URL + '/rest/v1/order_items', {
@@ -516,7 +520,7 @@ body: JSON.stringify({ stock: newStock })
 await Promise.all(stockUpdates);
 }
 return orderId;
-} catch (err) { return null; }
+} catch (err) { alert('DEBUG — exception: ' + err.message); return null; }
 }
 async function saveOrderToDatabase(){
 const orderId = await createOrderRecord(selectedPayMethod === 'cod' ? 'pending' : 'paid');
