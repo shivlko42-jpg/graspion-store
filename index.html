@@ -402,11 +402,23 @@ renderPinSuggestions();
 dataLoaded = true;
 badge.className = 'db-status-badge live';
 badge.textContent = '✅ Live · ' + vendors.length + ' vendors, ' + productPool.length + ' products';
+handleProductDeepLink();
 } catch (err) {
 dataLoaded = false;
 badge.className = 'db-status-badge error';
 badge.textContent = '❌ Connection error';
 }
+}
+function handleProductDeepLink(){
+const productId = new URLSearchParams(window.location.search).get('product');
+if (!productId) return;
+const p = productPool.find(function(x){ return x.id === productId; });
+if (!p) return;
+// pick the product's own pincode as the active area so it's guaranteed to show
+document.getElementById('pinInput').value = p.pincode === 'ALL' ? '' : p.pincode;
+searchQuery = p.name.toLowerCase();
+document.getElementById('searchInput').value = p.name;
+setArea(p.pincode === 'ALL' ? (selectedPin || '000000') : p.pincode);
 }
 function renderPinSuggestions(){
 const wrap = document.getElementById('pinSuggestions');

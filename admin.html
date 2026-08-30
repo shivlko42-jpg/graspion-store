@@ -291,6 +291,13 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="empty-state" id="settingsEmpty" style="display:none;">Loading settings...</div>
 </div>
 
+<div class="panel" data-section="settings">
+<h3>🛍️ Google Merchant Center Feed</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:10px;">This URL always reflects your live product catalog — paste it into Google Merchant Center as a "Scheduled fetch" feed. No manual re-upload needed; it updates automatically whenever products change.</p>
+<div style="background:#f3f1f8; padding:12px; border-radius:10px; font-size:11px; word-break:break-all; font-family:monospace;">https://fghhbmdgelnpirysbusl.supabase.co/functions/v1/product-feed</div>
+<p style="font-size:10px; color:#9ca3af; margin-top:8px;">⚠️ Note: product images stored as uploaded files (not external URLs) won't appear in this feed yet — Google requires a real hosted image link, which needs an image-hosting upgrade (planned for later).</p>
+</div>
+
 <div class="panel" data-section="pairings">
 <h3>🔗 Product Pairings — Frequently Bought Together</h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Link two products together (e.g. Soap + Shampoo, or a gift-pack combo). When a customer adds one to their cart, the other is suggested as a quick add-on.</p>
