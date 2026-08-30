@@ -490,6 +490,21 @@ const t = cartTotals();
 const items = cartItemsList();
 const firstVendorId = items.length > 0 ? items[0].vendorId : null;
 try {
+// Step 1: atomically reserve stock for the whole cart first. If anything
+// is out of stock, nothing is deducted and no order is created at all.
+const reserveRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/reserve_stock_for_order', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({ items: items.map(function(i){ return { product_id: i.id, qty: i.qty }; }) })
+});
+if (!reserveRes.ok) {
+const reserveErr = await reserveRes.text();
+window.lastOrderDebug = 'Stock reservation failed — HTTP ' + reserveRes.status + ': ' + reserveErr;
+window.lastOrderUserMessage = reserveErr.indexOf('INSUFFICIENT_STOCK') !== -1 ? 'stock' : null;
+console.error('[Graspion order debug]', window.lastOrderDebug);
+return null;
+}
+
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
@@ -502,7 +517,6 @@ window.lastOrderDebug = 'HTTP ' + orderRes.status + ': ' + JSON.stringify(orderD
 console.error('[Graspion order debug]', window.lastOrderDebug);
 return null;
 }
-if (orderId) {
 const itemInserts = items.map(function(i) {
 return fetch(SUPABASE_URL + '/rest/v1/order_items', {
 method: 'POST',
@@ -511,22 +525,6 @@ body: JSON.stringify({ order_id: orderId, product_id: i.id, quantity: i.qty, pri
 });
 });
 await Promise.all(itemInserts);
-
-const stockUpdates = items.map(async function(i) {
-const productRes = await fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + i.id + '&select=stock', {
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
-});
-const productData = await productRes.json();
-const currentStock = productData[0] ? Number(productData[0].stock) : 0;
-const newStock = Math.max(0, currentStock - i.qty);
-return fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + i.id, {
-method: 'PATCH',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-body: JSON.stringify({ stock: newStock })
-});
-});
-await Promise.all(stockUpdates);
-}
 return orderId;
 } catch (err) { window.lastOrderDebug = 'Exception: ' + err.message; console.error('[Graspion order debug]', window.lastOrderDebug); return null; }
 }
@@ -619,6 +617,8 @@ document.getElementById('placeOrderBtn').addEventListener('click', async functio
 const btn = document.getElementById('placeOrderBtn');
 btn.textContent = '⏳ ' + graspionT('processingOrder');
 btn.disabled = true;
+window.lastOrderDebug = null;
+window.lastOrderUserMessage = null;
 if (selectedPayMethod === 'cod') {
 const saved = await saveOrderToDatabase();
 checkoutStep = saved ? 'success' : 'error';
@@ -658,8 +658,14 @@ document.getElementById('closeSuccessBtn').addEventListener('click', function() 
 }
 else if(checkoutStep === 'error'){
 const showDebug = new URLSearchParams(window.location.search).get('debug') === '1';
-wrap.innerHTML = '<div class="success-box"><div class="tick">⚠️</div><h2>' + graspionT('orderFailed') + '</h2><p>' + graspionT('orderFailedDesc') + '</p>' + (showDebug ? '<p style="font-size:10px; color:#dc2626; background:#fef2f2; padding:10px; border-radius:8px; margin-top:10px; word-break:break-all; text-align:left;">' + (window.lastOrderDebug || 'No debug info captured') + '</p>' : '') + '<button id="retryBtn">' + graspionT('tryAgain') + '</button></div>';
-document.getElementById('retryBtn').addEventListener('click', function() { checkoutStep = 'payment'; renderCheckout(); });
+const isStockIssue = window.lastOrderUserMessage === 'stock';
+const heading = isStockIssue ? '😔 Out of Stock' : graspionT('orderFailed');
+const desc = isStockIssue ? 'Sorry, one or more items in your cart just sold out. Please update your cart quantities and try again.' : graspionT('orderFailedDesc');
+wrap.innerHTML = '<div class="success-box"><div class="tick">⚠️</div><h2>' + heading + '</h2><p>' + desc + '</p>' + (showDebug ? '<p style="font-size:10px; color:#dc2626; background:#fef2f2; padding:10px; border-radius:8px; margin-top:10px; word-break:break-all; text-align:left;">' + (window.lastOrderDebug || 'No debug info captured') + '</p>' : '') + '<button id="retryBtn">' + (isStockIssue ? 'Back to Cart' : graspionT('tryAgain')) + '</button></div>';
+document.getElementById('retryBtn').addEventListener('click', function() {
+if (isStockIssue) { closeCheckout(); document.getElementById('cartDrawer').classList.add('open'); document.getElementById('drawerOverlay').classList.add('open'); refreshAll(); }
+else { checkoutStep = 'payment'; renderCheckout(); }
+});
 }
 }
 async function setArea(pin, resolvedWarehouseId){
