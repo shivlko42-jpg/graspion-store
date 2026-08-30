@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest-admin.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<meta name="theme-color" content="#0E3D63">
+<meta name="theme-color" content="#7c3aed">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Graspion Admin">
@@ -15,15 +15,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="graspion-logo.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif; }
-body { background:#eef0fb; color:#0A2A45; }
+body { background:#eef0fb; color:#1e1b3a; }
 .login-overlay { position:fixed; inset:0; background:linear-gradient(160deg,#1a1440,#2d1b5e); z-index:300; display:flex; align-items:center; justify-content:center; padding:20px; }
 .login-box { background:#fff; border-radius:24px; padding:36px 28px; max-width:380px; width:100%; text-align:center; }
 .login-sub { font-size:12px; color:#8b87a8; margin:10px 0 24px; }
 .login-input { width:100%; padding:13px 16px; border:2px solid #f0eef7; border-radius:12px; font-size:14px; margin-bottom:12px; outline:none; }
-.login-input:focus { border-color:#0E3D63; }
-.login-btn { width:100%; background:linear-gradient(90deg,#0E3D63,#6BAA4C); border:none; color:#fff; padding:14px; border-radius:12px; font-weight:800; font-size:14px; cursor:pointer; margin-top:6px; }
+.login-input:focus { border-color:#7c3aed; }
+.login-btn { width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:14px; border-radius:12px; font-weight:800; font-size:14px; cursor:pointer; margin-top:6px; }
 .login-note { font-size:10.5px; color:#9ca3af; margin-top:14px; }
 .login-error { color:#ef4444; font-size:11px; margin-top:8px; min-height:14px; }
 .app-wrap { display:none; }
@@ -32,11 +33,11 @@ body { background:#eef0fb; color:#0A2A45; }
 .side-logo-wrap { padding:0 22px 20px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:14px; }
 .side-item { padding:12px 22px; font-size:13px; font-weight:600; color:#c7c3e0; cursor:pointer; display:flex; align-items:center; gap:10px; border-left:3px solid transparent; }
 .side-item:hover { background:rgba(255,255,255,0.06); color:#fff; }
-.side-item.active { background:linear-gradient(90deg,rgba(236,72,153,0.25),rgba(139,92,246,0.15)); color:#fff; border-left-color:#6BAA4C; }
+.side-item.active { background:linear-gradient(90deg,rgba(236,72,153,0.25),rgba(139,92,246,0.15)); color:#fff; border-left-color:#ec4899; }
 .logout-btn { margin:auto 22px 10px; padding:10px; background:rgba(239,68,68,0.2); color:#fca5a5; border:none; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer; }
 .main { flex:1; padding:22px 26px; overflow-x:hidden; }
 .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
-.topbar h1 { font-size:22px; font-weight:900; background:linear-gradient(90deg,#0E3D63,#6BAA4C); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.topbar h1 { font-size:22px; font-weight:900; background:linear-gradient(90deg,#7c3aed,#ec4899); -webkit-background-clip:text; background-clip:text; color:transparent; }
 .topbar .sub { font-size:12px; color:#8b87a8; margin-top:2px; }
 .db-badge { font-size:11px; font-weight:700; padding:6px 12px; border-radius:20px; }
 .db-badge.live { background:#dcfce7; color:#15803d; }
@@ -45,12 +46,12 @@ body { background:#eef0fb; color:#0A2A45; }
 .insight-item { display:flex; align-items:flex-start; gap:10px; background:#fff; border-radius:14px; padding:13px 16px; margin-bottom:8px; box-shadow:0 2px 10px rgba(0,0,0,0.04); font-size:12.5px; font-weight:600; }
 .insight-item.good { border-left:4px solid #22c55e; }
 .insight-item.warn { border-left:4px solid #f59e0b; }
-.insight-item.info { border-left:4px solid #0E3D63; }
+.insight-item.info { border-left:4px solid #7c3aed; }
 .insight-icon { font-size:17px; flex:0 0 auto; }
 .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-bottom:18px; }
 .kpi-card { border-radius:16px; padding:18px; color:#fff; position:relative; overflow:hidden; box-shadow:0 6px 16px rgba(0,0,0,0.08); }
-.kpi-c1 { background:linear-gradient(135deg,#0E3D63,#a78bfa); }
-.kpi-c2 { background:linear-gradient(135deg,#6BAA4C,#f472b6); }
+.kpi-c1 { background:linear-gradient(135deg,#7c3aed,#a78bfa); }
+.kpi-c2 { background:linear-gradient(135deg,#ec4899,#f472b6); }
 .kpi-c3 { background:linear-gradient(135deg,#0ea5e9,#38bdf8); }
 .kpi-c4 { background:linear-gradient(135deg,#22c55e,#4ade80); }
 .kpi-c5 { background:linear-gradient(135deg,#f59e0b,#fbbf24); }
@@ -60,7 +61,7 @@ body { background:#eef0fb; color:#0A2A45; }
 .panel h3 { font-size:14px; font-weight:800; margin-bottom:14px; }
 .bar-chart { display:flex; align-items:flex-end; gap:10px; height:130px; padding-top:10px; }
 .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; }
-.bar-fill { width:100%; background:linear-gradient(180deg,#f472b6,#0E3D63); border-radius:6px 6px 0 0; min-height:4px; }
+.bar-fill { width:100%; background:linear-gradient(180deg,#f472b6,#7c3aed); border-radius:6px 6px 0 0; min-height:4px; }
 .bar-label { font-size:9.5px; color:#8b87a8; font-weight:700; }
 .bar-value { font-size:9px; color:#4b4b63; font-weight:800; }
 table { width:100%; border-collapse:collapse; font-size:12px; }
@@ -75,7 +76,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 .vendor-row-item { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #f7f6fb; }
 .vendor-row-item:last-child { border-bottom:none; }
 .rank-num { width:20px; font-size:12px; font-weight:900; color:#c4b5fd; flex:0 0 auto; }
-.v-icon2 { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px; background:linear-gradient(135deg,#0E3D63,#6BAA4C); flex:0 0 auto; }
+.v-icon2 { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px; background:linear-gradient(135deg,#7c3aed,#ec4899); flex:0 0 auto; }
 .v-info { flex:1; }
 .v-info .vn { font-size:12.5px; font-weight:700; }
 .v-info .vs { font-size:10.5px; color:#8b87a8; }
@@ -89,13 +90,13 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 .ad-vendor { font-size:10px; color:#9ca3af; }
 .ad-bid-input { width:80px; padding:6px 8px; border:1px solid #f0eef7; border-radius:7px; font-size:12px; }
 .ad-toggle { padding:6px 14px; border-radius:8px; border:none; font-size:11px; font-weight:700; cursor:pointer; }
-.ad-toggle.on { background:#0E3D63; color:#fff; }
+.ad-toggle.on { background:#7c3aed; color:#fff; }
 .ad-toggle.off { background:#f3f1f8; color:#6b7280; }
 .empty-state { text-align:center; padding:30px 20px; color:#9ca3af; font-size:12.5px; }
 .panel-grid { display:grid; grid-template-columns:1.4fr 1fr; gap:16px; margin-bottom:16px; }
 .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; }
 .form-input { padding:11px 13px; border:1.5px solid #f0eef7; border-radius:10px; font-size:12.5px; outline:none; font-family:inherit; }
-.form-input:focus { border-color:#0E3D63; }
+.form-input:focus { border-color:#7c3aed; }
 .setting-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f7f6fb; flex-wrap:wrap; }
 .setting-row:last-child { border-bottom:none; }
 .setting-label { flex:1; min-width:180px; font-size:12.5px; font-weight:700; }
@@ -118,11 +119,11 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="login-overlay" id="loginOverlay">
 <div class="login-box">
 <div data-graspion-logo="full" data-size="22" style="justify-content:center; display:flex;"></div>
-<div class="login-sub">Owner / Admin Login</div>
-<input type="password" class="login-input" id="adminPass" placeholder="Admin Password">
+<div class="login-sub">Staff Login</div>
+<input type="email" class="login-input" id="adminEmail" placeholder="Email" autocomplete="username">
+<input type="password" class="login-input" id="adminPass" placeholder="Password" autocomplete="current-password">
 <button class="login-btn" id="adminLoginBtn">Log In →</button>
 <div class="login-error" id="loginError"></div>
-<div class="login-note">Demo password: graspion2026</div>
 </div>
 </div>
 <div class="app-wrap" id="appWrap">
@@ -139,6 +140,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="side-item" data-page="categories">📁 Categories</div>
 <div class="side-item" data-page="banners">🖼️ Banners</div>
 <div class="side-item" data-page="settings">⚙️ Settings</div>
+<div class="side-item" data-page="staff">👤 Staff Management</div>
 <div class="side-item" data-page="pairings">🔗 Pairings</div>
 <div class="side-item" data-page="catalog">📋 Catalog Requests</div>
 <button class="logout-btn" id="logoutBtn">Logout</button>
@@ -314,6 +316,26 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <p style="font-size:10px; color:#9ca3af; margin-top:8px;">⚠️ Note: product images stored as uploaded files (not external URLs) won't appear in this feed yet — Google requires a real hosted image link, which needs an image-hosting upgrade (planned for later).</p>
 </div>
 
+<div class="panel" data-section="staff">
+<h3>👤 Staff Management <span style="font-size:10px; color:#9ca3af; font-weight:400;">(Super Admin only)</span></h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Add staff accounts and assign each person a role — they'll only see the sections relevant to their job.</p>
+<div class="form-grid">
+<input class="form-input" id="staffAuthUserId" placeholder="Supabase Auth User UID (create the login in Supabase Dashboard → Authentication first)">
+<input class="form-input" id="staffName" placeholder="Staff member's name">
+<select class="form-input" id="staffRole">
+<option value="orders_manager">Orders Manager</option>
+<option value="inventory_manager">Inventory Manager</option>
+<option value="marketing_manager">Marketing Manager</option>
+<option value="finance_manager">Finance Manager</option>
+<option value="support_staff">Support Staff</option>
+<option value="super_admin">Super Admin</option>
+</select>
+</div>
+<button class="login-btn" id="staffAddBtn" style="margin-top:10px;">+ Add Staff Member</button>
+<div id="staffList" style="margin-top:16px;"></div>
+<div class="empty-state" id="staffEmpty" style="display:none;">No staff added yet</div>
+</div>
+
 <div class="panel" data-section="pairings">
 <h3>🔗 Product Pairings — Frequently Bought Together</h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Link two products together (e.g. Soap + Shampoo, or a gift-pack combo). When a customer adds one to their cart, the other is suggested as a quick add-on.</p>
@@ -339,12 +361,35 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <script>
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
-const ADMIN_PASSWORD = 'graspion2026';
+const supaAuth = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentAdmin = null;
+let authToken = SUPABASE_KEY;
 let allVendors = [], allProducts = [], allOrders = [], allOrderItems = [];
 let allWarehouses = [], allCategories = [], allBanners = [], allSettings = [];
 let allRiders = [];
 let allPairings = [];
 let allCatalogItems = [], allCatalogPermissions = [];
+let allStaff = [];
+
+(async function restoreSession() {
+try {
+const { data } = await supaAuth.auth.getSession();
+if (data.session) {
+authToken = data.session.access_token;
+const adminRes = await fetch(SUPABASE_URL + '/rest/v1/admins?auth_user_id=eq.' + data.session.user.id + '&select=*', {
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+});
+const adminRows = await adminRes.json();
+if (adminRows[0]) {
+currentAdmin = adminRows[0];
+applyRolePermissions(currentAdmin.role);
+document.getElementById('loginOverlay').style.display = 'none';
+document.getElementById('appWrap').classList.add('active');
+loadAllData();
+}
+}
+} catch (err) { /* not logged in, show login screen as normal */ }
+})();
 
 document.querySelectorAll('.side-item[data-page]').forEach(function(item) {
   item.addEventListener('click', function() {
@@ -360,33 +405,85 @@ document.querySelectorAll('.side-item[data-page]').forEach(function(item) {
   });
 });
 
-document.getElementById('adminLoginBtn').addEventListener('click', function() {
+document.getElementById('adminLoginBtn').addEventListener('click', async function() {
+const email = document.getElementById('adminEmail').value.trim();
 const pass = document.getElementById('adminPass').value;
-if (pass !== ADMIN_PASSWORD) { document.getElementById('loginError').textContent = 'Incorrect password'; return; }
+const errEl = document.getElementById('loginError');
+errEl.textContent = '';
+if (!email || !pass) { errEl.textContent = 'Please enter email and password'; return; }
+const btn = document.getElementById('adminLoginBtn');
+btn.textContent = '⏳ Logging in...';
+btn.disabled = true;
+try {
+const { data, error } = await supaAuth.auth.signInWithPassword({ email: email, password: pass });
+if (error || !data.session) {
+errEl.textContent = 'Login failed: ' + (error ? error.message : 'Unknown error');
+btn.textContent = 'Log In →'; btn.disabled = false;
+return;
+}
+authToken = data.session.access_token;
+// Confirm this account is actually a registered admin (not just any Supabase Auth user)
+const adminRes = await fetch(SUPABASE_URL + '/rest/v1/admins?auth_user_id=eq.' + data.user.id + '&select=*', {
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+});
+const adminRows = await adminRes.json();
+if (!adminRows[0]) {
+errEl.textContent = 'This account is not registered as admin staff. Contact your super admin.';
+await supaAuth.auth.signOut();
+authToken = SUPABASE_KEY;
+btn.textContent = 'Log In →'; btn.disabled = false;
+return;
+}
+currentAdmin = adminRows[0];
+applyRolePermissions(currentAdmin.role);
 document.getElementById('loginOverlay').style.display = 'none';
 document.getElementById('appWrap').classList.add('active');
 loadAllData();
+} catch (err) {
+errEl.textContent = 'Login error: ' + err.message;
+btn.textContent = 'Log In →'; btn.disabled = false;
+}
 });
-document.getElementById('logoutBtn').addEventListener('click', function() {
+function applyRolePermissions(role) {
+// super_admin sees everything. Other roles see only their relevant sidebar sections.
+const roleSections = {
+orders_manager: ['dashboard','orders','delivery','customers'],
+inventory_manager: ['dashboard','warehouses','categories','pairings','catalog'],
+marketing_manager: ['dashboard','banners','pairings','ads','settings'],
+finance_manager: ['dashboard','payments','vendors'],
+support_staff: ['dashboard','orders','customers']
+};
+if (role === 'super_admin') return; // no restriction
+const allowed = roleSections[role] || ['dashboard'];
+document.querySelectorAll('.side-item[data-page]').forEach(function(item) {
+const page = item.getAttribute('data-page');
+if (allowed.indexOf(page) === -1) item.style.display = 'none';
+});
+}
+document.getElementById('logoutBtn').addEventListener('click', async function() {
+await supaAuth.auth.signOut();
+authToken = SUPABASE_KEY;
+currentAdmin = null;
 document.getElementById('appWrap').classList.remove('active');
 document.getElementById('loginOverlay').style.display = 'flex';
+document.getElementById('adminEmail').value = '';
 document.getElementById('adminPass').value = '';
 });
 async function loadAllData() {
 const badge = document.getElementById('dbBadge');
 try {
-const vendorRes = await fetch(SUPABASE_URL + '/rest/v1/vendors?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
-const productRes = await fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
-const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
-const orderItemsRes = await fetch(SUPABASE_URL + '/rest/v1/order_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
-const warehouseRes = await fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
-const categoryRes = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
-const bannerRes = await fetch(SUPABASE_URL + '/rest/v1/banners?select=*&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
-const settingsRes = await fetch(SUPABASE_URL + '/rest/v1/settings?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
-const ridersRes = await fetch(SUPABASE_URL + '/rest/v1/riders?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
-const pairingsRes = await fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
-const catalogItemsRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
-const catalogPermsRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?select=*&order=requested_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const vendorRes = await fetch(SUPABASE_URL + '/rest/v1/vendors?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const productRes = await fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const orderItemsRes = await fetch(SUPABASE_URL + '/rest/v1/order_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const warehouseRes = await fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const categoryRes = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const bannerRes = await fetch(SUPABASE_URL + '/rest/v1/banners?select=*&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const settingsRes = await fetch(SUPABASE_URL + '/rest/v1/settings?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const ridersRes = await fetch(SUPABASE_URL + '/rest/v1/riders?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const pairingsRes = await fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const catalogItemsRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const catalogPermsRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?select=*&order=requested_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 allVendors = await vendorRes.json();
 allProducts = await productRes.json();
 allOrders = await orderRes.json();
@@ -421,6 +518,7 @@ renderBanners();
 renderSettings();
 renderPairings();
 renderCatalogRequests();
+if (currentAdmin && currentAdmin.role === 'super_admin') { loadAndRenderStaff(); }
 } catch (err) {
 badge.className = 'db-badge loading';
 badge.textContent = '❌ Error: ' + err.message;
@@ -520,12 +618,12 @@ patchBody.return_deadline = deadline.toISOString();
 }
 await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id, {
 method: 'PATCH',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
 body: JSON.stringify(patchBody)
 });
 fetch(SUPABASE_URL + '/rest/v1/notifications', {
 method: 'POST',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
 body: JSON.stringify({ recipient_type: 'customer', channel: 'sms', template_key: 'order_' + newStatus, payload: { order_id: id, status: newStatus }, status: 'pending' })
 });
 loadAllData();
@@ -537,7 +635,7 @@ const id = btn.getAttribute('data-payoutid');
 btn.textContent = '⏳';
 await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id, {
 method: 'PATCH',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
 body: JSON.stringify({ payout_status: 'paid' })
 });
 loadAllData();
@@ -626,7 +724,7 @@ document.querySelectorAll('[data-ridertoggle]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 const id = btn.getAttribute('data-ridertoggle');
 const isActive = btn.getAttribute('data-current') === 'true';
-await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: isActive ? 'inactive' : 'active' }) });
+await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: isActive ? 'inactive' : 'active' }) });
 loadAllData();
 });
 });
@@ -634,7 +732,7 @@ document.querySelectorAll('[data-riderdel]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 if (!confirm('Remove this rider?')) return;
 const id = btn.getAttribute('data-riderdel');
-await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 loadAllData();
 });
 });
@@ -664,7 +762,7 @@ const newStatus = isBlocked ? 'active' : 'blocked';
 btn.textContent = '⏳';
 await fetch(SUPABASE_URL + '/rest/v1/vendors?id=eq.' + id, {
 method: 'PATCH',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
 body: JSON.stringify({ status: newStatus })
 });
 loadAllData();
@@ -694,7 +792,7 @@ const bidVal = bidInput ? Number(bidInput.value) || 0 : 0;
 btn.textContent = '⏳';
 await fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + id, {
 method: 'PATCH',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
 body: JSON.stringify({ is_sponsored: !current, ad_bid: bidVal })
 });
 loadAllData();
@@ -705,7 +803,7 @@ input.addEventListener('change', async function() {
 const id = input.getAttribute('data-bidid');
 await fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + id, {
 method: 'PATCH',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
 body: JSON.stringify({ ad_bid: Number(input.value) || 0 })
 });
 });
@@ -728,7 +826,7 @@ document.querySelectorAll('[data-whtoggle]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 const id = btn.getAttribute('data-whtoggle');
 const isActive = btn.getAttribute('data-current') === 'true';
-await fetch(SUPABASE_URL + '/rest/v1/warehouses?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: isActive ? 'inactive' : 'active' }) });
+await fetch(SUPABASE_URL + '/rest/v1/warehouses?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: isActive ? 'inactive' : 'active' }) });
 loadAllData();
 });
 });
@@ -736,7 +834,7 @@ document.querySelectorAll('[data-whdel]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 if (!confirm('Delete this dark store?')) return;
 const id = btn.getAttribute('data-whdel');
-await fetch(SUPABASE_URL + '/rest/v1/warehouses?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+await fetch(SUPABASE_URL + '/rest/v1/warehouses?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 loadAllData();
 });
 });
@@ -764,7 +862,7 @@ btn.textContent = '⏳ Adding...';
 try {
 const res = await fetch(SUPABASE_URL + '/rest/v1/warehouses', {
 method: 'POST',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
 body: JSON.stringify({ name: name, address: document.getElementById('whAddress').value.trim(), pincode: document.getElementById('whPincode').value.trim(), lat: lat, lng: lng, service_radius_km: parseFloat(document.getElementById('whRadius').value) || 3, status: 'active' })
 });
 if (!res.ok) {
@@ -802,7 +900,7 @@ document.querySelectorAll('[data-cattoggle]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 const id = btn.getAttribute('data-cattoggle');
 const isActive = btn.getAttribute('data-current') === 'true';
-await fetch(SUPABASE_URL + '/rest/v1/categories?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: isActive ? 'inactive' : 'active' }) });
+await fetch(SUPABASE_URL + '/rest/v1/categories?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: isActive ? 'inactive' : 'active' }) });
 loadAllData();
 });
 });
@@ -810,7 +908,7 @@ document.querySelectorAll('[data-catdel]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 if (!confirm('Delete this category?')) return;
 const id = btn.getAttribute('data-catdel');
-await fetch(SUPABASE_URL + '/rest/v1/categories?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+await fetch(SUPABASE_URL + '/rest/v1/categories?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 loadAllData();
 });
 });
@@ -823,7 +921,7 @@ const btn = document.getElementById('catAddBtn');
 btn.textContent = '⏳ Adding...';
 await fetch(SUPABASE_URL + '/rest/v1/categories', {
 method: 'POST',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
 body: JSON.stringify({ name: name, slug: slug, image_url: document.getElementById('catImage').value.trim() || null, parent_id: document.getElementById('catParent').value || null, display_order: parseInt(document.getElementById('catOrder').value) || 0, status: 'active' })
 });
 ['catName','catImage'].forEach(function(id){ document.getElementById(id).value = ''; });
@@ -848,7 +946,7 @@ document.querySelectorAll('[data-bantoggle]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 const id = btn.getAttribute('data-bantoggle');
 const isActive = btn.getAttribute('data-current') === 'true';
-await fetch(SUPABASE_URL + '/rest/v1/banners?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: isActive ? 'inactive' : 'active' }) });
+await fetch(SUPABASE_URL + '/rest/v1/banners?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: isActive ? 'inactive' : 'active' }) });
 loadAllData();
 });
 });
@@ -856,7 +954,7 @@ document.querySelectorAll('[data-bandel]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 if (!confirm('Delete this banner?')) return;
 const id = btn.getAttribute('data-bandel');
-await fetch(SUPABASE_URL + '/rest/v1/banners?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+await fetch(SUPABASE_URL + '/rest/v1/banners?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 loadAllData();
 });
 });
@@ -868,7 +966,7 @@ const btn = document.getElementById('banAddBtn');
 btn.textContent = '⏳ Adding...';
 await fetch(SUPABASE_URL + '/rest/v1/banners', {
 method: 'POST',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
 body: JSON.stringify({ title: title, subtitle: document.getElementById('banSubtitle').value.trim(), desktop_image: document.getElementById('banDesktopImg').value.trim(), mobile_image: document.getElementById('banMobileImg').value.trim(), button_text: document.getElementById('banButtonText').value.trim(), link_url: document.getElementById('banLink').value.trim(), priority: parseInt(document.getElementById('banPriority').value) || 0, status: 'active' })
 });
 ['banTitle','banSubtitle','banDesktopImg','banMobileImg','banButtonText','banLink'].forEach(function(id){ document.getElementById(id).value = ''; });
@@ -902,7 +1000,7 @@ else if (raw === 'false') newVal = false;
 else if (raw !== '' && !isNaN(raw)) newVal = Number(raw);
 else newVal = raw;
 btn.textContent = '⏳';
-await fetch(SUPABASE_URL + '/rest/v1/settings?key=eq.' + key, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ value: newVal, updated_at: new Date().toISOString() }) });
+await fetch(SUPABASE_URL + '/rest/v1/settings?key=eq.' + key, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ value: newVal, updated_at: new Date().toISOString() }) });
 btn.textContent = '✓ Saved';
 setTimeout(function(){ btn.textContent = 'Save'; }, 1500);
 });
@@ -931,7 +1029,7 @@ document.querySelectorAll('[data-pairdel]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 if (!confirm('Remove this pairing?')) return;
 const id = btn.getAttribute('data-pairdel');
-await fetch(SUPABASE_URL + '/rest/v1/product_pairings?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+await fetch(SUPABASE_URL + '/rest/v1/product_pairings?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 loadAllData();
 });
 });
@@ -946,7 +1044,7 @@ const btn = document.getElementById('pairAddBtn');
 btn.textContent = '⏳ Adding...';
 const res = await fetch(SUPABASE_URL + '/rest/v1/product_pairings', {
 method: 'POST',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
 body: JSON.stringify({ product_id: a, paired_product_id: b, label: label, status: 'active' })
 });
 if (!res.ok) {
@@ -1004,7 +1102,7 @@ empty.style.display = 'none';
 const maxRevenue = ranked[0].revenue || 1;
 list.innerHTML = ranked.map(function(r) {
 const pct = Math.round((r.revenue / maxRevenue) * 100);
-return '<div style="margin-bottom:12px;"><div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:4px;"><span>' + r.name + '</span><span>₹' + r.revenue.toLocaleString('en-IN') + '</span></div><div style="background:#f3f1f8; border-radius:6px; height:8px; overflow:hidden;"><div style="width:' + pct + '%; height:100%; background:linear-gradient(90deg,#0E3D63,#6BAA4C);"></div></div></div>';
+return '<div style="margin-bottom:12px;"><div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:4px;"><span>' + r.name + '</span><span>₹' + r.revenue.toLocaleString('en-IN') + '</span></div><div style="background:#f3f1f8; border-radius:6px; height:8px; overflow:hidden;"><div style="width:' + pct + '%; height:100%; background:linear-gradient(90deg,#7c3aed,#ec4899);"></div></div></div>';
 }).join('');
 }
 
@@ -1031,7 +1129,7 @@ const btn = document.getElementById('riderAddBtn');
 btn.textContent = '⏳ Adding...';
 const res = await fetch(SUPABASE_URL + '/rest/v1/riders', {
 method: 'POST',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
 body: JSON.stringify({ name: name, phone: phone, bike_number: bike || null, pincode: pincode || null, warehouse_id: warehouseId, status: 'active' })
 });
 if (!res.ok) {
@@ -1061,18 +1159,69 @@ return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + (v
 document.querySelectorAll('[data-approvecat]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 const id = btn.getAttribute('data-approvecat');
-await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'approved', decided_at: new Date().toISOString() }) });
+await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'approved', decided_at: new Date().toISOString() }) });
 loadAllData();
 });
 });
 document.querySelectorAll('[data-rejectcat]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 const id = btn.getAttribute('data-rejectcat');
-await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected', decided_at: new Date().toISOString() }) });
+await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected', decided_at: new Date().toISOString() }) });
 loadAllData();
 });
 });
 }
+// ===================== STAFF MANAGEMENT (super_admin only) =====================
+const roleLabels = { super_admin: 'Super Admin', orders_manager: 'Orders Manager', inventory_manager: 'Inventory Manager', marketing_manager: 'Marketing Manager', finance_manager: 'Finance Manager', support_staff: 'Support Staff' };
+async function loadAndRenderStaff() {
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/admins?select=*&order=created_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+allStaff = res.ok ? await res.json() : [];
+renderStaff();
+} catch (err) { allStaff = []; }
+}
+function renderStaff() {
+const list = document.getElementById('staffList');
+const empty = document.getElementById('staffEmpty');
+if (allStaff.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = allStaff.map(function(s) {
+const isMe = currentAdmin && s.id === currentAdmin.id;
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + s.name + (isMe ? ' (You)' : '') + '</div><div class="ic-sub">' + (roleLabels[s.role] || s.role) + ' · ' + (s.status || 'active') + '</div></div>' +
+(isMe ? '' : '<div class="item-actions"><button class="icon-btn del-btn" data-staffdel="' + s.id + '">Remove</button></div>') + '</div>';
+}).join('');
+document.querySelectorAll('[data-staffdel]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Remove this staff member\'s access?')) return;
+const id = btn.getAttribute('data-staffdel');
+await fetch(SUPABASE_URL + '/rest/v1/admins?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+loadAndRenderStaff();
+});
+});
+}
+document.getElementById('staffAddBtn').addEventListener('click', async function() {
+const uid = document.getElementById('staffAuthUserId').value.trim();
+const name = document.getElementById('staffName').value.trim();
+const role = document.getElementById('staffRole').value;
+if (!uid || !name) { alert('Auth User UID and name are required'); return; }
+const btn = document.getElementById('staffAddBtn');
+btn.textContent = '⏳ Adding...';
+const res = await fetch(SUPABASE_URL + '/rest/v1/admins', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ auth_user_id: uid, name: name, role: role, status: 'active' })
+});
+if (!res.ok) {
+const errText = await res.text();
+alert('Could not add staff member:\n' + errText);
+} else {
+document.getElementById('staffAuthUserId').value = '';
+document.getElementById('staffName').value = '';
+}
+btn.textContent = '+ Add Staff Member';
+loadAndRenderStaff();
+});
+
 if ('serviceWorker' in navigator) {
 window.addEventListener('load', function() {
 navigator.serviceWorker.register('service-worker.js').catch(function(){});

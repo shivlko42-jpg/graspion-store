@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest-vendor.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<meta name="theme-color" content="#0E3D63">
+<meta name="theme-color" content="#7c3aed">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Graspion Vendor">
@@ -15,14 +15,15 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="graspion-logo.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif; }
-  body { background:#f4f3f9; color:#0A2A45; }
-  .login-overlay { position:fixed; inset:0; background:linear-gradient(160deg,#0A2A45,#3D7A2E); z-index:300; display:flex; align-items:center; justify-content:center; padding:20px; }
+  body { background:#f4f3f9; color:#1e1b3a; }
+  .login-overlay { position:fixed; inset:0; background:linear-gradient(160deg,#1e1b3a,#4c1d95); z-index:300; display:flex; align-items:center; justify-content:center; padding:20px; }
   .login-box { background:#fff; border-radius:24px; padding:36px 28px; max-width:380px; width:100%; text-align:center; }
   .login-sub { font-size:12px; color:#8b87a8; margin:10px 0 24px; }
-  .login-btn { width:100%; background:linear-gradient(90deg,#0E3D63,#6BAA4C); border:none; color:#fff; padding:14px; border-radius:12px; font-weight:800; font-size:14px; cursor:pointer; margin-top:6px; }
+  .login-btn { width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:14px; border-radius:12px; font-weight:800; font-size:14px; cursor:pointer; margin-top:6px; }
   .login-note { font-size:10.5px; color:#9ca3af; margin-top:14px; }
   .login-error { color:#ef4444; font-size:11px; margin-top:8px; min-height:14px; }
   .login-select { width:100%; padding:13px 16px; border:2px solid #f0eef7; border-radius:12px; font-size:14px; margin-bottom:12px; }
@@ -30,10 +31,10 @@
   .app-wrap.active { display:flex; }
   .sidebar { width:210px; background:#fff; flex:0 0 auto; display:flex; flex-direction:column; padding:20px 0; position:sticky; top:0; height:100vh; box-shadow:2px 0 10px rgba(0,0,0,0.03); min-height:100vh; }
   .side-logo-wrap { padding:0 20px 16px; border-bottom:1px solid #f0eef7; margin-bottom:12px; }
-  .side-logo-wrap .biz { display:block; font-size:14px; font-weight:800; color:#0E3D63; margin-top:8px; }
+  .side-logo-wrap .biz { display:block; font-size:14px; font-weight:800; color:#7c3aed; margin-top:8px; }
   .side-item { padding:11px 20px; font-size:12.5px; font-weight:700; color:#8b87a8; cursor:pointer; display:flex; align-items:center; gap:9px; border-left:3px solid transparent; }
   .side-item:hover { background:#faf9fd; }
-  .side-item.active { background:#E7F3E0; color:#0E3D63; border-left-color:#0E3D63; }
+  .side-item.active { background:#f3e8ff; color:#7c3aed; border-left-color:#7c3aed; }
   .logout-btn { margin:auto 20px 10px; padding:10px; background:#fee2e2; color:#dc2626; border:none; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer; }
   .main { flex:1; padding:20px 24px; }
   .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
@@ -51,14 +52,14 @@
   .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
   .form-group label { font-size:11px; font-weight:700; color:#6b7280; margin-bottom:5px; display:block; }
   .form-input { width:100%; padding:11px 14px; border:1.5px solid #f0eef7; border-radius:10px; font-size:13px; outline:none; }
-  .form-input:focus { border-color:#0E3D63; }
-  .add-product-btn { background:linear-gradient(90deg,#0E3D63,#6BAA4C); color:#fff; border:none; padding:12px 20px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; width:100%; margin-top:6px; }
+  .form-input:focus { border-color:#7c3aed; }
+  .add-product-btn { background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:12px 20px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; width:100%; margin-top:6px; }
   .radio-row { display:flex; gap:10px; margin-bottom:12px; }
   .radio-option { flex:1; padding:12px; border:1.5px solid #f0eef7; border-radius:10px; cursor:pointer; text-align:center; font-size:12px; font-weight:700; color:#6b7280; }
-  .radio-option.selected { border-color:#0E3D63; background:#F1F8ED; color:#0E3D63; }
+  .radio-option.selected { border-color:#7c3aed; background:#faf5ff; color:#7c3aed; }
   .radio-option .ro-icon { font-size:18px; display:block; margin-bottom:4px; }
-  .seo-preview { display:none; background:#F1F8ED; border:1px solid #C7E6B8; border-radius:10px; padding:12px 14px; margin-bottom:12px; }
-  .seo-preview .lbl { font-size:10.5px; font-weight:800; color:#0E3D63; margin-bottom:6px; }
+  .seo-preview { display:none; background:#faf5ff; border:1px solid #e9d5ff; border-radius:10px; padding:12px 14px; margin-bottom:12px; }
+  .seo-preview .lbl { font-size:10.5px; font-weight:800; color:#7c3aed; margin-bottom:6px; }
   .seo-preview .ttl { font-size:13px; color:#1a0dab; font-weight:600; margin-bottom:3px; }
   .seo-preview .dsc { font-size:11.5px; color:#4d5156; line-height:1.4; }
   .prod-list { display:flex; flex-direction:column; gap:10px; }
@@ -69,23 +70,23 @@
   .prod-name { font-size:12.5px; font-weight:700; }
   .prod-price { font-size:11px; color:#8b87a8; margin-top:2px; }
   .prod-tags { display:flex; gap:5px; margin-top:4px; flex-wrap:wrap; }
-  .prod-tag { font-size:9px; font-weight:700; padding:2px 7px; border-radius:6px; background:#f3f1f8; color:#0E3D63; }
+  .prod-tag { font-size:9px; font-weight:700; padding:2px 7px; border-radius:6px; background:#f3f1f8; color:#7c3aed; }
   .del-btn { background:#fee2e2; color:#dc2626; border:none; width:30px; height:30px; border-radius:8px; cursor:pointer; font-size:14px; }
   .order-card { border:1px solid #f0eef7; border-radius:12px; padding:14px; margin-bottom:10px; }
   .order-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
   .order-cust { font-size:12.5px; font-weight:700; }
   .order-meta { font-size:10.5px; color:#9ca3af; margin-top:2px; }
-  .order-amt { font-size:14px; font-weight:900; color:#0A2A45; }
+  .order-amt { font-size:14px; font-weight:900; color:#1e1b3a; }
   .pay-badge { font-size:9.5px; font-weight:800; padding:3px 8px; border-radius:7px; margin-top:4px; display:inline-block; }
   .pay-paid { background:#dcfce7; color:#15803d; }
   .pay-pending { background:#fef3c7; color:#b45309; }
   .pipeline { display:flex; align-items:center; gap:0; margin-top:8px; }
   .pipe-step { flex:1; text-align:center; position:relative; }
   .pipe-dot { width:24px; height:24px; border-radius:50%; background:#e5e7eb; color:#9ca3af; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; margin:0 auto 4px; cursor:pointer; transition:.2s; }
-  .pipe-dot.done { background:linear-gradient(135deg,#0E3D63,#6BAA4C); color:#fff; }
-  .pipe-dot.current { background:#fff; border:2px solid #0E3D63; color:#0E3D63; box-shadow:0 0 0 4px rgba(124,58,237,0.12); }
+  .pipe-dot.done { background:linear-gradient(135deg,#7c3aed,#ec4899); color:#fff; }
+  .pipe-dot.current { background:#fff; border:2px solid #7c3aed; color:#7c3aed; box-shadow:0 0 0 4px rgba(124,58,237,0.12); }
   .pipe-line { position:absolute; top:12px; left:-50%; width:100%; height:2px; background:#e5e7eb; z-index:-1; }
-  .pipe-line.done { background:linear-gradient(90deg,#0E3D63,#6BAA4C); }
+  .pipe-line.done { background:linear-gradient(90deg,#7c3aed,#ec4899); }
   .pipe-step:first-child .pipe-line { display:none; }
   .pipe-label { font-size:8.5px; color:#8b87a8; font-weight:700; }
   .empty-state { text-align:center; padding:30px 20px; color:#9ca3af; font-size:12.5px; }
@@ -98,12 +99,10 @@
   <div class="login-box">
     <div data-graspion-logo="full" data-size="22" style="justify-content:center; display:flex;"></div>
     <div class="login-sub">Manage your store from here</div>
-    <select class="login-select" id="vendorSelect">
-      <option value="">— Select your store —</option>
-    </select>
+    <input type="email" class="login-select" id="vendorEmail" placeholder="Email" autocomplete="username" style="border:2px solid #f0eef7;">
+    <input type="password" class="login-select" id="vendorPass" placeholder="Password" autocomplete="current-password" style="border:2px solid #f0eef7;">
     <button class="login-btn" id="vendorLoginBtn">Log In →</button>
     <div class="login-error" id="loginError"></div>
-    <div class="login-note">Demo login — real password/OTP coming soon</div>
   </div>
 </div>
 
@@ -191,14 +190,14 @@
         <div class="form-group"><label>Category</label><select class="form-input" id="pCategory"><option value="">— Select category —</option></select></div>
         <div class="form-group"><label>SKU (optional, auto-generated if blank)</label><input class="form-input" id="pSku" placeholder="e.g. GRS-SPK-001"></div>
       </div>
-      <div id="catalogListingBanner" style="display:none; background:#E7F3E0; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:11px; color:#0E3D63; font-weight:700;">🔗 Listing from Shared Catalog — set your own price/stock below. <span id="catalogListingCancel" style="color:#dc2626; cursor:pointer; text-decoration:underline; font-weight:700;">Cancel</span></div>
+      <div id="catalogListingBanner" style="display:none; background:#f3e8ff; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:11px; color:#7c3aed; font-weight:700;">🔗 Listing from Shared Catalog — set your own price/stock below. <span id="catalogListingCancel" style="color:#dc2626; cursor:pointer; text-decoration:underline; font-weight:700;">Cancel</span></div>
       <label style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:#6b7280; margin-bottom:12px;"><input type="checkbox" id="publishToCatalog"> 📢 Also publish as a Shared Catalog item (other vendors in this category can request to sell it too)</label>
       <div class="form-group" style="margin-bottom:12px;">
         <label>Product Photo (main, optional)</label>
         <input class="form-input" id="pPhoto" type="file" accept="image/*">
         <div id="photoPreview" style="margin-top:8px; display:none;"><img id="photoPreviewImg" style="width:70px; height:70px; object-fit:cover; border-radius:10px;"></div>
-        <div id="similarPhotoSuggestion" style="display:none; margin-top:10px; background:#F1F8ED; border:1px solid #C7E6B8; border-radius:10px; padding:10px;">
-          <div style="font-size:10.5px; font-weight:800; color:#0E3D63; margin-bottom:6px;">📸 A similar product already has a photo — reuse it?</div>
+        <div id="similarPhotoSuggestion" style="display:none; margin-top:10px; background:#faf5ff; border:1px solid #e9d5ff; border-radius:10px; padding:10px;">
+          <div style="font-size:10.5px; font-weight:800; color:#7c3aed; margin-bottom:6px;">📸 A similar product already has a photo — reuse it?</div>
           <div id="similarPhotoList" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
         </div>
       </div>
@@ -274,14 +273,14 @@
 
     <div class="panel">
       <h3>🧾 Your Orders — Delivery Pipeline <span id="orderCount" style="font-size:11px;color:#9ca3af;"></span></h3>
-      <button class="add-product-btn" id="exportOrdersBtn" style="margin-bottom:14px; background:#0A2A45;">⬇ Download Orders CSV</button>
+      <button class="add-product-btn" id="exportOrdersBtn" style="margin-bottom:14px; background:#1e1b3a;">⬇ Download Orders CSV</button>
       <div id="orderList"></div>
       <div class="empty-state" id="orderEmpty" style="display:none;">No orders yet</div>
     </div>
 
     <div class="panel">
       <h3>💳 Payment Pipeline</h3>
-      <button class="add-product-btn" id="exportPaymentsBtn" style="margin-bottom:14px; background:#0A2A45;">⬇ Download Payments / Tax Invoice CSV</button>
+      <button class="add-product-btn" id="exportPaymentsBtn" style="margin-bottom:14px; background:#1e1b3a;">⬇ Download Payments / Tax Invoice CSV</button>
       <div id="paymentList"></div>
       <div class="empty-state" id="paymentEmpty" style="display:none;">No payment records yet</div>
     </div>
@@ -291,6 +290,8 @@
 <script>
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
+const supaAuth = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let authToken = SUPABASE_KEY;
 
 let currentVendor = null;
 let allVendors = [];
@@ -309,20 +310,19 @@ let selectedCatalogItemId = null;
 const STATUS_STEPS = ['pending', 'preparing', 'shipped', 'delivered'];
 const STATUS_LABELS = { pending:'Placed', preparing:'Preparing', shipped:'Shipped', delivered:'Delivered', cancelled:'Cancelled' };
 
-async function loadVendorList() {
-  try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/vendors?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
-    allVendors = await res.json();
-    const select = document.getElementById('vendorSelect');
-    select.innerHTML = '<option value="">— Select your store —</option>' +
-      allVendors.map(function(v) { return '<option value="' + v.id + '">' + v.icon + ' ' + v.name + '</option>'; }).join('');
-  } catch (err) { document.getElementById('loginError').textContent = 'Could not load vendors: ' + err.message; }
-}
-
-document.getElementById('vendorLoginBtn').addEventListener('click', function() {
-  const id = document.getElementById('vendorSelect').value;
-  if (!id) { document.getElementById('loginError').textContent = 'Please select your store first'; return; }
-  currentVendor = allVendors.find(function(v) { return v.id === id; });
+async function loginAsVendor(session) {
+  authToken = session.access_token;
+  const res = await fetch(SUPABASE_URL + '/rest/v1/vendors?auth_user_id=eq.' + session.user.id + '&select=*', {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+  });
+  const rows = await res.json();
+  if (!rows[0]) {
+    document.getElementById('loginError').textContent = 'This account is not linked to a vendor store. Contact admin.';
+    await supaAuth.auth.signOut();
+    authToken = SUPABASE_KEY;
+    return false;
+  }
+  currentVendor = rows[0];
   document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('appWrap').classList.add('active');
   document.getElementById('vendorNameLabel').textContent = currentVendor.icon + ' ' + currentVendor.name;
@@ -332,6 +332,38 @@ document.getElementById('vendorLoginBtn').addEventListener('click', function() {
   loadCategoriesForVendor();
   loadCatalogData();
   configureSellingModeUI();
+  return true;
+}
+
+(async function restoreVendorSession() {
+  try {
+    const { data } = await supaAuth.auth.getSession();
+    if (data.session) { await loginAsVendor(data.session); }
+  } catch (err) { /* show login screen as normal */ }
+})();
+
+document.getElementById('vendorLoginBtn').addEventListener('click', async function() {
+  const email = document.getElementById('vendorEmail').value.trim();
+  const pass = document.getElementById('vendorPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if (!email || !pass) { errEl.textContent = 'Please enter email and password'; return; }
+  const btn = document.getElementById('vendorLoginBtn');
+  btn.textContent = '⏳ Logging in...';
+  btn.disabled = true;
+  try {
+    const { data, error } = await supaAuth.auth.signInWithPassword({ email: email, password: pass });
+    if (error || !data.session) {
+      errEl.textContent = 'Login failed: ' + (error ? error.message : 'Unknown error');
+      btn.textContent = 'Log In →'; btn.disabled = false;
+      return;
+    }
+    const ok = await loginAsVendor(data.session);
+    if (!ok) { btn.textContent = 'Log In →'; btn.disabled = false; }
+  } catch (err) {
+    errEl.textContent = 'Login error: ' + err.message;
+    btn.textContent = 'Log In →'; btn.disabled = false;
+  }
 });
 document.getElementById('navSettings').addEventListener('click', function() {
   document.getElementById('storeSettingsPanel').scrollIntoView({ behavior: 'smooth' });
@@ -351,16 +383,16 @@ function populateSettingsForm() {
 }
 async function loadCategoriesForVendor() {
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&status=eq.active&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+    const res = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&status=eq.active&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
     allCategories = res.ok ? await res.json() : [];
     document.getElementById('pCategory').innerHTML = '<option value="">— Select category —</option>' + allCategories.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
   } catch (err) { allCategories = []; }
 }
 async function loadCatalogData() {
   try {
-    const catRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_items?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+    const catRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_items?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
     allCatalogItems = catRes.ok ? await catRes.json() : [];
-    const permRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?vendor_id=eq.' + currentVendor.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+    const permRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?vendor_id=eq.' + currentVendor.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
     myCatalogPermissions = permRes.ok ? await permRes.json() : [];
     renderCatalogBrowse();
   } catch (err) { allCatalogItems = []; myCatalogPermissions = []; }
@@ -391,7 +423,7 @@ function renderCatalogBrowse() {
       btn.textContent = '⏳';
       await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions', {
         method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
         body: JSON.stringify({ catalog_item_id: catalogItemId, vendor_id: currentVendor.id, status: 'pending' })
       });
       loadCatalogData();
@@ -425,7 +457,7 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async funct
   try {
     await fetch(SUPABASE_URL + '/rest/v1/vendors?id=eq.' + currentVendor.id, {
       method: 'PATCH',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         gstin: document.getElementById('sGstin').value.trim(),
         address: document.getElementById('sAddress').value.trim(),
@@ -442,10 +474,14 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async funct
   }
 });
 
-document.getElementById('logoutBtn').addEventListener('click', function() {
+document.getElementById('logoutBtn').addEventListener('click', async function() {
+  await supaAuth.auth.signOut();
+  authToken = SUPABASE_KEY;
   currentVendor = null;
   document.getElementById('appWrap').classList.remove('active');
   document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('vendorEmail').value = '';
+  document.getElementById('vendorPass').value = '';
 });
 
 function configureSellingModeUI() {
@@ -519,10 +555,10 @@ document.getElementById('pPhoto').addEventListener('change', function(e) {
 async function loadVendorData() {
   const badge = document.getElementById('dbBadge');
   try {
-    const prodRes = await fetch(SUPABASE_URL + '/rest/v1/products?vendor_id=eq.' + currentVendor.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+    const prodRes = await fetch(SUPABASE_URL + '/rest/v1/products?vendor_id=eq.' + currentVendor.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
     vendorProducts = await prodRes.json();
 
-    const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders?vendor_id=eq.' + currentVendor.id + '&select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+    const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders?vendor_id=eq.' + currentVendor.id + '&select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
     vendorOrders = await orderRes.json();
 
     badge.className = 'db-badge live';
@@ -575,7 +611,7 @@ function renderProducts() {
     btn.addEventListener('click', async function() {
       if (!confirm('Delete this product?')) return;
       const id = btn.getAttribute('data-delid');
-      await fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+      await fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
       loadVendorData();
     });
   });
@@ -635,14 +671,14 @@ function renderOrders() {
       }
       await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId, {
         method: 'PATCH',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
         body: JSON.stringify(patchBody)
       });
       // Log a notification record (actual SMS/WhatsApp/Email sending is a later phase —
       // this just creates the queued record so nothing is lost once that's wired up)
       fetch(SUPABASE_URL + '/rest/v1/notifications', {
         method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipient_type: 'customer', channel: 'sms', template_key: 'order_' + newStatus, payload: { order_id: orderId, status: newStatus }, status: 'pending' })
       });
       loadVendorData();
@@ -655,12 +691,12 @@ function renderOrders() {
       btn.textContent = '⏳';
       await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId, {
         method: 'PATCH',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'cancelled' })
       });
       fetch(SUPABASE_URL + '/rest/v1/notifications', {
         method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipient_type: 'customer', channel: 'sms', template_key: 'order_cancelled', payload: { order_id: orderId }, status: 'pending' })
       });
       loadVendorData();
@@ -674,7 +710,7 @@ function renderOrders() {
       try {
         const res = await fetch(SUPABASE_URL + '/functions/v1/create-shiprocket-shipment', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY, 'apikey': SUPABASE_KEY },
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken, 'apikey': SUPABASE_KEY },
           body: JSON.stringify({ order_id: orderId })
         });
         const data = await res.json();
@@ -776,7 +812,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   try {
     const insertRes = await fetch(SUPABASE_URL + '/rest/v1/products', {
       method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
       body: JSON.stringify({
         vendor_id: currentVendor.id, name: name, icon: icon, price: Number(price),
         old_price: oldPrice ? Number(oldPrice) : null, stock: Number(stock), pincode: pincode,
@@ -799,14 +835,14 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
     if (shouldPublish) {
       const catalogRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_items', {
         method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
         body: JSON.stringify({ name: name, image_data: uploadedPhotoBase64 || null, category_id: categoryId, brand: brand || null, gtin: gtin || null, hsn_code: hsn, gst_percent: Number(gst), created_by_vendor_id: currentVendor.id, status: 'active' })
       });
       const catalogData = await catalogRes.json();
       const newCatalogId = catalogData[0] ? catalogData[0].id : null;
       if (newCatalogId) {
-        await fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + newProductId, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ catalog_item_id: newCatalogId }) });
-        await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ catalog_item_id: newCatalogId, vendor_id: currentVendor.id, status: 'approved' }) });
+        await fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + newProductId, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ catalog_item_id: newCatalogId }) });
+        await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ catalog_item_id: newCatalogId, vendor_id: currentVendor.id, status: 'approved' }) });
       }
     }
 
@@ -877,13 +913,13 @@ document.getElementById('pName').addEventListener('input', function() {
   similarSearchTimeout = setTimeout(async function() {
     try {
       const res = await fetch(SUPABASE_URL + '/rest/v1/products?name=ilike.*' + encodeURIComponent(query) + '*&image_data=not.is.null&select=id,name,image_data&limit=4', {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
       });
       const matches = await res.json();
       if (matches.length === 0) { box.style.display = 'none'; return; }
       document.getElementById('similarPhotoList').innerHTML = matches.map(function(m) {
         return '<div style="text-align:center; cursor:pointer;" data-usephoto="' + m.id + '">' +
-          '<img src="' + m.image_data + '" style="width:50px; height:50px; object-fit:cover; border-radius:8px; border:2px solid #C7E6B8;">' +
+          '<img src="' + m.image_data + '" style="width:50px; height:50px; object-fit:cover; border-radius:8px; border:2px solid #e9d5ff;">' +
           '<div style="font-size:8.5px; color:#6b7280; max-width:55px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + m.name + '</div></div>';
       }).join('');
       box.style.display = 'block';
@@ -902,7 +938,7 @@ document.getElementById('pName').addEventListener('input', function() {
   }, 600);
 });
 
-loadVendorList();
+// vendor list dropdown no longer needed — login is via real email/password now
 
 // ===================== BULK CSV IMPORT / EXPORT =====================
 const CSV_COLUMNS = ['name','icon','price','old_price','stock','pincode','hsn_code','gst_percent','features','brand','gtin','shipping_weight','condition','category_name','sku'];
@@ -988,7 +1024,7 @@ document.getElementById('parseCsvBtn').addEventListener('click', function() {
           const inserts = parsedCsvRows.map(function(r) {
             return fetch(SUPABASE_URL + '/rest/v1/products', {
               method: 'POST',
-              headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+              headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
               body: JSON.stringify(r)
             });
           });

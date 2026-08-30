@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest-rider.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<meta name="theme-color" content="#0E3D63">
+<meta name="theme-color" content="#7c3aed">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Graspion Rider">
@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="graspion-logo.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif; }
 body { background:#0f1117; color:#fff; max-width:420px; margin:0 auto; min-height:100vh; }
@@ -22,18 +23,18 @@ body { background:#0f1117; color:#fff; max-width:420px; margin:0 auto; min-heigh
 .login-box { background:#181b25; border-radius:20px; padding:30px 24px; max-width:360px; width:100%; text-align:center; }
 .login-select, .login-btn { width:100%; padding:13px; border-radius:12px; font-size:14px; margin-bottom:12px; }
 .login-select { background:#0f1117; color:#fff; border:1px solid #333; }
-.login-btn { background:linear-gradient(90deg,#0E3D63,#6BAA4C); border:none; color:#fff; font-weight:800; cursor:pointer; }
+.login-btn { background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; font-weight:800; cursor:pointer; }
 .login-error { color:#f87171; font-size:11px; margin-bottom:10px; min-height:14px; }
 .app-wrap { display:none; }
 .app-wrap.active { display:block; }
 .topbar { padding:16px 18px; display:flex; justify-content:space-between; align-items:center; }
 .rider-info { display:flex; align-items:center; gap:10px; }
-.rider-avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#0E3D63,#6BAA4C); display:flex; align-items:center; justify-content:center; font-size:16px; }
+.rider-avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#7c3aed,#ec4899); display:flex; align-items:center; justify-content:center; font-size:16px; }
 .rider-name { font-size:14px; font-weight:800; }
 .rider-bike { font-size:10px; color:#94a3b8; }
 .logout { background:#262a38; color:#fca5a5; border:none; padding:8px 14px; border-radius:9px; font-size:11px; font-weight:700; }
 
-.earnings-card { margin:0 18px 16px; background:linear-gradient(135deg,#0E3D63,#6BAA4C); border-radius:16px; padding:18px; }
+.earnings-card { margin:0 18px 16px; background:linear-gradient(135deg,#7c3aed,#ec4899); border-radius:16px; padding:18px; }
 .earnings-row { display:flex; justify-content:space-between; }
 .earnings-item { text-align:center; flex:1; }
 .earnings-val { font-size:18px; font-weight:900; }
@@ -49,7 +50,7 @@ body { background:#0f1117; color:#fff; max-width:420px; margin:0 auto; min-heigh
 .pay-cod { background:#fef3c7; color:#b45309; }
 .pay-online { background:#dcfce7; color:#15803d; }
 .cod-input { width:100%; padding:9px; border-radius:8px; border:1px solid #333; background:#0f1117; color:#fff; font-size:12px; margin-bottom:8px; display:none; }
-.action-btn { width:100%; padding:11px; border-radius:10px; border:none; font-weight:800; font-size:12.5px; cursor:pointer; background:linear-gradient(90deg,#0E3D63,#6BAA4C); color:#fff; }
+.action-btn { width:100%; padding:11px; border-radius:10px; border:none; font-weight:800; font-size:12.5px; cursor:pointer; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; }
 .empty { text-align:center; padding:40px; color:#64748b; font-size:13px; }
 </style>
 </head>
@@ -58,9 +59,8 @@ body { background:#0f1117; color:#fff; max-width:420px; margin:0 auto; min-heigh
 <div class="login-overlay" id="loginOverlay">
 <div class="login-box">
 <div data-graspion-logo="full" data-size="20" data-color="#ffffff" style="justify-content:center; display:flex; margin-bottom:16px;"></div>
-<select class="login-select" id="riderSelect">
-<option value="">— Select your name —</option>
-</select>
+<input type="email" class="login-select" id="riderEmail" placeholder="Email" autocomplete="username">
+<input type="password" class="login-select" id="riderPass" placeholder="Password" autocomplete="current-password">
 <button class="login-btn" id="loginBtn">Start Delivering →</button>
 <div class="login-error" id="loginError"></div>
 </div>
@@ -90,38 +90,70 @@ body { background:#0f1117; color:#fff; max-width:420px; margin:0 auto; min-heigh
 <script>
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
+const supaAuth = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let authToken = SUPABASE_KEY;
 let currentRider = null;
-let allRiders = [];
 
-async function loadRiderList() {
-  try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/riders?status=eq.active&select=*', {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
-    });
-    allRiders = await res.json();
-    const select = document.getElementById('riderSelect');
-    select.innerHTML = '<option value="">— Select your name —</option>' +
-      allRiders.map(function(r) { return '<option value="' + r.id + '">' + r.name + ' (' + r.bike_number + ')</option>'; }).join('');
-  } catch (err) {
-    document.getElementById('loginError').textContent = 'Could not load riders: ' + err.message;
+async function loginAsRider(session) {
+  authToken = session.access_token;
+  const res = await fetch(SUPABASE_URL + '/rest/v1/riders?auth_user_id=eq.' + session.user.id + '&select=*', {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+  });
+  const rows = await res.json();
+  if (!rows[0]) {
+    document.getElementById('loginError').textContent = 'This account is not linked to a rider profile. Contact admin.';
+    await supaAuth.auth.signOut();
+    authToken = SUPABASE_KEY;
+    return false;
   }
-}
-
-document.getElementById('loginBtn').addEventListener('click', function() {
-  const id = document.getElementById('riderSelect').value;
-  if (!id) { document.getElementById('loginError').textContent = 'Please select your name'; return; }
-  currentRider = allRiders.find(function(r) { return r.id === id; });
+  currentRider = rows[0];
   document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('appWrap').classList.add('active');
   document.getElementById('riderNameLabel').textContent = '👋 ' + currentRider.name;
   document.getElementById('riderBikeLabel').textContent = '🏍️ ' + (currentRider.bike_number || 'No bike registered');
   loadOrders();
+  return true;
+}
+
+(async function restoreRiderSession() {
+  try {
+    const { data } = await supaAuth.auth.getSession();
+    if (data.session) { await loginAsRider(data.session); }
+  } catch (err) { /* show login screen as normal */ }
+})();
+
+document.getElementById('loginBtn').addEventListener('click', async function() {
+  const email = document.getElementById('riderEmail').value.trim();
+  const pass = document.getElementById('riderPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if (!email || !pass) { errEl.textContent = 'Please enter email and password'; return; }
+  const btn = document.getElementById('loginBtn');
+  btn.textContent = '⏳ Logging in...';
+  btn.disabled = true;
+  try {
+    const { data, error } = await supaAuth.auth.signInWithPassword({ email: email, password: pass });
+    if (error || !data.session) {
+      errEl.textContent = 'Login failed: ' + (error ? error.message : 'Unknown error');
+      btn.textContent = 'Start Delivering →'; btn.disabled = false;
+      return;
+    }
+    const ok = await loginAsRider(data.session);
+    if (!ok) { btn.textContent = 'Start Delivering →'; btn.disabled = false; }
+  } catch (err) {
+    errEl.textContent = 'Login error: ' + err.message;
+    btn.textContent = 'Start Delivering →'; btn.disabled = false;
+  }
 });
 
-document.getElementById('logoutBtn').addEventListener('click', function() {
+document.getElementById('logoutBtn').addEventListener('click', async function() {
+  await supaAuth.auth.signOut();
+  authToken = SUPABASE_KEY;
   currentRider = null;
   document.getElementById('appWrap').classList.remove('active');
   document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('riderEmail').value = '';
+  document.getElementById('riderPass').value = '';
 });
 
 async function loadOrders() {
@@ -129,7 +161,7 @@ async function loadOrders() {
   try {
     // Active orders for this rider (in progress)
     const activeRes = await fetch(SUPABASE_URL + '/rest/v1/orders?rider_id=eq.' + currentRider.id + '&status=eq.shipped&select=*', {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
     });
     const activeOrders = await activeRes.json();
 
@@ -138,13 +170,13 @@ async function loadOrders() {
     let newOrders = [];
     if (currentRider.warehouse_id) {
       const instantRes = await fetch(SUPABASE_URL + '/rest/v1/orders?warehouse_id=eq.' + currentRider.warehouse_id + '&status=eq.preparing&rider_id=is.null&select=*', {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
       });
       newOrders = await instantRes.json();
     }
     if (currentRider.pincode) {
       const standardRes = await fetch(SUPABASE_URL + '/rest/v1/orders?pincode=eq.' + currentRider.pincode + '&status=eq.preparing&rider_id=is.null&delivery_type=eq.standard&select=*', {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
       });
       const standardOrders = await standardRes.json();
       // avoid duplicates if an order already matched by warehouse
@@ -153,7 +185,7 @@ async function loadOrders() {
 
     // Today's delivered orders for earnings
     const deliveredRes = await fetch(SUPABASE_URL + '/rest/v1/orders?rider_id=eq.' + currentRider.id + '&status=eq.delivered&select=*', {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
     });
     const delivered = await deliveredRes.json();
 
@@ -196,7 +228,7 @@ async function loadOrders() {
           btn.textContent = '⏳';
           await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id, {
             method: 'PATCH',
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'shipped', rider_id: currentRider.id })
           });
           loadOrders();
@@ -211,12 +243,12 @@ async function loadOrders() {
           const deadline = new Date(); deadline.setDate(deadline.getDate() + 7);
           await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id, {
             method: 'PATCH',
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'delivered', delivered_at: new Date().toISOString(), return_deadline: deadline.toISOString(), cod_collected: codAmount, payment_status: 'paid' })
           });
           fetch(SUPABASE_URL + '/rest/v1/notifications', {
             method: 'POST',
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
             body: JSON.stringify({ recipient_type: 'customer', channel: 'sms', template_key: 'order_delivered', payload: { order_id: id }, status: 'pending' })
           });
           loadOrders();
@@ -228,7 +260,7 @@ async function loadOrders() {
   }
 }
 
-loadRiderList();
+// rider list dropdown no longer needed — login is via real email/password now
 if ('serviceWorker' in navigator) {
 window.addEventListener('load', function() {
 navigator.serviceWorker.register('service-worker.js').catch(function(){});
