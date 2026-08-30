@@ -10,11 +10,11 @@
 <script src="graspion-logo.js"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif; }
-  body { background:#f4f3f9; color:#1e1b3a; }
-  .login-overlay { position:fixed; inset:0; background:linear-gradient(160deg,#1e1b3a,#4c1d95); z-index:300; display:flex; align-items:center; justify-content:center; padding:20px; }
+  body { background:#f4f3f9; color:#0A2A45; }
+  .login-overlay { position:fixed; inset:0; background:linear-gradient(160deg,#0A2A45,#3D7A2E); z-index:300; display:flex; align-items:center; justify-content:center; padding:20px; }
   .login-box { background:#fff; border-radius:24px; padding:36px 28px; max-width:380px; width:100%; text-align:center; }
   .login-sub { font-size:12px; color:#8b87a8; margin:10px 0 24px; }
-  .login-btn { width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:14px; border-radius:12px; font-weight:800; font-size:14px; cursor:pointer; margin-top:6px; }
+  .login-btn { width:100%; background:linear-gradient(90deg,#0E3D63,#6BAA4C); border:none; color:#fff; padding:14px; border-radius:12px; font-weight:800; font-size:14px; cursor:pointer; margin-top:6px; }
   .login-note { font-size:10.5px; color:#9ca3af; margin-top:14px; }
   .login-error { color:#ef4444; font-size:11px; margin-top:8px; min-height:14px; }
   .login-select { width:100%; padding:13px 16px; border:2px solid #f0eef7; border-radius:12px; font-size:14px; margin-bottom:12px; }
@@ -22,10 +22,10 @@
   .app-wrap.active { display:flex; }
   .sidebar { width:210px; background:#fff; flex:0 0 auto; display:flex; flex-direction:column; padding:20px 0; position:sticky; top:0; height:100vh; box-shadow:2px 0 10px rgba(0,0,0,0.03); min-height:100vh; }
   .side-logo-wrap { padding:0 20px 16px; border-bottom:1px solid #f0eef7; margin-bottom:12px; }
-  .side-logo-wrap .biz { display:block; font-size:14px; font-weight:800; color:#9333ea; margin-top:8px; }
+  .side-logo-wrap .biz { display:block; font-size:14px; font-weight:800; color:#0E3D63; margin-top:8px; }
   .side-item { padding:11px 20px; font-size:12.5px; font-weight:700; color:#8b87a8; cursor:pointer; display:flex; align-items:center; gap:9px; border-left:3px solid transparent; }
   .side-item:hover { background:#faf9fd; }
-  .side-item.active { background:#f3e8ff; color:#7c3aed; border-left-color:#9333ea; }
+  .side-item.active { background:#E7F3E0; color:#0E3D63; border-left-color:#0E3D63; }
   .logout-btn { margin:auto 20px 10px; padding:10px; background:#fee2e2; color:#dc2626; border:none; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer; }
   .main { flex:1; padding:20px 24px; }
   .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
@@ -43,14 +43,14 @@
   .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
   .form-group label { font-size:11px; font-weight:700; color:#6b7280; margin-bottom:5px; display:block; }
   .form-input { width:100%; padding:11px 14px; border:1.5px solid #f0eef7; border-radius:10px; font-size:13px; outline:none; }
-  .form-input:focus { border-color:#9333ea; }
-  .add-product-btn { background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:12px 20px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; width:100%; margin-top:6px; }
+  .form-input:focus { border-color:#0E3D63; }
+  .add-product-btn { background:linear-gradient(90deg,#0E3D63,#6BAA4C); color:#fff; border:none; padding:12px 20px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; width:100%; margin-top:6px; }
   .radio-row { display:flex; gap:10px; margin-bottom:12px; }
   .radio-option { flex:1; padding:12px; border:1.5px solid #f0eef7; border-radius:10px; cursor:pointer; text-align:center; font-size:12px; font-weight:700; color:#6b7280; }
-  .radio-option.selected { border-color:#9333ea; background:#faf5ff; color:#7c3aed; }
+  .radio-option.selected { border-color:#0E3D63; background:#F1F8ED; color:#0E3D63; }
   .radio-option .ro-icon { font-size:18px; display:block; margin-bottom:4px; }
-  .seo-preview { display:none; background:#faf5ff; border:1px solid #e9d5ff; border-radius:10px; padding:12px 14px; margin-bottom:12px; }
-  .seo-preview .lbl { font-size:10.5px; font-weight:800; color:#9333ea; margin-bottom:6px; }
+  .seo-preview { display:none; background:#F1F8ED; border:1px solid #C7E6B8; border-radius:10px; padding:12px 14px; margin-bottom:12px; }
+  .seo-preview .lbl { font-size:10.5px; font-weight:800; color:#0E3D63; margin-bottom:6px; }
   .seo-preview .ttl { font-size:13px; color:#1a0dab; font-weight:600; margin-bottom:3px; }
   .seo-preview .dsc { font-size:11.5px; color:#4d5156; line-height:1.4; }
   .prod-list { display:flex; flex-direction:column; gap:10px; }
@@ -61,23 +61,23 @@
   .prod-name { font-size:12.5px; font-weight:700; }
   .prod-price { font-size:11px; color:#8b87a8; margin-top:2px; }
   .prod-tags { display:flex; gap:5px; margin-top:4px; flex-wrap:wrap; }
-  .prod-tag { font-size:9px; font-weight:700; padding:2px 7px; border-radius:6px; background:#f3f1f8; color:#6b3fb0; }
+  .prod-tag { font-size:9px; font-weight:700; padding:2px 7px; border-radius:6px; background:#f3f1f8; color:#0E3D63; }
   .del-btn { background:#fee2e2; color:#dc2626; border:none; width:30px; height:30px; border-radius:8px; cursor:pointer; font-size:14px; }
   .order-card { border:1px solid #f0eef7; border-radius:12px; padding:14px; margin-bottom:10px; }
   .order-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
   .order-cust { font-size:12.5px; font-weight:700; }
   .order-meta { font-size:10.5px; color:#9ca3af; margin-top:2px; }
-  .order-amt { font-size:14px; font-weight:900; color:#1e1b3a; }
+  .order-amt { font-size:14px; font-weight:900; color:#0A2A45; }
   .pay-badge { font-size:9.5px; font-weight:800; padding:3px 8px; border-radius:7px; margin-top:4px; display:inline-block; }
   .pay-paid { background:#dcfce7; color:#15803d; }
   .pay-pending { background:#fef3c7; color:#b45309; }
   .pipeline { display:flex; align-items:center; gap:0; margin-top:8px; }
   .pipe-step { flex:1; text-align:center; position:relative; }
   .pipe-dot { width:24px; height:24px; border-radius:50%; background:#e5e7eb; color:#9ca3af; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; margin:0 auto 4px; cursor:pointer; transition:.2s; }
-  .pipe-dot.done { background:linear-gradient(135deg,#7c3aed,#ec4899); color:#fff; }
-  .pipe-dot.current { background:#fff; border:2px solid #7c3aed; color:#7c3aed; box-shadow:0 0 0 4px rgba(124,58,237,0.12); }
+  .pipe-dot.done { background:linear-gradient(135deg,#0E3D63,#6BAA4C); color:#fff; }
+  .pipe-dot.current { background:#fff; border:2px solid #0E3D63; color:#0E3D63; box-shadow:0 0 0 4px rgba(124,58,237,0.12); }
   .pipe-line { position:absolute; top:12px; left:-50%; width:100%; height:2px; background:#e5e7eb; z-index:-1; }
-  .pipe-line.done { background:linear-gradient(90deg,#7c3aed,#ec4899); }
+  .pipe-line.done { background:linear-gradient(90deg,#0E3D63,#6BAA4C); }
   .pipe-step:first-child .pipe-line { display:none; }
   .pipe-label { font-size:8.5px; color:#8b87a8; font-weight:700; }
   .empty-state { text-align:center; padding:30px 20px; color:#9ca3af; font-size:12.5px; }
@@ -168,8 +168,8 @@
         <label>Product Photo (optional)</label>
         <input class="form-input" id="pPhoto" type="file" accept="image/*">
         <div id="photoPreview" style="margin-top:8px; display:none;"><img id="photoPreviewImg" style="width:70px; height:70px; object-fit:cover; border-radius:10px;"></div>
-        <div id="similarPhotoSuggestion" style="display:none; margin-top:10px; background:#faf5ff; border:1px solid #e9d5ff; border-radius:10px; padding:10px;">
-          <div style="font-size:10.5px; font-weight:800; color:#9333ea; margin-bottom:6px;">📸 A similar product already has a photo — reuse it?</div>
+        <div id="similarPhotoSuggestion" style="display:none; margin-top:10px; background:#F1F8ED; border:1px solid #C7E6B8; border-radius:10px; padding:10px;">
+          <div style="font-size:10.5px; font-weight:800; color:#0E3D63; margin-bottom:6px;">📸 A similar product already has a photo — reuse it?</div>
           <div id="similarPhotoList" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
         </div>
       </div>
@@ -235,14 +235,14 @@
 
     <div class="panel">
       <h3>🧾 Your Orders — Delivery Pipeline <span id="orderCount" style="font-size:11px;color:#9ca3af;"></span></h3>
-      <button class="add-product-btn" id="exportOrdersBtn" style="margin-bottom:14px; background:#1e1b3a;">⬇ Download Orders CSV</button>
+      <button class="add-product-btn" id="exportOrdersBtn" style="margin-bottom:14px; background:#0A2A45;">⬇ Download Orders CSV</button>
       <div id="orderList"></div>
       <div class="empty-state" id="orderEmpty" style="display:none;">No orders yet</div>
     </div>
 
     <div class="panel">
       <h3>💳 Payment Pipeline</h3>
-      <button class="add-product-btn" id="exportPaymentsBtn" style="margin-bottom:14px; background:#1e1b3a;">⬇ Download Payments / Tax Invoice CSV</button>
+      <button class="add-product-btn" id="exportPaymentsBtn" style="margin-bottom:14px; background:#0A2A45;">⬇ Download Payments / Tax Invoice CSV</button>
       <div id="paymentList"></div>
       <div class="empty-state" id="paymentEmpty" style="display:none;">No payment records yet</div>
     </div>
@@ -691,7 +691,7 @@ document.getElementById('pName').addEventListener('input', function() {
       if (matches.length === 0) { box.style.display = 'none'; return; }
       document.getElementById('similarPhotoList').innerHTML = matches.map(function(m) {
         return '<div style="text-align:center; cursor:pointer;" data-usephoto="' + m.id + '">' +
-          '<img src="' + m.image_data + '" style="width:50px; height:50px; object-fit:cover; border-radius:8px; border:2px solid #e9d5ff;">' +
+          '<img src="' + m.image_data + '" style="width:50px; height:50px; object-fit:cover; border-radius:8px; border:2px solid #C7E6B8;">' +
           '<div style="font-size:8.5px; color:#6b7280; max-width:55px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + m.name + '</div></div>';
       }).join('');
       box.style.display = 'block';

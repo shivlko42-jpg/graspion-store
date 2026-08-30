@@ -1,4 +1,4 @@
-const GRASPION_COLORS = { gradientStart: '#7c3aed', gradientEnd: '#ec4899' };
+const GRASPION_COLORS = { gradientStart: '#0E3D63', gradientEnd: '#6BAA4C' };
 
 function graspionIconHTML(size) {
   size = size || 32;
