@@ -1,27 +1,27 @@
-const GRASPION_COLORS = { gradientStart: '#0E3D63', gradientEnd: '#6BAA4C' };
+const GRASPION_COLORS = { gradientStart: '#1e1b3a', gradientMid: '#7c3aed', gradientEnd: '#ec4899', wordmarkStart: '#7c3aed', wordmarkEnd: '#ec4899' };
 
 function graspionIconHTML(size) {
   size = size || 32;
-  return '<div style="width:' + size + 'px; height:' + size + 'px; border-radius:' + Math.round(size*0.28) + 'px; background:linear-gradient(135deg,' + GRASPION_COLORS.gradientStart + ',' + GRASPION_COLORS.gradientEnd + '); display:flex; align-items:center; justify-content:center; font-size:' + Math.round(size*0.5) + 'px; font-weight:900; color:#fff;">G</div>';
+  return '<div style="width:' + size + 'px; height:' + size + 'px; border-radius:' + Math.round(size*0.28) + 'px; background:linear-gradient(160deg,' + GRASPION_COLORS.gradientStart + ' 0%,' + GRASPION_COLORS.gradientMid + ' 55%,' + GRASPION_COLORS.gradientEnd + ' 100%); display:flex; align-items:center; justify-content:center; font-size:' + Math.round(size*0.5) + 'px; font-weight:900; color:#fff;">G</div>';
 }
 
 function graspionFullLogoHTML(textColor, fontSize, solidMode) {
   textColor = textColor || '#1e1b3a';
   fontSize = fontSize || 20;
-  var ionStyle = solidMode
+  var wordStyle = solidMode
     ? 'color:' + textColor + ';'
-    : 'background:linear-gradient(90deg,' + GRASPION_COLORS.gradientStart + ',' + GRASPION_COLORS.gradientEnd + '); -webkit-background-clip:text; background-clip:text; color:transparent;';
+    : 'background:linear-gradient(90deg,' + GRASPION_COLORS.wordmarkStart + ',' + GRASPION_COLORS.wordmarkEnd + '); -webkit-background-clip:text; background-clip:text; color:transparent;';
   return '<div style="display:flex; align-items:center; gap:8px;">' + graspionIconHTML(Math.round(fontSize * 1.6)) +
-    '<div style="font-size:' + fontSize + 'px; font-weight:900; color:' + textColor + ';">Grasp<span style="' + ionStyle + '">ion</span></div></div>';
+    '<div style="font-size:' + fontSize + 'px; font-weight:900; ' + wordStyle + '">Graspion</div></div>';
 }
 
 function graspionTextLogoHTML(fontSize, textColor, solidMode) {
   fontSize = fontSize || 22;
   textColor = textColor || '#1e1b3a';
-  var ionStyle = solidMode
+  var wordStyle = solidMode
     ? 'color:' + textColor + ';'
-    : 'background:linear-gradient(90deg,' + GRASPION_COLORS.gradientStart + ',' + GRASPION_COLORS.gradientEnd + '); -webkit-background-clip:text; background-clip:text; color:transparent;';
-  return '<div style="font-size:' + fontSize + 'px; font-weight:900; color:' + textColor + ';">Grasp<span style="' + ionStyle + '">ion</span></div>';
+    : 'background:linear-gradient(90deg,' + GRASPION_COLORS.wordmarkStart + ',' + GRASPION_COLORS.wordmarkEnd + '); -webkit-background-clip:text; background-clip:text; color:transparent;';
+  return '<div style="font-size:' + fontSize + 'px; font-weight:900; ' + wordStyle + '">Graspion</div>';
 }
 
 function renderAllGraspionLogos() {
