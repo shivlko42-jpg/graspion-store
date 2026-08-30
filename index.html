@@ -491,7 +491,7 @@ body: JSON.stringify({ customer_name: customerInfo.name, customer_phone: custome
 const orderData = await orderRes.json();
 const orderId = orderData[0] ? orderData[0].id : null;
 if (!orderId) {
-alert('DEBUG — order insert failed:\n' + JSON.stringify(orderData));
+window.lastOrderDebug = 'HTTP ' + orderRes.status + ': ' + JSON.stringify(orderData);
 return null;
 }
 if (orderId) {
@@ -520,7 +520,7 @@ body: JSON.stringify({ stock: newStock })
 await Promise.all(stockUpdates);
 }
 return orderId;
-} catch (err) { alert('DEBUG — exception: ' + err.message); return null; }
+} catch (err) { window.lastOrderDebug = 'Exception: ' + err.message; return null; }
 }
 async function saveOrderToDatabase(){
 const orderId = await createOrderRecord(selectedPayMethod === 'cod' ? 'pending' : 'paid');
@@ -644,7 +644,7 @@ wrap.innerHTML = '<div class="success-box"><div class="tick">✅</div><h2>' + gr
 document.getElementById('closeSuccessBtn').addEventListener('click', function() { cart = {}; customerInfo = { name:'', phone:'', address:'', city:'', pincode:'' }; refreshAll(); closeCheckout(); });
 }
 else if(checkoutStep === 'error'){
-wrap.innerHTML = '<div class="success-box"><div class="tick">⚠️</div><h2>' + graspionT('orderFailed') + '</h2><p>' + graspionT('orderFailedDesc') + '</p><button id="retryBtn">' + graspionT('tryAgain') + '</button></div>';
+wrap.innerHTML = '<div class="success-box"><div class="tick">⚠️</div><h2>' + graspionT('orderFailed') + '</h2><p>' + graspionT('orderFailedDesc') + '</p><p style="font-size:10px; color:#dc2626; background:#fef2f2; padding:10px; border-radius:8px; margin-top:10px; word-break:break-all; text-align:left;">' + (window.lastOrderDebug || 'No debug info captured') + '</p><button id="retryBtn">' + graspionT('tryAgain') + '</button></div>';
 document.getElementById('retryBtn').addEventListener('click', function() { checkoutStep = 'payment'; renderCheckout(); });
 }
 }
