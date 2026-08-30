@@ -491,9 +491,11 @@ function renderOrders() {
       '</div>';
     }).join('');
 
+    const showShipBtn = o.delivery_type === 'standard' && o.status !== 'delivered' && o.status !== 'cancelled' && o.status !== 'shipped';
     return '<div class="order-card">' +
       '<div class="order-top"><div><div class="order-cust">' + (o.customer_name || 'Customer') + '</div><div class="order-meta">' + (o.customer_phone || '') + ' · ' + (o.pincode || '') + '</div>' + payBadge + returnInfo + '</div><div class="order-amt">₹' + o.total_amount + '</div></div>' +
       '<div class="pipeline">' + stepsHtml + '</div>' +
+      (showShipBtn ? '<button class="mini-btn" data-shipid="' + o.id + '" style="background:#dbeafe;color:#1d4ed8;margin-top:8px;margin-right:6px;">📦 Ship via Shiprocket</button>' : '') +
       (o.status !== 'delivered' && o.status !== 'cancelled' ? '<button class="mini-btn" data-cancelid="' + o.id + '" style="background:#fee2e2;color:#dc2626;margin-top:8px;">✕ Cancel Order</button>' : (o.status === 'cancelled' ? '<div style="font-size:11px;color:#dc2626;font-weight:700;margin-top:8px;">✕ Cancelled</div>' : '')) +
     '</div>';
   }).join('');
@@ -542,6 +544,33 @@ function renderOrders() {
         body: JSON.stringify({ recipient_type: 'customer', channel: 'sms', template_key: 'order_cancelled', payload: { order_id: orderId }, status: 'pending' })
       });
       loadVendorData();
+    });
+  });
+  document.querySelectorAll('[data-shipid]').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      const orderId = btn.getAttribute('data-shipid');
+      btn.textContent = '⏳ Booking with Shiprocket...';
+      btn.disabled = true;
+      try {
+        const res = await fetch(SUPABASE_URL + '/functions/v1/create-shiprocket-shipment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY, 'apikey': SUPABASE_KEY },
+          body: JSON.stringify({ order_id: orderId })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          alert('Could not book shipment:\n' + (data.error || 'Unknown error') + (data.details ? '\n' + JSON.stringify(data.details) : ''));
+          btn.textContent = '📦 Ship via Shiprocket';
+          btn.disabled = false;
+          return;
+        }
+        alert('✅ Shipment booked!\nAWB: ' + data.awb);
+        loadVendorData();
+      } catch (err) {
+        alert('Network error while booking shipment: ' + err.message);
+        btn.textContent = '📦 Ship via Shiprocket';
+        btn.disabled = false;
+      }
     });
   });
 }
