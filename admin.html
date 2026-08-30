@@ -225,8 +225,16 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 
 <div class="panel" data-section="delivery">
 <h3>🚴 Delivery Partners</h3>
-<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Riders currently active on the platform (from Rider App).</p>
-<div id="deliveryList"></div>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Add riders here so they can log into the Rider App and receive deliveries.</p>
+<div class="form-grid">
+<input class="form-input" id="riderName" placeholder="Rider full name">
+<input class="form-input" id="riderPhone" placeholder="Phone number">
+<input class="form-input" id="riderBike" placeholder="Bike number">
+<input class="form-input" id="riderPincode" placeholder="Service pincode">
+<select class="form-input" id="riderWarehouse"><option value="">— No dark store (pan-India only) —</option></select>
+</div>
+<button class="login-btn" id="riderAddBtn" style="margin-top:10px;">+ Add Rider</button>
+<div id="deliveryList" style="margin-top:16px;"></div>
 </div>
 
 <div class="panel" data-section="ads">
@@ -574,6 +582,10 @@ return '<div class="vendor-row-item"><div class="v-icon2">' + (vendor ? vendor.i
 function renderDeliveryPartners() {
 const list = document.getElementById('deliveryList');
 const activeOrders = allOrders.filter(function(o) { return o.status === 'shipped'; }).length;
+const whSelect = document.getElementById('riderWarehouse');
+if (whSelect) {
+whSelect.innerHTML = '<option value="">— No dark store (pan-India only) —</option>' + allWarehouses.map(function(w) { return '<option value="' + w.id + '">' + w.name + '</option>'; }).join('');
+}
 if (allRiders.length === 0) {
 list.innerHTML = '<div class="empty-state">No riders registered yet</div>';
 return;
@@ -585,8 +597,26 @@ const statusLabel = hasActiveDelivery ? 'On delivery' : (isActive ? 'Active' : '
 const color = hasActiveDelivery ? '#f59e0b' : (isActive ? '#22c55e' : '#9ca3af');
 const totalDelivered = allOrders.filter(function(o) { return o.rider_id === r.id && o.status === 'delivered'; }).length;
 return '<div class="vendor-row-item"><div class="v-icon2" style="background:' + color + ';">🚴</div>' +
-'<div class="v-info"><div class="vn">' + r.name + (r.bike_number ? ' · ' + r.bike_number : '') + '</div><div class="vs">' + statusLabel + ' · ' + totalDelivered + ' delivered</div></div></div>';
+'<div class="v-info"><div class="vn">' + r.name + (r.bike_number ? ' · ' + r.bike_number : '') + '</div><div class="vs">' + statusLabel + ' · ' + totalDelivered + ' delivered</div></div>' +
+'<div class="item-actions"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-ridertoggle="' + r.id + '" data-current="' + isActive + '">' + (isActive ? '✓' : 'Off') + '</button>' +
+'<button class="icon-btn del-btn" data-riderdel="' + r.id + '">Del</button></div></div>';
 }).join('') + '<div style="font-size:10.5px; color:#9ca3af; margin-top:10px;">' + activeOrders + ' order(s) currently out for delivery (status: Shipped)</div>';
+document.querySelectorAll('[data-ridertoggle]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-ridertoggle');
+const isActive = btn.getAttribute('data-current') === 'true';
+await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: isActive ? 'inactive' : 'active' }) });
+loadAllData();
+});
+});
+document.querySelectorAll('[data-riderdel]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Remove this rider?')) return;
+const id = btn.getAttribute('data-riderdel');
+await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+loadAllData();
+});
+});
 }
 function renderVendorRanking() {
 const vendorList = document.getElementById('vendorList');
@@ -968,6 +998,31 @@ const stockColor = Number(p.stock) === 0 ? '#dc2626' : '#f59e0b';
 return '<div class="vendor-row-item"><div class="v-icon2">' + (p.icon || '📦') + '</div><div class="v-info"><div class="vn">' + p.name + '</div><div class="vs" style="color:' + stockColor + '; font-weight:700;">' + (Number(p.stock) === 0 ? 'OUT OF STOCK' : p.stock + ' left') + '</div></div></div>';
 }).join('');
 }
+
+document.getElementById('riderAddBtn').addEventListener('click', async function() {
+const name = document.getElementById('riderName').value.trim();
+const phone = document.getElementById('riderPhone').value.trim();
+const bike = document.getElementById('riderBike').value.trim();
+const pincode = document.getElementById('riderPincode').value.trim();
+const warehouseId = document.getElementById('riderWarehouse').value || null;
+if (!name || !phone) { alert('Rider name and phone are required'); return; }
+const btn = document.getElementById('riderAddBtn');
+btn.textContent = '⏳ Adding...';
+const res = await fetch(SUPABASE_URL + '/rest/v1/riders', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({ name: name, phone: phone, bike_number: bike || null, pincode: pincode || null, warehouse_id: warehouseId, status: 'active' })
+});
+if (!res.ok) {
+const errText = await res.text();
+alert('Could not add rider:\n' + errText);
+} else {
+['riderName','riderPhone','riderBike','riderPincode'].forEach(function(id) { document.getElementById(id).value = ''; });
+document.getElementById('riderWarehouse').value = '';
+}
+btn.textContent = '+ Add Rider';
+loadAllData();
+});
 </script>
 </body>
 </html>
