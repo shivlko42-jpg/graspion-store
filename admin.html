@@ -132,6 +132,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="side-item" data-page="categories">📁 Categories</div>
 <div class="side-item" data-page="banners">🖼️ Banners</div>
 <div class="side-item" data-page="settings">⚙️ Settings</div>
+<div class="side-item" data-page="pairings">🔗 Pairings</div>
 <button class="logout-btn" id="logoutBtn">Logout</button>
 </div>
 <div class="main">
@@ -271,6 +272,19 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="empty-state" id="settingsEmpty" style="display:none;">Loading settings...</div>
 </div>
 
+<div class="panel" data-section="pairings">
+<h3>🔗 Product Pairings — Frequently Bought Together</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Link two products together (e.g. Soap + Shampoo, or a gift-pack combo). When a customer adds one to their cart, the other is suggested as a quick add-on.</p>
+<div class="form-grid">
+<select class="form-input" id="pairProductA"><option value="">— Select first product —</option></select>
+<select class="form-input" id="pairProductB"><option value="">— Select paired product —</option></select>
+<input class="form-input" id="pairLabel" placeholder="Label (optional)" value="Frequently Bought Together">
+</div>
+<button class="login-btn" id="pairAddBtn" style="margin-top:10px;">+ Add Pairing</button>
+<div id="pairList" style="margin-top:16px;"></div>
+<div class="empty-state" id="pairEmpty" style="display:none;">No pairings added yet</div>
+</div>
+
 </div>
 </div>
 <script>
@@ -280,6 +294,7 @@ const ADMIN_PASSWORD = 'graspion2026';
 let allVendors = [], allProducts = [], allOrders = [];
 let allWarehouses = [], allCategories = [], allBanners = [], allSettings = [];
 let allRiders = [];
+let allPairings = [];
 
 document.querySelectorAll('.side-item[data-page]').forEach(function(item) {
   item.addEventListener('click', function() {
@@ -318,6 +333,7 @@ const categoryRes = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&ord
 const bannerRes = await fetch(SUPABASE_URL + '/rest/v1/banners?select=*&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const settingsRes = await fetch(SUPABASE_URL + '/rest/v1/settings?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const ridersRes = await fetch(SUPABASE_URL + '/rest/v1/riders?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const pairingsRes = await fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 allVendors = await vendorRes.json();
 allProducts = await productRes.json();
 allOrders = await orderRes.json();
@@ -326,6 +342,7 @@ allCategories = categoryRes.ok ? await categoryRes.json() : [];
 allBanners = bannerRes.ok ? await bannerRes.json() : [];
 allSettings = settingsRes.ok ? await settingsRes.json() : [];
 allRiders = ridersRes.ok ? await ridersRes.json() : [];
+allPairings = pairingsRes.ok ? await pairingsRes.json() : [];
 badge.className = 'db-badge live';
 badge.textContent = '✅ Live';
 renderKPIs();
@@ -343,6 +360,7 @@ renderWarehouses();
 renderCategories();
 renderBanners();
 renderSettings();
+renderPairings();
 } catch (err) {
 badge.className = 'db-badge loading';
 badge.textContent = '❌ Error: ' + err.message;
@@ -808,6 +826,58 @@ setTimeout(function(){ btn.textContent = 'Save'; }, 1500);
 });
 });
 }
+
+// ===================== PRODUCT PAIRINGS =====================
+function renderPairings() {
+const selA = document.getElementById('pairProductA');
+const selB = document.getElementById('pairProductB');
+const optionsHtml = '<option value="">— Select product —</option>' + allProducts.map(function(p) { return '<option value="' + p.id + '">' + p.name + '</option>'; }).join('');
+selA.innerHTML = optionsHtml;
+selB.innerHTML = optionsHtml;
+
+const list = document.getElementById('pairList');
+const empty = document.getElementById('pairEmpty');
+if (allPairings.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = allPairings.map(function(pr) {
+const pA = allProducts.find(function(p) { return p.id === pr.product_id; });
+const pB = allProducts.find(function(p) { return p.id === pr.paired_product_id; });
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">🔗 ' + (pA ? pA.name : '?') + ' + ' + (pB ? pB.name : '?') + '</div><div class="ic-sub">' + (pr.label || 'Frequently Bought Together') + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn del-btn" data-pairdel="' + pr.id + '">Delete</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-pairdel]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Remove this pairing?')) return;
+const id = btn.getAttribute('data-pairdel');
+await fetch(SUPABASE_URL + '/rest/v1/product_pairings?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+loadAllData();
+});
+});
+}
+document.getElementById('pairAddBtn').addEventListener('click', async function() {
+const a = document.getElementById('pairProductA').value;
+const b = document.getElementById('pairProductB').value;
+const label = document.getElementById('pairLabel').value.trim() || 'Frequently Bought Together';
+if (!a || !b) { alert('Please select both products'); return; }
+if (a === b) { alert('Please select two different products'); return; }
+const btn = document.getElementById('pairAddBtn');
+btn.textContent = '⏳ Adding...';
+const res = await fetch(SUPABASE_URL + '/rest/v1/product_pairings', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({ product_id: a, paired_product_id: b, label: label, status: 'active' })
+});
+if (!res.ok) {
+const errText = await res.text();
+alert('Could not add pairing (it may already exist):\n' + errText);
+} else {
+document.getElementById('pairProductA').value = '';
+document.getElementById('pairProductB').value = '';
+document.getElementById('pairLabel').value = 'Frequently Bought Together';
+}
+btn.textContent = '+ Add Pairing';
+loadAllData();
+});
 </script>
 </body>
 </html>

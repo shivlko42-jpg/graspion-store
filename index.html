@@ -123,6 +123,14 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 .drawer-close { background:rgba(255,255,255,0.15); border:none; font-size:16px; cursor:pointer; color:#fff; width:30px; height:30px; border-radius:9px; }
 .drawer-body { flex:1; overflow-y:auto; padding:14px 20px; }
 .cart-item { display:flex; gap:10px; padding:12px 0; border-bottom:1px solid #f7f6fb; }
+.pair-suggest-box { margin-top:14px; padding-top:14px; border-top:1.5px dashed #e5e2f0; }
+.pair-suggest-title { font-size:12.5px; font-weight:800; color:#0E3D63; margin-bottom:10px; }
+.pair-suggest-row { display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; }
+.pair-card { flex:0 0 auto; width:110px; background:#F1F8ED; border-radius:12px; padding:10px; text-align:center; }
+.pair-icon { font-size:26px; }
+.pair-name { font-size:10.5px; font-weight:700; color:#1e1b3a; margin:6px 0 2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pair-price { font-size:11px; font-weight:800; color:#0E3D63; margin-bottom:6px; }
+.pair-add-btn { width:100%; background:#6BAA4C; color:#fff; border:none; padding:6px; border-radius:8px; font-size:10.5px; font-weight:700; cursor:pointer; }
 .cart-item .ci-icon { width:52px; height:52px; background:linear-gradient(135deg,#f3f1f8,#fde9ee); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; }
 .cart-item .ci-name { font-size:12.5px; font-weight:700; margin-bottom:2px; }
 .cart-item .ci-vendor { font-size:10.5px; color:#0E3D63; margin-bottom:6px; font-weight:600; }
@@ -300,6 +308,7 @@ let selectedVendorId = 'all';
 let selectedWarehouseId = null;   // set when customer is inside a dark store's service radius
 let isInstantZone = false;        // true = dark store instant delivery available here
 let siteSettings = { instant_delivery_minutes: 20, standard_delivery_days_min: 2, standard_delivery_days_max: 7 };
+let pairings = [];
 
 // distance in km between two lat/lng points
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -340,6 +349,7 @@ const warehouseRes = await fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&st
 const categoryRes = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&status=eq.active&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const bannerRes = await fetch(SUPABASE_URL + '/rest/v1/banners?select=*&status=eq.active&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const settingsRes = await fetch(SUPABASE_URL + '/rest/v1/settings?select=key,value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const pairingsRes = await fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const vendorData = await vendorRes.json();
 const productData = await productRes.json();
 warehouses = warehouseRes.ok ? await warehouseRes.json() : [];
@@ -350,6 +360,7 @@ if (settingsRes.ok) {
 const settingsRows = await settingsRes.json();
 settingsRows.forEach(function(s){ siteSettings[s.key] = s.value; });
 }
+pairings = pairingsRes.ok ? await pairingsRes.json() : [];
 vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){ return { id: v.id, name: v.name, icon: v.icon, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode], vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null }; });
 productPool = productData.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
@@ -468,13 +479,34 @@ if(items.length === 0){ body.innerHTML = '<div class="empty-cart">🛒<br><br>' 
 body.innerHTML = items.map(function(i){
 const vendor = vendors.find(function(v){ return v.id === i.vendorId; });
 return '<div class="cart-item"><div class="ci-icon">' + i.icon + '</div><div class="ci-info"><div class="ci-name">' + i.name + '</div><div class="ci-vendor">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><div class="ci-price">₹' + (i.price*i.qty).toLocaleString('en-IN') + '</div><div class="ci-qty"><button class="qty-btn" data-dec2="' + i.id + '">−</button><span class="qty-val">' + i.qty + '</span><button class="qty-btn" data-inc2="' + i.id + '">+</button></div></div></div>';
-}).join('');
+}).join('') + renderPairingSuggestions(items);
 foot.style.display = 'block';
 document.getElementById('fItemTotal').textContent = '₹' + t.itemTotal.toLocaleString('en-IN');
 document.getElementById('fDelivery').textContent = t.delivery === 0 ? graspionT('free') : '₹' + t.delivery;
 document.getElementById('fTotal').textContent = '₹' + t.total.toLocaleString('en-IN');
 document.querySelectorAll('[data-inc2]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=btn.getAttribute('data-inc2'); cart[id]=(cart[id]||0)+1; refreshAll(); }); });
 document.querySelectorAll('[data-dec2]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=btn.getAttribute('data-dec2'); cart[id]=(cart[id]||0)-1; if(cart[id]<=0) delete cart[id]; refreshAll(); }); });
+document.querySelectorAll('[data-pairadd]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=btn.getAttribute('data-pairadd'); cart[id]=(cart[id]||0)+1; refreshAll(); }); });
+}
+function renderPairingSuggestions(items){
+if (pairings.length === 0 || items.length === 0) return '';
+const inCartIds = items.map(function(i){ return i.id; });
+const suggestedIds = [];
+items.forEach(function(i){
+pairings.forEach(function(pr){
+let otherId = null;
+if (pr.product_id === i.id) otherId = pr.paired_product_id;
+else if (pr.paired_product_id === i.id) otherId = pr.product_id;
+if (otherId && inCartIds.indexOf(otherId) === -1 && suggestedIds.indexOf(otherId) === -1) suggestedIds.push(otherId);
+});
+});
+if (suggestedIds.length === 0) return '';
+const suggestedProducts = suggestedIds.map(function(id){ return productPool.find(function(p){ return p.id === id; }); }).filter(function(p){ return p && (p.pincode === selectedPin || p.pincode === 'ALL'); }).slice(0, 3);
+if (suggestedProducts.length === 0) return '';
+const cardsHtml = suggestedProducts.map(function(p){
+return '<div class="pair-card"><div class="pair-icon">' + p.icon + '</div><div class="pair-name">' + p.name + '</div><div class="pair-price">₹' + p.price + '</div><button class="pair-add-btn" data-pairadd="' + p.id + '">+ Add</button></div>';
+}).join('');
+return '<div class="pair-suggest-box"><div class="pair-suggest-title">🔗 Frequently Bought Together</div><div class="pair-suggest-row">' + cardsHtml + '</div></div>';
 }
 function refreshAll(){ renderProducts(selectedPin); renderCartDrawer(); }
 document.getElementById('cartOpenBtn').addEventListener('click', function(){ document.getElementById('cartDrawer').classList.add('open'); document.getElementById('drawerOverlay').classList.add('open'); });
