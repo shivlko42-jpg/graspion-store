@@ -1315,7 +1315,15 @@ if (!list) return;
 if (apps.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
 empty.style.display = 'none';
 list.innerHTML = apps.map(function(a) {
-return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + a.name + '</div><div class="ic-sub">' + a.email + ' · ' + a.phone + (a.bike_number ? ' · ' + a.bike_number : '') + (a.pincode ? ' · ' + a.pincode : '') + '</div></div>' +
+const docs = [
+{ label: 'License', img: a.driving_license_image },
+{ label: 'Vehicle RC', img: a.vehicle_rc_image },
+{ label: 'ID Proof', img: a.id_proof_image }
+];
+const docsHtml = docs.map(function(d) {
+return d.img ? '<a href="' + d.img + '" target="_blank" style="font-size:10px; background:#E7F3E0; color:#0E3D63; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;">📎 ' + d.label + '</a>' : '<span style="font-size:10px; color:#d1d5db;">' + d.label + ': not provided</span>';
+}).join(' ');
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + a.name + '</div><div class="ic-sub">' + a.email + ' · ' + a.phone + (a.bike_number ? ' · ' + a.bike_number : '') + (a.pincode ? ' · ' + a.pincode : '') + '</div>' + (a.address ? '<div class="ic-sub" style="margin-top:2px;">📍 ' + a.address + '</div>' : '') + '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">' + docsHtml + '</div></div>' +
 '<div class="item-actions"><button class="icon-btn on-btn" data-rappapprove="' + a.id + '">✓ Approve</button><button class="icon-btn off-btn" data-rappreject="' + a.id + '">✕ Reject</button></div></div>';
 }).join('');
 document.querySelectorAll('[data-rappapprove]').forEach(function(btn) {
