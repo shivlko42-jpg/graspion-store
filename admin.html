@@ -1276,7 +1276,16 @@ if (!list) return;
 if (apps.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
 empty.style.display = 'none';
 list.innerHTML = apps.map(function(a) {
-return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + a.store_name + '</div><div class="ic-sub">' + a.owner_name + ' · ' + a.email + ' · ' + a.phone + (a.pincode ? ' · ' + a.pincode : '') + ' · ' + (a.vendor_type === 'dark_store' ? '⚡ Dark Store' : '📦 Marketplace') + '</div></div>' +
+const docs = [
+{ label: 'PAN', img: a.pan_card_image },
+{ label: 'GST', img: a.gst_certificate_image },
+{ label: 'Bank', img: a.bank_proof_image },
+{ label: 'Shop', img: a.shop_photo_image }
+];
+const docsHtml = docs.map(function(d) {
+return d.img ? '<a href="' + d.img + '" target="_blank" style="font-size:10px; background:#E7F3E0; color:#0E3D63; padding:3px 8px; border-radius:6px; text-decoration:none; font-weight:700;">📎 ' + d.label + '</a>' : '<span style="font-size:10px; color:#d1d5db;">' + d.label + ': not provided</span>';
+}).join(' ');
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + a.store_name + '</div><div class="ic-sub">' + a.owner_name + ' · ' + a.email + ' · ' + a.phone + (a.pincode ? ' · ' + a.pincode : '') + ' · ' + (a.vendor_type === 'dark_store' ? '⚡ Dark Store' : '📦 Marketplace') + '</div>' + (a.address ? '<div class="ic-sub" style="margin-top:2px;">📍 ' + a.address + '</div>' : '') + '<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">' + docsHtml + '</div></div>' +
 '<div class="item-actions"><button class="icon-btn on-btn" data-vappapprove="' + a.id + '">✓ Approve</button><button class="icon-btn off-btn" data-vappreject="' + a.id + '">✕ Reject</button></div></div>';
 }).join('');
 document.querySelectorAll('[data-vappapprove]').forEach(function(btn) {

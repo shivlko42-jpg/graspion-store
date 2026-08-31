@@ -321,12 +321,22 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 <input class="form-input-like" id="appOwnerName" placeholder="Your full name" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
 <input class="form-input-like" id="appEmail" type="email" placeholder="Email" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
 <input class="form-input-like" id="appPhone" placeholder="Phone number" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<textarea id="appAddress" placeholder="Full store address (house/shop no., street, area)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; min-height:50px; font-family:inherit;"></textarea>
 <input class="form-input-like" id="appPincode" placeholder="Store pincode" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
 <select class="form-input-like" id="appVendorType" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
 <option value="marketplace">Ship Pan-India (Marketplace)</option>
 <option value="dark_store">Instant Delivery (Dark Store)</option>
 </select>
 <input class="form-input-like" id="appGstin" placeholder="GSTIN (optional)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<label style="font-size:10.5px; font-weight:700; color:#6b7280; display:block; margin-bottom:4px;">📎 KYC Documents (photos of documents)</label>
+<label style="font-size:10.5px; color:#9ca3af; display:block; margin-bottom:2px;">PAN Card</label>
+<input type="file" accept="image/*" id="appPanFile" style="width:100%; margin-bottom:8px; font-size:11px;">
+<label style="font-size:10.5px; color:#9ca3af; display:block; margin-bottom:2px;">GST Certificate (optional)</label>
+<input type="file" accept="image/*" id="appGstFile" style="width:100%; margin-bottom:8px; font-size:11px;">
+<label style="font-size:10.5px; color:#9ca3af; display:block; margin-bottom:2px;">Bank Proof / Cancelled Cheque</label>
+<input type="file" accept="image/*" id="appBankFile" style="width:100%; margin-bottom:8px; font-size:11px;">
+<label style="font-size:10.5px; color:#9ca3af; display:block; margin-bottom:2px;">Shop / Store Photo</label>
+<input type="file" accept="image/*" id="appShopFile" style="width:100%; margin-bottom:8px; font-size:11px;">
 <textarea id="appMessage" placeholder="Tell us about what you sell (optional)" style="width:100%; padding:11px; margin-bottom:10px; border:1.5px solid #f0eef7; border-radius:10px; min-height:60px; font-family:inherit;"></textarea>
 <div id="vendorApplyError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
 <button id="submitVendorAppBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Submit Application</button>
@@ -978,6 +988,16 @@ btn.textContent = '📍 Use My Current Location';
 // or pick/enter a pincode manually — no default area is auto-selected.
 document.getElementById('startSellingBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'flex'; });
 document.getElementById('closeVendorApplyBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'none'; });
+function fileToBase64(inputId) {
+return new Promise(function(resolve) {
+const input = document.getElementById(inputId);
+if (!input.files || input.files.length === 0) { resolve(null); return; }
+const reader = new FileReader();
+reader.onload = function(evt) { resolve(evt.target.result); };
+reader.onerror = function() { resolve(null); };
+reader.readAsDataURL(input.files[0]);
+});
+}
 document.getElementById('submitVendorAppBtn').addEventListener('click', async function(){
 const storeName = document.getElementById('appStoreName').value.trim();
 const ownerName = document.getElementById('appOwnerName').value.trim();
@@ -987,18 +1007,25 @@ const errEl = document.getElementById('vendorApplyError');
 errEl.textContent = '';
 if (!storeName || !ownerName || !email || !phone) { errEl.textContent = 'Please fill in store name, your name, email and phone.'; return; }
 const btn = document.getElementById('submitVendorAppBtn');
-btn.textContent = '⏳ Submitting...';
+btn.textContent = '⏳ Uploading documents...';
 btn.disabled = true;
 try {
+const panImg = await fileToBase64('appPanFile');
+const gstImg = await fileToBase64('appGstFile');
+const bankImg = await fileToBase64('appBankFile');
+const shopImg = await fileToBase64('appShopFile');
+btn.textContent = '⏳ Submitting...';
 const res = await fetch(SUPABASE_URL + '/rest/v1/vendor_applications', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
 body: JSON.stringify({
 store_name: storeName, owner_name: ownerName, email: email, phone: phone,
+address: document.getElementById('appAddress').value.trim() || null,
 pincode: document.getElementById('appPincode').value.trim() || null,
 vendor_type: document.getElementById('appVendorType').value,
 gstin: document.getElementById('appGstin').value.trim() || null,
 message: document.getElementById('appMessage').value.trim() || null,
+pan_card_image: panImg, gst_certificate_image: gstImg, bank_proof_image: bankImg, shop_photo_image: shopImg,
 status: 'pending'
 })
 });
