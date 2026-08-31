@@ -309,7 +309,28 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 <div class="cta-banner">
 <h2 data-i18n="becomeVendor">Become a Graspion Partner</h2>
 <p data-i18n="becomeVendorDesc">List your store and start selling online — zero commission for the first 3 months</p>
-<button data-i18n="startSelling">Start Selling</button>
+<button id="startSellingBtn" data-i18n="startSelling">Start Selling</button>
+</div>
+</div>
+
+<div class="modal-overlay" id="vendorApplyModal" style="display:none;">
+<div class="modal-box" style="max-width:420px; background:#fff; border-radius:20px; padding:24px; max-height:85vh; overflow-y:auto;">
+<h3 style="margin-bottom:4px;">🏪 Apply to Sell on Graspion</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:14px;">Our team will review your application and email you your login once approved.</p>
+<input class="form-input-like" id="appStoreName" placeholder="Store name" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<input class="form-input-like" id="appOwnerName" placeholder="Your full name" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<input class="form-input-like" id="appEmail" type="email" placeholder="Email" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<input class="form-input-like" id="appPhone" placeholder="Phone number" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<input class="form-input-like" id="appPincode" placeholder="Store pincode" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<select class="form-input-like" id="appVendorType" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<option value="marketplace">Ship Pan-India (Marketplace)</option>
+<option value="dark_store">Instant Delivery (Dark Store)</option>
+</select>
+<input class="form-input-like" id="appGstin" placeholder="GSTIN (optional)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<textarea id="appMessage" placeholder="Tell us about what you sell (optional)" style="width:100%; padding:11px; margin-bottom:10px; border:1.5px solid #f0eef7; border-radius:10px; min-height:60px; font-family:inherit;"></textarea>
+<div id="vendorApplyError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
+<button id="submitVendorAppBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Submit Application</button>
+<button id="closeVendorApplyBtn" style="width:100%; background:none; border:none; color:#9ca3af; padding:10px; margin-top:4px; cursor:pointer;">Cancel</button>
 </div>
 </div>
 
@@ -955,6 +976,44 @@ btn.textContent = '📍 Use My Current Location';
 });
 // Modal stays open on load so the user can either detect their location
 // or pick/enter a pincode manually — no default area is auto-selected.
+document.getElementById('startSellingBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'flex'; });
+document.getElementById('closeVendorApplyBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'none'; });
+document.getElementById('submitVendorAppBtn').addEventListener('click', async function(){
+const storeName = document.getElementById('appStoreName').value.trim();
+const ownerName = document.getElementById('appOwnerName').value.trim();
+const email = document.getElementById('appEmail').value.trim();
+const phone = document.getElementById('appPhone').value.trim();
+const errEl = document.getElementById('vendorApplyError');
+errEl.textContent = '';
+if (!storeName || !ownerName || !email || !phone) { errEl.textContent = 'Please fill in store name, your name, email and phone.'; return; }
+const btn = document.getElementById('submitVendorAppBtn');
+btn.textContent = '⏳ Submitting...';
+btn.disabled = true;
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/vendor_applications', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({
+store_name: storeName, owner_name: ownerName, email: email, phone: phone,
+pincode: document.getElementById('appPincode').value.trim() || null,
+vendor_type: document.getElementById('appVendorType').value,
+gstin: document.getElementById('appGstin').value.trim() || null,
+message: document.getElementById('appMessage').value.trim() || null,
+status: 'pending'
+})
+});
+if (!res.ok) {
+const errText = await res.text();
+errEl.textContent = 'Could not submit: ' + errText;
+btn.textContent = 'Submit Application'; btn.disabled = false;
+return;
+}
+document.getElementById('vendorApplyModal').innerHTML = '<div class="modal-box" style="max-width:380px; background:#fff; border-radius:20px; padding:30px; text-align:center;"><div style="font-size:48px; margin-bottom:10px;">✅</div><h3>Application Submitted!</h3><p style="font-size:12px; color:#9ca3af; margin-top:8px;">Our team will review it and email you your login details once approved.</p><button onclick="document.getElementById(\'vendorApplyModal\').style.display=\'none\';" style="margin-top:16px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:12px 24px; border-radius:12px; font-weight:800; cursor:pointer;">Close</button></div>';
+} catch (err) {
+errEl.textContent = 'Network error: ' + err.message;
+btn.textContent = 'Submit Application'; btn.disabled = false;
+}
+});
 if ('serviceWorker' in navigator) {
 window.addEventListener('load', function() {
 navigator.serviceWorker.register('service-worker.js').catch(function(){});
