@@ -694,15 +694,15 @@ console.error('[Graspion order debug]', window.lastOrderDebug);
 return null;
 }
 
+const orderId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){ const r = Math.random()*16|0; const v = c === 'x' ? r : (r&0x3|0x8); return v.toString(16); });
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-body: JSON.stringify({ customer_name: customerInfo.name, customer_phone: customerInfo.phone, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null })
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null })
 });
-const orderData = await orderRes.json();
-const orderId = orderData[0] ? orderData[0].id : null;
-if (!orderId) {
-window.lastOrderDebug = 'HTTP ' + orderRes.status + ': ' + JSON.stringify(orderData);
+if (!orderRes.ok) {
+const orderErr = await orderRes.text();
+window.lastOrderDebug = 'Order insert failed — HTTP ' + orderRes.status + ': ' + orderErr;
 console.error('[Graspion order debug]', window.lastOrderDebug);
 return null;
 }
