@@ -385,6 +385,7 @@ let allPairings = [];
 let allCatalogItems = [], allCatalogPermissions = [];
 let allStaff = [];
 let allShipments = [];
+let allSettlements = [];
 
 (async function restoreSession() {
 try {
@@ -492,6 +493,7 @@ const productRes = await fetch(SUPABASE_URL + '/rest/v1/products?select=*', { he
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const orderItemsRes = await fetch(SUPABASE_URL + '/rest/v1/order_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const shipmentsRes = await fetch(SUPABASE_URL + '/rest/v1/shipments?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const settlementsRes = await fetch(SUPABASE_URL + '/rest/v1/vendor_settlements?select=*&order=id.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const warehouseRes = await fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const categoryRes = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const bannerRes = await fetch(SUPABASE_URL + '/rest/v1/banners?select=*&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
@@ -505,6 +507,7 @@ allProducts = await productRes.json();
 allOrders = await orderRes.json();
 allOrderItems = orderItemsRes.ok ? await orderItemsRes.json() : [];
 allShipments = shipmentsRes.ok ? await shipmentsRes.json() : [];
+allSettlements = settlementsRes.ok ? await settlementsRes.json() : [];
 allWarehouses = warehouseRes.ok ? await warehouseRes.json() : [];
 allCategories = categoryRes.ok ? await categoryRes.json() : [];
 allBanners = bannerRes.ok ? await bannerRes.json() : [];
@@ -712,21 +715,24 @@ return '<div class="vendor-row-item"><div class="v-icon2" style="background:line
 function renderPayouts() {
 const list = document.getElementById('payoutList');
 const empty = document.getElementById('payoutEmpty');
-const vendorPayout = {};
-allOrders.forEach(function(o) {
-if (!vendorPayout[o.vendor_id]) vendorPayout[o.vendor_id] = { pending: 0, paid: 0 };
-if (o.payout_status === 'paid') vendorPayout[o.vendor_id].paid += Number(o.total_amount || 0);
-else vendorPayout[o.vendor_id].pending += Number(o.total_amount || 0);
-});
-const keys = Object.keys(vendorPayout);
-if (keys.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+if (allSettlements.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
 empty.style.display = 'none';
-list.innerHTML = keys.map(function(vid) {
-const vendor = allVendors.find(function(v) { return v.id === vid; });
-const p = vendorPayout[vid];
-return '<div class="vendor-row-item"><div class="v-icon2">' + (vendor ? vendor.icon : '🏪') + '</div>' +
-'<div class="v-info"><div class="vn">' + (vendor ? vendor.name : 'Vendor') + '</div><div class="vs">Paid: ₹' + p.paid.toLocaleString('en-IN') + ' · Pending: ₹' + p.pending.toLocaleString('en-IN') + '</div></div></div>';
+const pending = allSettlements.filter(function(s) { return s.status !== 'paid'; });
+list.innerHTML = pending.length === 0 ? '<div class="empty-state">✅ All settlements are paid up!</div>' : pending.map(function(s) {
+const vendor = allVendors.find(function(v) { return v.id === s.vendor_id; });
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + (vendor ? vendor.icon + ' ' + vendor.name : 'Vendor') + ' — Order #' + s.order_id.slice(0,8) + '</div>' +
+'<div class="ic-sub">Sale ₹' + Number(s.sale_amount).toLocaleString('en-IN') + ' − Commission ₹' + Number(s.commission_amount || 0).toLocaleString('en-IN') + ' − Delivery ₹' + Number(s.delivery_charge || 0).toLocaleString('en-IN') + (Number(s.gateway_fee) > 0 ? ' − Gateway ₹' + Number(s.gateway_fee).toLocaleString('en-IN') : '') + ' = <b style="color:#15803d;">₹' + Number(s.payable_amount).toLocaleString('en-IN') + ' payable</b></div></div>' +
+'<div class="item-actions"><button class="icon-btn on-btn" data-settleid="' + s.id + '">✓ Approve & Mark Paid</button></div></div>';
 }).join('');
+document.querySelectorAll('[data-settleid]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Confirm you have transferred this amount to the vendor\'s bank account?')) return;
+const id = btn.getAttribute('data-settleid');
+btn.textContent = '⏳';
+await fetch(SUPABASE_URL + '/rest/v1/vendor_settlements?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paid', settled_at: new Date().toISOString() }) });
+loadAllData();
+});
+});
 }
 function renderDeliveryPartners() {
 const list = document.getElementById('deliveryList');
