@@ -46,6 +46,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="graspion-logo.js"></script>
 <script src="graspion-lang.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif; }
@@ -256,6 +257,7 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 <div class="bottom" id="areaLabel">Select location 📍 ▾</div>
 </div>
 <div class="nav-right">
+<button id="accountBtn" style="background:#f3f1f8; color:#1e1b3a; border:none; padding:11px 14px; border-radius:12px; font-weight:700; cursor:pointer; font-size:12.5px;">👤 <span id="accountBtnLabel">Login</span></button>
 <button class="cart-btn" id="cartOpenBtn">🛒 <span data-i18n="cart">Cart</span> <span class="cart-count" id="cartCount">0</span></button>
 </div>
 </div>
@@ -344,6 +346,39 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 </div>
 </div>
 
+<div class="modal-overlay" id="accountModal" style="display:none;">
+<div class="modal-box" style="max-width:380px; background:#fff; border-radius:20px; padding:26px;">
+<div id="accountModalContent">
+<h3 id="accountModalTitle" style="margin-bottom:4px;">👤 Login</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:14px;">Login to track your orders and see order history.</p>
+<div id="signupNameField" style="display:none;"><input id="accName" placeholder="Full name" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;"></div>
+<div id="signupPhoneField" style="display:none;"><input id="accPhone" placeholder="Phone number" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;"></div>
+<input id="accEmail" type="email" placeholder="Email" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<input id="accPass" type="password" placeholder="Password" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<div id="accountError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
+<button id="accountSubmitBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Login →</button>
+<p style="font-size:11.5px; color:#9ca3af; margin-top:12px; text-align:center;">
+<span id="accountToggleText">New here?</span> <span id="accountToggleLink" style="color:#7c3aed; text-decoration:underline; cursor:pointer; font-weight:700;">Create an account</span>
+</p>
+<button id="closeAccountBtn" style="width:100%; background:none; border:none; color:#9ca3af; padding:8px; cursor:pointer;">Cancel</button>
+</div>
+</div>
+</div>
+
+<div class="modal-overlay" id="myOrdersModal" style="display:none;">
+<div class="modal-box" style="max-width:460px; width:100%; background:#fff; border-radius:20px; padding:22px; max-height:80vh; overflow-y:auto;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+<h3>📦 My Orders</h3>
+<div>
+<button id="logoutBtnCustomer" style="background:#fee2e2; color:#dc2626; border:none; padding:7px 12px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; margin-right:6px;">Logout</button>
+<button id="closeMyOrdersBtn" style="background:#f3f1f8; border:none; padding:7px 12px; border-radius:8px; font-size:11px; cursor:pointer;">✕</button>
+</div>
+</div>
+<div id="myOrdersList"></div>
+<div class="empty-state" id="myOrdersEmpty" style="display:none;">No orders yet — go shopping!</div>
+</div>
+</div>
+
 <footer>
 © 2026 Grasp Infotech — Graspion<br>
 <a href="policies.html#about">About Us</a> · <a href="policies.html#contact">Contact</a> · <a href="policies.html#terms">Terms</a> · <a href="policies.html#privacy">Privacy</a> · <a href="policies.html#shipping">Shipping</a> · <a href="policies.html#refund">Refunds</a>
@@ -375,6 +410,10 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 <script>
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
+const supaAuth = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let authToken = SUPABASE_KEY;
+let currentCustomer = null;
+let isSignupMode = false;
 const areaData = {}; // populated dynamically from real warehouse/geocode data — nothing pre-seeded
 let vendors = [];
 let productPool = [];
@@ -729,7 +768,7 @@ const orderId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xx
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null })
+body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null })
 });
 if (!orderRes.ok) {
 const orderErr = await orderRes.text();
@@ -1041,9 +1080,144 @@ errEl.textContent = 'Network error: ' + err.message;
 btn.textContent = 'Submit Application'; btn.disabled = false;
 }
 });
+// ===================== CUSTOMER ACCOUNT SYSTEM =====================
+function updateAccountButtonUI() {
+const label = document.getElementById('accountBtnLabel');
+label.textContent = currentCustomer ? (currentCustomer.name ? currentCustomer.name.split(' ')[0] : 'Account') : 'Login';
+}
+(async function restoreCustomerSession() {
+try {
+const { data } = await supaAuth.auth.getSession();
+if (data.session) {
+authToken = data.session.access_token;
+const res = await fetch(SUPABASE_URL + '/rest/v1/customers?auth_user_id=eq.' + data.session.user.id + '&select=*', {
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+});
+const rows = await res.json();
+if (rows[0]) { currentCustomer = rows[0]; updateAccountButtonUI(); }
+}
+} catch (err) { /* not logged in, that's fine — guest browsing */ }
+})();
+
+document.getElementById('accountBtn').addEventListener('click', function(){
+if (currentCustomer) {
+document.getElementById('myOrdersModal').style.display = 'flex';
+loadMyOrders();
+} else {
+document.getElementById('accountModal').style.display = 'flex';
+}
+});
+document.getElementById('closeAccountBtn').addEventListener('click', function(){ document.getElementById('accountModal').style.display = 'none'; });
+document.getElementById('closeMyOrdersBtn').addEventListener('click', function(){ document.getElementById('myOrdersModal').style.display = 'none'; });
+
+document.getElementById('accountToggleLink').addEventListener('click', function(){
+isSignupMode = !isSignupMode;
+document.getElementById('accountModalTitle').textContent = isSignupMode ? '👤 Create Account' : '👤 Login';
+document.getElementById('signupNameField').style.display = isSignupMode ? 'block' : 'none';
+document.getElementById('signupPhoneField').style.display = isSignupMode ? 'block' : 'none';
+document.getElementById('accountSubmitBtn').textContent = isSignupMode ? 'Create Account →' : 'Login →';
+document.getElementById('accountToggleText').textContent = isSignupMode ? 'Already have an account?' : 'New here?';
+document.getElementById('accountToggleLink').textContent = isSignupMode ? 'Login' : 'Create an account';
+document.getElementById('accountError').textContent = '';
+});
+
+document.getElementById('accountSubmitBtn').addEventListener('click', async function(){
+const email = document.getElementById('accEmail').value.trim();
+const pass = document.getElementById('accPass').value;
+const errEl = document.getElementById('accountError');
+errEl.textContent = '';
+if (!email || !pass) { errEl.textContent = 'Please enter email and password.'; return; }
+const btn = document.getElementById('accountSubmitBtn');
+btn.disabled = true;
+try {
+if (isSignupMode) {
+const name = document.getElementById('accName').value.trim();
+const phone = document.getElementById('accPhone').value.trim();
+if (!name || !phone) { errEl.textContent = 'Please enter your name and phone.'; btn.disabled = false; return; }
+btn.textContent = '⏳ Creating account...';
+const { data, error } = await supaAuth.auth.signUp({ email: email, password: pass });
+if (error || !data.user) { errEl.textContent = error ? error.message : 'Could not create account'; btn.textContent = 'Create Account →'; btn.disabled = false; return; }
+// Some Supabase projects require email confirmation before a session exists yet
+if (data.session) { authToken = data.session.access_token; }
+await fetch(SUPABASE_URL + '/rest/v1/customers', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ auth_user_id: data.user.id, name: name, phone: phone, email: email })
+});
+if (data.session) {
+const custRes = await fetch(SUPABASE_URL + '/rest/v1/customers?auth_user_id=eq.' + data.user.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const custRows = await custRes.json();
+currentCustomer = custRows[0] || null;
+updateAccountButtonUI();
+document.getElementById('accountModal').style.display = 'none';
+} else {
+errEl.textContent = '';
+document.getElementById('accountModalContent').innerHTML = '<div style="text-align:center; padding:10px 0;"><div style="font-size:40px;">📧</div><h3 style="margin-top:8px;">Check your email</h3><p style="font-size:12px; color:#9ca3af; margin-top:6px;">We sent a confirmation link to ' + email + '. Confirm it, then come back and log in.</p></div>';
+}
+} else {
+btn.textContent = '⏳ Logging in...';
+const { data, error } = await supaAuth.auth.signInWithPassword({ email: email, password: pass });
+if (error || !data.session) { errEl.textContent = error ? error.message : 'Login failed'; btn.textContent = 'Login →'; btn.disabled = false; return; }
+authToken = data.session.access_token;
+const custRes = await fetch(SUPABASE_URL + '/rest/v1/customers?auth_user_id=eq.' + data.user.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const custRows = await custRes.json();
+currentCustomer = custRows[0] || null;
+updateAccountButtonUI();
+document.getElementById('accountModal').style.display = 'none';
+}
+} catch (err) {
+errEl.textContent = 'Error: ' + err.message;
+btn.disabled = false;
+}
+});
+
+document.getElementById('logoutBtnCustomer').addEventListener('click', async function(){
+await supaAuth.auth.signOut();
+authToken = SUPABASE_KEY;
+currentCustomer = null;
+updateAccountButtonUI();
+document.getElementById('myOrdersModal').style.display = 'none';
+});
+
+async function loadMyOrders(){
+const list = document.getElementById('myOrdersList');
+const empty = document.getElementById('myOrdersEmpty');
+list.innerHTML = '<div style="text-align:center; padding:20px; color:#9ca3af; font-size:12px;">Loading...</div>';
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/orders?customer_id=eq.' + currentCustomer.id + '&select=*&order=created_at.desc', {
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+});
+const orders = res.ok ? await res.json() : [];
+if (orders.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+const statusLabels = { pending: '🕐 Placed', preparing: '📦 Preparing', shipped: '🚚 Shipped', delivered: '✅ Delivered', cancelled: '✕ Cancelled' };
+const shipRes = await fetch(SUPABASE_URL + '/rest/v1/shipments?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const shipments = shipRes.ok ? await shipRes.json() : [];
+list.innerHTML = orders.map(function(o) {
+const shipment = shipments.find(function(s) { return s.order_id === o.id; });
+const trackHtml = shipment && shipment.tracking_url ? '<a href="' + shipment.tracking_url + '" target="_blank" style="font-size:11px; color:#7c3aed; font-weight:700;">Track Shipment →</a>' : '';
+return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:14px; margin-bottom:10px;">' +
+'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-size:11px; color:#9ca3af;">#' + o.id.slice(0,8) + ' · ' + new Date(o.created_at).toLocaleDateString('en-IN') + '</span><b style="font-size:14px;">₹' + o.total_amount + '</b></div>' +
+'<div style="font-size:12.5px; font-weight:700;">' + (statusLabels[o.status] || o.status) + ' · ' + (o.delivery_type === 'instant' ? '⚡ Instant' : '📦 Pan-India') + '</div>' +
+'<div style="font-size:11px; color:#9ca3af; margin-top:4px;">' + (o.payment_status === 'paid' ? '✓ Paid' : 'Payment: ' + (o.payment_method || 'COD')) + '</div>' +
+(trackHtml ? '<div style="margin-top:6px;">' + trackHtml + '</div>' : '') +
+'</div>';
+}).join('');
+} catch (err) {
+list.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626; font-size:12px;">Could not load orders.</div>';
+}
+}
+
 if ('serviceWorker' in navigator) {
 window.addEventListener('load', function() {
-navigator.serviceWorker.register('service-worker.js').catch(function(){});
+  const hadControllerBefore = !!navigator.serviceWorker.controller;
+  let refreshedOnce = false;
+  navigator.serviceWorker.register('service-worker.js').catch(function(){});
+  // Only auto-reload if a service worker was ALREADY controlling this page
+  // (a real update replacing an old one) — not on a brand-new first visit.
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    if (hadControllerBefore && !refreshedOnce) { refreshedOnce = true; window.location.reload(); }
+  });
 });
 }
 </script>

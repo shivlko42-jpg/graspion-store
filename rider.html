@@ -338,7 +338,14 @@ btn.textContent = 'Submit Application'; btn.disabled = false;
 });
 if ('serviceWorker' in navigator) {
 window.addEventListener('load', function() {
-navigator.serviceWorker.register('service-worker.js').catch(function(){});
+  const hadControllerBefore = !!navigator.serviceWorker.controller;
+  let refreshedOnce = false;
+  navigator.serviceWorker.register('service-worker.js').catch(function(){});
+  // Only auto-reload if a service worker was ALREADY controlling this page
+  // (a real update replacing an old one) — not on a brand-new first visit.
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    if (hadControllerBefore && !refreshedOnce) { refreshedOnce = true; window.location.reload(); }
+  });
 });
 }
 </script>
