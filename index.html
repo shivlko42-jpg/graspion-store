@@ -46,7 +46,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="graspion-logo.js"></script>
 <script src="graspion-lang.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif; }
@@ -425,7 +425,7 @@ body { padding-bottom:68px; }
 <script>
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
-const supaAuth = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let supaAuth = null; // created once the Supabase Auth library finishes loading (see initSupaAuth below)
 let authToken = SUPABASE_KEY;
 let currentCustomer = null;
 let isSignupMode = false;
@@ -1104,7 +1104,17 @@ label.textContent = currentCustomer ? (currentCustomer.name ? currentCustomer.na
 const bnLabel = document.getElementById('bnAccountLabel');
 if (bnLabel) bnLabel.textContent = currentCustomer ? 'Account' : 'Login';
 }
-(async function restoreCustomerSession() {
+function initSupaAuthWhenReady(attemptsLeft) {
+if (typeof supabase !== 'undefined' && supabase.createClient) {
+supaAuth = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+restoreCustomerSession();
+return;
+}
+if (attemptsLeft <= 0) { console.error('[Graspion] Supabase Auth library failed to load — login/account features unavailable this session, rest of the site still works.'); return; }
+setTimeout(function(){ initSupaAuthWhenReady(attemptsLeft - 1); }, 500);
+}
+initSupaAuthWhenReady(20); // retries for up to ~10 seconds on slow connections
+async function restoreCustomerSession() {
 try {
 const { data } = await supaAuth.auth.getSession();
 if (data.session) {
@@ -1116,9 +1126,10 @@ const rows = await res.json();
 if (rows[0]) { currentCustomer = rows[0]; updateAccountButtonUI(); }
 }
 } catch (err) { /* not logged in, that's fine — guest browsing */ }
-})();
+}
 
 document.getElementById('accountBtn').addEventListener('click', function(){
+if (!supaAuth) { alert('Login is still loading, please try again in a moment (this can take a bit longer on slow internet).'); return; }
 if (currentCustomer) {
 document.getElementById('myOrdersModal').style.display = 'flex';
 loadMyOrders();
@@ -1141,9 +1152,10 @@ document.getElementById('accountError').textContent = '';
 });
 
 document.getElementById('accountSubmitBtn').addEventListener('click', async function(){
+const errEl = document.getElementById('accountError');
+if (!supaAuth) { errEl.textContent = 'Login system is still loading — please wait a moment and try again.'; return; }
 const email = document.getElementById('accEmail').value.trim();
 const pass = document.getElementById('accPass').value;
-const errEl = document.getElementById('accountError');
 errEl.textContent = '';
 if (!email || !pass) { errEl.textContent = 'Please enter email and password.'; return; }
 const btn = document.getElementById('accountSubmitBtn');
@@ -1191,7 +1203,7 @@ btn.disabled = false;
 });
 
 document.getElementById('logoutBtnCustomer').addEventListener('click', async function(){
-await supaAuth.auth.signOut();
+if (supaAuth) { await supaAuth.auth.signOut(); }
 authToken = SUPABASE_KEY;
 currentCustomer = null;
 updateAccountButtonUI();
@@ -1270,6 +1282,7 @@ document.getElementById('drawerOverlay').classList.add('open');
 });
 document.getElementById('bnAccount').addEventListener('click', function(){
 setBottomNavActive('bnAccount');
+if (!supaAuth) { alert('Login is still loading, please try again in a moment (this can take a bit longer on slow internet).'); return; }
 if (currentCustomer) { document.getElementById('myOrdersModal').style.display = 'flex'; loadMyOrders(); }
 else { document.getElementById('accountModal').style.display = 'flex'; }
 });
