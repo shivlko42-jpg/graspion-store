@@ -166,6 +166,14 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 .pair-name { font-size:10.5px; font-weight:700; color:#1e1b3a; margin:6px 0 2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pair-price { font-size:11px; font-weight:800; color:#7c3aed; margin-bottom:6px; }
 .pair-add-btn { width:100%; background:#ec4899; color:#fff; border:none; padding:6px; border-radius:8px; font-size:10.5px; font-weight:700; cursor:pointer; }
+body { padding-bottom:68px; }
+.bottom-nav { position:fixed; bottom:0; left:0; right:0; background:#fff; box-shadow:0 -2px 12px rgba(0,0,0,0.08); display:flex; justify-content:space-around; align-items:center; padding:8px 0 max(8px, env(safe-area-inset-bottom)); z-index:80; }
+.bn-item { display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer; color:#9ca3af; flex:1; padding:4px 0; position:relative; }
+.bn-item.active { color:#7c3aed; }
+.bn-icon { font-size:20px; position:relative; }
+.bn-label { font-size:10px; font-weight:700; }
+.bn-badge { position:absolute; top:-6px; right:-10px; background:#ec4899; color:#fff; font-size:9px; font-weight:900; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+@media(min-width:700px){ .bottom-nav{ display:none; } body{ padding-bottom:0; } }
 .search-suggestions { position:absolute; top:100%; left:16px; right:16px; background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.12); z-index:60; max-height:320px; overflow-y:auto; display:none; }
 .search-suggestions.open { display:block; }
 .sugg-item { display:flex; align-items:center; gap:10px; padding:10px 14px; cursor:pointer; border-bottom:1px solid #f7f6fb; }
@@ -377,6 +385,13 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 <div id="myOrdersList"></div>
 <div class="empty-state" id="myOrdersEmpty" style="display:none;">No orders yet — go shopping!</div>
 </div>
+</div>
+
+<div class="bottom-nav">
+<div class="bn-item active" id="bnHome"><div class="bn-icon">🏠</div><div class="bn-label">Home</div></div>
+<div class="bn-item" id="bnCategories"><div class="bn-icon">📁</div><div class="bn-label">Categories</div></div>
+<div class="bn-item" id="bnCart"><div class="bn-icon">🛒<span class="bn-badge" id="bnCartBadge" style="display:none;">0</span></div><div class="bn-label">Cart</div></div>
+<div class="bn-item" id="bnAccount"><div class="bn-icon">👤</div><div class="bn-label" id="bnAccountLabel">Account</div></div>
 </div>
 
 <footer>
@@ -702,6 +717,8 @@ const body = document.getElementById('drawerBody');
 const foot = document.getElementById('drawerFoot');
 const t = cartTotals();
 document.getElementById('cartCount').textContent = t.count;
+const bnBadge = document.getElementById('bnCartBadge');
+if (bnBadge) { bnBadge.textContent = t.count; bnBadge.style.display = t.count > 0 ? 'flex' : 'none'; }
 if(items.length === 0){ body.innerHTML = '<div class="empty-cart">🛒<br><br>' + graspionT('emptyCart') + '</div>'; foot.style.display = 'none'; return; }
 body.innerHTML = items.map(function(i){
 const vendor = vendors.find(function(v){ return v.id === i.vendorId; });
@@ -1084,6 +1101,8 @@ btn.textContent = 'Submit Application'; btn.disabled = false;
 function updateAccountButtonUI() {
 const label = document.getElementById('accountBtnLabel');
 label.textContent = currentCustomer ? (currentCustomer.name ? currentCustomer.name.split(' ')[0] : 'Account') : 'Login';
+const bnLabel = document.getElementById('bnAccountLabel');
+if (bnLabel) bnLabel.textContent = currentCustomer ? 'Account' : 'Login';
 }
 (async function restoreCustomerSession() {
 try {
@@ -1193,20 +1212,67 @@ empty.style.display = 'none';
 const statusLabels = { pending: '🕐 Placed', preparing: '📦 Preparing', shipped: '🚚 Shipped', delivered: '✅ Delivered', cancelled: '✕ Cancelled' };
 const shipRes = await fetch(SUPABASE_URL + '/rest/v1/shipments?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const shipments = shipRes.ok ? await shipRes.json() : [];
-list.innerHTML = orders.map(function(o) {
+const cardsHtml = await Promise.all(orders.map(async function(o) {
 const shipment = shipments.find(function(s) { return s.order_id === o.id; });
 const trackHtml = shipment && shipment.tracking_url ? '<a href="' + shipment.tracking_url + '" target="_blank" style="font-size:11px; color:#7c3aed; font-weight:700;">Track Shipment →</a>' : '';
+let riderHtml = '';
+if (o.delivery_type === 'instant' && (o.status === 'shipped' || o.status === 'delivered')) {
+try {
+const riderRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_order_rider_info', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ p_order_id: o.id })
+});
+const riderData = riderRes.ok ? await riderRes.json() : [];
+if (riderData[0] && riderData[0].rider_name) {
+const r = riderData[0];
+riderHtml = '<div style="margin-top:6px; background:#F1F8ED; padding:8px 10px; border-radius:8px; font-size:11px;">🚴 <b>' + r.rider_name + '</b>' + (r.bike_number ? ' · ' + r.bike_number : '') + (r.rider_phone ? ' · <a href="tel:' + r.rider_phone + '" style="color:#7c3aed; font-weight:700;">📞 Call</a>' : '') + '</div>';
+}
+} catch (e) { /* silently skip if rider info unavailable */ }
+}
 return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:14px; margin-bottom:10px;">' +
 '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-size:11px; color:#9ca3af;">#' + o.id.slice(0,8) + ' · ' + new Date(o.created_at).toLocaleDateString('en-IN') + '</span><b style="font-size:14px;">₹' + o.total_amount + '</b></div>' +
 '<div style="font-size:12.5px; font-weight:700;">' + (statusLabels[o.status] || o.status) + ' · ' + (o.delivery_type === 'instant' ? '⚡ Instant' : '📦 Pan-India') + '</div>' +
 '<div style="font-size:11px; color:#9ca3af; margin-top:4px;">' + (o.payment_status === 'paid' ? '✓ Paid' : 'Payment: ' + (o.payment_method || 'COD')) + '</div>' +
+riderHtml +
 (trackHtml ? '<div style="margin-top:6px;">' + trackHtml + '</div>' : '') +
 '</div>';
-}).join('');
+}));
+list.innerHTML = cardsHtml.join('');
 } catch (err) {
 list.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626; font-size:12px;">Could not load orders.</div>';
 }
 }
+
+// ===================== BOTTOM NAVIGATION =====================
+function setBottomNavActive(id) {
+document.querySelectorAll('.bn-item').forEach(function(el){ el.classList.remove('active'); });
+const el = document.getElementById(id);
+if (el) el.classList.add('active');
+}
+document.getElementById('bnHome').addEventListener('click', function(){
+setBottomNavActive('bnHome');
+activeCategoryId = null;
+searchQuery = '';
+document.getElementById('searchInput').value = '';
+window.scrollTo({ top: 0, behavior: 'smooth' });
+if (selectedPin) renderProducts(selectedPin);
+});
+document.getElementById('bnCategories').addEventListener('click', function(){
+setBottomNavActive('bnCategories');
+const catSection = document.getElementById('quickCats');
+if (catSection) catSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+document.getElementById('bnCart').addEventListener('click', function(){
+setBottomNavActive('bnCart');
+document.getElementById('cartDrawer').classList.add('open');
+document.getElementById('drawerOverlay').classList.add('open');
+});
+document.getElementById('bnAccount').addEventListener('click', function(){
+setBottomNavActive('bnAccount');
+if (currentCustomer) { document.getElementById('myOrdersModal').style.display = 'flex'; loadMyOrders(); }
+else { document.getElementById('accountModal').style.display = 'flex'; }
+});
 
 if ('serviceWorker' in navigator) {
 window.addEventListener('load', function() {
