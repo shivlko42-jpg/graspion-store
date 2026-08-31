@@ -141,6 +141,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="side-item" data-page="banners">🖼️ Banners</div>
 <div class="side-item" data-page="settings">⚙️ Settings</div>
 <div class="side-item" data-page="staff">👤 Staff Management</div>
+<div class="side-item" data-page="applications">📋 New Applications</div>
 <div class="side-item" data-page="pairings">🔗 Pairings</div>
 <div class="side-item" data-page="catalog">📋 Catalog Requests</div>
 <button class="logout-btn" id="logoutBtn">Logout</button>
@@ -183,7 +184,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="panel">
 <h3>📦 Recent Orders</h3>
 <table>
-<thead><tr><th>Customer</th><th>Phone</th><th>Amount</th><th>Pincode</th><th>Status</th><th>Payout</th></tr></thead>
+<thead><tr><th>Customer</th><th>Vendor</th><th>Phone</th><th>Amount</th><th>Pincode</th><th>Status</th><th>Tracking</th><th>Payout</th></tr></thead>
 <tbody id="ordersBody"></tbody>
 </table>
 <div class="empty-state" id="ordersEmpty" style="display:none;">No orders yet</div>
@@ -336,6 +337,19 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="empty-state" id="staffEmpty" style="display:none;">No staff added yet</div>
 </div>
 
+<div class="panel" data-section="applications">
+<h3>🏪 Vendor Applications</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Approving creates their real login (they get an email to set their password) and their store automatically.</p>
+<div id="vendorAppsList"></div>
+<div class="empty-state" id="vendorAppsEmpty" style="display:none;">No pending vendor applications</div>
+</div>
+
+<div class="panel" data-section="applications">
+<h3>🚴 Rider Applications</h3>
+<div id="riderAppsList"></div>
+<div class="empty-state" id="riderAppsEmpty" style="display:none;">No pending rider applications</div>
+</div>
+
 <div class="panel" data-section="pairings">
 <h3>🔗 Product Pairings — Frequently Bought Together</h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Link two products together (e.g. Soap + Shampoo, or a gift-pack combo). When a customer adds one to their cart, the other is suggested as a quick add-on.</p>
@@ -370,6 +384,7 @@ let allRiders = [];
 let allPairings = [];
 let allCatalogItems = [], allCatalogPermissions = [];
 let allStaff = [];
+let allShipments = [];
 
 (async function restoreSession() {
 try {
@@ -476,6 +491,7 @@ const vendorRes = await fetch(SUPABASE_URL + '/rest/v1/vendors?select=*', { head
 const productRes = await fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const orderItemsRes = await fetch(SUPABASE_URL + '/rest/v1/order_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const shipmentsRes = await fetch(SUPABASE_URL + '/rest/v1/shipments?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const warehouseRes = await fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const categoryRes = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const bannerRes = await fetch(SUPABASE_URL + '/rest/v1/banners?select=*&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
@@ -488,6 +504,7 @@ allVendors = await vendorRes.json();
 allProducts = await productRes.json();
 allOrders = await orderRes.json();
 allOrderItems = orderItemsRes.ok ? await orderItemsRes.json() : [];
+allShipments = shipmentsRes.ok ? await shipmentsRes.json() : [];
 allWarehouses = warehouseRes.ok ? await warehouseRes.json() : [];
 allCategories = categoryRes.ok ? await categoryRes.json() : [];
 allBanners = bannerRes.ok ? await bannerRes.json() : [];
@@ -519,6 +536,7 @@ renderSettings();
 renderPairings();
 renderCatalogRequests();
 if (currentAdmin && currentAdmin.role === 'super_admin') { loadAndRenderStaff(); }
+loadAndRenderApplications();
 } catch (err) {
 badge.className = 'db-badge loading';
 badge.textContent = '❌ Error: ' + err.message;
@@ -601,9 +619,21 @@ ordersBody.innerHTML = allOrders.slice(0, 12).map(function(o) {
 const payoutDone = o.payout_status === 'paid';
 const currentStatus = o.status || 'pending';
 const optionsHtml = statusOptions.map(function(s){ return '<option value="' + s + '"' + (s === currentStatus ? ' selected' : '') + '>' + s + '</option>'; }).join('');
-return '<tr><td>' + (o.customer_name || 'Customer') + '</td><td>' + (o.customer_phone || '-') + '</td><td>₹' + o.total_amount + '</td><td>' + (o.pincode || '-') + '</td>' +
+const shipment = allShipments.find(function(s) { return s.order_id === o.id; });
+const orderVendor = allVendors.find(function(v) { return v.id === o.vendor_id; });
+const vendorHtml = orderVendor ? (orderVendor.icon + ' ' + orderVendor.name) : '<span style="color:#9ca3af;">—</span>';
+let trackingHtml = '<span style="font-size:10px; color:#9ca3af;">—</span>';
+if (o.delivery_type === 'instant') {
+trackingHtml = '<span style="font-size:10px; color:#9ca3af;">🚴 Rider</span>';
+} else if (shipment) {
+trackingHtml = '<div style="font-size:10px;"><b>' + (shipment.awb_number || 'AWB pending') + '</b>' + (shipment.tracking_url ? '<br><a href="' + shipment.tracking_url + '" target="_blank" style="color:#7c3aed;">Track →</a>' : '') + '</div>';
+} else if (o.delivery_type === 'standard') {
+trackingHtml = '<span style="font-size:10px; color:#f59e0b;">Not shipped yet</span>';
+}
+return '<tr><td>' + (o.customer_name || 'Customer') + '</td><td style="font-size:11px;">' + vendorHtml + '</td><td>' + (o.customer_phone || '-') + '</td><td>₹' + o.total_amount + '</td><td>' + (o.pincode || '-') + '</td>' +
 '<td><span class="status-pill ' + (statusClass[currentStatus] || 'st-pending') + '">' + currentStatus + '</span>' +
 '<br><select class="setting-input" style="margin-top:4px; width:120px; font-size:11px;" data-statusid="' + o.id + '">' + optionsHtml + '</select></td>' +
+'<td>' + trackingHtml + '</td>' +
 '<td>' + (payoutDone ? '<span class="status-pill st-delivered">Paid</span>' : '<button class="mini-btn" data-payoutid="' + o.id + '" style="background:#dbeafe;color:#1d4ed8;">Mark Paid</button>') + '</td></tr>';
 }).join('');
 document.querySelectorAll('[data-statusid]').forEach(function(sel) {
@@ -1226,6 +1256,78 @@ if ('serviceWorker' in navigator) {
 window.addEventListener('load', function() {
 navigator.serviceWorker.register('service-worker.js').catch(function(){});
 });
+}
+
+// ===================== VENDOR & RIDER APPLICATIONS (self-registration review) =====================
+async function loadAndRenderApplications() {
+try {
+const vRes = await fetch(SUPABASE_URL + '/rest/v1/vendor_applications?status=eq.pending&select=*&order=created_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const vApps = vRes.ok ? await vRes.json() : [];
+renderVendorApps(vApps);
+const rRes = await fetch(SUPABASE_URL + '/rest/v1/rider_applications?status=eq.pending&select=*&order=created_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const rApps = rRes.ok ? await rRes.json() : [];
+renderRiderApps(rApps);
+} catch (err) { /* applications panel just stays empty */ }
+}
+function renderVendorApps(apps) {
+const list = document.getElementById('vendorAppsList');
+const empty = document.getElementById('vendorAppsEmpty');
+if (!list) return;
+if (apps.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = apps.map(function(a) {
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + a.store_name + '</div><div class="ic-sub">' + a.owner_name + ' · ' + a.email + ' · ' + a.phone + (a.pincode ? ' · ' + a.pincode : '') + ' · ' + (a.vendor_type === 'dark_store' ? '⚡ Dark Store' : '📦 Marketplace') + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn on-btn" data-vappapprove="' + a.id + '">✓ Approve</button><button class="icon-btn off-btn" data-vappreject="' + a.id + '">✕ Reject</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-vappapprove]').forEach(function(btn) {
+btn.addEventListener('click', async function() { await handleVendorAppAction(btn.getAttribute('data-vappapprove'), 'approve', btn); });
+});
+document.querySelectorAll('[data-vappreject]').forEach(function(btn) {
+btn.addEventListener('click', async function() { if (confirm('Reject this application?')) { await handleVendorAppAction(btn.getAttribute('data-vappreject'), 'reject', btn); } });
+});
+}
+async function handleVendorAppAction(id, action, btn) {
+btn.textContent = '⏳';
+try {
+const res = await fetch(SUPABASE_URL + '/functions/v1/approve-vendor-application', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken, 'apikey': SUPABASE_KEY },
+body: JSON.stringify({ application_id: id, action: action })
+});
+const data = await res.json();
+if (!res.ok || !data.success) { alert('Could not process: ' + (data.error || 'Unknown error')); }
+loadAndRenderApplications();
+} catch (err) { alert('Network error: ' + err.message); }
+}
+function renderRiderApps(apps) {
+const list = document.getElementById('riderAppsList');
+const empty = document.getElementById('riderAppsEmpty');
+if (!list) return;
+if (apps.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = apps.map(function(a) {
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + a.name + '</div><div class="ic-sub">' + a.email + ' · ' + a.phone + (a.bike_number ? ' · ' + a.bike_number : '') + (a.pincode ? ' · ' + a.pincode : '') + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn on-btn" data-rappapprove="' + a.id + '">✓ Approve</button><button class="icon-btn off-btn" data-rappreject="' + a.id + '">✕ Reject</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-rappapprove]').forEach(function(btn) {
+btn.addEventListener('click', async function() { await handleRiderAppAction(btn.getAttribute('data-rappapprove'), 'approve', btn); });
+});
+document.querySelectorAll('[data-rappreject]').forEach(function(btn) {
+btn.addEventListener('click', async function() { if (confirm('Reject this application?')) { await handleRiderAppAction(btn.getAttribute('data-rappreject'), 'reject', btn); } });
+});
+}
+async function handleRiderAppAction(id, action, btn) {
+btn.textContent = '⏳';
+try {
+const res = await fetch(SUPABASE_URL + '/functions/v1/approve-rider-application', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken, 'apikey': SUPABASE_KEY },
+body: JSON.stringify({ application_id: id, action: action })
+});
+const data = await res.json();
+if (!res.ok || !data.success) { alert('Could not process: ' + (data.error || 'Unknown error')); }
+loadAndRenderApplications();
+} catch (err) { alert('Network error: ' + err.message); }
 }
 </script>
 </body>
