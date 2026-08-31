@@ -63,6 +63,22 @@ body { background:#0f1117; color:#fff; max-width:420px; margin:0 auto; min-heigh
 <input type="password" class="login-select" id="riderPass" placeholder="Password" autocomplete="current-password">
 <button class="login-btn" id="loginBtn">Start Delivering →</button>
 <div class="login-error" id="loginError"></div>
+<div style="margin-top:14px; font-size:11.5px; color:#9ca3af;">New rider? <span id="openRiderApplyBtn" style="color:#a78bfa; text-decoration:underline; cursor:pointer;">Apply here</span></div>
+</div>
+</div>
+
+<div class="modal-overlay" id="riderApplyModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300; align-items:center; justify-content:center; padding:20px;">
+<div style="max-width:380px; width:100%; background:#181b25; border-radius:20px; padding:24px; max-height:85vh; overflow-y:auto; color:#fff;">
+<h3 style="margin-bottom:4px;">🚴 Apply to Become a Rider</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:14px;">Our team will review your application and email you your login once approved.</p>
+<input id="rAppName" placeholder="Your full name" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
+<input id="rAppEmail" type="email" placeholder="Email" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
+<input id="rAppPhone" placeholder="Phone number" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
+<input id="rAppBike" placeholder="Bike number (optional)" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
+<input id="rAppPincode" placeholder="Your area pincode" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
+<div id="riderApplyError" style="color:#f87171; font-size:11px; margin-bottom:8px;"></div>
+<button id="submitRiderAppBtn" class="login-btn" style="width:100%;">Submit Application</button>
+<button id="closeRiderApplyBtn" style="width:100%; background:none; border:none; color:#9ca3af; padding:10px; margin-top:4px; cursor:pointer;">Cancel</button>
 </div>
 </div>
 
@@ -261,6 +277,41 @@ async function loadOrders() {
 }
 
 // rider list dropdown no longer needed — login is via real email/password now
+document.getElementById('openRiderApplyBtn').addEventListener('click', function(){ document.getElementById('riderApplyModal').style.display = 'flex'; });
+document.getElementById('closeRiderApplyBtn').addEventListener('click', function(){ document.getElementById('riderApplyModal').style.display = 'none'; });
+document.getElementById('submitRiderAppBtn').addEventListener('click', async function(){
+const name = document.getElementById('rAppName').value.trim();
+const email = document.getElementById('rAppEmail').value.trim();
+const phone = document.getElementById('rAppPhone').value.trim();
+const errEl = document.getElementById('riderApplyError');
+errEl.textContent = '';
+if (!name || !email || !phone) { errEl.textContent = 'Please fill in name, email and phone.'; return; }
+const btn = document.getElementById('submitRiderAppBtn');
+btn.textContent = '⏳ Submitting...';
+btn.disabled = true;
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/rider_applications', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({
+name: name, email: email, phone: phone,
+bike_number: document.getElementById('rAppBike').value.trim() || null,
+pincode: document.getElementById('rAppPincode').value.trim() || null,
+status: 'pending'
+})
+});
+if (!res.ok) {
+const errText = await res.text();
+errEl.textContent = 'Could not submit: ' + errText;
+btn.textContent = 'Submit Application'; btn.disabled = false;
+return;
+}
+document.getElementById('riderApplyModal').innerHTML = '<div style="max-width:340px; width:100%; background:#181b25; border-radius:20px; padding:30px; text-align:center; color:#fff;"><div style="font-size:48px; margin-bottom:10px;">✅</div><h3>Application Submitted!</h3><p style="font-size:12px; color:#9ca3af; margin-top:8px;">Our team will review it and email you your login details once approved.</p><button onclick="document.getElementById(\'riderApplyModal\').style.display=\'none\';" class="login-btn" style="margin-top:16px;">Close</button></div>';
+} catch (err) {
+errEl.textContent = 'Network error: ' + err.message;
+btn.textContent = 'Submit Application'; btn.disabled = false;
+}
+});
 if ('serviceWorker' in navigator) {
 window.addEventListener('load', function() {
 navigator.serviceWorker.register('service-worker.js').catch(function(){});
