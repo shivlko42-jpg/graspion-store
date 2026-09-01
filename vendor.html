@@ -106,6 +106,14 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="historyModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300; align-items:center; justify-content:center; padding:16px;">
+<div style="max-width:440px; width:100%; background:#fff; border-radius:20px; padding:20px; max-height:80vh; overflow-y:auto;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="font-size:15px;">🕐 History — <span id="historyProductName"></span></h3><button id="closeHistoryBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
+<div id="historyTimeline"></div>
+<div class="empty-state" id="historyEmpty" style="display:none;">No changes recorded yet</div>
+</div>
+</div>
+
 <div class="modal-overlay" id="variantModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300; align-items:center; justify-content:center; padding:16px;">
 <div style="max-width:460px; width:100%; background:#fff; border-radius:20px; padding:20px; max-height:85vh; overflow-y:auto;">
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="font-size:15px;">🎨 Manage Variants — <span id="variantProductName"></span></h3><button id="closeVariantBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
@@ -864,6 +872,7 @@ function renderProducts() {
       '<div class="prod-tags">' + statusTag + modeTag + hsnTag + gstTag + returnTag + codTag + brandTag + fulfillTag + catTag + '</div></div>' +
       '<button class="mini-btn" data-stockid="' + p.id + '" data-stockname="' + p.name.replace(/"/g,'&quot;') + '" style="background:#e0f2fe; color:#0369a1; margin-right:4px;">📦 Stock</button>' +
       '<button class="mini-btn" data-variantid="' + p.id + '" data-variantname="' + p.name.replace(/"/g,'&quot;') + '" style="background:#fce7f3; color:#be185d; margin-right:4px;">🎨 Variants</button>' +
+      '<button class="mini-btn" data-historyid="' + p.id + '" data-historyname="' + p.name.replace(/"/g,'&quot;') + '" style="background:#f3f1f8; color:#6b21a8; margin-right:4px;">🕐 History</button>' +
       '<button class="del-btn" data-delid="' + p.id + '">✕</button>' +
     '</div>';
   }).join('');
@@ -888,6 +897,11 @@ function renderProducts() {
   document.querySelectorAll('[data-variantid]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       openVariantModal(btn.getAttribute('data-variantid'), btn.getAttribute('data-variantname'));
+    });
+  });
+  document.querySelectorAll('[data-historyid]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      openHistoryModal(btn.getAttribute('data-historyid'), btn.getAttribute('data-historyname'));
     });
   });
   document.querySelectorAll('[data-delid]').forEach(function(btn) {
@@ -1518,6 +1532,40 @@ alert('Could not add variant: ' + err.message);
 btn.textContent = '+ Add Variant'; btn.disabled = false;
 }
 });
+
+// ===================== HISTORY (Phase K) =====================
+document.getElementById('closeHistoryBtn').addEventListener('click', function() { document.getElementById('historyModal').style.display = 'none'; });
+async function openHistoryModal(productId, productName) {
+document.getElementById('historyProductName').textContent = productName;
+document.getElementById('historyModal').style.display = 'flex';
+const timeline = document.getElementById('historyTimeline');
+const empty = document.getElementById('historyEmpty');
+timeline.innerHTML = '<div style="font-size:11px; color:#9ca3af;">Loading...</div>';
+try {
+const [priceRes, stockRes, statusRes] = await Promise.all([
+fetch(SUPABASE_URL + '/rest/v1/product_prices?product_id=eq.' + productId + '&select=*&order=changed_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/inventory_transactions?product_id=eq.' + productId + '&select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/audit_logs?target_id=eq.' + productId + '&action=eq.product_status_changed&select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } })
+]);
+const priceHistory = priceRes.ok ? await priceRes.json() : [];
+const stockHistory = stockRes.ok ? await stockRes.json() : [];
+const statusHistory = statusRes.ok ? await statusRes.json() : [];
+
+const combined = [];
+priceHistory.forEach(function(p) { combined.push({ time: p.changed_at, icon: '💰', text: 'Price changed: ₹' + (p.old_price || '—') + ' → ₹' + p.new_price + (p.old_mrp !== p.new_mrp ? ' (MRP ₹' + p.old_mrp + ' → ₹' + p.new_mrp + ')' : '') }); });
+stockHistory.forEach(function(s) { const reason = s.reason ? ' — ' + s.reason : ''; combined.push({ time: s.created_at, icon: s.quantity_change >= 0 ? '📈' : '📉', text: 'Stock ' + (s.quantity_change >= 0 ? '+' : '') + s.quantity_change + ' (' + s.previous_stock + ' → ' + s.new_stock + ')' + reason }); });
+statusHistory.forEach(function(a) { combined.push({ time: a.created_at, icon: '👁️', text: 'Status changed: ' + (a.details.old_status || '—') + ' → ' + a.details.new_status }); });
+combined.sort(function(a, b) { return new Date(b.time) - new Date(a.time); });
+
+if (combined.length === 0) { empty.style.display = 'block'; timeline.innerHTML = ''; return; }
+empty.style.display = 'none';
+timeline.innerHTML = combined.map(function(item) {
+return '<div style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid #f7f6fb;"><div style="font-size:16px;">' + item.icon + '</div><div><div style="font-size:12px; font-weight:600;">' + item.text + '</div><div style="font-size:10px; color:#9ca3af; margin-top:2px;">' + new Date(item.time).toLocaleString('en-IN') + '</div></div></div>';
+}).join('');
+} catch (err) {
+timeline.innerHTML = '<div style="font-size:11px; color:#dc2626;">Could not load history.</div>';
+}
+}
 
 if ('serviceWorker' in navigator) {
 window.addEventListener('load', function() {
