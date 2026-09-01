@@ -1442,6 +1442,7 @@ variantSelectorHtml +
 (p.feature ? '<p style="font-size:12.5px; color:#4b5563; margin-top:10px; line-height:1.5;">' + p.feature + '</p>' : '') +
 '<div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; font-size:10.5px;">' + (p.returnable ? '<span class="prod-tag">✅ Returnable</span>' : '<span class="prod-tag">🚫 Non-Returnable</span>') + (p.codAllowed === false ? '<span class="prod-tag">💳 Prepaid Only</span>' : '<span class="prod-tag">💵 COD Available</span>') + '</div>' +
 docsHtml +
+'<div style="display:flex; align-items:center; gap:14px; margin-top:14px;"><span style="font-size:11.5px; font-weight:700; color:#6b7280;">Quantity</span><div style="display:flex; align-items:center; gap:10px; background:#f3f1f8; border-radius:10px; padding:6px 10px;"><button type="button" id="pdQtyDec" style="background:#fff; border:none; width:26px; height:26px; border-radius:6px; font-size:16px; font-weight:700; cursor:pointer;">−</button><span id="pdQtyVal" style="font-size:14px; font-weight:800; min-width:20px; text-align:center;">1</span><button type="button" id="pdQtyInc" style="background:#fff; border:none; width:26px; height:26px; border-radius:6px; font-size:16px; font-weight:700; cursor:pointer;">+</button></div></div>' +
 '<button data-detailadd="' + p.id + '" ' + (variants.length > 0 ? 'disabled' : '') + ' style="width:100%; margin-top:14px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer; opacity:' + (variants.length > 0 ? '0.5' : '1') + ';">' + (variants.length > 0 ? 'Select Options' : 'Add to Cart') + '</button>' +
 '</div>' +
 relatedHtml +
@@ -1525,10 +1526,24 @@ tryMatchVariant();
 });
 });
 
+let pdSelectedQty = 1;
+const maxAvailableStock = variants.length > 0 ? null : p.stock; // for variant products, stock cap applies once a variant is chosen
+document.getElementById('pdQtyInc').addEventListener('click', function() {
+const cap = selectedVariant ? selectedVariant.stock : maxAvailableStock;
+if (cap != null && pdSelectedQty >= cap) return;
+pdSelectedQty++;
+document.getElementById('pdQtyVal').textContent = pdSelectedQty;
+});
+document.getElementById('pdQtyDec').addEventListener('click', function() {
+if (pdSelectedQty <= 1) return;
+pdSelectedQty--;
+document.getElementById('pdQtyVal').textContent = pdSelectedQty;
+});
+
 const addBtn = document.querySelector('[data-detailadd]');
 if (addBtn) addBtn.addEventListener('click', function() {
 const key = selectedVariant ? makeCartKey(productId, selectedVariant.id) : makeCartKey(productId, null);
-cart[key] = (cart[key] || 0) + 1;
+cart[key] = (cart[key] || 0) + pdSelectedQty;
 logProductEvent(productId, 'add_to_cart');
 refreshAll();
 document.getElementById('productDetailModal').style.display = 'none';
