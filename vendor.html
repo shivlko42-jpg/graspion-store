@@ -153,6 +153,7 @@
     <div class="side-item">🧾 Orders</div>
     <div class="side-item">💳 Payments</div>
     <div class="side-item">🎯 Promote / Ads</div>
+    <div class="side-item" id="navSuppliers">🚚 Suppliers</div>
     <div class="side-item" id="navSettings">⚙️ Store Settings</div>
     <button class="logout-btn" id="logoutBtn">Logout</button>
   </div>
@@ -171,6 +172,23 @@
       <div class="kpi-card"><div class="kpi-val" id="kpiOrders">0</div><div class="kpi-label">Total Orders</div></div>
       <div class="kpi-card"><div class="kpi-val" id="kpiRevenue">₹0</div><div class="kpi-label">Total Revenue</div></div>
       <div class="kpi-card"><div class="kpi-val" id="kpiPayout">₹0</div><div class="kpi-label">Pending Payout</div></div>
+    </div>
+
+    <div class="panel" id="suppliersPanel">
+      <h3>🚚 Suppliers</h3>
+      <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Keep track of who you buy stock from — link products to suppliers with purchase price, item code, and lead time.</p>
+      <div class="form-row">
+        <div class="form-group"><input class="form-input" id="supName" placeholder="Supplier name"></div>
+        <div class="form-group"><input class="form-input" id="supContact" placeholder="Contact person"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><input class="form-input" id="supPhone" placeholder="Phone"></div>
+        <div class="form-group"><input class="form-input" id="supEmail" placeholder="Email (optional)"></div>
+      </div>
+      <div class="form-group" style="margin-bottom:10px;"><input class="form-input" id="supGstin" placeholder="Supplier GSTIN (optional)"></div>
+      <button class="login-btn" id="addSupplierBtn">+ Add Supplier</button>
+      <div id="suppliersList" style="margin-top:16px;"></div>
+      <div class="empty-state" id="suppliersEmpty" style="display:none;">No suppliers added yet</div>
     </div>
 
     <div class="panel" id="storeSettingsPanel">
@@ -285,6 +303,15 @@
             <div class="form-group"><label>Reorder Level</label><input class="form-input" id="pReorderLevel" type="number" placeholder="10" value="10"></div>
           </div>
           <div class="form-group" style="margin-bottom:10px;"><label>Max Stock Level (optional)</label><input class="form-input" id="pMaxStockLevel" type="number" placeholder="Optional ceiling"></div>
+          <div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 6px;">🚚 Purchase / Supplier Info (optional)</div>
+          <div class="form-row">
+            <div class="form-group"><label>Supplier</label><select class="form-input" id="pSupplier"><option value="">— None —</option></select></div>
+            <div class="form-group"><label>Supplier Item Code</label><input class="form-input" id="pSupplierItemCode" placeholder="Their SKU for this item"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Purchase Price</label><input class="form-input" id="pPurchasePrice" type="number" placeholder="What you paid per unit"></div>
+            <div class="form-group"><label>Lead Time (days)</label><input class="form-input" id="pLeadTime" type="number" placeholder="e.g. 5"></div>
+          </div>
           <div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 6px;">📄 Product Document (optional — manual, warranty card, spec sheet)</div>
           <div class="form-row">
             <div class="form-group"><select class="form-input" id="pDocType"><option value="manual">User Manual</option><option value="warranty_card">Warranty Card</option><option value="spec_sheet">Spec Sheet</option><option value="catalogue">Catalogue</option><option value="installation_guide">Installation Guide</option><option value="other">Other</option></select></div>
@@ -460,6 +487,7 @@ async function loginAsVendor(session) {
     arrow.textContent = isOpen ? '▾' : '▴';
   });
   loadCatalogData();
+  loadSuppliers();
   configureSellingModeUI();
   return true;
 }
@@ -530,6 +558,52 @@ document.getElementById('vendorLoginBtn').addEventListener('click', async functi
 document.getElementById('navSettings').addEventListener('click', function() {
   document.getElementById('storeSettingsPanel').scrollIntoView({ behavior: 'smooth' });
 });
+document.getElementById('navSuppliers').addEventListener('click', function() {
+  document.getElementById('suppliersPanel').scrollIntoView({ behavior: 'smooth' });
+});
+
+let allSuppliers = [];
+async function loadSuppliers() {
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/suppliers?vendor_id=eq.' + currentVendor.id + '&select=*&order=name.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+allSuppliers = res.ok ? await res.json() : [];
+} catch (err) { allSuppliers = []; }
+renderSuppliers();
+const pSupplierSel = document.getElementById('pSupplier');
+if (pSupplierSel) { pSupplierSel.innerHTML = '<option value="">— None —</option>' + allSuppliers.map(function(s) { return '<option value="' + s.id + '">' + s.name + '</option>'; }).join(''); }
+}
+function renderSuppliers() {
+const list = document.getElementById('suppliersList');
+const empty = document.getElementById('suppliersEmpty');
+if (allSuppliers.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = allSuppliers.map(function(s) {
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + s.name + '</div><div class="ic-sub">' + (s.contact_person || '') + (s.phone ? ' · ' + s.phone : '') + (s.gstin ? ' · GSTIN: ' + s.gstin : '') + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn del-btn" data-supdel="' + s.id + '">Delete</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-supdel]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Delete this supplier?')) return;
+await fetch(SUPABASE_URL + '/rest/v1/suppliers?id=eq.' + btn.getAttribute('data-supdel'), { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+loadSuppliers();
+});
+});
+}
+document.getElementById('addSupplierBtn').addEventListener('click', async function() {
+const name = document.getElementById('supName').value.trim();
+if (!name) { alert('Supplier name is required'); return; }
+const btn = document.getElementById('addSupplierBtn');
+btn.textContent = '⏳ Adding...';
+await fetch(SUPABASE_URL + '/rest/v1/suppliers', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ vendor_id: currentVendor.id, name: name, contact_person: document.getElementById('supContact').value.trim() || null, phone: document.getElementById('supPhone').value.trim() || null, email: document.getElementById('supEmail').value.trim() || null, gstin: document.getElementById('supGstin').value.trim() || null, status: 'active' })
+});
+['supName','supContact','supPhone','supEmail','supGstin'].forEach(function(id) { document.getElementById(id).value = ''; });
+btn.textContent = '+ Add Supplier';
+loadSuppliers();
+});
+
 function populateSettingsForm() {
   document.getElementById('sVendorType').value = currentVendor.vendor_type === 'dark_store' ? '⚡ Dark Store (Instant Delivery)' : '📦 Marketplace (Pan-India)';
   document.getElementById('sCommission').value = (currentVendor.commission_percent || 10) + '%';
@@ -1101,6 +1175,24 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
       }
     }
 
+    // Link supplier, if one was selected
+    const supplierId = document.getElementById('pSupplier').value;
+    if (supplierId && newProductId) {
+      await fetch(SUPABASE_URL + '/rest/v1/product_suppliers', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_id: newProductId, supplier_id: supplierId,
+          supplier_item_code: document.getElementById('pSupplierItemCode').value.trim() || null,
+          purchase_price: document.getElementById('pPurchasePrice').value ? Number(document.getElementById('pPurchasePrice').value) : null,
+          last_purchase_price: document.getElementById('pPurchasePrice').value ? Number(document.getElementById('pPurchasePrice').value) : null,
+          lead_time_days: document.getElementById('pLeadTime').value ? Number(document.getElementById('pLeadTime').value) : null,
+          is_primary: true
+        })
+      });
+    }
+
+
     // If vendor opted to publish this as a shared catalog item (and it wasn't
     // already listed FROM the catalog), create the catalog_items row and
     // auto-approve this vendor as its first seller.
@@ -1119,7 +1211,8 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
       }
     }
 
-    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt','pSupplierItemCode','pPurchasePrice','pLeadTime'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
+    document.getElementById('pSupplier').value = '';
     document.getElementById('pStatus').value = 'active';
     document.getElementById('pPublishAtGroup').style.display = 'none';
     document.getElementById('pChannelWebsite').checked = true;
