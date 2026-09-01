@@ -56,6 +56,17 @@ body { background:#0f1117; color:#fff; max-width:420px; margin:0 auto; min-heigh
 </head>
 <body>
 
+<div class="login-overlay" id="setPasswordOverlay" style="display:none;">
+<div class="login-box">
+<div data-graspion-logo="full" data-size="20" data-color="#ffffff" style="justify-content:center; display:flex; margin-bottom:16px;"></div>
+<div class="login-sub">🎉 Welcome! Set your password to finish setting up your account.</div>
+<input type="password" id="newPassword" placeholder="Create a password" class="login-select">
+<input type="password" id="newPasswordConfirm" placeholder="Confirm password" class="login-select">
+<button class="login-btn" id="setPasswordBtn">Set Password & Continue →</button>
+<div class="login-error" id="setPasswordError"></div>
+</div>
+</div>
+
 <div class="login-overlay" id="loginOverlay">
 <div class="login-box">
 <div data-graspion-logo="full" data-size="20" data-color="#ffffff" style="justify-content:center; display:flex; margin-bottom:16px;"></div>
@@ -73,6 +84,7 @@ body { background:#0f1117; color:#fff; max-width:420px; margin:0 auto; min-heigh
 <p style="font-size:11px; color:#9ca3af; margin-bottom:14px;">Our team will review your application and email you your login once approved.</p>
 <input id="rAppName" placeholder="Your full name" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
 <input id="rAppEmail" type="email" placeholder="Email" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
+<input id="rAppPassword" type="password" placeholder="Create a password (for your login once approved)" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
 <input id="rAppPhone" placeholder="Phone number" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
 <input id="rAppBike" placeholder="Bike number (optional)" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
 <input id="rAppPincode" placeholder="Your area pincode" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
@@ -139,8 +151,42 @@ async function loginAsRider(session) {
   return true;
 }
 
+function isInviteLink() {
+const hash = window.location.hash.substring(1);
+const params = new URLSearchParams(hash);
+return params.get('type') === 'invite' || params.get('type') === 'recovery';
+}
+
+document.getElementById('setPasswordBtn').addEventListener('click', async function() {
+const pass = document.getElementById('newPassword').value;
+const confirm = document.getElementById('newPasswordConfirm').value;
+const errEl = document.getElementById('setPasswordError');
+errEl.textContent = '';
+if (!pass || pass.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+if (pass !== confirm) { errEl.textContent = 'Passwords do not match.'; return; }
+const btn = document.getElementById('setPasswordBtn');
+btn.textContent = '⏳ Setting password...';
+btn.disabled = true;
+try {
+const { data, error } = await supaAuth.auth.updateUser({ password: pass });
+if (error) { errEl.textContent = error.message; btn.textContent = 'Set Password & Continue →'; btn.disabled = false; return; }
+document.getElementById('setPasswordOverlay').style.display = 'none';
+history.replaceState(null, '', window.location.pathname); // clean up the URL
+const { data: sessionData } = await supaAuth.auth.getSession();
+if (sessionData.session) { await loginAsRider(sessionData.session); }
+} catch (err) {
+errEl.textContent = 'Error: ' + err.message;
+btn.textContent = 'Set Password & Continue →'; btn.disabled = false;
+}
+});
+
 (async function restoreRiderSession() {
   try {
+    if (isInviteLink()) {
+      // wait for supabase-js to establish the session from the URL, then show the set-password screen
+      const { data } = await supaAuth.auth.getSession();
+      if (data.session) { document.getElementById('setPasswordOverlay').style.display = 'flex'; return; }
+    }
     const { data } = await supaAuth.auth.getSession();
     if (data.session) { await loginAsRider(data.session); }
   } catch (err) { /* show login screen as normal */ }
@@ -300,14 +346,23 @@ reader.readAsDataURL(input.files[0]);
 document.getElementById('submitRiderAppBtn').addEventListener('click', async function(){
 const name = document.getElementById('rAppName').value.trim();
 const email = document.getElementById('rAppEmail').value.trim();
+const password = document.getElementById('rAppPassword').value;
 const phone = document.getElementById('rAppPhone').value.trim();
 const errEl = document.getElementById('riderApplyError');
 errEl.textContent = '';
 if (!name || !email || !phone) { errEl.textContent = 'Please fill in name, email and phone.'; return; }
+if (!password || password.length < 6) { errEl.textContent = 'Please create a password (at least 6 characters).'; return; }
 const btn = document.getElementById('submitRiderAppBtn');
-btn.textContent = '⏳ Uploading documents...';
+btn.textContent = '⏳ Creating your account...';
 btn.disabled = true;
 try {
+const tempClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+const { data: signupData, error: signupError } = await tempClient.auth.signUp({ email: email, password: password });
+if (signupError || !signupData.user) {
+errEl.textContent = 'Could not create account: ' + (signupError ? signupError.message : 'Unknown error');
+btn.textContent = 'Submit Application'; btn.disabled = false;
+return;
+}
 const licenseImg = await fileToBase64('rAppLicenseFile');
 const rcImg = await fileToBase64('rAppRcFile');
 const idImg = await fileToBase64('rAppIdFile');
@@ -317,6 +372,7 @@ method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
 body: JSON.stringify({
 name: name, email: email, phone: phone,
+auth_user_id: signupData.user.id,
 bike_number: document.getElementById('rAppBike').value.trim() || null,
 address: document.getElementById('rAppAddress').value.trim() || null,
 pincode: document.getElementById('rAppPincode').value.trim() || null,
@@ -330,7 +386,7 @@ errEl.textContent = 'Could not submit: ' + errText;
 btn.textContent = 'Submit Application'; btn.disabled = false;
 return;
 }
-document.getElementById('riderApplyModal').innerHTML = '<div style="max-width:340px; width:100%; background:#181b25; border-radius:20px; padding:30px; text-align:center; color:#fff;"><div style="font-size:48px; margin-bottom:10px;">✅</div><h3>Application Submitted!</h3><p style="font-size:12px; color:#9ca3af; margin-top:8px;">Our team will review it and email you your login details once approved.</p><button onclick="document.getElementById(\'riderApplyModal\').style.display=\'none\';" class="login-btn" style="margin-top:16px;">Close</button></div>';
+document.getElementById('riderApplyModal').innerHTML = '<div style="max-width:340px; width:100%; background:#181b25; border-radius:20px; padding:30px; text-align:center; color:#fff;"><div style="font-size:48px; margin-bottom:10px;">✅</div><h3>Application Submitted!</h3><p style="font-size:12px; color:#9ca3af; margin-top:8px;">Our team will review it. Once approved, log in anytime using the email and password you just created.</p><button onclick="document.getElementById(\'riderApplyModal\').style.display=\'none\';" class="login-btn" style="margin-top:16px;">Close</button></div>';
 } catch (err) {
 errEl.textContent = 'Network error: ' + err.message;
 btn.textContent = 'Submit Application'; btn.disabled = false;

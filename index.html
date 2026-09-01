@@ -330,6 +330,7 @@ body { padding-bottom:68px; }
 <input class="form-input-like" id="appStoreName" placeholder="Store name" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
 <input class="form-input-like" id="appOwnerName" placeholder="Your full name" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
 <input class="form-input-like" id="appEmail" type="email" placeholder="Email" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<input class="form-input-like" id="appPassword" type="password" placeholder="Create a password (for your login once approved)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
 <input class="form-input-like" id="appPhone" placeholder="Phone number" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
 <textarea id="appAddress" placeholder="Full store address (house/shop no., street, area)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; min-height:50px; font-family:inherit;"></textarea>
 <input class="form-input-like" id="appPincode" placeholder="Store pincode" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
@@ -1101,14 +1102,26 @@ document.getElementById('submitVendorAppBtn').addEventListener('click', async fu
 const storeName = document.getElementById('appStoreName').value.trim();
 const ownerName = document.getElementById('appOwnerName').value.trim();
 const email = document.getElementById('appEmail').value.trim();
+const password = document.getElementById('appPassword').value;
 const phone = document.getElementById('appPhone').value.trim();
 const errEl = document.getElementById('vendorApplyError');
 errEl.textContent = '';
 if (!storeName || !ownerName || !email || !phone) { errEl.textContent = 'Please fill in store name, your name, email and phone.'; return; }
+if (!password || password.length < 6) { errEl.textContent = 'Please create a password (at least 6 characters).'; return; }
+if (!supaAuth) { errEl.textContent = 'Login system is still loading — please wait a moment and try again.'; return; }
 const btn = document.getElementById('submitVendorAppBtn');
-btn.textContent = '⏳ Uploading documents...';
+btn.textContent = '⏳ Creating your account...';
 btn.disabled = true;
 try {
+// Use a separate, non-persisting client so this signup never disturbs
+// the customer's own logged-in session on this device
+const tempClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+const { data: signupData, error: signupError } = await tempClient.auth.signUp({ email: email, password: password });
+if (signupError || !signupData.user) {
+errEl.textContent = 'Could not create account: ' + (signupError ? signupError.message : 'Unknown error');
+btn.textContent = 'Submit Application'; btn.disabled = false;
+return;
+}
 const panImg = await fileToBase64('appPanFile');
 const gstImg = await fileToBase64('appGstFile');
 const bankImg = await fileToBase64('appBankFile');
@@ -1119,6 +1132,7 @@ method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
 body: JSON.stringify({
 store_name: storeName, owner_name: ownerName, email: email, phone: phone,
+auth_user_id: signupData.user.id,
 address: document.getElementById('appAddress').value.trim() || null,
 pincode: document.getElementById('appPincode').value.trim() || null,
 vendor_type: document.getElementById('appVendorType').value,
@@ -1134,7 +1148,7 @@ errEl.textContent = 'Could not submit: ' + errText;
 btn.textContent = 'Submit Application'; btn.disabled = false;
 return;
 }
-document.getElementById('vendorApplyModal').innerHTML = '<div class="modal-box" style="max-width:380px; background:#fff; border-radius:20px; padding:30px; text-align:center;"><div style="font-size:48px; margin-bottom:10px;">✅</div><h3>Application Submitted!</h3><p style="font-size:12px; color:#9ca3af; margin-top:8px;">Our team will review it and email you your login details once approved.</p><button onclick="document.getElementById(\'vendorApplyModal\').style.display=\'none\';" style="margin-top:16px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:12px 24px; border-radius:12px; font-weight:800; cursor:pointer;">Close</button></div>';
+document.getElementById('vendorApplyModal').innerHTML = '<div class="modal-box" style="max-width:380px; background:#fff; border-radius:20px; padding:30px; text-align:center;"><div style="font-size:48px; margin-bottom:10px;">✅</div><h3>Application Submitted!</h3><p style="font-size:12px; color:#9ca3af; margin-top:8px;">Our team will review it. Once approved, log in on this page anytime using the email and password you just created.</p><button onclick="document.getElementById(\'vendorApplyModal\').style.display=\'none\';" style="margin-top:16px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:12px 24px; border-radius:12px; font-weight:800; cursor:pointer;">Close</button></div>';
 } catch (err) {
 errEl.textContent = 'Network error: ' + err.message;
 btn.textContent = 'Submit Application'; btn.disabled = false;
