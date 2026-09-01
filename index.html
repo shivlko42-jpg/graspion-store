@@ -387,6 +387,13 @@ body { padding-bottom:68px; }
 </div>
 </div>
 
+<div class="modal-overlay" id="productDetailModal" style="display:none;">
+<div class="modal-box" style="max-width:480px; width:100%; background:#fff; border-radius:20px; padding:0; max-height:88vh; overflow-y:auto; position:relative;">
+<button id="closeProductDetailBtn" style="position:absolute; top:12px; right:12px; z-index:5; background:#fff; border:none; width:32px; height:32px; border-radius:50%; box-shadow:0 2px 8px rgba(0,0,0,0.15); font-size:14px; cursor:pointer;">✕</button>
+<div id="productDetailContent" style="padding:18px;"></div>
+</div>
+</div>
+
 <div class="bottom-nav">
 <div class="bn-item active" id="bnHome"><div class="bn-icon">🏠</div><div class="bn-label">Home</div></div>
 <div class="bn-item" id="bnCategories"><div class="bn-icon">📁</div><div class="bn-label">Categories</div></div>
@@ -694,7 +701,7 @@ const qty = cart[p.id] || 0;
 const deliveryBadge = p.fulfillmentType === 'instant' ? '⚡ ' + graspionT('instantTag') : '📦 ' + graspionT('standardTag');
 const allPhotos = [p.image].concat(p.additionalImages || []).filter(Boolean);
 const thumbStripHtml = allPhotos.length > 1 ? '<div class="thumb-strip">' + allPhotos.map(function(src, idx){ return '<img class="thumb-img' + (idx===0?' active':'') + '" src="' + src + '" data-thumbswap="' + p.id + '" data-src="' + src + '">'; }).join('') + '</div>' : '';
-return '<div class="card">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') +
+return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') +
 '<div class="img-wrap">' + (allPhotos.length > 0 ? '<img data-mainimg="' + p.id + '" src="' + allPhotos[0] + '">' : p.icon) + '</div>' + thumbStripHtml + '<div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
 '<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
 '<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span><div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div><div class="feature-tag" style="margin-left:0;">' + deliveryBadge + '</div>' +
@@ -704,9 +711,10 @@ return '<div class="card">' + (p.badge ? '<div class="badge new">' + p.badge + '
 (qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '" ' + (qty >= p.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>')) +
 '</div></div>';
 }).join('');
-document.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(){ cart[btn.getAttribute('data-add')] = 1; refreshAll(); }); });
-document.querySelectorAll('[data-inc]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=btn.getAttribute('data-inc'); cart[id]=(cart[id]||0)+1; refreshAll(); }); });
-document.querySelectorAll('[data-dec]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=btn.getAttribute('data-dec'); cart[id]=(cart[id]||0)-1; if(cart[id]<=0) delete cart[id]; refreshAll(); }); });
+document.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); cart[btn.getAttribute('data-add')] = 1; refreshAll(); }); });
+document.querySelectorAll('[data-inc]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id=btn.getAttribute('data-inc'); cart[id]=(cart[id]||0)+1; refreshAll(); }); });
+document.querySelectorAll('[data-dec]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id=btn.getAttribute('data-dec'); cart[id]=(cart[id]||0)-1; if(cart[id]<=0) delete cart[id]; refreshAll(); }); });
+document.querySelectorAll('[data-viewid]').forEach(function(card){ card.addEventListener('click', function(){ openProductDetail(card.getAttribute('data-viewid')); }); });
 document.querySelectorAll('[data-thumbswap]').forEach(function(thumb){ thumb.addEventListener('click', function(e){ e.stopPropagation(); const id = thumb.getAttribute('data-thumbswap'); const src = thumb.getAttribute('data-src'); const mainImg = document.querySelector('[data-mainimg="' + id + '"]'); if (mainImg) mainImg.src = src; thumb.parentElement.querySelectorAll('.thumb-img').forEach(function(t){ t.classList.remove('active'); }); thumb.classList.add('active'); }); });
 }
 function cartItemsList(){ return Object.keys(cart).map(function(id){ const p = productPool.find(function(pp){ return pp.id === id; }); return Object.assign({}, p, { qty: cart[id] }); }); }
@@ -1286,6 +1294,84 @@ if (!supaAuth) { alert('Login is still loading, please try again in a moment (th
 if (currentCustomer) { document.getElementById('myOrdersModal').style.display = 'flex'; loadMyOrders(); }
 else { document.getElementById('accountModal').style.display = 'flex'; }
 });
+
+// ===================== PRODUCT DETAIL MODAL + REVIEWS =====================
+async function openProductDetail(productId) {
+const p = productPool.find(function(pp) { return pp.id === productId; });
+if (!p) return;
+const vendor = vendors.find(function(v) { return v.id === p.vendorId; });
+const content = document.getElementById('productDetailContent');
+content.innerHTML = '<div style="text-align:center; padding:40px 0; color:#9ca3af;">Loading...</div>';
+document.getElementById('productDetailModal').style.display = 'flex';
+
+let reviews = [];
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/reviews?product_id=eq.' + productId + '&status=eq.approved&select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+reviews = res.ok ? await res.json() : [];
+} catch (err) { reviews = []; }
+
+const avgRating = reviews.length > 0 ? (reviews.reduce(function(s,r){ return s + Number(r.rating || 0); }, 0) / reviews.length).toFixed(1) : null;
+const allPhotos = [p.image].concat(p.additionalImages || []).filter(Boolean);
+const mainImgHtml = allPhotos.length > 0 ? '<img src="' + allPhotos[0] + '" id="pdMainImg" style="width:100%; height:220px; object-fit:cover; border-radius:14px;">' : '<div style="width:100%; height:220px; background:#f3f1f8; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:60px;">' + p.icon + '</div>';
+const thumbsHtml = allPhotos.length > 1 ? '<div style="display:flex; gap:6px; margin-top:8px;">' + allPhotos.map(function(src){ return '<img src="' + src + '" data-pdthumb="' + src + '" style="width:44px; height:44px; object-fit:cover; border-radius:8px; cursor:pointer; opacity:0.7;">'; }).join('') + '</div>' : '';
+
+content.innerHTML =
+mainImgHtml + thumbsHtml +
+'<div style="margin-top:14px;"><div style="font-size:11px; color:#9ca3af;">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div>' +
+'<h2 style="font-size:18px; margin-top:2px;">' + p.name + '</h2>' +
+'<div style="display:flex; align-items:center; gap:8px; margin-top:6px;"><span style="font-size:20px; font-weight:900; color:#7c3aed;">₹' + p.price + '</span>' + (p.old > p.price ? '<span style="text-decoration:line-through; color:#9ca3af; font-size:13px;">₹' + p.old + '</span><span style="color:#15803d; font-size:11px; font-weight:700;">' + p.off + '</span>' : '') + '</div>' +
+(avgRating ? '<div style="margin-top:6px; font-size:12px;">⭐ ' + avgRating + ' (' + reviews.length + ' review' + (reviews.length !== 1 ? 's' : '') + ')</div>' : '<div style="margin-top:6px; font-size:11px; color:#9ca3af;">No reviews yet</div>') +
+(p.feature ? '<p style="font-size:12.5px; color:#4b5563; margin-top:10px; line-height:1.5;">' + p.feature + '</p>' : '') +
+'<div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; font-size:10.5px;">' + (p.returnable ? '<span class="prod-tag">✅ Returnable</span>' : '<span class="prod-tag">🚫 Non-Returnable</span>') + (p.codAllowed === false ? '<span class="prod-tag">💳 Prepaid Only</span>' : '<span class="prod-tag">💵 COD Available</span>') + '</div>' +
+'<button data-detailadd="' + p.id + '" style="width:100%; margin-top:14px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Add to Cart</button>' +
+'</div>' +
+'<div style="margin-top:22px; border-top:1px solid #f0eef7; padding-top:16px;">' +
+'<h3 style="font-size:14px; margin-bottom:10px;">⭐ Reviews</h3>' +
+'<div id="pdReviewsList">' + (reviews.length === 0 ? '<p style="font-size:12px; color:#9ca3af;">Be the first to review this product!</p>' : reviews.map(function(r) {
+return '<div style="border-bottom:1px solid #f7f6fb; padding:10px 0;"><div style="font-size:12px; font-weight:700;">' + '⭐'.repeat(Number(r.rating || 0)) + ' <span style="color:#9ca3af; font-weight:400;">' + (r.customer_name || 'Customer') + '</span>' + (r.is_verified ? ' <span style="font-size:9px; background:#dcfce7; color:#15803d; padding:2px 6px; border-radius:6px; font-weight:700;">✓ Verified Purchase</span>' : '') + '</div>' + (r.comment ? '<p style="font-size:12px; color:#4b5563; margin-top:4px;">' + r.comment + '</p>' : '') + (r.admin_reply ? '<div style="margin-top:6px; background:#f7f6fb; border-left:3px solid #7c3aed; padding:6px 10px; border-radius:6px; font-size:11.5px;"><b>Graspion team:</b> ' + r.admin_reply + '</div>' : '') + '</div>';
+}).join('')) + '</div>' +
+'<div style="margin-top:14px; background:#F1F8ED; border-radius:12px; padding:12px;">' +
+'<div style="font-size:11.5px; font-weight:700; margin-bottom:8px;">Write a review</div>' +
+'<div id="pdStarPicker" style="font-size:22px; margin-bottom:8px; cursor:pointer;">☆☆☆☆☆</div>' +
+'<textarea id="pdReviewComment" placeholder="Share your experience (optional)" style="width:100%; padding:10px; border:1.5px solid #e5e7eb; border-radius:10px; min-height:50px; font-family:inherit; font-size:12px;"></textarea>' +
+'<div id="pdReviewError" style="color:#dc2626; font-size:11px; margin-top:4px;"></div>' +
+'<button id="pdSubmitReview" style="width:100%; margin-top:8px; background:#7c3aed; color:#fff; border:none; padding:10px; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer;">Submit Review</button>' +
+'</div></div>';
+
+let selectedStars = 0;
+document.getElementById('pdStarPicker').addEventListener('click', function(e) {
+const rect = this.getBoundingClientRect();
+const clickX = e.clientX - rect.left;
+selectedStars = Math.min(5, Math.max(1, Math.ceil(clickX / (rect.width / 5))));
+this.textContent = '★'.repeat(selectedStars) + '☆'.repeat(5 - selectedStars);
+});
+document.getElementById('pdSubmitReview').addEventListener('click', async function() {
+const errEl = document.getElementById('pdReviewError');
+errEl.textContent = '';
+if (selectedStars === 0) { errEl.textContent = 'Please select a star rating.'; return; }
+if (!currentCustomer) { errEl.textContent = 'Please login to write a review.'; return; }
+const btn = document.getElementById('pdSubmitReview');
+btn.textContent = '⏳ Submitting...'; btn.disabled = true;
+try {
+await fetch(SUPABASE_URL + '/rest/v1/reviews', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ product_id: productId, customer_id: currentCustomer.id, customer_name: currentCustomer.name || 'Customer', rating: selectedStars, comment: document.getElementById('pdReviewComment').value.trim() || null, status: 'approved' })
+});
+openProductDetail(productId); // refresh to show the new review
+} catch (err) {
+errEl.textContent = 'Could not submit review: ' + err.message;
+btn.textContent = 'Submit Review'; btn.disabled = false;
+}
+});
+document.querySelectorAll('[data-pdthumb]').forEach(function(t) {
+t.addEventListener('click', function() { document.getElementById('pdMainImg').src = t.getAttribute('data-pdthumb'); });
+});
+document.getElementById('pdMainImg') && null;
+const addBtn = document.querySelector('[data-detailadd]');
+if (addBtn) addBtn.addEventListener('click', function() { cart[productId] = (cart[productId] || 0) + 1; refreshAll(); document.getElementById('productDetailModal').style.display = 'none'; });
+}
+document.getElementById('closeProductDetailBtn').addEventListener('click', function() { document.getElementById('productDetailModal').style.display = 'none'; });
 
 if ('serviceWorker' in navigator) {
 window.addEventListener('load', function() {

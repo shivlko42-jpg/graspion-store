@@ -142,6 +142,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="side-item" data-page="settings">⚙️ Settings</div>
 <div class="side-item" data-page="staff">👤 Staff Management</div>
 <div class="side-item" data-page="applications">📋 New Applications</div>
+<div class="side-item" data-page="reviews">⭐ Reviews</div>
 <div class="side-item" data-page="pairings">🔗 Pairings</div>
 <div class="side-item" data-page="catalog">📋 Catalog Requests</div>
 <button class="logout-btn" id="logoutBtn">Logout</button>
@@ -272,6 +273,13 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="empty-state" id="whEmpty" style="display:none;">No dark stores added yet</div>
 </div>
 
+<div class="panel" data-section="warehouses">
+<h3>📍 Rack / Shelf / Bin Locations</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">For instant-delivery (dark store) products — set exactly where each item sits so staff can pick it fast.</p>
+<div id="rackBinList"></div>
+<div class="empty-state" id="rackBinEmpty" style="display:none;">No instant-delivery products found yet</div>
+</div>
+
 <div class="panel" data-section="categories">
 <h3>📁 Categories</h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">These appear as quick-category tiles on the customer homepage automatically.</p>
@@ -350,6 +358,13 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="empty-state" id="riderAppsEmpty" style="display:none;">No pending rider applications</div>
 </div>
 
+<div class="panel" data-section="reviews">
+<h3>⭐ Customer Reviews</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Reply to reviews — your reply shows publicly under the review on the product page.</p>
+<div id="adminReviewsList"></div>
+<div class="empty-state" id="adminReviewsEmpty" style="display:none;">No reviews yet</div>
+</div>
+
 <div class="panel" data-section="pairings">
 <h3>🔗 Product Pairings — Frequently Bought Together</h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Link two products together (e.g. Soap + Shampoo, or a gift-pack combo). When a customer adds one to their cart, the other is suggested as a quick add-on.</p>
@@ -384,6 +399,8 @@ let allRiders = [];
 let allPairings = [];
 let allCatalogItems = [], allCatalogPermissions = [];
 let allStaff = [];
+let allReviews = [];
+let allWarehouseInventory = [];
 let allShipments = [];
 let allSettlements = [];
 
@@ -540,6 +557,8 @@ renderPairings();
 renderCatalogRequests();
 if (currentAdmin && currentAdmin.role === 'super_admin') { loadAndRenderStaff(); }
 loadAndRenderApplications();
+loadAndRenderReviews();
+loadAndRenderRackBin();
 } catch (err) {
 badge.className = 'db-badge loading';
 badge.textContent = '❌ Error: ' + err.message;
@@ -1358,6 +1377,81 @@ const data = await res.json();
 if (!res.ok || !data.success) { alert('Could not process: ' + (data.error || 'Unknown error')); }
 loadAndRenderApplications();
 } catch (err) { alert('Network error: ' + err.message); }
+}
+
+// ===================== ADMIN REVIEWS REPLY =====================
+async function loadAndRenderReviews() {
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/reviews?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+allReviews = res.ok ? await res.json() : [];
+renderAdminReviews();
+} catch (err) { allReviews = []; }
+}
+function renderAdminReviews() {
+const list = document.getElementById('adminReviewsList');
+const empty = document.getElementById('adminReviewsEmpty');
+if (!list) return;
+if (allReviews.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = allReviews.map(function(r) {
+const product = allProducts.find(function(p) { return p.id === r.product_id; });
+return '<div class="item-card" style="display:block;"><div class="ic-title">' + '⭐'.repeat(r.rating || 0) + ' — ' + (product ? product.name : 'Product') + (r.is_verified ? ' <span style="font-size:9px; background:#dcfce7; color:#15803d; padding:2px 6px; border-radius:6px; font-weight:700;">✓ Verified Purchase</span>' : '') + '</div>' +
+'<div class="ic-sub">' + (r.customer_name || 'Customer') + (r.comment ? ' — "' + r.comment + '"' : '') + '</div>' +
+(r.admin_reply ? '<div style="margin-top:6px; background:#F1F8ED; padding:8px; border-radius:8px; font-size:11px;"><b>Your reply:</b> ' + r.admin_reply + '</div>' : '<div style="margin-top:8px; display:flex; gap:6px;"><input class="setting-input" style="flex:1; font-size:11px;" placeholder="Write a reply..." id="reply-' + r.id + '"><button class="mini-btn" data-replyid="' + r.id + '" style="background:#dbeafe; color:#1d4ed8;">Reply</button></div>') +
+'</div>';
+}).join('');
+document.querySelectorAll('[data-replyid]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-replyid');
+const text = document.getElementById('reply-' + id).value.trim();
+if (!text) { alert('Please write a reply first'); return; }
+await fetch(SUPABASE_URL + '/rest/v1/reviews?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ admin_reply: text, admin_reply_at: new Date().toISOString() }) });
+loadAndRenderReviews();
+});
+});
+}
+
+// ===================== RACK / SHELF / BIN =====================
+async function loadAndRenderRackBin() {
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/warehouse_inventory?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+allWarehouseInventory = res.ok ? await res.json() : [];
+} catch (err) { allWarehouseInventory = []; }
+renderRackBin();
+}
+function renderRackBin() {
+const list = document.getElementById('rackBinList');
+const empty = document.getElementById('rackBinEmpty');
+if (!list) return;
+const instantProducts = allProducts.filter(function(p) { return p.fulfillment_type === 'instant'; });
+if (instantProducts.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = instantProducts.map(function(p) {
+const vendor = allVendors.find(function(v) { return v.id === p.vendor_id; });
+const inv = allWarehouseInventory.find(function(w) { return w.product_id === p.id && w.warehouse_id === vendor?.warehouse_id; });
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + p.name + '</div><div class="ic-sub">' + (vendor ? vendor.name : '') + '</div></div>' +
+'<div style="display:flex; gap:4px;"><input class="setting-input" style="width:60px; font-size:11px;" placeholder="Rack" id="rack-' + p.id + '" value="' + (inv?.rack || '') + '">' +
+'<input class="setting-input" style="width:60px; font-size:11px;" placeholder="Shelf" id="shelf-' + p.id + '" value="' + (inv?.shelf || '') + '">' +
+'<input class="setting-input" style="width:60px; font-size:11px;" placeholder="Bin" id="bin-' + p.id + '" value="' + (inv?.bin || '') + '">' +
+'<button class="mini-btn" data-savebin="' + p.id + '" data-vendorid="' + (vendor?.id || '') + '" data-warehouseid="' + (vendor?.warehouse_id || '') + '" style="background:#dcfce7; color:#15803d;">Save</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-savebin]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const productId = btn.getAttribute('data-savebin');
+const warehouseId = btn.getAttribute('data-warehouseid');
+if (!warehouseId) { alert('This vendor has no dark store/warehouse assigned.'); return; }
+const rack = document.getElementById('rack-' + productId).value.trim();
+const shelf = document.getElementById('shelf-' + productId).value.trim();
+const bin = document.getElementById('bin-' + productId).value.trim();
+const existing = allWarehouseInventory.find(function(w) { return w.product_id === productId && w.warehouse_id === warehouseId; });
+if (existing) {
+await fetch(SUPABASE_URL + '/rest/v1/warehouse_inventory?id=eq.' + existing.id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ rack: rack, shelf: shelf, bin: bin }) });
+} else {
+await fetch(SUPABASE_URL + '/rest/v1/warehouse_inventory', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: productId, warehouse_id: warehouseId, rack: rack, shelf: shelf, bin: bin }) });
+}
+loadAndRenderRackBin();
+});
+});
 }
 </script>
 </body>

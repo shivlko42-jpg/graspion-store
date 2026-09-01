@@ -201,6 +201,67 @@
         <div class="form-group"><label>Category</label><select class="form-input" id="pCategory"><option value="">— Select category —</option></select></div>
         <div class="form-group"><label>SKU (optional, auto-generated if blank)</label><input class="form-input" id="pSku" placeholder="e.g. GRS-SPK-001"></div>
       </div>
+      <div style="margin-bottom:12px;">
+        <div id="advancedToggle" style="cursor:pointer; font-size:11.5px; font-weight:700; color:#7c3aed; display:flex; align-items:center; gap:4px;">📋 Advanced Details (Item Code, Warranty, Cost Price, etc.) <span id="advancedArrow">▾</span></div>
+        <div id="advancedFields" style="display:none; margin-top:10px;">
+          <div class="form-row">
+            <div class="form-group"><label>Item Code</label><input class="form-input" id="pItemCode" placeholder="Internal item code"></div>
+            <div class="form-group"><label>Short Name</label><input class="form-input" id="pShortName" placeholder="Short display name"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Product Type</label><select class="form-input" id="pProductType"><option value="Simple">Simple</option><option value="Variant">Has Variants</option><option value="Bundle">Bundle/Combo</option></select></div>
+            <div class="form-group"><label>Manufacturer</label><input class="form-input" id="pManufacturer" placeholder="Manufacturer name"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Model Number</label><input class="form-input" id="pModelNumber" placeholder="Model no."></div>
+            <div class="form-group"><label>Part Number</label><input class="form-input" id="pPartNumber" placeholder="Part no."></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Barcode</label><input class="form-input" id="pBarcode" placeholder="Barcode number"></div>
+            <div class="form-group"><label>Tags (comma separated)</label><input class="form-input" id="pTags" placeholder="e.g. summer, trending, gift"></div>
+          </div>
+          <label style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 6px;"><input type="checkbox" id="pWarrantyAvailable"> Warranty Available</label>
+          <div class="form-row">
+            <div class="form-group"><label>Warranty Period</label><input class="form-input" id="pWarrantyPeriod" placeholder="e.g. 1 Year"></div>
+            <div class="form-group"><label>Warranty Type</label><select class="form-input" id="pWarrantyType"><option value="">—</option><option value="Manufacturer">Manufacturer</option><option value="Seller">Seller</option></select></div>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;"><label>What's Included</label><input class="form-input" id="pWhatsIncluded" placeholder="e.g. 1 Charger, 1 Cable, User Manual"></div>
+          <div class="form-group" style="margin-bottom:10px;"><label>Care Instructions</label><input class="form-input" id="pCareInstructions" placeholder="How to care for this product"></div>
+          <div class="form-group" style="margin-bottom:10px;"><label>Safety Information</label><input class="form-input" id="pSafetyInfo" placeholder="Safety warnings, if any"></div>
+          <div class="form-group" style="margin-bottom:10px;"><label>Installation Info</label><input class="form-input" id="pInstallationInfo" placeholder="Installation notes, if applicable"></div>
+          <div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 6px;">💰 Cost & Wholesale Pricing (for your own profit tracking — not shown to customers)</div>
+          <div class="form-row">
+            <div class="form-group"><label>Cost Price</label><input class="form-input" id="pCostPrice" type="number" placeholder="What it costs you"></div>
+            <div class="form-group"><label>Wholesale Price</label><input class="form-input" id="pWholesalePrice" type="number" placeholder="Bulk price"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Dealer Price</label><input class="form-input" id="pDealerPrice" type="number" placeholder="Dealer price"></div>
+            <div class="form-group"><label>Min Selling Price</label><input class="form-input" id="pMinSellingPrice" type="number" placeholder="Never sell below this"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Special Price (limited-time)</label><input class="form-input" id="pSpecialPrice" type="number" placeholder="Optional special price"></div>
+            <div class="form-group"><label>Discount</label>
+              <div style="display:flex; gap:4px;">
+                <select class="form-input" id="pDiscountType" style="flex:0 0 70px;"><option value="percent">%</option><option value="flat">₹</option></select>
+                <input class="form-input" id="pDiscountValue" type="number" placeholder="Value">
+              </div>
+            </div>
+          </div>
+          <div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 6px;">🧾 GST Split (optional — for intra vs inter-state invoicing)</div>
+          <label style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:#6b7280; margin-bottom:8px;"><input type="checkbox" id="pTaxInclusive" checked> Price shown is tax-inclusive</label>
+          <div class="form-row">
+            <div class="form-group"><label>CGST %</label><input class="form-input" id="pCgst" type="number" placeholder="e.g. 9"></div>
+            <div class="form-group"><label>SGST %</label><input class="form-input" id="pSgst" type="number" placeholder="e.g. 9"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;"><label>IGST % (for inter-state orders)</label><input class="form-input" id="pIgst" type="number" placeholder="e.g. 18"></div>
+          <div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 6px;">📊 Stock Levels (for low-stock alerts)</div>
+          <div class="form-row">
+            <div class="form-group"><label>Min Stock Level</label><input class="form-input" id="pMinStockLevel" type="number" placeholder="5" value="5"></div>
+            <div class="form-group"><label>Reorder Level</label><input class="form-input" id="pReorderLevel" type="number" placeholder="10" value="10"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:10px;"><label>Max Stock Level (optional)</label><input class="form-input" id="pMaxStockLevel" type="number" placeholder="Optional ceiling"></div>
+        </div>
+      </div>
       <div id="catalogListingBanner" style="display:none; background:#f3e8ff; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:11px; color:#7c3aed; font-weight:700;">🔗 Listing from Shared Catalog — set your own price/stock below. <span id="catalogListingCancel" style="color:#dc2626; cursor:pointer; text-decoration:underline; font-weight:700;">Cancel</span></div>
       <label style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:#6b7280; margin-bottom:12px;"><input type="checkbox" id="publishToCatalog"> 📢 Also publish as a Shared Catalog item (other vendors in this category can request to sell it too)</label>
       <div class="form-group" style="margin-bottom:12px;">
@@ -341,6 +402,13 @@ async function loginAsVendor(session) {
   populateSettingsForm();
   loadVendorData();
   loadCategoriesForVendor();
+  document.getElementById('advancedToggle').addEventListener('click', function() {
+    const fields = document.getElementById('advancedFields');
+    const arrow = document.getElementById('advancedArrow');
+    const isOpen = fields.style.display === 'block';
+    fields.style.display = isOpen ? 'none' : 'block';
+    arrow.textContent = isOpen ? '▾' : '▴';
+  });
   loadCatalogData();
   configureSellingModeUI();
   return true;
@@ -648,9 +716,28 @@ function renderProducts() {
       '<div class="prod-icon">' + iconHtml + '</div>' +
       '<div class="prod-info"><div class="prod-name">' + p.name + '</div><div class="prod-price">₹' + p.price + ' · Stock: ' + p.stock + '</div>' +
       '<div class="prod-tags">' + modeTag + hsnTag + gstTag + returnTag + codTag + brandTag + fulfillTag + catTag + '</div></div>' +
+      '<button class="mini-btn" data-stockid="' + p.id + '" data-stockname="' + p.name.replace(/"/g,'&quot;') + '" style="background:#e0f2fe; color:#0369a1; margin-right:4px;">📦 Stock</button>' +
       '<button class="del-btn" data-delid="' + p.id + '">✕</button>' +
     '</div>';
   }).join('');
+  document.querySelectorAll('[data-stockid]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const productId = btn.getAttribute('data-stockid');
+      const productName = btn.getAttribute('data-stockname');
+      const changeStr = prompt('Adjust stock for "' + productName + '"\n\nEnter change (e.g. +20 to add stock, -5 to remove damaged/lost stock):');
+      if (changeStr === null || changeStr.trim() === '') return;
+      const change = Number(changeStr);
+      if (isNaN(change) || change === 0) { alert('Please enter a valid non-zero number, e.g. +20 or -5'); return; }
+      const reason = prompt('Reason for this change? (e.g. "New stock arrived", "Damaged in transit", "Stock count correction")') || 'Not specified';
+      fetch(SUPABASE_URL + '/rest/v1/rpc/adjust_product_stock', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_product_id: productId, p_quantity_change: change, p_reason: reason })
+      }).then(function(res) {
+        if (res.ok) { loadVendorData(); } else { res.text().then(function(t){ alert('Could not adjust stock: ' + t); }); }
+      });
+    });
+  });
   document.querySelectorAll('[data-delid]').forEach(function(btn) {
     btn.addEventListener('click', async function() {
       if (!confirm('Delete this product?')) return;
@@ -880,7 +967,36 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
         cod_allowed: selectedCod, additional_images: extraPhotosBase64.length > 0 ? extraPhotosBase64 : [],
         brand: brand || null, gtin: gtin || null, shipping_weight: weight || null, condition: condition,
         category_id: categoryId, sku: sku, fulfillment_type: fulfillmentType, mrp: oldPrice ? Number(oldPrice) : Number(price), selling_price: Number(price),
-        catalog_item_id: selectedCatalogItemId || null
+        catalog_item_id: selectedCatalogItemId || null,
+        item_code: document.getElementById('pItemCode').value.trim() || null,
+        short_name: document.getElementById('pShortName').value.trim() || null,
+        product_type: document.getElementById('pProductType').value,
+        manufacturer: document.getElementById('pManufacturer').value.trim() || null,
+        model_number: document.getElementById('pModelNumber').value.trim() || null,
+        part_number: document.getElementById('pPartNumber').value.trim() || null,
+        barcode: document.getElementById('pBarcode').value.trim() || null,
+        tags: document.getElementById('pTags').value.trim() || null,
+        warranty_available: document.getElementById('pWarrantyAvailable').checked,
+        warranty_period: document.getElementById('pWarrantyPeriod').value.trim() || null,
+        warranty_type: document.getElementById('pWarrantyType').value || null,
+        whats_included: document.getElementById('pWhatsIncluded').value.trim() || null,
+        care_instructions: document.getElementById('pCareInstructions').value.trim() || null,
+        safety_info: document.getElementById('pSafetyInfo').value.trim() || null,
+        installation_info: document.getElementById('pInstallationInfo').value.trim() || null,
+        cost_price: document.getElementById('pCostPrice').value ? Number(document.getElementById('pCostPrice').value) : null,
+        wholesale_price: document.getElementById('pWholesalePrice').value ? Number(document.getElementById('pWholesalePrice').value) : null,
+        dealer_price: document.getElementById('pDealerPrice').value ? Number(document.getElementById('pDealerPrice').value) : null,
+        min_selling_price: document.getElementById('pMinSellingPrice').value ? Number(document.getElementById('pMinSellingPrice').value) : null,
+        special_price: document.getElementById('pSpecialPrice').value ? Number(document.getElementById('pSpecialPrice').value) : null,
+        discount_type: document.getElementById('pDiscountType').value,
+        discount_value: document.getElementById('pDiscountValue').value ? Number(document.getElementById('pDiscountValue').value) : null,
+        tax_inclusive: document.getElementById('pTaxInclusive').checked,
+        cgst_percent: document.getElementById('pCgst').value ? Number(document.getElementById('pCgst').value) : null,
+        sgst_percent: document.getElementById('pSgst').value ? Number(document.getElementById('pSgst').value) : null,
+        igst_percent: document.getElementById('pIgst').value ? Number(document.getElementById('pIgst').value) : null,
+        min_stock_level: document.getElementById('pMinStockLevel').value ? Number(document.getElementById('pMinStockLevel').value) : 5,
+        reorder_level: document.getElementById('pReorderLevel').value ? Number(document.getElementById('pReorderLevel').value) : 10,
+        max_stock_level: document.getElementById('pMaxStockLevel').value ? Number(document.getElementById('pMaxStockLevel').value) : null
       })
     });
     const insertedData = await insertRes.json();
@@ -904,7 +1020,14 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
       }
     }
 
-    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku'].forEach(function(id) { document.getElementById(id).value = ''; });
+    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
+    document.getElementById('pWarrantyAvailable').checked = false;
+    document.getElementById('pWarrantyType').value = '';
+    document.getElementById('pProductType').value = 'Simple';
+    document.getElementById('pDiscountType').value = 'percent';
+    document.getElementById('pTaxInclusive').checked = true;
+    document.getElementById('pMinStockLevel').value = 5;
+    document.getElementById('pReorderLevel').value = 10;
     document.getElementById('pCategory').value = '';
     document.getElementById('pIcon').value = '📦';
     document.getElementById('pPhoto').value = '';
