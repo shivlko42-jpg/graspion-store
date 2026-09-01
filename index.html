@@ -537,6 +537,10 @@ loadProductVariants();
 dataLoaded = true;
 badge.className = 'db-status-badge live';
 badge.textContent = '✅ Live · ' + vendors.length + ' vendors, ' + productPool.length + ' products';
+const deepLinkProductId = new URLSearchParams(window.location.search).get('product');
+if (deepLinkProductId && productPool.some(function(p){ return p.id === deepLinkProductId; })) {
+openProductDetail(deepLinkProductId);
+}
 handleProductDeepLink();
 } catch (err) {
 dataLoaded = false;
