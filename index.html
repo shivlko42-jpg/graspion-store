@@ -1367,6 +1367,24 @@ productDocs = docRes.ok ? await docRes.json() : [];
 const docTypeLabels = { manual: '📘 User Manual', warranty_card: '📜 Warranty Card', spec_sheet: '📋 Spec Sheet', catalogue: '📖 Catalogue', installation_guide: '🔧 Installation Guide', other: '📄 Document' };
 const docsHtml = productDocs.length > 0 ? '<div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">' + productDocs.map(function(d) { return '<a href="' + d.document_data + '" download="' + (d.document_name || 'document.pdf') + '" style="font-size:10.5px; background:#F1F8ED; color:#0E3D63; padding:5px 10px; border-radius:8px; text-decoration:none; font-weight:700;">' + (docTypeLabels[d.document_type] || '📄 Document') + '</a>'; }).join('') + '</div>' : '';
 
+let relatedProducts = [];
+try {
+const relRes = await fetch(SUPABASE_URL + '/rest/v1/product_relations?product_id=eq.' + productId + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+relatedProducts = relRes.ok ? await relRes.json() : [];
+} catch (err) { relatedProducts = []; }
+const relTypeLabels = { similar: '🔀 Similar Products', alternative: '🔄 Alternatives', cross_sell: '➕ You May Also Need', up_sell: '⬆️ Upgrade Options', recommended: '⭐ Recommended For You' };
+let relatedHtml = '';
+Object.keys(relTypeLabels).forEach(function(type) {
+const group = relatedProducts.filter(function(r) { return r.relation_type === type; });
+if (group.length === 0) return;
+const cardsHtml = group.map(function(r) {
+const rp = productPool.find(function(pp) { return pp.id === r.related_product_id; });
+if (!rp) return '';
+return '<div data-viewid="' + rp.id + '" style="flex:0 0 100px; cursor:pointer;"><div style="width:100px; height:100px; border-radius:10px; overflow:hidden; background:#f3f1f8; display:flex; align-items:center; justify-content:center; font-size:32px;">' + (rp.image ? '<img src="' + rp.image + '" style="width:100%; height:100%; object-fit:cover;">' : rp.icon) + '</div><div style="font-size:10.5px; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + rp.name + '</div><div style="font-size:11px; font-weight:800; color:#7c3aed;">₹' + rp.price + '</div></div>';
+}).join('');
+relatedHtml += '<div style="margin-top:16px;"><div style="font-size:12.5px; font-weight:700; margin-bottom:8px;">' + relTypeLabels[type] + '</div><div style="display:flex; gap:10px; overflow-x:auto; padding-bottom:4px;">' + cardsHtml + '</div></div>';
+});
+
 const avgRating = reviews.length > 0 ? (reviews.reduce(function(s,r){ return s + Number(r.rating || 0); }, 0) / reviews.length).toFixed(1) : null;
 const allPhotos = [p.image].concat(p.additionalImages || []).filter(Boolean);
 const mainImgHtml = allPhotos.length > 0 ? '<img src="' + allPhotos[0] + '" id="pdMainImg" style="width:100%; height:220px; object-fit:cover; border-radius:14px;">' : '<div style="width:100%; height:220px; background:#f3f1f8; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:60px;">' + p.icon + '</div>';
@@ -1404,6 +1422,7 @@ variantSelectorHtml +
 docsHtml +
 '<button data-detailadd="' + p.id + '" ' + (variants.length > 0 ? 'disabled' : '') + ' style="width:100%; margin-top:14px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer; opacity:' + (variants.length > 0 ? '0.5' : '1') + ';">' + (variants.length > 0 ? 'Select Options' : 'Add to Cart') + '</button>' +
 '</div>' +
+relatedHtml +
 '<div style="margin-top:22px; border-top:1px solid #f0eef7; padding-top:16px;">' +
 '<h3 style="font-size:14px; margin-bottom:10px;">⭐ Reviews</h3>' +
 '<div id="pdReviewsList">' + (reviews.length === 0 ? '<p style="font-size:12px; color:#9ca3af;">Be the first to review this product!</p>' : reviews.map(function(r) {
@@ -1445,6 +1464,9 @@ btn.textContent = 'Submit Review'; btn.disabled = false;
 });
 document.querySelectorAll('[data-pdthumb]').forEach(function(t) {
 t.addEventListener('click', function() { document.getElementById('pdMainImg').src = t.getAttribute('data-pdthumb'); });
+});
+document.querySelectorAll('#productDetailContent [data-viewid]').forEach(function(card) {
+card.addEventListener('click', function() { openProductDetail(card.getAttribute('data-viewid')); });
 });
 
 const selectedAttrs = {};

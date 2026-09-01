@@ -378,6 +378,25 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="empty-state" id="pairEmpty" style="display:none;">No pairings added yet</div>
 </div>
 
+<div class="panel" data-section="pairings">
+<h3>🔀 Related Products</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Link products as Similar, Alternative, Cross-sell, Up-sell, or Recommended — shown when a customer views the product's detail page.</p>
+<div class="form-grid">
+<select class="form-input" id="relProductA"><option value="">— Select product —</option></select>
+<select class="form-input" id="relProductB"><option value="">— Select related product —</option></select>
+<select class="form-input" id="relType">
+<option value="similar">Similar</option>
+<option value="alternative">Alternative</option>
+<option value="cross_sell">Cross-sell</option>
+<option value="up_sell">Up-sell</option>
+<option value="recommended">Recommended</option>
+</select>
+</div>
+<button class="login-btn" id="relAddBtn" style="margin-top:10px;">+ Add Relation</button>
+<div id="relList" style="margin-top:16px;"></div>
+<div class="empty-state" id="relEmpty" style="display:none;">No related products added yet</div>
+</div>
+
 <div class="panel" data-section="catalog">
 <h3>📋 Shared Catalog — Vendor Permission Requests</h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Vendors request permission to sell a shared catalog product. Approve only vendors genuinely relevant to that product's category.</p>
@@ -511,6 +530,7 @@ const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders?select=*&order=crea
 const orderItemsRes = await fetch(SUPABASE_URL + '/rest/v1/order_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const shipmentsRes = await fetch(SUPABASE_URL + '/rest/v1/shipments?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const settlementsRes = await fetch(SUPABASE_URL + '/rest/v1/vendor_settlements?select=*&order=id.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const relationsRes = await fetch(SUPABASE_URL + '/rest/v1/product_relations?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const warehouseRes = await fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const categoryRes = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const bannerRes = await fetch(SUPABASE_URL + '/rest/v1/banners?select=*&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
@@ -525,6 +545,7 @@ allOrders = await orderRes.json();
 allOrderItems = orderItemsRes.ok ? await orderItemsRes.json() : [];
 allShipments = shipmentsRes.ok ? await shipmentsRes.json() : [];
 allSettlements = settlementsRes.ok ? await settlementsRes.json() : [];
+allProductRelations = relationsRes.ok ? await relationsRes.json() : [];
 allWarehouses = warehouseRes.ok ? await warehouseRes.json() : [];
 allCategories = categoryRes.ok ? await categoryRes.json() : [];
 allBanners = bannerRes.ok ? await bannerRes.json() : [];
@@ -554,6 +575,7 @@ renderCategories();
 renderBanners();
 renderSettings();
 renderPairings();
+renderRelatedProducts();
 renderCatalogRequests();
 if (currentAdmin && currentAdmin.role === 'super_admin') { loadAndRenderStaff(); }
 loadAndRenderApplications();
@@ -1111,6 +1133,59 @@ document.getElementById('pairProductB').value = '';
 document.getElementById('pairLabel').value = 'Frequently Bought Together';
 }
 btn.textContent = '+ Add Pairing';
+loadAllData();
+});
+
+// ===================== RELATED PRODUCTS (Phase I) =====================
+let allProductRelations = [];
+function renderRelatedProducts() {
+const selA = document.getElementById('relProductA');
+const selB = document.getElementById('relProductB');
+const optionsHtml = '<option value="">— Select product —</option>' + allProducts.map(function(p) { return '<option value="' + p.id + '">' + p.name + '</option>'; }).join('');
+selA.innerHTML = optionsHtml;
+selB.innerHTML = optionsHtml;
+
+const relTypeLabels = { similar: 'Similar', alternative: 'Alternative', cross_sell: 'Cross-sell', up_sell: 'Up-sell', recommended: 'Recommended' };
+const list = document.getElementById('relList');
+const empty = document.getElementById('relEmpty');
+if (allProductRelations.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = allProductRelations.map(function(r) {
+const pA = allProducts.find(function(p) { return p.id === r.product_id; });
+const pB = allProducts.find(function(p) { return p.id === r.related_product_id; });
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">🔀 ' + (pA ? pA.name : '?') + ' → ' + (pB ? pB.name : '?') + '</div><div class="ic-sub">' + (relTypeLabels[r.relation_type] || r.relation_type) + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn del-btn" data-reldel="' + r.id + '">Delete</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-reldel]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Remove this relation?')) return;
+const id = btn.getAttribute('data-reldel');
+await fetch(SUPABASE_URL + '/rest/v1/product_relations?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+loadAllData();
+});
+});
+}
+document.getElementById('relAddBtn').addEventListener('click', async function() {
+const a = document.getElementById('relProductA').value;
+const b = document.getElementById('relProductB').value;
+const type = document.getElementById('relType').value;
+if (!a || !b) { alert('Please select both products'); return; }
+if (a === b) { alert('Please select two different products'); return; }
+const btn = document.getElementById('relAddBtn');
+btn.textContent = '⏳ Adding...';
+const res = await fetch(SUPABASE_URL + '/rest/v1/product_relations', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ product_id: a, related_product_id: b, relation_type: type })
+});
+if (!res.ok) {
+const errText = await res.text();
+alert('Could not add relation:\n' + errText);
+} else {
+document.getElementById('relProductA').value = '';
+document.getElementById('relProductB').value = '';
+}
+btn.textContent = '+ Add Relation';
 loadAllData();
 });
 
