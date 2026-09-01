@@ -737,7 +737,7 @@ return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class=
 ((productVariantsMap[p.id] && productVariantsMap[p.id].length > 0) ? '<button class="add-btn" data-viewid="' + p.id + '" style="background:#f3f1f8; color:#7c3aed;">Select Options</button>' : (qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '" ' + (qty >= p.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>'))) +
 '</div></div>';
 }).join('');
-document.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); cart[btn.getAttribute('data-add')] = 1; refreshAll(); }); });
+document.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id = btn.getAttribute('data-add'); cart[id] = 1; logProductEvent(id, 'add_to_cart'); refreshAll(); }); });
 document.querySelectorAll('[data-inc]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id=btn.getAttribute('data-inc'); cart[id]=(cart[id]||0)+1; refreshAll(); }); });
 document.querySelectorAll('[data-dec]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id=btn.getAttribute('data-dec'); cart[id]=(cart[id]||0)-1; if(cart[id]<=0) delete cart[id]; refreshAll(); }); });
 document.querySelectorAll('[data-viewid]').forEach(function(card){ card.addEventListener('click', function(){ openProductDetail(card.getAttribute('data-viewid')); }); });
@@ -1353,9 +1353,19 @@ else { document.getElementById('accountModal').style.display = 'flex'; }
 });
 
 // ===================== PRODUCT DETAIL MODAL + REVIEWS =====================
+function logProductEvent(productId, eventType) {
+// fire-and-forget, never blocks UI or shows errors to the customer
+fetch(SUPABASE_URL + '/rest/v1/product_events', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({ product_id: productId, event_type: eventType })
+}).catch(function() {});
+}
+
 async function openProductDetail(productId) {
 const p = productPool.find(function(pp) { return pp.id === productId; });
 if (!p) return;
+logProductEvent(productId, 'view');
 const vendor = vendors.find(function(v) { return v.id === p.vendorId; });
 const content = document.getElementById('productDetailContent');
 content.innerHTML = '<div style="text-align:center; padding:40px 0; color:#9ca3af;">Loading...</div>';
@@ -1515,6 +1525,7 @@ const addBtn = document.querySelector('[data-detailadd]');
 if (addBtn) addBtn.addEventListener('click', function() {
 const key = selectedVariant ? makeCartKey(productId, selectedVariant.id) : makeCartKey(productId, null);
 cart[key] = (cart[key] || 0) + 1;
+logProductEvent(productId, 'add_to_cart');
 refreshAll();
 document.getElementById('productDetailModal').style.display = 'none';
 });
