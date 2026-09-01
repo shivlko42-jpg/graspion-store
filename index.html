@@ -521,7 +521,7 @@ vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(f
 productPool = productData.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
 const firstFeature = p.features ? p.features.split('\n')[0].trim() : '';
-return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '' };
+return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '', imageAlt: p.image_alt_text || p.name };
 });
 renderQuickCategories();
 renderPinSuggestions();
@@ -720,7 +720,7 @@ const deliveryBadge = p.fulfillmentType === 'instant' ? '⚡ ' + graspionT('inst
 const allPhotos = [p.image].concat(p.additionalImages || []).filter(Boolean);
 const thumbStripHtml = allPhotos.length > 1 ? '<div class="thumb-strip">' + allPhotos.map(function(src, idx){ return '<img class="thumb-img' + (idx===0?' active':'') + '" src="' + src + '" data-thumbswap="' + p.id + '" data-src="' + src + '">'; }).join('') + '</div>' : '';
 return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') +
-'<div class="img-wrap">' + (allPhotos.length > 0 ? '<img data-mainimg="' + p.id + '" src="' + allPhotos[0] + '">' : p.icon) + '</div>' + thumbStripHtml + '<div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
+'<div class="img-wrap">' + (allPhotos.length > 0 ? '<img data-mainimg="' + p.id + '" src="' + allPhotos[0] + '" alt="' + (p.imageAlt || p.name).replace(/"/g,'&quot;') + '">' : p.icon) + '</div>' + thumbStripHtml + '<div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
 '<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
 '<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span><div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div><div class="feature-tag" style="margin-left:0;">' + deliveryBadge + '</div>' +
 (p.feature ? '<div class="feature-tag">✓ ' + p.feature + '</div>' : '') +
@@ -1359,6 +1359,14 @@ const res = await fetch(SUPABASE_URL + '/rest/v1/reviews?product_id=eq.' + produ
 reviews = res.ok ? await res.json() : [];
 } catch (err) { reviews = []; }
 
+let productDocs = [];
+try {
+const docRes = await fetch(SUPABASE_URL + '/rest/v1/product_documents?product_id=eq.' + productId + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+productDocs = docRes.ok ? await docRes.json() : [];
+} catch (err) { productDocs = []; }
+const docTypeLabels = { manual: '📘 User Manual', warranty_card: '📜 Warranty Card', spec_sheet: '📋 Spec Sheet', catalogue: '📖 Catalogue', installation_guide: '🔧 Installation Guide', other: '📄 Document' };
+const docsHtml = productDocs.length > 0 ? '<div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">' + productDocs.map(function(d) { return '<a href="' + d.document_data + '" download="' + (d.document_name || 'document.pdf') + '" style="font-size:10.5px; background:#F1F8ED; color:#0E3D63; padding:5px 10px; border-radius:8px; text-decoration:none; font-weight:700;">' + (docTypeLabels[d.document_type] || '📄 Document') + '</a>'; }).join('') + '</div>' : '';
+
 const avgRating = reviews.length > 0 ? (reviews.reduce(function(s,r){ return s + Number(r.rating || 0); }, 0) / reviews.length).toFixed(1) : null;
 const allPhotos = [p.image].concat(p.additionalImages || []).filter(Boolean);
 const mainImgHtml = allPhotos.length > 0 ? '<img src="' + allPhotos[0] + '" id="pdMainImg" style="width:100%; height:220px; object-fit:cover; border-radius:14px;">' : '<div style="width:100%; height:220px; background:#f3f1f8; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:60px;">' + p.icon + '</div>';
@@ -1393,6 +1401,7 @@ variantSelectorHtml +
 (avgRating ? '<div style="margin-top:6px; font-size:12px;">⭐ ' + avgRating + ' (' + reviews.length + ' review' + (reviews.length !== 1 ? 's' : '') + ')</div>' : '<div style="margin-top:6px; font-size:11px; color:#9ca3af;">No reviews yet</div>') +
 (p.feature ? '<p style="font-size:12.5px; color:#4b5563; margin-top:10px; line-height:1.5;">' + p.feature + '</p>' : '') +
 '<div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; font-size:10.5px;">' + (p.returnable ? '<span class="prod-tag">✅ Returnable</span>' : '<span class="prod-tag">🚫 Non-Returnable</span>') + (p.codAllowed === false ? '<span class="prod-tag">💳 Prepaid Only</span>' : '<span class="prod-tag">💵 COD Available</span>') + '</div>' +
+docsHtml +
 '<button data-detailadd="' + p.id + '" ' + (variants.length > 0 ? 'disabled' : '') + ' style="width:100%; margin-top:14px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer; opacity:' + (variants.length > 0 ? '0.5' : '1') + ';">' + (variants.length > 0 ? 'Select Options' : 'Add to Cart') + '</button>' +
 '</div>' +
 '<div style="margin-top:22px; border-top:1px solid #f0eef7; padding-top:16px;">' +

@@ -106,6 +106,31 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="variantModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300; align-items:center; justify-content:center; padding:16px;">
+<div style="max-width:460px; width:100%; background:#fff; border-radius:20px; padding:20px; max-height:85vh; overflow-y:auto;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="font-size:15px;">🎨 Manage Variants — <span id="variantProductName"></span></h3><button id="closeVariantBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
+<div id="variantList" style="margin-bottom:14px;"></div>
+<div style="border-top:1px solid #f0eef7; padding-top:12px;">
+<div style="font-size:11.5px; font-weight:700; margin-bottom:8px;">+ Add New Variant</div>
+<div id="variantAttrRows"></div>
+<button id="addAttrRowBtn" type="button" style="background:none; border:1px dashed #7c3aed; color:#7c3aed; padding:6px 10px; border-radius:8px; font-size:11px; cursor:pointer; margin-bottom:10px;">+ Add Attribute (e.g. Size, Color)</button>
+<div class="form-row">
+<div class="form-group"><label>Variant SKU</label><input class="form-input" id="vSku" placeholder="e.g. GRS-SPK-RED-L"></div>
+<div class="form-group"><label>Barcode</label><input class="form-input" id="vBarcode" placeholder="optional"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>MRP</label><input class="form-input" id="vMrp" type="number"></div>
+<div class="form-group"><label>Selling Price</label><input class="form-input" id="vPrice" type="number"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Stock</label><input class="form-input" id="vStock" type="number"></div>
+<div class="form-group"><label>Weight (grams)</label><input class="form-input" id="vWeight" type="number"></div>
+</div>
+<button id="saveVariantBtn" class="login-btn" style="margin-top:8px;">+ Add Variant</button>
+</div>
+</div>
+</div>
+
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
     <div data-graspion-logo="full" data-size="22" style="justify-content:center; display:flex;"></div>
@@ -260,6 +285,11 @@
             <div class="form-group"><label>Reorder Level</label><input class="form-input" id="pReorderLevel" type="number" placeholder="10" value="10"></div>
           </div>
           <div class="form-group" style="margin-bottom:10px;"><label>Max Stock Level (optional)</label><input class="form-input" id="pMaxStockLevel" type="number" placeholder="Optional ceiling"></div>
+          <div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 6px;">📄 Product Document (optional — manual, warranty card, spec sheet)</div>
+          <div class="form-row">
+            <div class="form-group"><select class="form-input" id="pDocType"><option value="manual">User Manual</option><option value="warranty_card">Warranty Card</option><option value="spec_sheet">Spec Sheet</option><option value="catalogue">Catalogue</option><option value="installation_guide">Installation Guide</option><option value="other">Other</option></select></div>
+            <div class="form-group"><input class="form-input" id="pDocFile" type="file" accept="application/pdf"></div>
+          </div>
         </div>
       </div>
       <div id="catalogListingBanner" style="display:none; background:#f3e8ff; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:11px; color:#7c3aed; font-weight:700;">🔗 Listing from Shared Catalog — set your own price/stock below. <span id="catalogListingCancel" style="color:#dc2626; cursor:pointer; text-decoration:underline; font-weight:700;">Cancel</span></div>
@@ -277,6 +307,10 @@
         <label>Additional Photos (optional, up to 3 more)</label>
         <input class="form-input" id="pExtraPhotos" type="file" accept="image/*" multiple>
         <div id="extraPhotoPreview" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;"></div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Image ALT Text (helps Google find your product)</label>
+        <input class="form-input" id="pImageAlt" placeholder="e.g. Red cotton kurti for women, size medium">
       </div>
       <div class="form-row">
         <div class="form-group"><label>Price (₹)</label><input class="form-input" id="pPrice" type="number" placeholder="699"></div>
@@ -633,35 +667,55 @@ function setCod(val) {
 }
 document.getElementById('codYes').addEventListener('click', function() { setCod(true); });
 document.getElementById('codNo').addEventListener('click', function() { setCod(false); });
-document.getElementById('pExtraPhotos').addEventListener('change', function(e) {
+document.getElementById('pExtraPhotos').addEventListener('change', async function(e) {
   const files = Array.from(e.target.files).slice(0, 3);
   extraPhotosBase64 = [];
   const preview = document.getElementById('extraPhotoPreview');
   preview.innerHTML = '';
-  files.forEach(function(file) {
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-      extraPhotosBase64.push(evt.target.result);
+  for (const file of files) {
+    const compressed = await compressImage(file);
+    if (compressed) {
+      extraPhotosBase64.push(compressed);
       const img = document.createElement('img');
-      img.src = evt.target.result;
+      img.src = compressed;
       img.style.cssText = 'width:50px;height:50px;object-fit:cover;border-radius:8px;';
       preview.appendChild(img);
-    };
-    reader.readAsDataURL(file);
-  });
+    }
+  }
 });
 
-document.getElementById('pPhoto').addEventListener('change', function(e) {
+function compressImage(file, maxDimension) {
+maxDimension = maxDimension || 1000;
+return new Promise(function(resolve) {
+const reader = new FileReader();
+reader.onload = function(evt) {
+const img = new Image();
+img.onload = function() {
+let w = img.width, h = img.height;
+if (w > maxDimension || h > maxDimension) {
+if (w > h) { h = Math.round(h * (maxDimension / w)); w = maxDimension; }
+else { w = Math.round(w * (maxDimension / h)); h = maxDimension; }
+}
+const canvas = document.createElement('canvas');
+canvas.width = w; canvas.height = h;
+canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+resolve(canvas.toDataURL('image/jpeg', 0.8)); // compressed JPEG, ~80% quality
+};
+img.onerror = function() { resolve(evt.target.result); }; // fallback: use original if compression fails
+img.src = evt.target.result;
+};
+reader.onerror = function() { resolve(null); };
+reader.readAsDataURL(file);
+});
+}
+
+document.getElementById('pPhoto').addEventListener('change', async function(e) {
   const file = e.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(evt) {
-    uploadedPhotoBase64 = evt.target.result;
-    document.getElementById('photoPreviewImg').src = uploadedPhotoBase64;
-    document.getElementById('photoPreview').style.display = 'block';
-    document.getElementById('similarPhotoSuggestion').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
+  uploadedPhotoBase64 = await compressImage(file);
+  document.getElementById('photoPreviewImg').src = uploadedPhotoBase64;
+  document.getElementById('photoPreview').style.display = 'block';
+  document.getElementById('similarPhotoSuggestion').style.display = 'none';
 });
 
 async function loadVendorData() {
@@ -717,6 +771,7 @@ function renderProducts() {
       '<div class="prod-info"><div class="prod-name">' + p.name + '</div><div class="prod-price">₹' + p.price + ' · Stock: ' + p.stock + '</div>' +
       '<div class="prod-tags">' + modeTag + hsnTag + gstTag + returnTag + codTag + brandTag + fulfillTag + catTag + '</div></div>' +
       '<button class="mini-btn" data-stockid="' + p.id + '" data-stockname="' + p.name.replace(/"/g,'&quot;') + '" style="background:#e0f2fe; color:#0369a1; margin-right:4px;">📦 Stock</button>' +
+      '<button class="mini-btn" data-variantid="' + p.id + '" data-variantname="' + p.name.replace(/"/g,'&quot;') + '" style="background:#fce7f3; color:#be185d; margin-right:4px;">🎨 Variants</button>' +
       '<button class="del-btn" data-delid="' + p.id + '">✕</button>' +
     '</div>';
   }).join('');
@@ -736,6 +791,11 @@ function renderProducts() {
       }).then(function(res) {
         if (res.ok) { loadVendorData(); } else { res.text().then(function(t){ alert('Could not adjust stock: ' + t); }); }
       });
+    });
+  });
+  document.querySelectorAll('[data-variantid]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      openVariantModal(btn.getAttribute('data-variantid'), btn.getAttribute('data-variantname'));
     });
   });
   document.querySelectorAll('[data-delid]').forEach(function(btn) {
@@ -987,6 +1047,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
         wholesale_price: document.getElementById('pWholesalePrice').value ? Number(document.getElementById('pWholesalePrice').value) : null,
         dealer_price: document.getElementById('pDealerPrice').value ? Number(document.getElementById('pDealerPrice').value) : null,
         min_selling_price: document.getElementById('pMinSellingPrice').value ? Number(document.getElementById('pMinSellingPrice').value) : null,
+        image_alt_text: document.getElementById('pImageAlt').value.trim() || null,
         special_price: document.getElementById('pSpecialPrice').value ? Number(document.getElementById('pSpecialPrice').value) : null,
         discount_type: document.getElementById('pDiscountType').value,
         discount_value: document.getElementById('pDiscountValue').value ? Number(document.getElementById('pDiscountValue').value) : null,
@@ -1001,6 +1062,20 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
     });
     const insertedData = await insertRes.json();
     const newProductId = insertedData[0] ? insertedData[0].id : null;
+
+    // Upload product document, if one was selected
+    const docFile = document.getElementById('pDocFile').files[0];
+    if (docFile && newProductId) {
+      const docReader = new FileReader();
+      const docBase64 = await new Promise(function(resolve) { docReader.onload = function(evt) { resolve(evt.target.result); }; docReader.onerror = function() { resolve(null); }; docReader.readAsDataURL(docFile); });
+      if (docBase64) {
+        await fetch(SUPABASE_URL + '/rest/v1/product_documents', {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: newProductId, document_type: document.getElementById('pDocType').value, document_name: docFile.name, document_data: docBase64 })
+        });
+      }
+    }
 
     // If vendor opted to publish this as a shared catalog item (and it wasn't
     // already listed FROM the catalog), create the catalog_items row and
@@ -1020,7 +1095,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
       }
     }
 
-    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('pWarrantyAvailable').checked = false;
     document.getElementById('pWarrantyType').value = '';
     document.getElementById('pProductType').value = 'Simple';
@@ -1222,6 +1297,102 @@ document.getElementById('parseCsvBtn').addEventListener('click', function() {
     }
   });
 });
+// ===================== VARIANT MANAGEMENT (Phase E) =====================
+let currentVariantProductId = null;
+let attrRowCount = 0;
+
+function addAttrRow() {
+attrRowCount++;
+const row = document.createElement('div');
+row.className = 'form-row';
+row.id = 'attrRow' + attrRowCount;
+row.innerHTML = '<div class="form-group"><input class="form-input" placeholder="Attribute (e.g. Size)" data-attrname></div><div class="form-group"><input class="form-input" placeholder="Value (e.g. Large)" data-attrvalue></div>';
+document.getElementById('variantAttrRows').appendChild(row);
+}
+document.getElementById('addAttrRowBtn').addEventListener('click', addAttrRow);
+
+async function openVariantModal(productId, productName) {
+currentVariantProductId = productId;
+document.getElementById('variantProductName').textContent = productName;
+document.getElementById('variantAttrRows').innerHTML = '';
+attrRowCount = 0;
+addAttrRow(); // start with one empty attribute row
+['vSku','vBarcode','vMrp','vPrice','vStock','vWeight'].forEach(function(id){ document.getElementById(id).value = ''; });
+document.getElementById('variantModal').style.display = 'flex';
+await loadVariantsList(productId);
+}
+document.getElementById('closeVariantBtn').addEventListener('click', function() { document.getElementById('variantModal').style.display = 'none'; });
+
+async function loadVariantsList(productId) {
+const list = document.getElementById('variantList');
+list.innerHTML = '<div style="font-size:11px; color:#9ca3af;">Loading...</div>';
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/product_variants?product_id=eq.' + productId + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const variants = res.ok ? await res.json() : [];
+if (variants.length === 0) { list.innerHTML = '<div style="font-size:11.5px; color:#9ca3af;">No variants yet. Add one below.</div>'; return; }
+const attrRes = await fetch(SUPABASE_URL + '/rest/v1/product_variant_attributes?variant_id=in.(' + variants.map(function(v){return v.id;}).join(',') + ')&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const allAttrs = attrRes.ok ? await attrRes.json() : [];
+list.innerHTML = variants.map(function(v) {
+const vAttrs = allAttrs.filter(function(a){ return a.variant_id === v.id; });
+const attrLabel = vAttrs.map(function(a){ return a.attribute_name + ': ' + a.attribute_value; }).join(' · ') || 'No attributes';
+return '<div style="border:1px solid #f0eef7; border-radius:10px; padding:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;"><div><div style="font-size:12px; font-weight:700;">' + attrLabel + '</div><div style="font-size:10.5px; color:#9ca3af;">SKU: ' + (v.sku || '—') + ' · ₹' + v.selling_price + ' · Stock: ' + v.stock + '</div></div><button data-delvariant="' + v.id + '" style="background:#fee2e2; color:#dc2626; border:none; padding:5px 9px; border-radius:6px; font-size:10.5px; cursor:pointer;">Delete</button></div>';
+}).join('');
+document.querySelectorAll('[data-delvariant]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Delete this variant?')) return;
+await fetch(SUPABASE_URL + '/rest/v1/product_variants?id=eq.' + btn.getAttribute('data-delvariant'), { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+loadVariantsList(currentVariantProductId);
+});
+});
+} catch (err) { list.innerHTML = '<div style="font-size:11px; color:#dc2626;">Could not load variants.</div>'; }
+}
+
+document.getElementById('saveVariantBtn').addEventListener('click', async function() {
+const sku = document.getElementById('vSku').value.trim();
+const mrp = document.getElementById('vMrp').value;
+const price = document.getElementById('vPrice').value;
+const stock = document.getElementById('vStock').value;
+if (!price || !stock) { alert('Selling Price and Stock are required.'); return; }
+const btn = document.getElementById('saveVariantBtn');
+btn.textContent = '⏳ Adding...'; btn.disabled = true;
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/product_variants', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+body: JSON.stringify({
+product_id: currentVariantProductId, sku: sku || null, barcode: document.getElementById('vBarcode').value.trim() || null,
+mrp: mrp ? Number(mrp) : null, selling_price: Number(price), stock: Number(stock),
+weight_grams: document.getElementById('vWeight').value ? Number(document.getElementById('vWeight').value) : null, status: 'active'
+})
+});
+const data = await res.json();
+const newVariantId = data[0] ? data[0].id : null;
+if (newVariantId) {
+const attrInserts = [];
+document.querySelectorAll('#variantAttrRows [data-attrname]').forEach(function(nameEl, idx) {
+const valueEl = document.querySelectorAll('#variantAttrRows [data-attrvalue]')[idx];
+if (nameEl.value.trim() && valueEl.value.trim()) {
+attrInserts.push({ variant_id: newVariantId, attribute_name: nameEl.value.trim(), attribute_value: valueEl.value.trim() });
+}
+});
+if (attrInserts.length > 0) {
+await fetch(SUPABASE_URL + '/rest/v1/product_variant_attributes', {
+method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify(attrInserts)
+});
+}
+}
+document.getElementById('variantAttrRows').innerHTML = '';
+attrRowCount = 0; addAttrRow();
+['vSku','vBarcode','vMrp','vPrice','vStock','vWeight'].forEach(function(id){ document.getElementById(id).value = ''; });
+loadVariantsList(currentVariantProductId);
+} catch (err) {
+alert('Could not add variant: ' + err.message);
+} finally {
+btn.textContent = '+ Add Variant'; btn.disabled = false;
+}
+});
+
 if ('serviceWorker' in navigator) {
 window.addEventListener('load', function() {
   const hadControllerBefore = !!navigator.serviceWorker.controller;
