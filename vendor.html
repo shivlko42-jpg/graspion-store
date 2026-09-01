@@ -290,6 +290,22 @@
             <div class="form-group"><select class="form-input" id="pDocType"><option value="manual">User Manual</option><option value="warranty_card">Warranty Card</option><option value="spec_sheet">Spec Sheet</option><option value="catalogue">Catalogue</option><option value="installation_guide">Installation Guide</option><option value="other">Other</option></select></div>
             <div class="form-group"><input class="form-input" id="pDocFile" type="file" accept="application/pdf"></div>
           </div>
+          <div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 6px;">👁️ Visibility & Sales Channels</div>
+          <div class="form-row">
+            <div class="form-group"><label>Status</label><select class="form-input" id="pStatus">
+              <option value="active">Active (visible now)</option>
+              <option value="draft">Draft (not visible yet)</option>
+              <option value="scheduled">Scheduled (auto-publish later)</option>
+              <option value="hidden">Hidden (temporarily off)</option>
+            </select></div>
+            <div class="form-group" id="pPublishAtGroup" style="display:none;"><label>Publish Date/Time</label><input class="form-input" id="pPublishAt" type="datetime-local"></div>
+          </div>
+          <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:6px;">
+            <label style="font-size:11px; font-weight:700; color:#6b7280; display:flex; align-items:center; gap:5px;"><input type="checkbox" id="pChannelWebsite" checked> Website</label>
+            <label style="font-size:11px; font-weight:700; color:#6b7280; display:flex; align-items:center; gap:5px;"><input type="checkbox" id="pChannelB2b"> B2B</label>
+            <label style="font-size:11px; font-weight:700; color:#6b7280; display:flex; align-items:center; gap:5px;"><input type="checkbox" id="pChannelOffline"> Offline</label>
+            <label style="font-size:11px; font-weight:700; color:#6b7280; display:flex; align-items:center; gap:5px;"><input type="checkbox" id="pChannelWholesale"> Wholesale</label>
+          </div>
         </div>
       </div>
       <div id="catalogListingBanner" style="display:none; background:#f3e8ff; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:11px; color:#7c3aed; font-weight:700;">🔗 Listing from Shared Catalog — set your own price/stock below. <span id="catalogListingCancel" style="color:#dc2626; cursor:pointer; text-decoration:underline; font-weight:700;">Cancel</span></div>
@@ -757,6 +773,8 @@ function renderProducts() {
   empty.style.display = 'none';
   list.innerHTML = vendorProducts.map(function(p) {
     const modeTag = p.pincode === 'ALL' ? '<span class="prod-tag">🇮🇳 Pan India</span>' : '<span class="prod-tag">📍 ' + p.pincode + '</span>';
+    const statusLabels = { draft: '📝 Draft', scheduled: '⏰ Scheduled', hidden: '🙈 Hidden' };
+    const statusTag = statusLabels[p.status] ? '<span class="prod-tag" style="background:#fef3c7; color:#b45309;">' + statusLabels[p.status] + '</span>' : '';
     const hsnTag = p.hsn_code ? '<span class="prod-tag">HSN: ' + p.hsn_code + '</span>' : '';
     const gstTag = '<span class="prod-tag">GST: ' + (p.gst_percent || 0) + '%</span>';
     const returnTag = p.is_returnable === false ? '<span class="prod-tag">🚫 Non-Returnable</span>' : '<span class="prod-tag">✅ Returnable</span>';
@@ -769,7 +787,7 @@ function renderProducts() {
     return '<div class="prod-row">' +
       '<div class="prod-icon">' + iconHtml + '</div>' +
       '<div class="prod-info"><div class="prod-name">' + p.name + '</div><div class="prod-price">₹' + p.price + ' · Stock: ' + p.stock + '</div>' +
-      '<div class="prod-tags">' + modeTag + hsnTag + gstTag + returnTag + codTag + brandTag + fulfillTag + catTag + '</div></div>' +
+      '<div class="prod-tags">' + statusTag + modeTag + hsnTag + gstTag + returnTag + codTag + brandTag + fulfillTag + catTag + '</div></div>' +
       '<button class="mini-btn" data-stockid="' + p.id + '" data-stockname="' + p.name.replace(/"/g,'&quot;') + '" style="background:#e0f2fe; color:#0369a1; margin-right:4px;">📦 Stock</button>' +
       '<button class="mini-btn" data-variantid="' + p.id + '" data-variantname="' + p.name.replace(/"/g,'&quot;') + '" style="background:#fce7f3; color:#be185d; margin-right:4px;">🎨 Variants</button>' +
       '<button class="del-btn" data-delid="' + p.id + '">✕</button>' +
@@ -1048,6 +1066,12 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
         dealer_price: document.getElementById('pDealerPrice').value ? Number(document.getElementById('pDealerPrice').value) : null,
         min_selling_price: document.getElementById('pMinSellingPrice').value ? Number(document.getElementById('pMinSellingPrice').value) : null,
         image_alt_text: document.getElementById('pImageAlt').value.trim() || null,
+        status: document.getElementById('pStatus').value,
+        publish_at: document.getElementById('pPublishAt').value ? new Date(document.getElementById('pPublishAt').value).toISOString() : null,
+        channel_website: document.getElementById('pChannelWebsite').checked,
+        channel_b2b: document.getElementById('pChannelB2b').checked,
+        channel_offline: document.getElementById('pChannelOffline').checked,
+        channel_wholesale: document.getElementById('pChannelWholesale').checked,
         special_price: document.getElementById('pSpecialPrice').value ? Number(document.getElementById('pSpecialPrice').value) : null,
         discount_type: document.getElementById('pDiscountType').value,
         discount_value: document.getElementById('pDiscountValue').value ? Number(document.getElementById('pDiscountValue').value) : null,
@@ -1095,7 +1119,13 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
       }
     }
 
-    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
+    document.getElementById('pStatus').value = 'active';
+    document.getElementById('pPublishAtGroup').style.display = 'none';
+    document.getElementById('pChannelWebsite').checked = true;
+    document.getElementById('pChannelB2b').checked = false;
+    document.getElementById('pChannelOffline').checked = false;
+    document.getElementById('pChannelWholesale').checked = false;
     document.getElementById('pWarrantyAvailable').checked = false;
     document.getElementById('pWarrantyType').value = '';
     document.getElementById('pProductType').value = 'Simple';
@@ -1310,6 +1340,9 @@ row.innerHTML = '<div class="form-group"><input class="form-input" placeholder="
 document.getElementById('variantAttrRows').appendChild(row);
 }
 document.getElementById('addAttrRowBtn').addEventListener('click', addAttrRow);
+document.getElementById('pStatus').addEventListener('change', function() {
+document.getElementById('pPublishAtGroup').style.display = this.value === 'scheduled' ? 'block' : 'none';
+});
 
 async function openVariantModal(productId, productName) {
 currentVariantProductId = productId;

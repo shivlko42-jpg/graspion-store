@@ -508,6 +508,14 @@ const settingsRes = await fetch(SUPABASE_URL + '/rest/v1/settings?select=key,val
 const pairingsRes = await fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
 const vendorData = await vendorRes.json();
 const productData = await productRes.json();
+const now = new Date();
+const visibleProducts = productData.filter(function(p) {
+if (p.channel_website === false) return false; // explicitly excluded from website
+const status = p.status || 'active';
+if (status === 'draft' || status === 'hidden' || status === 'discontinued') return false;
+if (status === 'scheduled') { return p.publish_at && new Date(p.publish_at) <= now; }
+return true; // 'active' or any unrecognized legacy value stays visible (backward compatible)
+});
 warehouses = warehouseRes.ok ? await warehouseRes.json() : [];
 categoryList = categoryRes.ok ? await categoryRes.json() : [];
 const bannerList = bannerRes.ok ? await bannerRes.json() : [];
@@ -518,7 +526,7 @@ settingsRows.forEach(function(s){ siteSettings[s.key] = s.value; });
 }
 pairings = pairingsRes.ok ? await pairingsRes.json() : [];
 vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){ return { id: v.id, name: v.name, icon: v.icon, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode], vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null }; });
-productPool = productData.map(function(p){
+productPool = visibleProducts.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
 const firstFeature = p.features ? p.features.split('\n')[0].trim() : '';
 return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '', imageAlt: p.image_alt_text || p.name };
