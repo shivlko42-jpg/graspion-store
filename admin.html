@@ -266,6 +266,17 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 </div>
 </div>
 
+<div class="panel-grid" data-section="dashboard">
+<div class="panel">
+<h3>💳 Payment Breakdown</h3>
+<div id="paymentBreakdownList"></div>
+</div>
+<div class="panel">
+<h3>📡 Sales by Channel</h3>
+<div id="channelBreakdownList"></div>
+</div>
+</div>
+
 <div class="panel" data-section="dashboard">
 <h3>⚠️ Low Stock Products</h3>
 <div id="lowStockList"></div>
@@ -655,6 +666,8 @@ renderProductFunnel();
 renderReturns();
 renderRefunds();
 renderProfitability();
+renderPaymentBreakdown();
+renderChannelBreakdown();
 renderCategoryPerformance();
 renderLowStockList();
 renderAdsControlCenter();
@@ -1804,6 +1817,32 @@ await fetch(SUPABASE_URL + '/rest/v1/refunds?id=eq.' + id, { method: 'PATCH', he
 loadAllData();
 });
 });
+}
+
+// ===================== SALES REPORTS (Order Mgmt Phase 9/10) =====================
+function renderPaymentBreakdown() {
+const list = document.getElementById('paymentBreakdownList');
+if (allOrders.length === 0) { list.innerHTML = '<div class="empty-state">No orders yet</div>'; return; }
+const codOrders = allOrders.filter(function(o) { return o.payment_method === 'cod' || (o.payment_status !== 'paid' && !o.payment_method); });
+const prepaidOrders = allOrders.filter(function(o) { return o.payment_status === 'paid'; });
+const codTotal = codOrders.reduce(function(s,o) { return s + Number(o.total_amount || 0); }, 0);
+const prepaidTotal = prepaidOrders.reduce(function(s,o) { return s + Number(o.total_amount || 0); }, 0);
+list.innerHTML = '<div style="display:flex; gap:10px;">' +
+'<div style="flex:1; background:#fef3c7; border-radius:12px; padding:12px; text-align:center;"><div style="font-size:18px; font-weight:900; color:#b45309;">' + codOrders.length + '</div><div style="font-size:10px; color:#6b7280; font-weight:700;">COD Orders</div><div style="font-size:10px; color:#9ca3af;">₹' + codTotal.toLocaleString('en-IN') + '</div></div>' +
+'<div style="flex:1; background:#dcfce7; border-radius:12px; padding:12px; text-align:center;"><div style="font-size:18px; font-weight:900; color:#15803d;">' + prepaidOrders.length + '</div><div style="font-size:10px; color:#6b7280; font-weight:700;">Prepaid Orders</div><div style="font-size:10px; color:#9ca3af;">₹' + prepaidTotal.toLocaleString('en-IN') + '</div></div>' +
+'</div>';
+}
+
+function renderChannelBreakdown() {
+const list = document.getElementById('channelBreakdownList');
+if (allOrders.length === 0) { list.innerHTML = '<div class="empty-state">No orders yet</div>'; return; }
+const channelLabels = { website: '🌐 Website', mobile_app: '📱 Mobile App', marketplace: '🛒 Marketplace', whatsapp: '💬 WhatsApp', offline: '🏪 Offline', b2b: '🏢 B2B', manual_admin_order: '⚙️ Manual (Admin)' };
+const counts = {};
+allOrders.forEach(function(o) { const ch = o.sales_channel || 'website'; counts[ch] = (counts[ch] || 0) + 1; });
+list.innerHTML = Object.keys(counts).map(function(ch) {
+const pct = ((counts[ch] / allOrders.length) * 100).toFixed(0);
+return '<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f7f6fb;"><span style="font-size:12px; font-weight:600;">' + (channelLabels[ch] || ch) + '</span><span style="font-size:11px; color:#9ca3af;">' + counts[ch] + ' orders (' + pct + '%)</span></div>';
+}).join('');
 }
 </script>
 </body>
