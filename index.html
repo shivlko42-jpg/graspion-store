@@ -1430,6 +1430,9 @@ if (orders.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; r
 empty.style.display = 'none';
 const statusLabels = { pending: '🕐 Placed', preparing: '📦 Preparing', shipped: '🚚 Shipped', delivered: '✅ Delivered', cancelled: '✕ Cancelled' };
 const shipRes = await fetch(SUPABASE_URL + '/rest/v1/shipments?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const orderIds = orders.map(function(o) { return o.id; }).join(',');
+const itemsRes = orderIds ? await fetch(SUPABASE_URL + '/rest/v1/order_items?order_id=in.(' + orderIds + ')&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }) : null;
+const allMyOrderItems = itemsRes && itemsRes.ok ? await itemsRes.json() : [];
 const returnsRes = await fetch(SUPABASE_URL + '/rest/v1/order_returns?customer_id=eq.' + currentCustomer.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const myReturns = returnsRes.ok ? await returnsRes.json() : [];
 const shipments = shipRes.ok ? await shipRes.json() : [];
@@ -1461,6 +1464,12 @@ return '<div style="font-size:10px; color:#9ca3af; display:flex; gap:6px;"><span
 }).join('') + '</div>';
 }
 } catch (e) { /* skip timeline if unavailable */ }
+const myItems = allMyOrderItems.filter(function(oi) { return oi.order_id === o.id; });
+const itemsHtml = myItems.length > 0 ? '<div style="margin-top:8px; padding-top:8px; border-top:1px dashed #f0eef7;">' + myItems.map(function(oi) {
+const prod = productPool.find(function(p) { return p.id === oi.product_id; });
+const itemName = (prod ? prod.name : 'Product') + (oi.variant_details ? ' (' + oi.variant_details + ')' : '');
+return '<div style="display:flex; justify-content:space-between; font-size:11.5px; padding:2px 0;"><span>' + itemName + ' × ' + oi.quantity + '</span><span style="color:#6b7280;">₹' + (oi.price * oi.quantity) + '</span></div>';
+}).join('') + '</div>' : '';
 const existingReturn = myReturns.find(function(r) { return r.order_id === o.id; });
 const returnStatusLabels = { pending: '⏳ Return Requested', approved: '✅ Return Approved', rejected: '✕ Return Rejected' };
 let returnHtml = '';
@@ -1472,6 +1481,7 @@ returnHtml = '<button data-requestreturn="' + o.id + '" style="margin-top:8px; b
 return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:14px; margin-bottom:10px;">' +
 '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-size:11px; color:#9ca3af;">#' + o.id.slice(0,8) + ' · ' + new Date(o.created_at).toLocaleDateString('en-IN') + '</span><b style="font-size:14px;">₹' + o.total_amount + '</b></div>' +
 '<div style="font-size:12.5px; font-weight:700;">' + (statusLabels[o.status] || o.status) + ' · ' + (o.delivery_type === 'instant' ? '⚡ Instant' : '📦 Pan-India') + '</div>' +
+itemsHtml +
 '<div style="font-size:11px; color:#9ca3af; margin-top:4px;">' + (o.payment_status === 'paid' ? '✓ Paid' : 'Payment: ' + (o.payment_method || 'COD')) + '</div>' +
 riderHtml +
 timelineHtml +
