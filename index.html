@@ -1045,15 +1045,17 @@ else { localStorage.removeItem('graspion_saved_warehouse'); }
 } catch (e) {}
 const standardEtaText = siteSettings.standard_delivery_days_min + '-' + siteSettings.standard_delivery_days_max + ' days';
 if (!areaData[pin]) {
-// try to resolve a real locality name (e.g. "Indira Nagar") for manually entered pincodes too
+// India Post's official Pincode API — far more accurate for Indian pincodes
+// than general-purpose geocoders like Nominatim/OSM (which was giving wrong
+// localities, e.g. showing "Mohanlalganj" for 226016 instead of "Indira Nagar").
 try {
-const geoRes = await fetch('https://nominatim.openstreetmap.org/search?postalcode=' + encodeURIComponent(pin) + '&country=India&format=json&addressdetails=1&limit=1');
+const geoRes = await fetch('https://api.postalpincode.in/pincode/' + encodeURIComponent(pin));
 const geoData = await geoRes.json();
-if (geoData && geoData[0] && geoData[0].address) {
-const addr = geoData[0].address;
-const localityName = addr.suburb || addr.neighbourhood || addr.city_district || addr.road || addr.county || 'Your Area';
-const cityName = addr.city || addr.town || addr.village || addr.state_district || '';
-const fullAddress = [localityName, cityName].filter(Boolean).join(', ');
+const postOffice = geoData && geoData[0] && geoData[0].Status === 'Success' && geoData[0].PostOffice && geoData[0].PostOffice[0];
+if (postOffice) {
+const localityName = postOffice.Name || 'Your Area';
+const cityName = postOffice.District || postOffice.Division || '';
+const fullAddress = [localityName, cityName, postOffice.State].filter(Boolean).join(', ');
 areaData[pin] = { city: cityName, area: localityName, fullAddress: fullAddress, eta: isInstantZone ? (siteSettings.instant_delivery_minutes + ' mins') : standardEtaText };
 }
 } catch (e) { /* fall through to generic fallback below */ }
