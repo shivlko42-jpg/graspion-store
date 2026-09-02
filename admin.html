@@ -117,9 +117,21 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 </head>
 <body>
 <div class="modal-overlay" id="orderTimelineModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:400; align-items:center; justify-content:center; padding:16px;">
-<div style="max-width:400px; width:100%; background:#fff; border-radius:20px; padding:20px; max-height:80vh; overflow-y:auto;">
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="font-size:15px;">🕐 Order Timeline</h3><button id="closeTimelineBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
+<div style="max-width:420px; width:100%; background:#fff; border-radius:20px; padding:20px; max-height:85vh; overflow-y:auto;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="font-size:15px;">📦 Order Details</h3><button id="closeTimelineBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
+
+<div class="form-row" style="margin-bottom:10px;">
+<div class="form-group"><label style="font-size:10px;">Priority</label><select class="form-input" id="orderPrioritySelect"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div>
+<div class="form-group"><label style="font-size:10px;">Assigned To</label><select class="form-input" id="orderAssignSelect"><option value="">— Unassigned —</option></select></div>
+</div>
+
+<div style="font-size:12px; font-weight:700; margin:14px 0 6px;">🕐 Timeline</div>
 <div id="orderTimelineContent"></div>
+
+<div style="font-size:12px; font-weight:700; margin:14px 0 6px;">📝 Internal Notes <span style="font-weight:400; color:#9ca3af; font-size:10px;">(staff only, customer never sees these)</span></div>
+<div id="orderNotesList" style="margin-bottom:8px;"></div>
+<textarea id="newOrderNote" placeholder="Add a note..." style="width:100%; padding:9px; border:1.5px solid #f0eef7; border-radius:8px; min-height:44px; font-family:inherit; font-size:11.5px;"></textarea>
+<button id="addOrderNoteBtn" style="width:100%; margin-top:6px; background:#7c3aed; color:#fff; border:none; padding:9px; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer;">+ Add Note</button>
 </div>
 </div>
 
@@ -657,7 +669,7 @@ renderSettings();
 renderPairings();
 renderRelatedProducts();
 renderCatalogRequests();
-if (currentAdmin && currentAdmin.role === 'super_admin') { loadAndRenderStaff(); }
+loadAndRenderStaff();
 loadAndRenderApplications();
 loadAndRenderReviews();
 loadAndRenderRackBin();
@@ -775,24 +787,34 @@ trackingHtml = '<div style="font-size:10px;"><b>' + (shipment.awb_number || 'AWB
 } else if (o.delivery_type === 'standard') {
 trackingHtml = '<span style="font-size:10px; color:#f59e0b;">Not shipped yet</span>';
 }
-return '<tr><td><a href="#" data-timelineid="' + o.id + '" style="color:#7c3aed; text-decoration:none; font-weight:600;">' + (o.customer_name || 'Customer') + '</a><br><span style="font-size:9.5px; color:#9ca3af;">#' + o.id.slice(0,8) + '</span></td><td style="font-size:11px;">' + vendorHtml + '</td><td>' + (o.customer_phone || '-') + '</td><td>₹' + o.total_amount + '</td><td>' + (o.pincode || '-') + '</td>' +
+const priorityBadge = o.priority === 'urgent' ? ' <span style="background:#fee2e2; color:#dc2626; font-size:9px; padding:1px 5px; border-radius:4px; font-weight:700;">URGENT</span>' : (o.priority === 'high' ? ' <span style="background:#fef3c7; color:#b45309; font-size:9px; padding:1px 5px; border-radius:4px; font-weight:700;">HIGH</span>' : '');
+return '<tr><td><a href="#" data-timelineid="' + o.id + '" style="color:#7c3aed; text-decoration:none; font-weight:600;">' + (o.customer_name || 'Customer') + '</a>' + priorityBadge + '<br><span style="font-size:9.5px; color:#9ca3af;">#' + o.id.slice(0,8) + '</span></td><td style="font-size:11px;">' + vendorHtml + '</td><td>' + (o.customer_phone || '-') + '</td><td>₹' + o.total_amount + '</td><td>' + (o.pincode || '-') + '</td>' +
 '<td><span class="status-pill ' + (statusClass[currentStatus] || 'st-pending') + '">' + currentStatus + '</span>' +
 '<br><select class="setting-input" style="margin-top:4px; width:120px; font-size:11px;" data-statusid="' + o.id + '">' + optionsHtml + '</select></td>' +
 '<td>' + trackingHtml + '</td>' +
 '<td>' + (payoutDone ? '<span class="status-pill st-delivered">Paid</span>' : '<button class="mini-btn" data-payoutid="' + o.id + '" style="background:#dbeafe;color:#1d4ed8;">Mark Paid</button>') + '</td></tr>';
 }).join('');
+let currentDetailOrderId = null;
 document.querySelectorAll('[data-timelineid]').forEach(function(link) {
 link.addEventListener('click', async function(e) {
 e.preventDefault();
 const orderId = link.getAttribute('data-timelineid');
+currentDetailOrderId = orderId;
 const content = document.getElementById('orderTimelineContent');
 content.innerHTML = '<div style="font-size:11px; color:#9ca3af;">Loading...</div>';
 document.getElementById('orderTimelineModal').style.display = 'flex';
+
+const orderObj = allOrders.find(function(o) { return o.id === orderId; });
+document.getElementById('orderPrioritySelect').value = (orderObj && orderObj.priority) || 'normal';
+const assignSel = document.getElementById('orderAssignSelect');
+assignSel.innerHTML = '<option value="">— Unassigned —</option>' + allStaff.map(function(s) { return '<option value="' + s.id + '"' + (orderObj && orderObj.assigned_to_admin_id === s.id ? ' selected' : '') + '>' + s.name + '</option>'; }).join('');
+
+renderOrderNotes(orderId);
+
 try {
 const res = await fetch(SUPABASE_URL + '/rest/v1/order_status_history?order_id=eq.' + orderId + '&select=*&order=changed_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const history = res.ok ? await res.json() : [];
 if (history.length === 0) { content.innerHTML = '<div style="font-size:11px; color:#9ca3af;">No history recorded yet.</div>'; return; }
-const orderObj = allOrders.find(function(o) { return o.id === orderId; });
 const reasonHtml = (orderObj && orderObj.status === 'cancelled' && orderObj.cancellation_reason) ? '<div style="background:#fee2e2; color:#991b1b; padding:10px; border-radius:10px; font-size:11.5px; margin-bottom:10px;"><b>✕ Cancelled by ' + (orderObj.cancelled_by || 'admin') + '</b><br>Reason: ' + orderObj.cancellation_reason + '</div>' : '';
 content.innerHTML = reasonHtml + history.map(function(h) {
 return '<div style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid #f7f6fb;"><div style="font-size:16px;">🔹</div><div><div style="font-size:12px; font-weight:700; text-transform:capitalize;">' + h.status + '</div><div style="font-size:10px; color:#9ca3af; margin-top:2px;">' + new Date(h.changed_at).toLocaleString('en-IN') + (h.changed_by_name ? ' · by ' + h.changed_by_name + ' (' + h.changed_by_type + ')' : (h.changed_by_type ? ' · ' + h.changed_by_type : '')) + '</div></div></div>';
@@ -801,6 +823,34 @@ return '<div style="display:flex; gap:10px; padding:10px 0; border-bottom:1px so
 content.innerHTML = '<div style="font-size:11px; color:#dc2626;">Could not load timeline.</div>';
 }
 });
+});
+
+async function renderOrderNotes(orderId) {
+const list = document.getElementById('orderNotesList');
+list.innerHTML = '<div style="font-size:10.5px; color:#9ca3af;">Loading notes...</div>';
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/order_notes?order_id=eq.' + orderId + '&select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const notes = res.ok ? await res.json() : [];
+if (notes.length === 0) { list.innerHTML = '<div style="font-size:10.5px; color:#9ca3af;">No notes yet.</div>'; return; }
+list.innerHTML = notes.map(function(n) {
+return '<div style="background:#f7f6fb; padding:8px; border-radius:8px; margin-bottom:6px; font-size:11px;">' + n.note_text + '<div style="font-size:9.5px; color:#9ca3af; margin-top:3px;">' + (n.created_by_name || 'Staff') + ' · ' + new Date(n.created_at).toLocaleString('en-IN') + '</div></div>';
+}).join('');
+} catch (err) { list.innerHTML = '<div style="font-size:10.5px; color:#dc2626;">Could not load notes.</div>'; }
+}
+document.getElementById('addOrderNoteBtn').addEventListener('click', async function() {
+const text = document.getElementById('newOrderNote').value.trim();
+if (!text || !currentDetailOrderId) return;
+await fetch(SUPABASE_URL + '/rest/v1/order_notes', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: currentDetailOrderId, note_text: text, created_by_name: currentAdmin.name || 'Staff' }) });
+document.getElementById('newOrderNote').value = '';
+renderOrderNotes(currentDetailOrderId);
+});
+document.getElementById('orderPrioritySelect').addEventListener('change', async function() {
+if (!currentDetailOrderId) return;
+await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + currentDetailOrderId, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ priority: this.value }) });
+});
+document.getElementById('orderAssignSelect').addEventListener('change', async function() {
+if (!currentDetailOrderId) return;
+await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + currentDetailOrderId, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ assigned_to_admin_id: this.value || null }) });
 });
 document.querySelectorAll('[data-statusid]').forEach(function(sel) {
 sel.addEventListener('change', async function() {
