@@ -772,7 +772,9 @@ try {
 const res = await fetch(SUPABASE_URL + '/rest/v1/order_status_history?order_id=eq.' + orderId + '&select=*&order=changed_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const history = res.ok ? await res.json() : [];
 if (history.length === 0) { content.innerHTML = '<div style="font-size:11px; color:#9ca3af;">No history recorded yet.</div>'; return; }
-content.innerHTML = history.map(function(h) {
+const orderObj = allOrders.find(function(o) { return o.id === orderId; });
+const reasonHtml = (orderObj && orderObj.status === 'cancelled' && orderObj.cancellation_reason) ? '<div style="background:#fee2e2; color:#991b1b; padding:10px; border-radius:10px; font-size:11.5px; margin-bottom:10px;"><b>✕ Cancelled by ' + (orderObj.cancelled_by || 'admin') + '</b><br>Reason: ' + orderObj.cancellation_reason + '</div>' : '';
+content.innerHTML = reasonHtml + history.map(function(h) {
 return '<div style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid #f7f6fb;"><div style="font-size:16px;">🔹</div><div><div style="font-size:12px; font-weight:700; text-transform:capitalize;">' + h.status + '</div><div style="font-size:10px; color:#9ca3af; margin-top:2px;">' + new Date(h.changed_at).toLocaleString('en-IN') + '</div></div></div>';
 }).join('');
 } catch (err) {
@@ -785,6 +787,12 @@ sel.addEventListener('change', async function() {
 const id = sel.getAttribute('data-statusid');
 const newStatus = sel.value;
 const patchBody = { status: newStatus };
+if (newStatus === 'cancelled') {
+const reason = prompt('Please provide a reason for cancelling this order:');
+if (!reason || !reason.trim()) { alert('Cancellation requires a reason. No changes made.'); renderOrders(); return; }
+patchBody.cancellation_reason = reason.trim();
+patchBody.cancelled_by = 'admin';
+}
 if (newStatus === 'delivered') {
 const deadline = new Date(); deadline.setDate(deadline.getDate() + 7);
 patchBody.delivered_at = new Date().toISOString();

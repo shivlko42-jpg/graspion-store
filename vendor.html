@@ -984,13 +984,14 @@ function renderOrders() {
   });
   document.querySelectorAll('[data-cancelid]').forEach(function(btn) {
     btn.addEventListener('click', async function() {
-      if (!confirm('Cancel this order? This cannot be undone.')) return;
+      const reason = prompt('Please provide a reason for cancelling this order:');
+      if (!reason || !reason.trim()) { return; }
       const orderId = btn.getAttribute('data-cancelid');
       btn.textContent = '⏳';
       await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId, {
         method: 'PATCH',
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'cancelled' })
+        body: JSON.stringify({ status: 'cancelled', cancellation_reason: reason.trim(), cancelled_by: 'vendor' })
       });
       fetch(SUPABASE_URL + '/rest/v1/notifications', {
         method: 'POST',
