@@ -183,7 +183,29 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 
 <div class="panel-grid" data-section="orders">
 <div class="panel">
-<h3>📦 Recent Orders</h3>
+<h3>📦 Orders</h3>
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+<input class="form-input" id="orderSearchInput" placeholder="🔍 Search: order ID, customer, phone, AWB..." style="flex:2; min-width:200px;">
+<select class="form-input" id="orderStatusFilter" style="flex:1; min-width:110px;">
+<option value="">All Status</option>
+<option value="pending">Pending</option>
+<option value="preparing">Preparing</option>
+<option value="shipped">Shipped</option>
+<option value="delivered">Delivered</option>
+<option value="cancelled">Cancelled</option>
+</select>
+<select class="form-input" id="orderPaymentFilter" style="flex:1; min-width:110px;">
+<option value="">All Payments</option>
+<option value="paid">Paid</option>
+<option value="pending">COD/Pending</option>
+</select>
+<select class="form-input" id="orderChannelFilter" style="flex:1; min-width:110px;">
+<option value="">All Delivery Types</option>
+<option value="instant">⚡ Instant</option>
+<option value="standard">📦 Pan-India</option>
+</select>
+</div>
+<div style="font-size:10.5px; color:#9ca3af; margin-bottom:8px;" id="orderResultCount"></div>
 <table>
 <thead><tr><th>Customer</th><th>Vendor</th><th>Phone</th><th>Amount</th><th>Pincode</th><th>Status</th><th>Tracking</th><th>Payout</th></tr></thead>
 <tbody id="ordersBody"></tbody>
@@ -437,6 +459,11 @@ let allWarehouseInventory = [];
 let allShipments = [];
 let allSettlements = [];
 
+document.getElementById('orderSearchInput').addEventListener('input', renderOrders);
+document.getElementById('orderStatusFilter').addEventListener('change', renderOrders);
+document.getElementById('orderPaymentFilter').addEventListener('change', renderOrders);
+document.getElementById('orderChannelFilter').addEventListener('change', renderOrders);
+
 (async function restoreSession() {
 try {
 const { data } = await supaAuth.auth.getSession();
@@ -680,11 +707,32 @@ return '<div class="bar-col"><div class="bar-value">₹' + d.revenue.toLocaleStr
 function renderOrders() {
 const ordersBody = document.getElementById('ordersBody');
 const ordersEmpty = document.getElementById('ordersEmpty');
-if (allOrders.length === 0) { ordersEmpty.style.display = 'block'; ordersBody.innerHTML = ''; return; }
+if (allOrders.length === 0) { ordersEmpty.style.display = 'block'; ordersBody.innerHTML = ''; document.getElementById('orderResultCount').textContent = ''; return; }
+
+const searchQ = (document.getElementById('orderSearchInput').value || '').trim().toLowerCase();
+const statusF = document.getElementById('orderStatusFilter').value;
+const paymentF = document.getElementById('orderPaymentFilter').value;
+const channelF = document.getElementById('orderChannelFilter').value;
+
+let filtered = allOrders.filter(function(o) {
+if (statusF && (o.status || 'pending') !== statusF) return false;
+if (paymentF && (o.payment_status || 'pending') !== paymentF) return false;
+if (channelF && o.delivery_type !== channelF) return false;
+if (searchQ) {
+const shipment = allShipments.find(function(s) { return s.order_id === o.id; });
+const haystack = [o.id, o.customer_name, o.customer_phone, o.pincode, shipment ? shipment.awb_number : ''].filter(Boolean).join(' ').toLowerCase();
+if (haystack.indexOf(searchQ) === -1) return false;
+}
+return true;
+});
+
+document.getElementById('orderResultCount').textContent = filtered.length + ' of ' + allOrders.length + ' orders' + (filtered.length !== allOrders.length ? ' (filtered)' : '');
+
+if (filtered.length === 0) { ordersEmpty.style.display = 'block'; ordersBody.innerHTML = ''; return; }
 ordersEmpty.style.display = 'none';
 const statusClass = { pending: 'st-pending', preparing: 'st-preparing', shipped: 'st-shipped', delivered: 'st-delivered', cancelled: 'st-pending' };
 const statusOptions = ['pending', 'preparing', 'shipped', 'delivered', 'cancelled'];
-ordersBody.innerHTML = allOrders.slice(0, 12).map(function(o) {
+ordersBody.innerHTML = filtered.slice(0, 50).map(function(o) {
 const payoutDone = o.payout_status === 'paid';
 const currentStatus = o.status || 'pending';
 const optionsHtml = statusOptions.map(function(s){ return '<option value="' + s + '"' + (s === currentStatus ? ' selected' : '') + '>' + s + '</option>'; }).join('');
