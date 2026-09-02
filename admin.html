@@ -216,7 +216,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div id="funnelList"></div>
 <div class="empty-state" id="funnelEmpty" style="display:none;">No activity tracked yet</div>
 </div>
-<div class="panel">
+<div class="panel" id="profitabilityPanel">
 <h3>💰 Profitability</h3>
 <p style="font-size:10.5px; color:#9ca3af; margin-bottom:10px;">Based on cost price vendors have entered — some products may show "—" if cost price isn't set yet.</p>
 <div id="profitList"></div>
@@ -519,7 +519,12 @@ marketing_manager: ['dashboard','banners','pairings','ads','settings'],
 finance_manager: ['dashboard','payments','vendors'],
 support_staff: ['dashboard','orders','customers']
 };
-if (role === 'super_admin') return; // no restriction
+// Field-level restriction (Phase O): cost price / profit margin is sensitive
+// financial data — hide it even from roles that can otherwise see the
+// dashboard, unless they're specifically Finance or Super Admin.
+const profitPanel = document.getElementById('profitabilityPanel');
+if (profitPanel) { profitPanel.style.display = (role === 'super_admin' || role === 'finance_manager') ? '' : 'none'; }
+if (role === 'super_admin') return; // no page-level restriction
 const allowed = roleSections[role] || ['dashboard'];
 document.querySelectorAll('.side-item[data-page]').forEach(function(item) {
 const page = item.getAttribute('data-page');
@@ -538,22 +543,24 @@ document.getElementById('adminPass').value = '';
 async function loadAllData() {
 const badge = document.getElementById('dbBadge');
 try {
-const vendorRes = await fetch(SUPABASE_URL + '/rest/v1/vendors?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const productRes = await fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const orderItemsRes = await fetch(SUPABASE_URL + '/rest/v1/order_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const shipmentsRes = await fetch(SUPABASE_URL + '/rest/v1/shipments?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const settlementsRes = await fetch(SUPABASE_URL + '/rest/v1/vendor_settlements?select=*&order=id.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const relationsRes = await fetch(SUPABASE_URL + '/rest/v1/product_relations?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const eventsRes = await fetch(SUPABASE_URL + '/rest/v1/product_events?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const warehouseRes = await fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const categoryRes = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const bannerRes = await fetch(SUPABASE_URL + '/rest/v1/banners?select=*&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const settingsRes = await fetch(SUPABASE_URL + '/rest/v1/settings?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const ridersRes = await fetch(SUPABASE_URL + '/rest/v1/riders?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const pairingsRes = await fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const catalogItemsRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-const catalogPermsRes = await fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?select=*&order=requested_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const [vendorRes, productRes, orderRes, orderItemsRes, shipmentsRes, settlementsRes, relationsRes, eventsRes, warehouseRes, categoryRes, bannerRes, settingsRes, ridersRes, pairingsRes, catalogItemsRes, catalogPermsRes] = await Promise.all([
+fetch(SUPABASE_URL + '/rest/v1/vendors?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/order_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/shipments?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/vendor_settlements?select=*&order=id.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/product_relations?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/product_events?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/categories?select=*&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/banners?select=*&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/settings?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/riders?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/catalog_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?select=*&order=requested_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } })
+]);
 allVendors = await vendorRes.json();
 allProducts = await productRes.json();
 allOrders = await orderRes.json();
