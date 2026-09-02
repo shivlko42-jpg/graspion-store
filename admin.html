@@ -116,6 +116,13 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 </style>
 </head>
 <body>
+<div class="modal-overlay" id="orderTimelineModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:400; align-items:center; justify-content:center; padding:16px;">
+<div style="max-width:400px; width:100%; background:#fff; border-radius:20px; padding:20px; max-height:80vh; overflow-y:auto;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="font-size:15px;">🕐 Order Timeline</h3><button id="closeTimelineBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
+<div id="orderTimelineContent"></div>
+</div>
+</div>
+
 <div class="login-overlay" id="loginOverlay">
 <div class="login-box">
 <div data-graspion-logo="full" data-size="22" style="justify-content:center; display:flex;"></div>
@@ -463,6 +470,7 @@ document.getElementById('orderSearchInput').addEventListener('input', renderOrde
 document.getElementById('orderStatusFilter').addEventListener('change', renderOrders);
 document.getElementById('orderPaymentFilter').addEventListener('change', renderOrders);
 document.getElementById('orderChannelFilter').addEventListener('change', renderOrders);
+document.getElementById('closeTimelineBtn').addEventListener('click', function() { document.getElementById('orderTimelineModal').style.display = 'none'; });
 
 (async function restoreSession() {
 try {
@@ -747,12 +755,31 @@ trackingHtml = '<div style="font-size:10px;"><b>' + (shipment.awb_number || 'AWB
 } else if (o.delivery_type === 'standard') {
 trackingHtml = '<span style="font-size:10px; color:#f59e0b;">Not shipped yet</span>';
 }
-return '<tr><td>' + (o.customer_name || 'Customer') + '</td><td style="font-size:11px;">' + vendorHtml + '</td><td>' + (o.customer_phone || '-') + '</td><td>₹' + o.total_amount + '</td><td>' + (o.pincode || '-') + '</td>' +
+return '<tr><td><a href="#" data-timelineid="' + o.id + '" style="color:#7c3aed; text-decoration:none; font-weight:600;">' + (o.customer_name || 'Customer') + '</a><br><span style="font-size:9.5px; color:#9ca3af;">#' + o.id.slice(0,8) + '</span></td><td style="font-size:11px;">' + vendorHtml + '</td><td>' + (o.customer_phone || '-') + '</td><td>₹' + o.total_amount + '</td><td>' + (o.pincode || '-') + '</td>' +
 '<td><span class="status-pill ' + (statusClass[currentStatus] || 'st-pending') + '">' + currentStatus + '</span>' +
 '<br><select class="setting-input" style="margin-top:4px; width:120px; font-size:11px;" data-statusid="' + o.id + '">' + optionsHtml + '</select></td>' +
 '<td>' + trackingHtml + '</td>' +
 '<td>' + (payoutDone ? '<span class="status-pill st-delivered">Paid</span>' : '<button class="mini-btn" data-payoutid="' + o.id + '" style="background:#dbeafe;color:#1d4ed8;">Mark Paid</button>') + '</td></tr>';
 }).join('');
+document.querySelectorAll('[data-timelineid]').forEach(function(link) {
+link.addEventListener('click', async function(e) {
+e.preventDefault();
+const orderId = link.getAttribute('data-timelineid');
+const content = document.getElementById('orderTimelineContent');
+content.innerHTML = '<div style="font-size:11px; color:#9ca3af;">Loading...</div>';
+document.getElementById('orderTimelineModal').style.display = 'flex';
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/order_status_history?order_id=eq.' + orderId + '&select=*&order=changed_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const history = res.ok ? await res.json() : [];
+if (history.length === 0) { content.innerHTML = '<div style="font-size:11px; color:#9ca3af;">No history recorded yet.</div>'; return; }
+content.innerHTML = history.map(function(h) {
+return '<div style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid #f7f6fb;"><div style="font-size:16px;">🔹</div><div><div style="font-size:12px; font-weight:700; text-transform:capitalize;">' + h.status + '</div><div style="font-size:10px; color:#9ca3af; margin-top:2px;">' + new Date(h.changed_at).toLocaleString('en-IN') + '</div></div></div>';
+}).join('');
+} catch (err) {
+content.innerHTML = '<div style="font-size:11px; color:#dc2626;">Could not load timeline.</div>';
+}
+});
+});
 document.querySelectorAll('[data-statusid]').forEach(function(sel) {
 sel.addEventListener('change', async function() {
 const id = sel.getAttribute('data-statusid');
