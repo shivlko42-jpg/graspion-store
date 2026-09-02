@@ -242,7 +242,7 @@ body { padding-bottom:68px; }
 </head>
 <body>
 
-<div id="pinModal" class="modal-overlay">
+<div id="pinModal" class="modal-overlay" style="display:none;">
 <div class="modal-box">
 <div data-graspion-logo="text" data-size="22" style="justify-content:center; display:flex; margin-bottom:16px;"></div>
 <div class="modal-lang" id="modalLangSwitcher"></div>
@@ -298,7 +298,7 @@ body { padding-bottom:68px; }
 <span class="db-status-badge loading" id="dbStatusBadge">⏳ Connecting...</span>
 </div>
 
-<div class="quick-cats" id="quickCats"></div>
+<div class="quick-cats" id="quickCats" style="min-height:76px;"></div>
 
 <div class="vendor-strip">
 <h2 id="vendorHeading" data-i18n="vendorsNearYou">🏪 Vendors Near You</h2>
@@ -312,7 +312,7 @@ body { padding-bottom:68px; }
 <div class="sub" data-i18n="liveFromDb">Live Catalog</div>
 </div>
 </div>
-<div class="grid" id="dealGrid"></div>
+<div class="grid" id="dealGrid" style="min-height:280px;"></div>
 </div>
 
 <div class="bottom-cta">
@@ -709,7 +709,7 @@ function renderSearchSuggestions(query) {
     const p = x.p;
     const idx = p.name.toLowerCase().indexOf(q);
     const highlighted = idx !== -1 ? p.name.slice(0, idx) + '<mark>' + p.name.slice(idx, idx + q.length) + '</mark>' + p.name.slice(idx + q.length) : p.name;
-    const iconHtml = p.image ? '<img src="' + p.image + '">' : p.icon;
+    const iconHtml = p.image ? '<img src="' + p.image + '" style="width:100%;height:100%;object-fit:cover;">' : p.icon;
     return '<div class="sugg-item" data-suggid="' + p.id + '"><div class="sugg-icon">' + iconHtml + '</div><div class="sugg-text"><div class="sugg-name">' + highlighted + '</div><div class="sugg-meta">' + (p.brand || '') + '</div></div><div class="sugg-price">₹' + p.price + '</div></div>';
   }).join('');
   box.classList.add('open');
@@ -1160,8 +1160,9 @@ document.getElementById('pinModal').style.display = 'none';
 return;
 }
 } catch (e) {}
-// No saved area yet — ask the browser for location right away (this triggers
-// the native "Allow location access?" prompt automatically on page load)
+// No saved area yet — show the picker and ask the browser for location right
+// away (this triggers the native "Allow location access?" prompt automatically)
+document.getElementById('pinModal').style.display = 'flex';
 detectLocation(true);
 })();
 document.getElementById('startSellingBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'flex'; });
