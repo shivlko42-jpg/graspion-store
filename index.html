@@ -359,17 +359,25 @@ body { padding-bottom:68px; }
 <div class="modal-box" style="max-width:380px; background:#fff; border-radius:20px; padding:26px;">
 <div id="accountModalContent">
 <h3 id="accountModalTitle" style="margin-bottom:4px;">👤 Login</h3>
-<p style="font-size:11px; color:#9ca3af; margin-bottom:14px;">Login to track your orders and see order history.</p>
+<p id="accountModalSubtext" style="font-size:11px; color:#9ca3af; margin-bottom:14px;">Enter your email — we'll send you a one-time code, no password needed.</p>
+
+<div id="otpStep1">
+<input id="accEmail" type="email" placeholder="Email" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<div id="accountError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
+<button id="sendOtpBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Send OTP →</button>
+</div>
+
+<div id="otpStep2" style="display:none;">
+<p style="font-size:11.5px; color:#4b5563; margin-bottom:10px;">Enter the 6-digit code sent to <b id="otpSentEmail"></b></p>
+<input id="accOtp" type="text" inputmode="numeric" maxlength="6" placeholder="123456" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; text-align:center; font-size:18px; letter-spacing:6px; font-weight:700;">
 <div id="signupNameField" style="display:none;"><input id="accName" placeholder="Full name" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;"></div>
 <div id="signupPhoneField" style="display:none;"><input id="accPhone" placeholder="Phone number" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;"></div>
-<input id="accEmail" type="email" placeholder="Email" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
-<input id="accPass" type="password" placeholder="Password" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
-<div id="accountError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
-<button id="accountSubmitBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Login →</button>
-<p style="font-size:11.5px; color:#9ca3af; margin-top:12px; text-align:center;">
-<span id="accountToggleText">New here?</span> <span id="accountToggleLink" style="color:#7c3aed; text-decoration:underline; cursor:pointer; font-weight:700;">Create an account</span>
-</p>
-<button id="closeAccountBtn" style="width:100%; background:none; border:none; color:#9ca3af; padding:8px; cursor:pointer;">Cancel</button>
+<div id="otpError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
+<button id="verifyOtpBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Verify & Continue →</button>
+<p style="font-size:11px; color:#9ca3af; margin-top:10px; text-align:center;"><span id="resendOtpLink" style="color:#7c3aed; text-decoration:underline; cursor:pointer; font-weight:700;">Resend code</span> · <span id="changeEmailLink" style="color:#9ca3af; text-decoration:underline; cursor:pointer;">Change email</span></p>
+</div>
+
+<button id="closeAccountBtn" style="width:100%; background:none; border:none; color:#9ca3af; padding:8px; margin-top:6px; cursor:pointer;">Cancel</button>
 </div>
 </div>
 </div>
@@ -1256,71 +1264,120 @@ if (currentCustomer) {
 document.getElementById('myOrdersModal').style.display = 'flex';
 loadMyOrders();
 } else {
+resetAccountModal();
 document.getElementById('accountModal').style.display = 'flex';
 }
 });
-document.getElementById('closeAccountBtn').addEventListener('click', function(){ document.getElementById('accountModal').style.display = 'none'; });
+document.getElementById('closeAccountBtn').addEventListener('click', function(){ document.getElementById('accountModal').style.display = 'none'; resetAccountModal(); });
 document.getElementById('closeMyOrdersBtn').addEventListener('click', function(){ document.getElementById('myOrdersModal').style.display = 'none'; });
 
-document.getElementById('accountToggleLink').addEventListener('click', function(){
-isSignupMode = !isSignupMode;
-document.getElementById('accountModalTitle').textContent = isSignupMode ? '👤 Create Account' : '👤 Login';
-document.getElementById('signupNameField').style.display = isSignupMode ? 'block' : 'none';
-document.getElementById('signupPhoneField').style.display = isSignupMode ? 'block' : 'none';
-document.getElementById('accountSubmitBtn').textContent = isSignupMode ? 'Create Account →' : 'Login →';
-document.getElementById('accountToggleText').textContent = isSignupMode ? 'Already have an account?' : 'New here?';
-document.getElementById('accountToggleLink').textContent = isSignupMode ? 'Login' : 'Create an account';
-document.getElementById('accountError').textContent = '';
-});
+let pendingOtpEmail = null;
+let awaitingProfileCompletion = false;
 
-document.getElementById('accountSubmitBtn').addEventListener('click', async function(){
+function resetAccountModal() {
+document.getElementById('otpStep1').style.display = 'block';
+document.getElementById('otpStep2').style.display = 'none';
+document.getElementById('accEmail').value = '';
+document.getElementById('accOtp').value = '';
+document.getElementById('accOtp').style.display = 'block';
+document.getElementById('accName').value = '';
+document.getElementById('accPhone').value = '';
+document.getElementById('signupNameField').style.display = 'none';
+document.getElementById('signupPhoneField').style.display = 'none';
+document.getElementById('accountModalSubtext').textContent = "Enter your email — we'll send you a one-time code, no password needed.";
+document.getElementById('accountError').textContent = '';
+document.getElementById('otpError').textContent = '';
+pendingOtpEmail = null;
+awaitingProfileCompletion = false;
+}
+
+document.getElementById('sendOtpBtn').addEventListener('click', async function(){
 const errEl = document.getElementById('accountError');
 if (!supaAuth) { errEl.textContent = 'Login system is still loading — please wait a moment and try again.'; return; }
 const email = document.getElementById('accEmail').value.trim();
-const pass = document.getElementById('accPass').value;
 errEl.textContent = '';
-if (!email || !pass) { errEl.textContent = 'Please enter email and password.'; return; }
-const btn = document.getElementById('accountSubmitBtn');
-btn.disabled = true;
+if (!email) { errEl.textContent = 'Please enter your email.'; return; }
+const btn = document.getElementById('sendOtpBtn');
+btn.textContent = '⏳ Sending...'; btn.disabled = true;
 try {
-if (isSignupMode) {
+const { error } = await supaAuth.auth.signInWithOtp({ email: email, options: { shouldCreateUser: true } });
+if (error) { errEl.textContent = error.message; btn.textContent = 'Send OTP →'; btn.disabled = false; return; }
+pendingOtpEmail = email;
+document.getElementById('otpSentEmail').textContent = email;
+document.getElementById('otpStep1').style.display = 'none';
+document.getElementById('otpStep2').style.display = 'block';
+} catch (err) {
+errEl.textContent = 'Error: ' + err.message;
+} finally {
+btn.textContent = 'Send OTP →'; btn.disabled = false;
+}
+});
+
+document.getElementById('resendOtpLink').addEventListener('click', async function(){
+if (!pendingOtpEmail) return;
+await supaAuth.auth.signInWithOtp({ email: pendingOtpEmail, options: { shouldCreateUser: true } });
+document.getElementById('otpError').textContent = 'A new code has been sent.';
+});
+document.getElementById('changeEmailLink').addEventListener('click', function(){ resetAccountModal(); });
+
+document.getElementById('verifyOtpBtn').addEventListener('click', async function(){
+const errEl = document.getElementById('otpError');
+errEl.textContent = '';
+const btn = document.getElementById('verifyOtpBtn');
+
+if (awaitingProfileCompletion) {
+// second step for brand-new customers: save their name+phone now that they're verified
 const name = document.getElementById('accName').value.trim();
 const phone = document.getElementById('accPhone').value.trim();
-if (!name || !phone) { errEl.textContent = 'Please enter your name and phone.'; btn.disabled = false; return; }
-btn.textContent = '⏳ Creating account...';
-const { data, error } = await supaAuth.auth.signUp({ email: email, password: pass });
-if (error || !data.user) { errEl.textContent = error ? error.message : 'Could not create account'; btn.textContent = 'Create Account →'; btn.disabled = false; return; }
-// Some Supabase projects require email confirmation before a session exists yet
-if (data.session) { authToken = data.session.access_token; }
+if (!name || !phone) { errEl.textContent = 'Please enter your name and phone.'; return; }
+btn.textContent = '⏳ Saving...'; btn.disabled = true;
+try {
+const { data: sessionData } = await supaAuth.auth.getSession();
 await fetch(SUPABASE_URL + '/rest/v1/customers', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-body: JSON.stringify({ auth_user_id: data.user.id, name: name, phone: phone, email: email })
+body: JSON.stringify({ auth_user_id: sessionData.session.user.id, name: name, phone: phone, email: pendingOtpEmail })
 });
-if (data.session) {
-const custRes = await fetch(SUPABASE_URL + '/rest/v1/customers?auth_user_id=eq.' + data.user.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const custRes = await fetch(SUPABASE_URL + '/rest/v1/customers?auth_user_id=eq.' + sessionData.session.user.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const custRows = await custRes.json();
 currentCustomer = custRows[0] || null;
 updateAccountButtonUI();
 document.getElementById('accountModal').style.display = 'none';
-} else {
-errEl.textContent = '';
-document.getElementById('accountModalContent').innerHTML = '<div style="text-align:center; padding:10px 0;"><div style="font-size:40px;">📧</div><h3 style="margin-top:8px;">Check your email</h3><p style="font-size:12px; color:#9ca3af; margin-top:6px;">We sent a confirmation link to ' + email + '. Confirm it, then come back and log in.</p></div>';
+resetAccountModal();
+} catch (err) {
+errEl.textContent = 'Error: ' + err.message;
+btn.textContent = 'Save & Continue →'; btn.disabled = false;
 }
-} else {
-btn.textContent = '⏳ Logging in...';
-const { data, error } = await supaAuth.auth.signInWithPassword({ email: email, password: pass });
-if (error || !data.session) { errEl.textContent = error ? error.message : 'Login failed'; btn.textContent = 'Login →'; btn.disabled = false; return; }
+return;
+}
+
+const otpCode = document.getElementById('accOtp').value.trim();
+if (!otpCode || otpCode.length !== 6) { errEl.textContent = 'Please enter the 6-digit code.'; return; }
+btn.textContent = '⏳ Verifying...'; btn.disabled = true;
+try {
+const { data, error } = await supaAuth.auth.verifyOtp({ email: pendingOtpEmail, token: otpCode, type: 'email' });
+if (error || !data.session) { errEl.textContent = error ? error.message : 'Invalid or expired code.'; btn.textContent = 'Verify & Continue →'; btn.disabled = false; return; }
 authToken = data.session.access_token;
 const custRes = await fetch(SUPABASE_URL + '/rest/v1/customers?auth_user_id=eq.' + data.user.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const custRows = await custRes.json();
-currentCustomer = custRows[0] || null;
+if (custRows[0]) {
+// existing customer — done, log them straight in
+currentCustomer = custRows[0];
 updateAccountButtonUI();
 document.getElementById('accountModal').style.display = 'none';
+resetAccountModal();
+} else {
+// brand new customer — need name + phone before we're fully done
+awaitingProfileCompletion = true;
+document.getElementById('accOtp').style.display = 'none';
+document.getElementById('signupNameField').style.display = 'block';
+document.getElementById('signupPhoneField').style.display = 'block';
+document.getElementById('accountModalSubtext').textContent = "You're verified! Just need a couple more details.";
+btn.textContent = 'Save & Continue →'; btn.disabled = false;
 }
 } catch (err) {
 errEl.textContent = 'Error: ' + err.message;
-btn.disabled = false;
+btn.textContent = 'Verify & Continue →'; btn.disabled = false;
 }
 });
 
@@ -1431,7 +1488,7 @@ document.getElementById('bnAccount').addEventListener('click', function(){
 setBottomNavActive('bnAccount');
 if (!supaAuth) { alert('Login is still loading, please try again in a moment (this can take a bit longer on slow internet).'); return; }
 if (currentCustomer) { document.getElementById('myOrdersModal').style.display = 'flex'; loadMyOrders(); }
-else { document.getElementById('accountModal').style.display = 'flex'; }
+else { resetAccountModal(); document.getElementById('accountModal').style.display = 'flex'; }
 });
 
 // ===================== PRODUCT DETAIL MODAL + REVIEWS =====================
