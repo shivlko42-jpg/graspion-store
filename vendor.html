@@ -156,11 +156,10 @@
       <div data-graspion-logo="text" data-size="16"></div>
       <span class="biz" id="vendorNameLabel">🏪 Loading...</span>
     </div>
-    <div class="side-item active">📊 Dashboard</div>
-    <div class="side-item">📦 Products</div>
-    <div class="side-item">🧾 Orders</div>
-    <div class="side-item">💳 Payments</div>
-    <div class="side-item">🎯 Promote / Ads</div>
+    <div class="side-item active" id="navDashboard">📊 Dashboard</div>
+    <div class="side-item" id="navProducts">📦 Products</div>
+    <div class="side-item" id="navOrders">🧾 Orders</div>
+    <div class="side-item" id="navPayments">💳 Payments</div>
     <div class="side-item" id="navSuppliers">🚚 Suppliers</div>
     <div class="side-item" id="navSettings">⚙️ Store Settings</div>
     <button class="logout-btn" id="logoutBtn">Logout</button>
@@ -175,7 +174,7 @@
       <span class="db-badge loading" id="dbBadge">⏳ Loading...</span>
     </div>
 
-    <div class="kpi-grid">
+    <div class="kpi-grid" id="dashboardSection">
       <div class="kpi-card"><div class="kpi-val" id="kpiProducts">0</div><div class="kpi-label">Total Products</div></div>
       <div class="kpi-card"><div class="kpi-val" id="kpiOrders">0</div><div class="kpi-label">Total Orders</div></div>
       <div class="kpi-card"><div class="kpi-val" id="kpiRevenue">₹0</div><div class="kpi-label">Total Revenue</div></div>
@@ -423,20 +422,20 @@
     </div>
 
     <div class="panel">
-      <h3>📦 Your Products <span id="prodCount" style="font-size:11px;color:#9ca3af;"></span></h3>
+      <h3 id="productsSection">📦 Your Products <span id="prodCount" style="font-size:11px;color:#9ca3af;"></span></h3>
       <div class="prod-list" id="prodList"></div>
       <div class="empty-state" id="prodEmpty" style="display:none;">No products yet — add one above</div>
     </div>
 
     <div class="panel">
-      <h3>🧾 Your Orders — Delivery Pipeline <span id="orderCount" style="font-size:11px;color:#9ca3af;"></span></h3>
+      <h3 id="ordersSection">🧾 Your Orders — Delivery Pipeline <span id="orderCount" style="font-size:11px;color:#9ca3af;"></span></h3>
       <button class="add-product-btn" id="exportOrdersBtn" style="margin-bottom:14px; background:#1e1b3a;">⬇ Download Orders CSV</button>
       <div id="orderList"></div>
       <div class="empty-state" id="orderEmpty" style="display:none;">No orders yet</div>
     </div>
 
     <div class="panel">
-      <h3>💳 Payment Pipeline</h3>
+      <h3 id="paymentsSection">💳 Payment Pipeline</h3>
       <button class="add-product-btn" id="exportPaymentsBtn" style="margin-bottom:14px; background:#1e1b3a;">⬇ Download Payments / Tax Invoice CSV</button>
       <div id="paymentList"></div>
       <div class="empty-state" id="paymentEmpty" style="display:none;">No payment records yet</div>
@@ -568,6 +567,24 @@ document.getElementById('navSettings').addEventListener('click', function() {
 });
 document.getElementById('navSuppliers').addEventListener('click', function() {
   document.getElementById('suppliersPanel').scrollIntoView({ behavior: 'smooth' });
+});
+document.getElementById('navDashboard').addEventListener('click', function() {
+  document.getElementById('dashboardSection').scrollIntoView({ behavior: 'smooth' });
+});
+document.getElementById('navProducts').addEventListener('click', function() {
+  document.getElementById('productsSection').scrollIntoView({ behavior: 'smooth' });
+});
+document.getElementById('navOrders').addEventListener('click', function() {
+  document.getElementById('ordersSection').scrollIntoView({ behavior: 'smooth' });
+});
+document.getElementById('navPayments').addEventListener('click', function() {
+  document.getElementById('paymentsSection').scrollIntoView({ behavior: 'smooth' });
+});
+document.querySelectorAll('.side-item[id^="nav"]').forEach(function(item) {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.side-item').forEach(function(i) { i.classList.remove('active'); });
+    item.classList.add('active');
+  });
 });
 
 let allSuppliers = [];
