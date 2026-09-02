@@ -373,8 +373,8 @@ Continue with Google
 </div>
 
 <div id="otpStep2" style="display:none;">
-<p style="font-size:11.5px; color:#4b5563; margin-bottom:10px;">Enter the 6-digit code sent to <b id="otpSentEmail"></b></p>
-<input id="accOtp" type="text" inputmode="numeric" maxlength="6" placeholder="123456" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; text-align:center; font-size:18px; letter-spacing:6px; font-weight:700;">
+<p style="font-size:11.5px; color:#4b5563; margin-bottom:10px;">Enter the code sent to <b id="otpSentEmail"></b></p>
+<input id="accOtp" type="text" inputmode="numeric" maxlength="10" placeholder="Enter code" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; text-align:center; font-size:18px; letter-spacing:4px; font-weight:700;">
 <div id="signupNameField" style="display:none;"><input id="accName" placeholder="Full name" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;"></div>
 <div id="signupPhoneField" style="display:none;"><input id="accPhone" placeholder="Phone number" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;"></div>
 <div id="otpError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
@@ -1380,7 +1380,7 @@ return;
 }
 
 const otpCode = document.getElementById('accOtp').value.trim();
-if (!otpCode || otpCode.length !== 6) { errEl.textContent = 'Please enter the 6-digit code.'; return; }
+if (!otpCode || otpCode.length < 4) { errEl.textContent = 'Please enter the full code from your email.'; return; }
 btn.textContent = '⏳ Verifying...'; btn.disabled = true;
 try {
 const { data, error } = await supaAuth.auth.verifyOtp({ email: pendingOtpEmail, token: otpCode, type: 'email' });
