@@ -1038,6 +1038,11 @@ const matchedWarehouse = warehouses.find(function(w){ return w.pincode === pin; 
 selectedWarehouseId = matchedWarehouse ? matchedWarehouse.id : null;
 isInstantZone = !!matchedWarehouse;
 }
+try {
+localStorage.setItem('graspion_saved_pin', pin);
+if (selectedWarehouseId) { localStorage.setItem('graspion_saved_warehouse', selectedWarehouseId); }
+else { localStorage.removeItem('graspion_saved_warehouse'); }
+} catch (e) {}
 const standardEtaText = siteSettings.standard_delivery_days_min + '-' + siteSettings.standard_delivery_days_max + ' days';
 if (!areaData[pin]) {
 // try to resolve a real locality name (e.g. "Indira Nagar") for manually entered pincodes too
@@ -1070,11 +1075,11 @@ errEl.textContent = '';
 setArea(val);
 });
 document.getElementById('areaBtn').addEventListener('click', function(){ document.getElementById('pinModal').style.display = 'flex'; });
-document.getElementById('detectLocationBtn').addEventListener('click', function() {
+function detectLocation(isAutoTriggered) {
 const btn = document.getElementById('detectLocationBtn');
 const errEl = document.getElementById('pinError');
-if (!navigator.geolocation) { errEl.textContent = 'Location detection is not supported on this device'; return; }
-btn.textContent = '⏳ Detecting your location...';
+if (!navigator.geolocation) { if (!isAutoTriggered) errEl.textContent = 'Location detection is not supported on this device'; return; }
+if (btn) btn.textContent = '⏳ Detecting your location...';
 errEl.textContent = '';
 navigator.geolocation.getCurrentPosition(async function(pos) {
 try {
@@ -1106,18 +1111,44 @@ setArea(pin, nearestWarehouse.id);
 document.getElementById('pinInput').value = detectedPincode;
 areaData[detectedPincode] = { city: cityName, area: localityName, fullAddress: fullAddress, eta: siteSettings.standard_delivery_days_min + '-' + siteSettings.standard_delivery_days_max + ' days' };
 setArea(detectedPincode, null);
-} else {
+} else if (!isAutoTriggered) {
 errEl.textContent = 'Could not detect a valid location. Please enter your pincode manually.';
 }
-} catch (err) { errEl.textContent = 'Location lookup failed. Please enter your pincode manually.'; }
-btn.textContent = '📍 Use My Current Location';
-}, function() {
-errEl.textContent = 'Location access denied. Please enter your pincode manually.';
-btn.textContent = '📍 Use My Current Location';
-});
-});
-// Modal stays open on load so the user can either detect their location
-// or pick/enter a pincode manually — no default area is auto-selected.
+} catch (err) { if (!isAutoTriggered) errEl.textContent = 'Location lookup failed. Please enter your pincode manually.'; }
+if (btn) btn.textContent = '📍 Use My Current Location';
+}, function(geoError) {
+if (!isAutoTriggered) {
+// Give a specific, helpful message depending on WHY it failed
+if (geoError.code === geoError.PERMISSION_DENIED) {
+errEl.textContent = 'Location access denied. Please allow location access in your browser/phone settings, or enter your pincode manually below.';
+} else if (geoError.code === geoError.POSITION_UNAVAILABLE) {
+errEl.textContent = 'Could not get your location — please make sure Location/GPS is turned ON on your phone, then try again. Or enter your pincode manually.';
+} else {
+errEl.textContent = 'Location request timed out. Please try again, or enter your pincode manually.';
+}
+}
+if (btn) btn.textContent = '📍 Use My Current Location';
+}, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }); // high accuracy, no stale cached location
+}
+document.getElementById('detectLocationBtn').addEventListener('click', function() { detectLocation(false); });
+
+// Auto-detect location the moment the app opens — no button tap needed.
+// If they already picked an area before on this device, restore it instantly
+// instead of asking again every single visit.
+(function autoDetectOnLoad() {
+try {
+const savedPin = localStorage.getItem('graspion_saved_pin');
+if (savedPin) {
+const savedWarehouse = localStorage.getItem('graspion_saved_warehouse') || null;
+setArea(savedPin, savedWarehouse);
+document.getElementById('pinModal').style.display = 'none';
+return;
+}
+} catch (e) {}
+// No saved area yet — ask the browser for location right away (this triggers
+// the native "Allow location access?" prompt automatically on page load)
+detectLocation(true);
+})();
 document.getElementById('startSellingBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'flex'; });
 document.getElementById('closeVendorApplyBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'none'; });
 function fileToBase64(inputId) {
