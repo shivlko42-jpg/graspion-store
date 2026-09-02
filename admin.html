@@ -149,6 +149,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="side-item" data-page="settings">⚙️ Settings</div>
 <div class="side-item" data-page="staff">👤 Staff Management</div>
 <div class="side-item" data-page="applications">📋 New Applications</div>
+<div class="side-item" data-page="returns">↩ Returns & Refunds</div>
 <div class="side-item" data-page="reviews">⭐ Reviews</div>
 <div class="side-item" data-page="pairings">🔗 Pairings</div>
 <div class="side-item" data-page="catalog">📋 Catalog Requests</div>
@@ -401,6 +402,19 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="empty-state" id="riderAppsEmpty" style="display:none;">No pending rider applications</div>
 </div>
 
+<div class="panel" data-section="returns">
+<h3>↩ Return Requests</h3>
+<div id="returnsList"></div>
+<div class="empty-state" id="returnsEmpty" style="display:none;">No return requests</div>
+</div>
+
+<div class="panel" data-section="returns">
+<h3>💵 Refunds</h3>
+<p style="font-size:10.5px; color:#9ca3af; margin-bottom:10px;">Approved returns appear here — mark as refunded once you've actually sent the money back (bank/UPI, done outside this app).</p>
+<div id="refundsList"></div>
+<div class="empty-state" id="refundsEmpty" style="display:none;">No refunds yet</div>
+</div>
+
 <div class="panel" data-section="reviews">
 <h3>⭐ Customer Reviews</h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Reply to reviews — your reply shows publicly under the review on the product page.</p>
@@ -578,7 +592,7 @@ document.getElementById('adminPass').value = '';
 async function loadAllData() {
 const badge = document.getElementById('dbBadge');
 try {
-const [vendorRes, productRes, orderRes, orderItemsRes, shipmentsRes, settlementsRes, relationsRes, eventsRes, warehouseRes, categoryRes, bannerRes, settingsRes, ridersRes, pairingsRes, catalogItemsRes, catalogPermsRes] = await Promise.all([
+const [vendorRes, productRes, orderRes, orderItemsRes, shipmentsRes, settlementsRes, relationsRes, eventsRes, warehouseRes, categoryRes, bannerRes, settingsRes, ridersRes, pairingsRes, catalogItemsRes, catalogPermsRes, returnsRes, refundsRes] = await Promise.all([
 fetch(SUPABASE_URL + '/rest/v1/vendors?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
 fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
 fetch(SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
@@ -594,7 +608,9 @@ fetch(SUPABASE_URL + '/rest/v1/settings?select=*', { headers: { 'apikey': SUPABA
 fetch(SUPABASE_URL + '/rest/v1/riders?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
 fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
 fetch(SUPABASE_URL + '/rest/v1/catalog_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
-fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?select=*&order=requested_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } })
+fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?select=*&order=requested_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/order_returns?select=*&order=requested_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/refunds?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } })
 ]);
 allVendors = await vendorRes.json();
 allProducts = await productRes.json();
@@ -612,6 +628,8 @@ allRiders = ridersRes.ok ? await ridersRes.json() : [];
 allPairings = pairingsRes.ok ? await pairingsRes.json() : [];
 allCatalogItems = catalogItemsRes.ok ? await catalogItemsRes.json() : [];
 allCatalogPermissions = catalogPermsRes.ok ? await catalogPermsRes.json() : [];
+allReturns = returnsRes.ok ? await returnsRes.json() : [];
+allRefunds = refundsRes.ok ? await refundsRes.json() : [];
 badge.className = 'db-badge live';
 badge.textContent = '✅ Live';
 renderKPIs();
@@ -622,6 +640,8 @@ renderOrders();
 renderVendorRanking();
 renderTopProducts();
 renderProductFunnel();
+renderReturns();
+renderRefunds();
 renderProfitability();
 renderCategoryPerformance();
 renderLowStockList();
@@ -1247,6 +1267,8 @@ loadAllData();
 // ===================== RELATED PRODUCTS (Phase I) =====================
 let allProductRelations = [];
 let allProductEvents = [];
+let allReturns = [];
+let allRefunds = [];
 function renderRelatedProducts() {
 const selA = document.getElementById('relProductA');
 const selB = document.getElementById('relProductB');
@@ -1676,6 +1698,62 @@ const totalProfit = (p.price - p.cost_price) * unitsSold;
 const marginColor = Number(marginPercent) < 10 ? '#dc2626' : (Number(marginPercent) < 25 ? '#b45309' : '#15803d');
 return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + p.name + '</div><div class="ic-sub">Cost ₹' + p.cost_price + ' → Sell ₹' + p.price + ' · <span style="color:' + marginColor + '; font-weight:700;">' + marginPercent + '% margin</span> · ' + unitsSold + ' sold · Total profit ₹' + totalProfit.toLocaleString('en-IN') + '</div></div></div>';
 }).join('');
+}
+
+// ===================== RETURNS & REFUNDS (Order Mgmt Phase 4) =====================
+function renderReturns() {
+const list = document.getElementById('returnsList');
+const empty = document.getElementById('returnsEmpty');
+const pending = allReturns.filter(function(r) { return r.approval_status === 'pending'; });
+if (pending.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = pending.map(function(r) {
+const order = allOrders.find(function(o) { return o.id === r.order_id; });
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">Order #' + r.order_id.slice(0,8) + (order ? ' — ' + order.customer_name : '') + '</div><div class="ic-sub"><b>' + r.reason + '</b>' + (r.description ? ' — ' + r.description : '') + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn on-btn" data-retapprove="' + r.id + '">✓ Approve</button><button class="icon-btn off-btn" data-retreject="' + r.id + '">✕ Reject</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-retapprove]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-retapprove');
+const ret = allReturns.find(function(r) { return r.id === id; });
+await fetch(SUPABASE_URL + '/rest/v1/order_returns?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ approval_status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: currentAdmin.name || 'admin' }) });
+if (ret) {
+const order = allOrders.find(function(o) { return o.id === ret.order_id; });
+if (order) {
+await fetch(SUPABASE_URL + '/rest/v1/refunds', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: ret.order_id, return_id: ret.id, amount: order.total_amount, status: 'pending' }) });
+}
+}
+loadAllData();
+});
+});
+document.querySelectorAll('[data-retreject]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Reject this return request?')) return;
+const id = btn.getAttribute('data-retreject');
+await fetch(SUPABASE_URL + '/rest/v1/order_returns?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ approval_status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: currentAdmin.name || 'admin' }) });
+loadAllData();
+});
+});
+}
+
+function renderRefunds() {
+const list = document.getElementById('refundsList');
+const empty = document.getElementById('refundsEmpty');
+if (allRefunds.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = allRefunds.map(function(r) {
+const isDone = r.status === 'completed';
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">Order #' + r.order_id.slice(0,8) + ' — ₹' + r.amount + '</div><div class="ic-sub">' + (isDone ? '✓ Refunded ' + new Date(r.refund_date).toLocaleDateString('en-IN') : '⏳ Pending') + '</div></div>' +
+(isDone ? '' : '<div class="item-actions"><button class="icon-btn on-btn" data-refunddone="' + r.id + '">✓ Mark Refunded</button></div>') + '</div>';
+}).join('');
+document.querySelectorAll('[data-refunddone]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Confirm you have sent this refund to the customer?')) return;
+const id = btn.getAttribute('data-refunddone');
+await fetch(SUPABASE_URL + '/rest/v1/refunds?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'completed', refund_date: new Date().toISOString() }) });
+loadAllData();
+});
+});
 }
 </script>
 </body>

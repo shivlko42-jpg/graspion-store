@@ -388,6 +388,24 @@ body { padding-bottom:68px; }
 </div>
 </div>
 
+<div class="modal-overlay" id="returnRequestModal" style="display:none;">
+<div class="modal-box" style="max-width:380px; background:#fff; border-radius:20px; padding:24px;">
+<h3 style="margin-bottom:4px;">↩ Request Return</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:14px;">Tell us why you'd like to return this order.</p>
+<select id="returnReasonSelect" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<option value="Item damaged/defective">Item damaged/defective</option>
+<option value="Wrong item received">Wrong item received</option>
+<option value="Item not as described">Item not as described</option>
+<option value="No longer needed">No longer needed</option>
+<option value="Other">Other</option>
+</select>
+<textarea id="returnDescription" placeholder="Additional details (optional)" style="width:100%; padding:11px; margin-bottom:10px; border:1.5px solid #f0eef7; border-radius:10px; min-height:60px; font-family:inherit;"></textarea>
+<div id="returnRequestError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
+<button id="submitReturnBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Submit Return Request</button>
+<button id="closeReturnModalBtn" style="width:100%; background:none; border:none; color:#9ca3af; padding:10px; margin-top:4px; cursor:pointer;">Cancel</button>
+</div>
+</div>
+
 <div class="modal-overlay" id="productDetailModal" style="display:none;">
 <div class="modal-box" style="max-width:480px; width:100%; background:#fff; border-radius:20px; padding:0; max-height:88vh; overflow-y:auto; position:relative;">
 <button id="closeProductDetailBtn" style="position:absolute; top:12px; right:12px; z-index:5; background:#fff; border:none; width:32px; height:32px; border-radius:50%; box-shadow:0 2px 8px rgba(0,0,0,0.15); font-size:14px; cursor:pointer;">✕</button>
@@ -1294,6 +1312,8 @@ if (orders.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; r
 empty.style.display = 'none';
 const statusLabels = { pending: '🕐 Placed', preparing: '📦 Preparing', shipped: '🚚 Shipped', delivered: '✅ Delivered', cancelled: '✕ Cancelled' };
 const shipRes = await fetch(SUPABASE_URL + '/rest/v1/shipments?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const returnsRes = await fetch(SUPABASE_URL + '/rest/v1/order_returns?customer_id=eq.' + currentCustomer.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const myReturns = returnsRes.ok ? await returnsRes.json() : [];
 const shipments = shipRes.ok ? await shipRes.json() : [];
 const cardsHtml = await Promise.all(orders.map(async function(o) {
 const shipment = shipments.find(function(s) { return s.order_id === o.id; });
@@ -1323,16 +1343,28 @@ return '<div style="font-size:10px; color:#9ca3af; display:flex; gap:6px;"><span
 }).join('') + '</div>';
 }
 } catch (e) { /* skip timeline if unavailable */ }
+const existingReturn = myReturns.find(function(r) { return r.order_id === o.id; });
+const returnStatusLabels = { pending: '⏳ Return Requested', approved: '✅ Return Approved', rejected: '✕ Return Rejected' };
+let returnHtml = '';
+if (existingReturn) {
+returnHtml = '<div style="margin-top:8px; background:#fef3c7; padding:8px 10px; border-radius:8px; font-size:11px; color:#92400e;">' + (returnStatusLabels[existingReturn.approval_status] || existingReturn.approval_status) + '</div>';
+} else if (o.status === 'delivered' && o.return_deadline && new Date(o.return_deadline) > new Date()) {
+returnHtml = '<button data-requestreturn="' + o.id + '" style="margin-top:8px; background:#fee2e2; color:#dc2626; border:none; padding:8px 12px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">↩ Request Return</button>';
+}
 return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:14px; margin-bottom:10px;">' +
 '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-size:11px; color:#9ca3af;">#' + o.id.slice(0,8) + ' · ' + new Date(o.created_at).toLocaleDateString('en-IN') + '</span><b style="font-size:14px;">₹' + o.total_amount + '</b></div>' +
 '<div style="font-size:12.5px; font-weight:700;">' + (statusLabels[o.status] || o.status) + ' · ' + (o.delivery_type === 'instant' ? '⚡ Instant' : '📦 Pan-India') + '</div>' +
 '<div style="font-size:11px; color:#9ca3af; margin-top:4px;">' + (o.payment_status === 'paid' ? '✓ Paid' : 'Payment: ' + (o.payment_method || 'COD')) + '</div>' +
 riderHtml +
 timelineHtml +
+returnHtml +
 (trackHtml ? '<div style="margin-top:6px;">' + trackHtml + '</div>' : '') +
 '</div>';
 }));
 list.innerHTML = cardsHtml.join('');
+document.querySelectorAll('[data-requestreturn]').forEach(function(btn) {
+btn.addEventListener('click', function() { openReturnModal(btn.getAttribute('data-requestreturn')); });
+});
 } catch (err) {
 list.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626; font-size:12px;">Could not load orders.</div>';
 }
@@ -1563,6 +1595,44 @@ document.getElementById('productDetailModal').style.display = 'none';
 });
 }
 document.getElementById('closeProductDetailBtn').addEventListener('click', function() { document.getElementById('productDetailModal').style.display = 'none'; });
+
+// ===================== RETURN REQUEST (Phase 4) =====================
+let returnOrderId = null;
+function openReturnModal(orderId) {
+returnOrderId = orderId;
+document.getElementById('returnReasonSelect').value = 'Item damaged/defective';
+document.getElementById('returnDescription').value = '';
+document.getElementById('returnRequestError').textContent = '';
+document.getElementById('returnRequestModal').style.display = 'flex';
+}
+document.getElementById('closeReturnModalBtn').addEventListener('click', function() { document.getElementById('returnRequestModal').style.display = 'none'; });
+document.getElementById('submitReturnBtn').addEventListener('click', async function() {
+const errEl = document.getElementById('returnRequestError');
+if (!currentCustomer) { errEl.textContent = 'Please login to request a return.'; return; }
+const reason = document.getElementById('returnReasonSelect').value;
+const description = document.getElementById('returnDescription').value.trim();
+const btn = document.getElementById('submitReturnBtn');
+btn.textContent = '⏳ Submitting...'; btn.disabled = true;
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/order_returns', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ order_id: returnOrderId, customer_id: currentCustomer.id, reason: reason, description: description || null })
+});
+if (!res.ok) {
+const errText = await res.text();
+errEl.textContent = 'Could not submit: ' + errText;
+btn.textContent = 'Submit Return Request'; btn.disabled = false;
+return;
+}
+document.getElementById('returnRequestModal').style.display = 'none';
+btn.textContent = 'Submit Return Request'; btn.disabled = false;
+loadMyOrders();
+} catch (err) {
+errEl.textContent = 'Error: ' + err.message;
+btn.textContent = 'Submit Return Request'; btn.disabled = false;
+}
+});
 
 if ('serviceWorker' in navigator) {
 window.addEventListener('load', function() {
