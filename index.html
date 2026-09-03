@@ -517,6 +517,8 @@ function findNearestWarehouse(lat, lng) {
 }
 let cart = {};
 let checkoutStep = 'address';
+let appliedCoupon = null; // { code, discount } — set by applyCoupon(), verified live against the server
+let couponMessage = '';
 let selectedPayMethod = 'upi';
 let customerInfo = { name:'', phone:'', address:'', city:'', pincode:'' };
 
@@ -799,7 +801,41 @@ return Object.assign({}, p, { qty: cart[key], cartKey: key, price: Number(varian
 return Object.assign({}, p, { qty: cart[key], cartKey: key });
 }).filter(Boolean);
 }
-function cartTotals(){ const items = cartItemsList(); const itemTotal = items.reduce(function(s,i){ return s + i.price*i.qty; }, 0); const delivery = itemTotal > 199 || itemTotal === 0 ? 0 : 29; return { itemTotal: itemTotal, delivery: delivery, total: itemTotal + delivery, count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
+function cartTotals(){ const items = cartItemsList(); const itemTotal = items.reduce(function(s,i){ return s + i.price*i.qty; }, 0); const delivery = itemTotal > 199 || itemTotal === 0 ? 0 : 29; const gross = itemTotal + delivery; const discount = appliedCoupon ? Math.min(appliedCoupon.discount, gross) : 0; return { itemTotal: itemTotal, delivery: delivery, discount: discount, total: Math.max(gross - discount, 0), count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
+async function applyCoupon(code){
+if (!code) return;
+couponMessage = '⏳ Checking...';
+renderCheckout();
+try {
+const t = cartTotals();
+const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/validate_coupon', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({ p_code: code.trim().toUpperCase(), p_cart_total: t.itemTotal + t.delivery })
+});
+if (!res.ok) {
+const errText = await res.text();
+appliedCoupon = null;
+couponMessage = errText.indexOf('MIN_ORDER_NOT_MET') !== -1 ? '❌ Minimum order amount not met for this coupon' :
+errText.indexOf('COUPON_EXPIRED') !== -1 ? '❌ This coupon has expired' :
+errText.indexOf('COUPON_NOT_STARTED') !== -1 ? '❌ This coupon is not active yet' :
+errText.indexOf('COUPON_LIMIT_REACHED') !== -1 ? '❌ This coupon has been fully redeemed' :
+errText.indexOf('COUPON_INACTIVE') !== -1 ? '❌ This coupon is no longer active' :
+'❌ Invalid coupon code';
+} else {
+const discount = await res.json();
+if (Number(discount) > 0) {
+appliedCoupon = { code: code.trim().toUpperCase(), discount: Number(discount) };
+couponMessage = '✅ Coupon applied — you saved ₹' + Number(discount).toLocaleString('en-IN');
+} else {
+appliedCoupon = null;
+couponMessage = '❌ Invalid coupon code';
+}
+}
+} catch (e) { appliedCoupon = null; couponMessage = '❌ Could not verify coupon — try again'; }
+renderCheckout();
+}
+function removeCoupon(){ appliedCoupon = null; couponMessage = ''; renderCheckout(); }
 function renderCartDrawer(){
 const items = cartItemsList();
 const body = document.getElementById('drawerBody');
@@ -874,7 +910,7 @@ const orderId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xx
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website' })
+body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: appliedCoupon ? appliedCoupon.code : null })
 });
 if (!orderRes.ok) {
 const orderErr = await orderRes.text();
@@ -898,16 +934,22 @@ const orderId = await createOrderRecord(selectedPayMethod === 'cod' ? 'pending' 
 return !!orderId;
 }
 async function startRazorpayPayment(){
-const t = cartTotals();
-// Step 1: create our own order row first (payment_status starts as 'pending')
+// Step 1: create our own order row first (payment_status starts as 'pending').
+// The DB itself recomputes total_amount from real product prices + coupon —
+// never trust the client's cartTotals() for what actually gets charged.
 const orderId = await createOrderRecord('pending');
 if (!orderId) { return { success: false }; }
 try {
+const verifiedOrderRes = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId + '&select=total_amount', {
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+});
+const verifiedOrderRows = await verifiedOrderRes.json();
+const verifiedTotal = (verifiedOrderRows && verifiedOrderRows[0]) ? Number(verifiedOrderRows[0].total_amount) : cartTotals().total;
 // Step 2: ask our Edge Function to create a Razorpay order (Key Secret never touches this browser)
 const createRes = await fetch(SUPABASE_URL + '/functions/v1/create-razorpay-order', {
 method: 'POST',
 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY, 'apikey': SUPABASE_KEY },
-body: JSON.stringify({ amount: t.total, currency: 'INR', receipt: orderId })
+body: JSON.stringify({ amount: verifiedTotal, currency: 'INR', receipt: orderId })
 });
 const createData = await createRes.json();
 if (!createRes.ok || !createData.orderId) {
@@ -959,7 +1001,14 @@ const t = cartTotals();
 const items = cartItemsList();
 const wrap = document.getElementById('coWrap');
 if(checkoutStep === 'address'){
-wrap.innerHTML = '<div class="co-section"><h4>📍 ' + graspionT('deliveryAddress') + '</h4><input class="co-input" placeholder="' + graspionT('fullName') + '" id="coName" value="' + customerInfo.name + '"><input class="co-input" placeholder="' + graspionT('phoneNumber') + '" id="coPhone" value="' + customerInfo.phone + '"><input class="co-input" placeholder="' + graspionT('addressPlaceholder') + '" id="coAddr" value="' + customerInfo.address + '"><div class="co-row2"><input class="co-input" placeholder="' + graspionT('city') + '" id="coCity" value="' + (customerInfo.city || (areaData[selectedPin] ? areaData[selectedPin].city : '')) + '"><input class="co-input" placeholder="' + graspionT('pincode') + '" id="coPincode" value="' + (customerInfo.pincode || selectedPin || '') + '"></div></div><div class="co-section"><h4>🧾 ' + graspionT('orderSummary') + ' (' + items.length + ')</h4>' + items.map(function(i) { return '<div class="co-item-row"><span>' + i.name + ' × ' + i.qty + '</span><b>₹' + (i.price*i.qty).toLocaleString('en-IN') + '</b></div>'; }).join('') + '<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?graspionT('free'):'₹'+t.delivery) + '</b></div><div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
+wrap.innerHTML = '<div class="co-section"><h4>📍 ' + graspionT('deliveryAddress') + '</h4><input class="co-input" placeholder="' + graspionT('fullName') + '" id="coName" value="' + customerInfo.name + '"><input class="co-input" placeholder="' + graspionT('phoneNumber') + '" id="coPhone" value="' + customerInfo.phone + '"><input class="co-input" placeholder="' + graspionT('addressPlaceholder') + '" id="coAddr" value="' + customerInfo.address + '"><div class="co-row2"><input class="co-input" placeholder="' + graspionT('city') + '" id="coCity" value="' + (customerInfo.city || (areaData[selectedPin] ? areaData[selectedPin].city : '')) + '"><input class="co-input" placeholder="' + graspionT('pincode') + '" id="coPincode" value="' + (customerInfo.pincode || selectedPin || '') + '"></div></div><div class="co-section"><h4>🏷️ Coupon</h4>' +
+(appliedCoupon
+  ? '<div class="co-item-row" style="background:#f0fdf4;border-radius:8px;padding:8px 10px;"><span>✅ ' + appliedCoupon.code + ' applied</span><button id="removeCouponBtn" style="background:none;border:none;color:#dc2626;font-weight:700;cursor:pointer;">Remove</button></div>'
+  : '<div style="display:flex;gap:8px;"><input class="co-input" placeholder="Enter coupon code" id="coCouponInput" style="flex:1;margin:0;text-transform:uppercase;"><button id="applyCouponBtn" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:0 16px;font-weight:700;cursor:pointer;">Apply</button></div>') +
+(couponMessage ? '<p style="font-size:11px;margin-top:6px;">' + couponMessage + '</p>' : '') +
+'</div><div class="co-section"><h4>🧾 ' + graspionT('orderSummary') + ' (' + items.length + ')</h4>' + items.map(function(i) { return '<div class="co-item-row"><span>' + i.name + ' × ' + i.qty + '</span><b>₹' + (i.price*i.qty).toLocaleString('en-IN') + '</b></div>'; }).join('') + '<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?graspionT('free'):'₹'+t.delivery) + '</b></div>' + (t.discount > 0 ? '<div class="co-item-row" style="color:#15803d;"><span>Coupon discount</span><b>-₹' + t.discount.toLocaleString('en-IN') + '</b></div>' : '') + '<div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
+if (document.getElementById('applyCouponBtn')) { document.getElementById('applyCouponBtn').addEventListener('click', function(){ applyCoupon(document.getElementById('coCouponInput').value); }); }
+if (document.getElementById('removeCouponBtn')) { document.getElementById('removeCouponBtn').addEventListener('click', removeCoupon); }
 document.getElementById('toPaymentBtn').addEventListener('click', function() {
 customerInfo.name = document.getElementById('coName').value.trim();
 customerInfo.phone = document.getElementById('coPhone').value.trim();
@@ -1023,7 +1072,7 @@ deliveryEstimate = firstVendor ? firstVendor.eta : '20-30 min';
 wrap.innerHTML = '<div class="success-box"><div class="tick">✅</div><h2>' + graspionT('orderSuccess') + '</h2><p>' + graspionT('orderSuccessDesc') + '</p>' +
 '<div style="background:#faf5ff; border-radius:14px; padding:16px; margin:16px 0; display:inline-block;"><div style="font-size:11px; color:#7c3aed; font-weight:800;">⏱ ' + (isPanIndia ? 'Expected Delivery Date' : 'Expected Delivery Time') + '</div><div style="font-size:18px; font-weight:900; color:#1e1b3a; margin-top:4px;">' + deliveryEstimate + '</div></div><br>' +
 '<button id="closeSuccessBtn">' + graspionT('continueShopping') + '</button></div>';
-document.getElementById('closeSuccessBtn').addEventListener('click', function() { cart = {}; customerInfo = { name:'', phone:'', address:'', city:'', pincode:'' }; refreshAll(); closeCheckout(); });
+document.getElementById('closeSuccessBtn').addEventListener('click', function() { cart = {}; customerInfo = { name:'', phone:'', address:'', city:'', pincode:'' }; appliedCoupon = null; couponMessage = ''; refreshAll(); closeCheckout(); });
 }
 else if(checkoutStep === 'error'){
 const showDebug = new URLSearchParams(window.location.search).get('debug') === '1';
