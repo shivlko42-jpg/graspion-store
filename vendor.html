@@ -825,14 +825,35 @@ else { w = Math.round(w * (maxDimension / h)); h = maxDimension; }
 const canvas = document.createElement('canvas');
 canvas.width = w; canvas.height = h;
 canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-resolve(canvas.toDataURL('image/jpeg', 0.8)); // compressed JPEG, ~80% quality
+canvas.toBlob(async function(blob) {
+if (!blob) { resolve(null); return; }
+const publicUrl = await uploadProductImageBlob(blob);
+resolve(publicUrl);
+}, 'image/jpeg', 0.8); // compressed JPEG, ~80% quality
 };
-img.onerror = function() { resolve(evt.target.result); }; // fallback: use original if compression fails
+img.onerror = function() { resolve(null); };
 img.src = evt.target.result;
 };
 reader.onerror = function() { resolve(null); };
 reader.readAsDataURL(file);
 });
+}
+
+// Uploads a compressed image blob to Supabase Storage (proper hosted file,
+// not base64-in-the-database) and returns its public URL. Needed for:
+// fast page loads, and for Google Merchant Center which cannot use base64
+// images at all.
+async function uploadProductImageBlob(blob) {
+try {
+const path = currentVendor.id + '/' + Date.now() + '-' + Math.random().toString(36).slice(2,8) + '.jpg';
+const res = await fetch(SUPABASE_URL + '/storage/v1/object/product-images/' + path, {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'image/jpeg' },
+body: blob
+});
+if (!res.ok) { console.error('Image upload failed:', await res.text()); return null; }
+return SUPABASE_URL + '/storage/v1/object/public/product-images/' + path;
+} catch (err) { console.error('Image upload error:', err); return null; }
 }
 
 document.getElementById('pPhoto').addEventListener('change', async function(e) {
