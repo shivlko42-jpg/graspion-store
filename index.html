@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Google Analytics 4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-DTK5XRHFL6"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-DTK5XRHFL6');
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Graspion - Every Need, Fast Delivery</title>
@@ -734,6 +742,7 @@ renderSearchSuggestions(this.value);
 if (selectedPin) renderProducts(selectedPin);
 });
 document.getElementById('searchInput').addEventListener('blur', function(){
+if (this.value.trim().length >= 2 && typeof gtag === 'function') { gtag('event', 'search', { search_term: this.value.trim() }); }
 setTimeout(function(){ document.getElementById('searchSuggestions').classList.remove('open'); }, 150);
 });
 document.getElementById('searchInput').addEventListener('focus', function(){
@@ -776,7 +785,7 @@ return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class=
 ((productVariantsMap[p.id] && productVariantsMap[p.id].length > 0) ? '<button class="add-btn" data-viewid="' + p.id + '" style="background:#f3f1f8; color:#7c3aed;">Select Options</button>' : (qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '" ' + (qty >= p.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>'))) +
 '</div></div>';
 }).join('');
-document.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id = btn.getAttribute('data-add'); cart[id] = 1; logProductEvent(id, 'add_to_cart'); refreshAll(); }); });
+document.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id = btn.getAttribute('data-add'); cart[id] = 1; logProductEvent(id, 'add_to_cart'); const p = productPool.find(function(pp){ return pp.id === id; }); if (typeof gtag === 'function' && p) { gtag('event', 'add_to_cart', { currency: 'INR', value: p.price, items: [{ item_id: p.id, item_name: p.name, price: p.price, quantity: 1 }] }); } refreshAll(); }); });
 document.querySelectorAll('[data-inc]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id=btn.getAttribute('data-inc'); cart[id]=(cart[id]||0)+1; refreshAll(); }); });
 document.querySelectorAll('[data-dec]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id=btn.getAttribute('data-dec'); cart[id]=(cart[id]||0)-1; if(cart[id]<=0) delete cart[id]; refreshAll(); }); });
 document.querySelectorAll('[data-viewid]').forEach(function(card){ card.addEventListener('click', function(){ openProductDetail(card.getAttribute('data-viewid')); }); });
@@ -882,7 +891,7 @@ document.getElementById('cartOpenBtn').addEventListener('click', function(){ doc
 function closeDrawer(){ document.getElementById('cartDrawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('open'); }
 document.getElementById('drawerClose').addEventListener('click', closeDrawer);
 document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
-function openCheckout(){ closeDrawer(); checkoutStep = 'address'; document.getElementById('checkoutOverlay').classList.add('open'); renderCheckout(); }
+function openCheckout(){ closeDrawer(); checkoutStep = 'address'; document.getElementById('checkoutOverlay').classList.add('open'); if (typeof gtag === 'function') { const t = cartTotals(); gtag('event', 'begin_checkout', { currency: 'INR', value: t.total }); } renderCheckout(); }
 function closeCheckout(){ document.getElementById('checkoutOverlay').classList.remove('open'); }
 document.getElementById('goCheckoutBtn').addEventListener('click', openCheckout);
 document.getElementById('coBack').addEventListener('click', function(){ if(checkoutStep === 'payment'){ checkoutStep='address'; renderCheckout(); } else { closeCheckout(); } });
@@ -910,7 +919,7 @@ const orderId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xx
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: appliedCoupon ? appliedCoupon.code : null })
+body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: appliedCoupon ? appliedCoupon.code : null, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null })
 });
 if (!orderRes.ok) {
 const orderErr = await orderRes.text();
@@ -1040,11 +1049,13 @@ window.lastOrderUserMessage = null;
 if (selectedPayMethod === 'cod') {
 const saved = await saveOrderToDatabase();
 checkoutStep = saved ? 'success' : 'error';
+if (saved && typeof gtag === 'function') { const t = cartTotals(); gtag('event', 'purchase', { currency: 'INR', value: t.total, shipping: t.delivery, coupon: appliedCoupon ? appliedCoupon.code : undefined }); }
 renderCheckout();
 } else {
 const result = await startRazorpayPayment();
 if (result.success) {
 checkoutStep = 'success';
+if (typeof gtag === 'function') { const t = cartTotals(); gtag('event', 'purchase', { currency: 'INR', value: t.total, shipping: t.delivery, coupon: appliedCoupon ? appliedCoupon.code : undefined }); }
 } else if (result.dismissed) {
 // user closed the Razorpay popup without paying — let them try again, don't show a scary error
 btn.textContent = '₹' + cartTotals().total.toLocaleString('en-IN') + ' — ' + graspionT('payVia');
@@ -1118,7 +1129,7 @@ if (postOffice) {
 const localityName = postOffice.Name || 'Your Area';
 const cityName = postOffice.District || postOffice.Division || '';
 const fullAddress = [localityName, cityName, postOffice.State].filter(Boolean).join(', ');
-areaData[pin] = { city: cityName, area: localityName, fullAddress: fullAddress, eta: isInstantZone ? (siteSettings.instant_delivery_minutes + ' mins') : standardEtaText };
+areaData[pin] = { city: cityName, area: localityName, fullAddress: fullAddress, state: postOffice.State || null, eta: isInstantZone ? (siteSettings.instant_delivery_minutes + ' mins') : standardEtaText };
 }
 } catch (e) { /* fall through to generic fallback below */ }
 }
@@ -1168,12 +1179,12 @@ if (nearestWarehouse) {
 // Instant delivery zone found — real locality name shown, not the store's business name
 const pin = detectedPincode || nearestWarehouse.pincode || '000000';
 document.getElementById('pinInput').value = pin;
-areaData[pin] = { city: cityName, area: localityName, fullAddress: fullAddress, eta: siteSettings.instant_delivery_minutes + ' mins' };
+areaData[pin] = { city: cityName, area: localityName, fullAddress: fullAddress, state: addr.state || null, eta: siteSettings.instant_delivery_minutes + ' mins' };
 setArea(pin, nearestWarehouse.id);
 } else if (detectedPincode && detectedPincode.length === 6) {
 // No nearby dark store — customer still served via pan-India marketplace vendors
 document.getElementById('pinInput').value = detectedPincode;
-areaData[detectedPincode] = { city: cityName, area: localityName, fullAddress: fullAddress, eta: siteSettings.standard_delivery_days_min + '-' + siteSettings.standard_delivery_days_max + ' days' };
+areaData[detectedPincode] = { city: cityName, area: localityName, fullAddress: fullAddress, state: addr.state || null, eta: siteSettings.standard_delivery_days_min + '-' + siteSettings.standard_delivery_days_max + ' days' };
 setArea(detectedPincode, null);
 } else if (!isAutoTriggered) {
 errEl.textContent = 'Could not detect a valid location. Please enter your pincode manually.';
@@ -1324,6 +1335,7 @@ body: JSON.stringify({ auth_user_id: data.session.user.id, name: googleName, ema
 const newRes = await fetch(SUPABASE_URL + '/rest/v1/customers?auth_user_id=eq.' + data.session.user.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const newRows = await newRes.json();
 currentCustomer = newRows[0] || null;
+if (typeof gtag === 'function' && currentCustomer) { gtag('event', 'sign_up', { method: 'google' }); }
 updateAccountButtonUI();
 }
 }
@@ -1441,6 +1453,7 @@ const custRows = await custRes.json();
 if (custRows[0]) {
 // existing customer — done, log them straight in
 currentCustomer = custRows[0];
+if (typeof gtag === 'function') { gtag('event', 'login', { method: 'email_otp' }); }
 updateAccountButtonUI();
 document.getElementById('accountModal').style.display = 'none';
 resetAccountModal();
@@ -1531,6 +1544,7 @@ return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:14px; 
 '<div style="font-size:12.5px; font-weight:700;">' + (statusLabels[o.status] || o.status) + ' · ' + (o.delivery_type === 'instant' ? '⚡ Instant' : '📦 Pan-India') + '</div>' +
 itemsHtml +
 '<div style="font-size:11px; color:#9ca3af; margin-top:4px;">' + (o.payment_status === 'paid' ? '✓ Paid' : 'Payment: ' + (o.payment_method || 'COD')) + '</div>' +
+(o.status === 'shipped' && o.delivery_otp ? '<div style="margin-top:8px; background:#f5f3ff; border:1px dashed #7c3aed; border-radius:8px; padding:8px 10px; font-size:12px; color:#5b21b6;">🔐 Give this code to the delivery partner: <b style="font-size:16px; letter-spacing:2px;">' + o.delivery_otp + '</b></div>' : '') +
 riderHtml +
 timelineHtml +
 returnHtml +
@@ -1591,6 +1605,7 @@ async function openProductDetail(productId) {
 const p = productPool.find(function(pp) { return pp.id === productId; });
 if (!p) return;
 logProductEvent(productId, 'view');
+if (typeof gtag === 'function') { gtag('event', 'view_item', { currency: 'INR', value: p.price, items: [{ item_id: p.id, item_name: p.name, price: p.price }] }); }
 const vendor = vendors.find(function(v) { return v.id === p.vendorId; });
 const content = document.getElementById('productDetailContent');
 content.innerHTML = '<div style="text-align:center; padding:40px 0; color:#9ca3af;">Loading...</div>';
