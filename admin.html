@@ -114,6 +114,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 @media(max-width:900px){ .panel-grid{grid-template-columns:1fr;} }
 @media(max-width:700px){ .sidebar{display:none;} }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <div class="modal-overlay" id="orderTimelineModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:400; align-items:center; justify-content:center; padding:16px;">
@@ -123,6 +124,11 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="form-row" style="margin-bottom:10px;">
 <div class="form-group"><label style="font-size:10px;">Priority</label><select class="form-input" id="orderPrioritySelect"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div>
 <div class="form-group"><label style="font-size:10px;">Assigned To</label><select class="form-input" id="orderAssignSelect"><option value="">— Unassigned —</option></select></div>
+</div>
+
+<div style="display:flex; gap:8px; margin-bottom:14px;">
+<button id="downloadInvoiceBtn" style="flex:1; background:#1e1b3a; color:#fff; border:none; padding:10px; border-radius:10px; font-size:11px; font-weight:700; cursor:pointer;">📄 Tax Invoice</button>
+<button id="downloadPackingSlipBtn" style="flex:1; background:#f3f1f8; color:#6b21a8; border:none; padding:10px; border-radius:10px; font-size:11px; font-weight:700; cursor:pointer;">📦 Packing Slip</button>
 </div>
 
 <div style="font-size:12px; font-weight:700; margin:14px 0 6px;">🕐 Timeline</div>
@@ -1019,9 +1025,20 @@ vendorList.innerHTML = ranked.map(function(v, i) {
 const sales = vendorOrderTotal[v.id] || 0;
 const prodCount = vendorProductCount[v.id] || 0;
 const isBlocked = v.status === 'blocked';
-return '<div class="vendor-row-item"><span class="rank-num">#' + (i+1) + '</span><div class="v-icon2">' + v.icon + '</div><div class="v-info"><div class="vn">' + v.name + '</div><div class="vs">₹' + sales.toLocaleString('en-IN') + ' sales · ' + prodCount + ' products</div></div>' +
+const kycStatus = v.kyc_status || 'pending';
+const kycColors = { approved: 'background:#dcfce7;color:#15803d;', pending: 'background:#fef3c7;color:#b45309;', rejected: 'background:#fee2e2;color:#dc2626;' };
+return '<div class="vendor-row-item"><span class="rank-num">#' + (i+1) + '</span><div class="v-icon2">' + v.icon + '</div><div class="v-info"><div class="vn">' + v.name + '</div><div class="vs">₹' + sales.toLocaleString('en-IN') + ' sales · ' + prodCount + ' products</div>' +
+'<select data-kycid="' + v.id + '" style="margin-top:4px; font-size:10px; padding:2px 6px; border-radius:6px; border:none; font-weight:700; ' + (kycColors[kycStatus] || kycColors.pending) + '"><option value="pending"' + (kycStatus === 'pending' ? ' selected' : '') + '>KYC: Pending</option><option value="approved"' + (kycStatus === 'approved' ? ' selected' : '') + '>KYC: Approved</option><option value="rejected"' + (kycStatus === 'rejected' ? ' selected' : '') + '>KYC: Rejected</option></select>' +
+'</div>' +
 '<button class="block-btn ' + (isBlocked ? 'blocked-store' : 'active-store') + '" data-vendorid="' + v.id + '" data-blocked="' + isBlocked + '">' + (isBlocked ? 'Unblock' : 'Block') + '</button></div>';
 }).join('');
+document.querySelectorAll('[data-kycid]').forEach(function(sel) {
+sel.addEventListener('change', async function() {
+const id = sel.getAttribute('data-kycid');
+await fetch(SUPABASE_URL + '/rest/v1/vendors?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ kyc_status: sel.value }) });
+loadAllData();
+});
+});
 document.querySelectorAll('[data-vendorid]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 const id = btn.getAttribute('data-vendorid');
@@ -1843,6 +1860,158 @@ list.innerHTML = Object.keys(counts).map(function(ch) {
 const pct = ((counts[ch] / allOrders.length) * 100).toFixed(0);
 return '<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f7f6fb;"><span style="font-size:12px; font-weight:600;">' + (channelLabels[ch] || ch) + '</span><span style="font-size:11px; color:#9ca3af;">' + counts[ch] + ' orders (' + pct + '%)</span></div>';
 }).join('');
+}
+
+// ===================== INVOICE & PACKING SLIP (Order Mgmt Phase 6) =====================
+document.getElementById('downloadInvoiceBtn').addEventListener('click', function() {
+if (!currentDetailOrderId) return;
+generateInvoicePDF(currentDetailOrderId);
+});
+document.getElementById('downloadPackingSlipBtn').addEventListener('click', function() {
+if (!currentDetailOrderId) return;
+generatePackingSlipPDF(currentDetailOrderId);
+});
+
+function generateInvoicePDF(orderId) {
+const order = allOrders.find(function(o) { return o.id === orderId; });
+if (!order) { alert('Order not found.'); return; }
+const items = allOrderItems.filter(function(oi) { return oi.order_id === orderId; });
+const vendor = allVendors.find(function(v) { return v.id === order.vendor_id; });
+const invoiceNo = 'INV-' + order.id.slice(0, 8).toUpperCase();
+
+const { jsPDF } = window.jspdf;
+const doc = new jsPDF();
+let y = 20;
+
+doc.setFontSize(18); doc.setFont(undefined, 'bold'); doc.setTextColor(124, 58, 237);
+doc.text('Graspion', 14, y);
+doc.setFontSize(14); doc.setTextColor(30, 27, 58);
+doc.text('TAX INVOICE', 196, y, { align: 'right' });
+y += 8;
+doc.setFontSize(9); doc.setFont(undefined, 'normal'); doc.setTextColor(100);
+doc.text('Invoice No: ' + invoiceNo, 196, y, { align: 'right' });
+y += 5;
+doc.text('Invoice Date: ' + new Date().toLocaleDateString('en-IN'), 196, y, { align: 'right' });
+y += 5;
+doc.text('Order Date: ' + new Date(order.created_at).toLocaleDateString('en-IN'), 196, y, { align: 'right' });
+y += 12;
+
+doc.setDrawColor(230); doc.line(14, y, 196, y); y += 8;
+
+doc.setFont(undefined, 'bold'); doc.setTextColor(30, 27, 58); doc.setFontSize(10);
+doc.text('Sold By', 14, y);
+doc.text('Billed To', 110, y);
+y += 6;
+doc.setFont(undefined, 'normal'); doc.setFontSize(9); doc.setTextColor(60);
+doc.text(vendor ? vendor.name : 'Graspion Vendor', 14, y);
+doc.text(order.customer_name || 'Customer', 110, y);
+y += 5;
+if (vendor && vendor.gstin) { doc.text('GSTIN: ' + vendor.gstin, 14, y); }
+doc.text(order.customer_phone || '', 110, y);
+y += 5;
+if (order.address) { doc.text(String(order.address).slice(0, 45), 110, y); y += 5; }
+y += 8;
+
+doc.setDrawColor(230); doc.line(14, y, 196, y); y += 8;
+
+// items table header
+doc.setFont(undefined, 'bold'); doc.setFontSize(8.5); doc.setTextColor(255); doc.setFillColor(30, 27, 58);
+doc.rect(14, y - 5, 182, 7, 'F');
+doc.text('Item', 16, y);
+doc.text('HSN', 90, y);
+doc.text('Qty', 108, y);
+doc.text('Rate', 124, y);
+doc.text('GST%', 144, y);
+doc.text('Tax Amt', 162, y);
+doc.text('Total', 186, y, { align: 'right' });
+y += 8;
+
+doc.setFont(undefined, 'normal'); doc.setTextColor(40);
+let subtotal = 0, totalTax = 0;
+items.forEach(function(oi) {
+const prod = allProducts.find(function(p) { return p.id === oi.product_id; });
+const gstRate = prod ? (Number(prod.cgst_percent || 0) + Number(prod.sgst_percent || 0) + Number(prod.igst_percent || 0)) : 0;
+const lineTotal = oi.price * oi.quantity;
+const taxable = lineTotal / (1 + gstRate / 100);
+const taxAmt = lineTotal - taxable;
+subtotal += taxable; totalTax += taxAmt;
+const name = (prod ? prod.name : 'Product').slice(0, 32);
+doc.text(name, 16, y);
+doc.text(prod && prod.hsn_code ? prod.hsn_code : '-', 90, y);
+doc.text(String(oi.quantity), 108, y);
+doc.text('₹' + oi.price, 124, y);
+doc.text(gstRate ? gstRate.toFixed(1) + '%' : '-', 144, y);
+doc.text('₹' + taxAmt.toFixed(2), 162, y);
+doc.text('₹' + lineTotal.toFixed(2), 186, y, { align: 'right' });
+y += 7;
+});
+
+y += 4; doc.setDrawColor(230); doc.line(120, y, 196, y); y += 7;
+doc.setFontSize(9);
+doc.text('Taxable Amount:', 140, y); doc.text('₹' + subtotal.toFixed(2), 186, y, { align: 'right' }); y += 6;
+doc.text('Total Tax (GST):', 140, y); doc.text('₹' + totalTax.toFixed(2), 186, y, { align: 'right' }); y += 6;
+doc.setFont(undefined, 'bold'); doc.setFontSize(11);
+doc.text('Grand Total:', 140, y); doc.text('₹' + Number(order.total_amount).toFixed(2), 186, y, { align: 'right' });
+y += 15;
+
+doc.setFont(undefined, 'normal'); doc.setFontSize(8); doc.setTextColor(150);
+doc.text('This is a computer-generated invoice from Graspion.', 14, y);
+
+doc.save(invoiceNo + '.pdf');
+}
+
+function generatePackingSlipPDF(orderId) {
+const order = allOrders.find(function(o) { return o.id === orderId; });
+if (!order) { alert('Order not found.'); return; }
+const items = allOrderItems.filter(function(oi) { return oi.order_id === orderId; });
+
+const { jsPDF } = window.jspdf;
+const doc = new jsPDF();
+let y = 20;
+
+doc.setFontSize(18); doc.setFont(undefined, 'bold'); doc.setTextColor(124, 58, 237);
+doc.text('Graspion', 14, y);
+doc.setFontSize(14); doc.setTextColor(30, 27, 58);
+doc.text('PACKING SLIP', 196, y, { align: 'right' });
+y += 10;
+
+doc.setFontSize(9); doc.setFont(undefined, 'normal'); doc.setTextColor(100);
+doc.text('Order #' + order.id.slice(0, 8).toUpperCase() + '  ·  ' + new Date(order.created_at).toLocaleDateString('en-IN'), 14, y);
+y += 12;
+
+doc.setDrawColor(230); doc.line(14, y, 196, y); y += 8;
+
+doc.setFont(undefined, 'bold'); doc.setFontSize(10); doc.setTextColor(30, 27, 58);
+doc.text('Ship To:', 14, y); y += 6;
+doc.setFont(undefined, 'normal'); doc.setFontSize(9); doc.setTextColor(60);
+doc.text(order.customer_name || 'Customer', 14, y); y += 5;
+doc.text(order.customer_phone || '', 14, y); y += 5;
+if (order.address) { doc.text(String(order.address), 14, y, { maxWidth: 180 }); y += 10; }
+doc.text('Pincode: ' + (order.pincode || '-'), 14, y); y += 12;
+
+doc.setDrawColor(230); doc.line(14, y, 196, y); y += 8;
+
+doc.setFont(undefined, 'bold'); doc.setFontSize(8.5); doc.setTextColor(255); doc.setFillColor(30, 27, 58);
+doc.rect(14, y - 5, 182, 7, 'F');
+doc.text('Item', 16, y);
+doc.text('SKU', 130, y);
+doc.text('Qty', 186, y, { align: 'right' });
+y += 8;
+
+doc.setFont(undefined, 'normal'); doc.setTextColor(40); doc.setFontSize(9);
+items.forEach(function(oi) {
+const prod = allProducts.find(function(p) { return p.id === oi.product_id; });
+doc.text((prod ? prod.name : 'Product').slice(0, 45), 16, y);
+doc.text(prod && prod.sku ? prod.sku : '-', 130, y);
+doc.text(String(oi.quantity), 186, y, { align: 'right' });
+y += 7;
+});
+
+y += 10;
+doc.setFont(undefined, 'normal'); doc.setFontSize(8); doc.setTextColor(150);
+doc.text('No pricing shown — for warehouse/packing use only.', 14, y);
+
+doc.save('PackingSlip-' + order.id.slice(0, 8).toUpperCase() + '.pdf');
 }
 </script>
 </body>
