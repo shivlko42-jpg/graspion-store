@@ -156,6 +156,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="side-item" data-page="customers">👥 Customers</div>
 <div class="side-item" data-page="payments">💰 Payments</div>
 <div class="side-item" data-page="warehouses">🏬 Dark Stores</div>
+<div class="side-item" data-page="products">📦 Products</div>
 <div class="side-item" data-page="categories">📁 Categories</div>
 <div class="side-item" data-page="banners">🖼️ Banners</div>
 <div class="side-item" data-page="coupons">🏷️ Coupons</div>
@@ -346,6 +347,27 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">For instant-delivery (dark store) products — set exactly where each item sits so staff can pick it fast.</p>
 <div id="rackBinList"></div>
 <div class="empty-state" id="rackBinEmpty" style="display:none;">No instant-delivery products found yet</div>
+</div>
+
+<div class="panel" data-section="products">
+<h3>📦 All Products</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Every product across every vendor, in one place — filter, activate/deactivate, or bulk-manage.</p>
+<div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+<button class="mini-btn" data-prodfilter="all" style="background:#7c3aed; color:#fff;">All</button>
+<button class="mini-btn" data-prodfilter="marketplace" style="background:#f3f1f8; color:#4b5563;">🇮🇳 Marketplace</button>
+<button class="mini-btn" data-prodfilter="dark_store" style="background:#f3f1f8; color:#4b5563;">⚡ Dark Store</button>
+<button class="mini-btn" data-prodfilter="active" style="background:#f3f1f8; color:#4b5563;">✓ Active</button>
+<button class="mini-btn" data-prodfilter="inactive" style="background:#f3f1f8; color:#4b5563;">Inactive</button>
+</div>
+<input class="form-input" id="prodSearchInput" placeholder="🔍 Search by name or SKU..." style="margin-bottom:10px;">
+<div id="prodBulkBar" style="display:none; background:#f5f3ff; border-radius:10px; padding:8px 12px; margin-bottom:10px; align-items:center; gap:10px;">
+<span id="prodSelCount" style="font-size:11px; font-weight:700; color:#5b21b6;"></span>
+<button class="mini-btn" id="prodBulkActivate" style="background:#dcfce7; color:#15803d;">✓ Activate Selected</button>
+<button class="mini-btn" id="prodBulkDeactivate" style="background:#fef3c7; color:#b45309;">Deactivate Selected</button>
+</div>
+<div style="margin-bottom:8px;"><label style="font-size:11px; color:#6b7280;"><input type="checkbox" id="prodSelectAll"> Select all shown</label></div>
+<div id="productsList"></div>
+<div class="empty-state" id="productsEmpty" style="display:none;">No products found</div>
 </div>
 
 <div class="panel" data-section="categories">
@@ -605,7 +627,7 @@ function applyRolePermissions(role) {
 // super_admin sees everything. Other roles see only their relevant sidebar sections.
 const roleSections = {
 orders_manager: ['dashboard','orders','delivery','customers'],
-inventory_manager: ['dashboard','warehouses','categories','pairings','catalog'],
+inventory_manager: ['dashboard','products','warehouses','categories','pairings','catalog'],
 marketing_manager: ['dashboard','banners','pairings','ads','settings','coupons'],
 finance_manager: ['dashboard','payments','vendors'],
 support_staff: ['dashboard','orders','customers']
@@ -681,6 +703,7 @@ renderSnapshot();
 renderInsights();
 renderTrendChart();
 renderOrders();
+renderAdminProducts();
 renderVendorRanking();
 renderTopProducts();
 renderProductFunnel();
@@ -1862,6 +1885,94 @@ return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + p.
 }
 
 // ===================== RETURNS & REFUNDS (Order Mgmt Phase 4) =====================
+let currentProdFilter = 'all';
+let selectedProductIds = new Set();
+function renderAdminProducts() {
+const list = document.getElementById('productsList');
+const empty = document.getElementById('productsEmpty');
+const searchTerm = (document.getElementById('prodSearchInput').value || '').trim().toLowerCase();
+let items = allProducts.slice();
+if (currentProdFilter === 'marketplace' || currentProdFilter === 'dark_store') {
+items = items.filter(function(p) { const v = allVendors.find(function(vv){ return vv.id === p.vendor_id; }); return v && v.vendor_type === currentProdFilter; });
+} else if (currentProdFilter === 'active') {
+items = items.filter(function(p) { return p.status === 'active'; });
+} else if (currentProdFilter === 'inactive') {
+items = items.filter(function(p) { return p.status !== 'active'; });
+}
+if (searchTerm) {
+items = items.filter(function(p) { return (p.name || '').toLowerCase().indexOf(searchTerm) !== -1 || (p.sku || '').toLowerCase().indexOf(searchTerm) !== -1; });
+}
+if (items.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; updateProdBulkBar(); return; }
+empty.style.display = 'none';
+list.innerHTML = items.map(function(p) {
+const vendor = allVendors.find(function(v) { return v.id === p.vendor_id; });
+const typeTag = vendor && vendor.vendor_type === 'dark_store' ? '<span style="font-size:9px; background:#fef3c7; color:#b45309; padding:2px 6px; border-radius:6px; font-weight:700;">⚡ Dark Store</span>' : '<span style="font-size:9px; background:#dbeafe; color:#1d4ed8; padding:2px 6px; border-radius:6px; font-weight:700;">🇮🇳 Marketplace</span>';
+const isActive = p.status === 'active';
+const stockTag = Number(p.stock) <= 0 ? '<span style="color:#dc2626; font-weight:700;">Out of stock</span>' : p.stock + ' in stock';
+const isChecked = selectedProductIds.has(p.id);
+return '<div class="item-card"><input type="checkbox" class="prod-checkbox" data-prodcheck="' + p.id + '" ' + (isChecked ? 'checked' : '') + ' style="margin-right:10px;">' +
+'<div class="ic-info"><div class="ic-title">' + p.name + ' ' + typeTag + '</div>' +
+'<div class="ic-sub">' + (p.sku ? 'SKU: ' + p.sku + ' · ' : '') + (vendor ? vendor.name : 'No vendor') + ' · ₹' + p.price + ' · ' + stockTag + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-prodtoggle="' + p.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-prodtoggle]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-prodtoggle');
+const current = btn.getAttribute('data-current') === 'true';
+btn.textContent = '...';
+await fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: current ? 'inactive' : 'active' }) });
+loadAllData();
+});
+});
+document.querySelectorAll('[data-prodcheck]').forEach(function(cb) {
+cb.addEventListener('change', function() {
+const id = cb.getAttribute('data-prodcheck');
+if (cb.checked) selectedProductIds.add(id); else selectedProductIds.delete(id);
+updateProdBulkBar();
+});
+});
+updateProdBulkBar();
+}
+function updateProdBulkBar() {
+const bar = document.getElementById('prodBulkBar');
+const countEl = document.getElementById('prodSelCount');
+if (selectedProductIds.size > 0) {
+bar.style.display = 'flex';
+countEl.textContent = selectedProductIds.size + ' product(s) selected';
+} else {
+bar.style.display = 'none';
+}
+}
+document.querySelectorAll('[data-prodfilter]').forEach(function(btn) {
+btn.addEventListener('click', function() {
+currentProdFilter = btn.getAttribute('data-prodfilter');
+document.querySelectorAll('[data-prodfilter]').forEach(function(b) { b.style.background = '#f3f1f8'; b.style.color = '#4b5563'; });
+btn.style.background = '#7c3aed'; btn.style.color = '#fff';
+renderAdminProducts();
+});
+});
+document.getElementById('prodSearchInput').addEventListener('input', function() { renderAdminProducts(); });
+document.getElementById('prodSelectAll').addEventListener('change', function() {
+const boxes = document.querySelectorAll('[data-prodcheck]');
+boxes.forEach(function(cb) {
+cb.checked = document.getElementById('prodSelectAll').checked;
+const id = cb.getAttribute('data-prodcheck');
+if (cb.checked) selectedProductIds.add(id); else selectedProductIds.delete(id);
+});
+updateProdBulkBar();
+});
+async function bulkSetProductStatus(status) {
+if (selectedProductIds.size === 0) return;
+if (!confirm('Set ' + selectedProductIds.size + ' product(s) to ' + status + '?')) return;
+const ids = Array.from(selectedProductIds);
+await Promise.all(ids.map(function(id) {
+return fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: status }) });
+}));
+selectedProductIds.clear();
+loadAllData();
+}
+document.getElementById('prodBulkActivate').addEventListener('click', function() { bulkSetProductStatus('active'); });
+document.getElementById('prodBulkDeactivate').addEventListener('click', function() { bulkSetProductStatus('inactive'); });
 function renderCoupons() {
 const list = document.getElementById('cpnList');
 const empty = document.getElementById('cpnEmpty');
