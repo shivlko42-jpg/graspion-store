@@ -262,6 +262,14 @@
         <div class="radio-option" id="modePanIndia" data-mode="pan_india"><span class="ro-icon">🇮🇳</span>Ship Pan-India</div>
       </div>
       <p id="modeExplainer" style="font-size:10px; color:#9ca3af; margin:-4px 0 12px;"></p>
+      <div id="rackBinGroup" style="display:none; margin-bottom:12px;">
+        <label style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:6px; display:block;">📍 Where will this sit in your store? (helps you pick fast)</label>
+        <div class="form-row">
+          <input class="form-input" id="pRack" placeholder="Rack (e.g. R01)">
+          <input class="form-input" id="pShelf" placeholder="Shelf (e.g. S02)">
+          <input class="form-input" id="pBin" placeholder="Bin (e.g. B04)">
+        </div>
+      </div>
       <div class="form-row">
         <div class="form-group"><label>Product Name</label><input class="form-input" id="pName" placeholder="e.g. Bluetooth Speaker"></div>
         <div class="form-group"><label>Icon (emoji, backup if no photo)</label><input class="form-input" id="pIcon" placeholder="🎧" value="📦"></div>
@@ -387,7 +395,7 @@
       </div>
       <div class="form-row">
         <div class="form-group"><label>Stock Quantity</label><input class="form-input" id="pStock" type="number" placeholder="20"></div>
-        <div class="form-group" id="pincodeGroup"><label>Pincode (delivery area)</label><input class="form-input" id="pPincode" placeholder="226001"></div>
+        <div class="form-group" id="pincodeGroup"><label>Pincode(s) (delivery area)</label><input class="form-input" id="pPincode" placeholder="e.g. 226001, 226002, 226010"><p style="font-size:10px; color:#9ca3af; margin-top:3px;">Selling in more than one area? Separate multiple pincodes with commas — e.g. list all of Lucknow's pincodes to sell across the whole city.</p></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>HSN Code</label><input class="form-input" id="pHsn" placeholder="e.g. 8517"></div>
@@ -828,6 +836,7 @@ function configureSellingModeUI() {
   const isDarkStore = currentVendor.vendor_type === 'dark_store';
   const explainer = document.getElementById('modeExplainer');
   const panIndiaOption = document.getElementById('modePanIndia');
+  document.getElementById('rackBinGroup').style.display = isDarkStore ? 'block' : 'none';
   if (isDarkStore) {
     // dark stores only serve their own local radius — instant delivery, no pan-India shipping
     panIndiaOption.style.display = 'none';
@@ -1005,7 +1014,7 @@ function renderProducts() {
     '</div>';
   }).join('');
   document.querySelectorAll('[data-editid]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', async function() {
       const productId = btn.getAttribute('data-editid');
       const p = vendorProducts.find(function(x) { return x.id === productId; });
       if (!p) return;
@@ -1065,6 +1074,12 @@ function renderProducts() {
       setReturnable(p.is_returnable !== false);
       setCod(p.cod_allowed !== false);
       if (p.image_data) { document.getElementById('photoPreview').src = p.image_data; document.getElementById('photoPreview').style.display = 'block'; uploadedPhotoBase64 = p.image_data; }
+      if (currentVendor.vendor_type === 'dark_store' && currentVendor.warehouse_id) {
+        fetch(SUPABASE_URL + '/rest/v1/warehouse_inventory?product_id=eq.' + productId + '&warehouse_id=eq.' + currentVendor.warehouse_id + '&select=rack,shelf,bin', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } })
+          .then(function(r) { return r.ok ? r.json() : []; })
+          .then(function(rows) { if (rows[0]) { document.getElementById('pRack').value = rows[0].rack || ''; document.getElementById('pShelf').value = rows[0].shelf || ''; document.getElementById('pBin').value = rows[0].bin || ''; } })
+          .catch(function() {});
+      }
       // if this product already has any "advanced" data filled in, open that section automatically so it's not hidden during edit
       const hasAdvancedData = p.item_code || p.warranty_available || p.cost_price || p.cgst_percent || p.care_instructions || p.safety_info || p.installation_info || p.whats_included;
       if (hasAdvancedData) { document.getElementById('advancedFields').style.display = 'block'; document.getElementById('advancedArrow').textContent = '▴'; }
@@ -1330,7 +1345,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   const price = document.getElementById('pPrice').value;
   const oldPrice = document.getElementById('pOldPrice').value;
   const stock = document.getElementById('pStock').value || 0;
-  const pincode = selectedMode === 'pan_india' ? 'ALL' : document.getElementById('pPincode').value.trim();
+  const pincode = selectedMode === 'pan_india' ? 'ALL' : document.getElementById('pPincode').value.trim().split(',').map(function(s){ return s.trim(); }).filter(Boolean).join(',');
   const hsn = document.getElementById('pHsn').value.trim();
   const gst = document.getElementById('pGst').value;
   const features = document.getElementById('pFeatures').value.trim();
@@ -1414,6 +1429,22 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
     const insertedData = await insertRes.json();
     const newProductId = editingProductId || (insertedData[0] ? insertedData[0].id : null);
 
+    // Dark-store vendors: save the rack/shelf/bin location right here, no separate admin step needed
+    if (currentVendor.vendor_type === 'dark_store' && currentVendor.warehouse_id && newProductId) {
+      const rack = document.getElementById('pRack').value.trim();
+      const shelf = document.getElementById('pShelf').value.trim();
+      const bin = document.getElementById('pBin').value.trim();
+      if (rack || shelf || bin) {
+        const existingInvRes = await fetch(SUPABASE_URL + '/rest/v1/warehouse_inventory?product_id=eq.' + newProductId + '&warehouse_id=eq.' + currentVendor.warehouse_id + '&select=id', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+        const existingInv = existingInvRes.ok ? await existingInvRes.json() : [];
+        if (existingInv[0]) {
+          await fetch(SUPABASE_URL + '/rest/v1/warehouse_inventory?id=eq.' + existingInv[0].id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ rack: rack || null, shelf: shelf || null, bin: bin || null }) });
+        } else {
+          await fetch(SUPABASE_URL + '/rest/v1/warehouse_inventory', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: newProductId, warehouse_id: currentVendor.warehouse_id, rack: rack || null, shelf: shelf || null, bin: bin || null }) });
+        }
+      }
+    }
+
     // Upload product document, if one was selected
     const docFile = document.getElementById('pDocFile').files[0];
     if (docFile && newProductId) {
@@ -1464,7 +1495,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
       }
     }
 
-    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt','pSupplierItemCode','pPurchasePrice','pLeadTime'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt','pSupplierItemCode','pPurchasePrice','pLeadTime','pRack','pShelf','pBin'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('pSupplier').value = '';
     document.getElementById('pStatus').value = 'active';
     document.getElementById('pPublishAtGroup').style.display = 'none';
@@ -1516,7 +1547,8 @@ function generateSEO(name, price, oldPrice, vendorName, pincode) {
     discount = pct + '% Off - ';
   }
   const title = discount + name + ' | Buy Online at Best Price - Graspion';
-  const areaTxt = pincode === 'ALL' ? 'Pan-India delivery' : ('Fast delivery in ' + pincode);
+  const pinCount = pincode && pincode !== 'ALL' ? pincode.split(',').length : 0;
+  const areaTxt = pincode === 'ALL' ? 'Pan-India delivery' : (pinCount > 1 ? 'Fast delivery across ' + pinCount + ' local areas' : 'Fast delivery in ' + pincode);
   const description = 'Buy ' + name + ' online for just ₹' + price + '. ' +
     (discount ? 'Get ' + discount.replace(' - ', '') + '. ' : '') +
     areaTxt + ' from ' + vendorName + '. Order now on Graspion.';
@@ -1527,7 +1559,7 @@ function updateSEOPreview() {
   const name = document.getElementById('pName').value.trim();
   const price = document.getElementById('pPrice').value;
   const oldPrice = document.getElementById('pOldPrice').value;
-  const pincode = selectedMode === 'pan_india' ? 'ALL' : document.getElementById('pPincode').value.trim();
+  const pincode = selectedMode === 'pan_india' ? 'ALL' : document.getElementById('pPincode').value.trim().split(',').map(function(s){ return s.trim(); }).filter(Boolean).join(',');
   const preview = document.getElementById('seoPreview');
   if (!name || !price) { preview.style.display = 'none'; return; }
   const seo = generateSEO(name, price, oldPrice, currentVendor ? currentVendor.name : 'Graspion Vendor', pincode || 'your area');

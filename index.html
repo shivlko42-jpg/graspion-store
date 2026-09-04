@@ -353,7 +353,6 @@ body { padding-bottom:68px; }
 <select class="form-input-like" id="appVendorType" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;" disabled>
 <option value="marketplace" selected>Ship Pan-India (Marketplace)</option>
 </select>
-<p style="font-size:10px; color:#9ca3af; margin:-4px 0 8px;">ℹ️ Public sellers join as Marketplace (Pan-India shipping). Dark Store (instant delivery) locations are opened directly by Graspion.</p>
 <input class="form-input-like" id="appGstin" placeholder="GSTIN (optional)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
 <label style="font-size:10.5px; font-weight:700; color:#6b7280; display:block; margin-bottom:4px;">📎 KYC Documents (photos of documents)</label>
 <label style="font-size:10.5px; color:#9ca3af; display:block; margin-bottom:2px;">PAN Card</label>
@@ -765,7 +764,7 @@ function renderSearchSuggestions(query) {
   const box = document.getElementById('searchSuggestions');
   if (!query || query.trim().length < 2) { box.classList.remove('open'); box.innerHTML = ''; return; }
   const scored = productPool
-    .filter(function(p) { return p.pincode === selectedPin || p.pincode === 'ALL'; })
+    .filter(function(p) { return productMatchesPincode(p, selectedPin); })
     .map(function(p) { return { p: p, score: scoreProductMatch(p, query) }; })
     .filter(function(x) { return x.score > 0; })
     .sort(function(a, b) { return b.score - a.score; })
@@ -815,6 +814,14 @@ row.innerHTML = '<div class="vendor-card ' + (selectedVendorId==='all'?'active':
 list.map(function(v){ return '<div class="vendor-card ' + (selectedVendorId===v.id?'active':'') + '" data-v="' + v.id + '"><div class="v-icon">' + v.icon + '</div><div class="v-name">' + v.name + '</div><div class="v-eta">⏱ ' + v.eta + '</div><div class="v-rating">★ ' + v.rating + '</div></div>'; }).join('');
 row.querySelectorAll('.vendor-card').forEach(function(el){ el.addEventListener('click', function(){ selectedVendorId = el.getAttribute('data-v'); renderVendors(pin); renderProducts(pin); }); });
 }
+// A product's pincode field can be 'ALL' (pan-India), a single pincode, or a
+// comma-separated list of pincodes (e.g. a vendor selling across all of
+// Lucknow lists several pincodes for one product).
+function productMatchesPincode(p, pin){
+if (!p.pincode || !pin) return false;
+if (p.pincode === 'ALL') return true;
+return p.pincode.split(',').map(function(s){ return s.trim(); }).indexOf(pin) !== -1;
+}
 function buildProductCardHtml(p){
 const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
 const qty = cart[p.id] || 0;
@@ -851,7 +858,7 @@ if (s.end_date && new Date(s.end_date) < now) return false;
 return true;
 });
 if (active.length === 0) { container.innerHTML = ''; return; }
-const available = productPool.filter(function(p){ return p.pincode === selectedPin || p.pincode === 'ALL'; });
+const available = productPool.filter(function(p){ return productMatchesPincode(p, selectedPin); });
 const blocksHtml = active.map(function(s){
 let items = [];
 if (s.section_type === 'new_arrivals') {
@@ -868,7 +875,7 @@ container.innerHTML = blocksHtml;
 wireProductCardEvents(container);
 }
 function renderProducts(pin){
-let filtered = productPool.filter(function(p){ return p.pincode === pin || p.pincode === 'ALL'; });
+let filtered = productPool.filter(function(p){ return productMatchesPincode(p, pin); });
 if(selectedVendorId !== 'all') filtered = filtered.filter(function(p){ return p.vendorId === selectedVendorId; });
 if(activeCategoryId) filtered = filtered.filter(function(p){ return p.categoryId === activeCategoryId; });
 if(searchQuery) filtered = filtered.filter(function(p){ return scoreProductMatch(p, searchQuery) > 0; }).sort(function(a,b){ return scoreProductMatch(b, searchQuery) - scoreProductMatch(a, searchQuery); });
@@ -974,7 +981,7 @@ if (otherId && inCartIds.indexOf(otherId) === -1 && suggestedIds.indexOf(otherId
 });
 });
 if (suggestedIds.length === 0) return '';
-const suggestedProducts = suggestedIds.map(function(id){ return productPool.find(function(p){ return p.id === id; }); }).filter(function(p){ return p && (p.pincode === selectedPin || p.pincode === 'ALL'); }).slice(0, 3);
+const suggestedProducts = suggestedIds.map(function(id){ return productPool.find(function(p){ return p.id === id; }); }).filter(function(p){ return p && productMatchesPincode(p, selectedPin); }).slice(0, 3);
 if (suggestedProducts.length === 0) return '';
 const cardsHtml = suggestedProducts.map(function(p){
 return '<div class="pair-card"><div class="pair-icon">' + p.icon + '</div><div class="pair-name">' + p.name + '</div><div class="pair-price">₹' + p.price + '</div><button class="pair-add-btn" data-pairadd="' + p.id + '">+ Add</button></div>';

@@ -420,7 +420,7 @@ Continue with Google
 <div class="radio-option selected" id="apModePanIndia" data-mode="pan_india" style="cursor:pointer; padding:8px 14px; border-radius:10px; background:#f3f1f8; font-size:11.5px;">🇮🇳 Pan-India</div>
 <div class="radio-option" id="apModeLocal" data-mode="local" style="cursor:pointer; padding:8px 14px; border-radius:10px; background:#f3f1f8; font-size:11.5px;">📍 Specific Pincode</div>
 </div>
-<input class="form-input" id="apPincode" placeholder="Pincode" style="display:none; margin-top:8px;">
+<input class="form-input" id="apPincode" placeholder="e.g. 226001, 226002, 226010 (comma-separated for multiple areas)" style="display:none; margin-top:8px;">
 </div>
 <textarea id="apShortDesc" placeholder="Short description (1-2 lines)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; min-height:44px; font-family:inherit; box-sizing:border-box;"></textarea>
 <textarea id="apLongDesc" placeholder="Full description" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; min-height:70px; font-family:inherit; box-sizing:border-box;"></textarea>
@@ -2507,8 +2507,19 @@ const price = document.getElementById('apPrice').value;
 if (!vendorId) { errEl.textContent = 'Please select which vendor this product belongs to.'; return; }
 if (!name) { errEl.textContent = 'Please enter a product name.'; return; }
 if (!price || Number(price) <= 0) { errEl.textContent = 'Please enter a valid price.'; return; }
-const pincode = apSelectedMode === 'pan_india' ? 'ALL' : document.getElementById('apPincode').value.trim();
+const pincode = apSelectedMode === 'pan_india' ? 'ALL' : document.getElementById('apPincode').value.trim().split(',').map(function(s){ return s.trim(); }).filter(Boolean).join(',');
 if (apSelectedMode === 'local' && !pincode) { errEl.textContent = 'Please enter a pincode, or switch to Pan-India.'; return; }
+const vendorName = (allVendors.find(function(v) { return v.id === vendorId; }) || {}).name || 'Graspion';
+const oldPriceVal = document.getElementById('apOldPrice').value;
+let discountTxt = '';
+if (oldPriceVal && Number(oldPriceVal) > Number(price)) {
+const pct = Math.round((1 - Number(price)/Number(oldPriceVal)) * 100);
+discountTxt = pct + '% Off - ';
+}
+const pinCount = pincode && pincode !== 'ALL' ? pincode.split(',').length : 0;
+const areaTxt = pincode === 'ALL' ? 'Pan-India delivery' : (pinCount > 1 ? 'Fast delivery across ' + pinCount + ' local areas' : 'Fast delivery in ' + pincode);
+const seoTitle = discountTxt + name + ' | Buy Online at Best Price - Graspion';
+const seoDescription = ('Buy ' + name + ' online for just ₹' + price + '. ' + (discountTxt ? 'Get ' + discountTxt.replace(' - ', '') + '. ' : '') + areaTxt + ' from ' + vendorName + '. Order now on Graspion.').slice(0, 160);
 const payload = {
 vendor_id: vendorId,
 category_id: document.getElementById('apCategory').value || null,
@@ -2528,6 +2539,8 @@ long_description: document.getElementById('apLongDesc').value.trim() || null,
 features: document.getElementById('apFeatures').value.trim() || null,
 is_returnable: document.getElementById('apReturnable').checked,
 cod_allowed: document.getElementById('apCod').checked,
+seo_title: seoTitle,
+seo_description: seoDescription,
 icon: '📦'
 };
 if (!apEditingId || apPhotoUrl) { payload.image_data = apPhotoUrl; }
