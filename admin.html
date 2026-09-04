@@ -59,6 +59,10 @@ body { background:#eef0fb; color:#1e1b3a; }
 .kpi-val { font-size:24px; font-weight:900; }
 .kpi-label { font-size:11.5px; opacity:0.9; margin-top:2px; font-weight:600; }
 .panel { background:#fff; border-radius:18px; padding:18px; box-shadow:0 4px 16px rgba(76,29,149,0.06); margin-bottom:16px; }
+details.panel summary::-webkit-details-marker { display:none; }
+details.panel summary { list-style:none; }
+details.panel summary h3 { transition:color .15s; }
+details.panel[open] summary h3 { color:#7c3aed; }
 .panel h3 { font-size:14px; font-weight:800; margin-bottom:14px; }
 .bar-chart { display:flex; align-items:flex-end; gap:10px; height:130px; padding-top:10px; }
 .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; }
@@ -359,9 +363,9 @@ Continue with Google
 <div class="empty-state" id="adsEmpty" style="display:none;">No products found</div>
 </div>
 
-<div class="panel" data-section="warehouses">
-<h3>🏬 Dark Stores (Instant Delivery Warehouses)</h3>
-<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Customers inside a store's radius automatically get instant delivery. Outside it, they fall back to Pan-India marketplace delivery.</p>
+<details class="panel" data-section="warehouses" open>
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">🏬 Dark Stores (Instant Delivery Warehouses) ▾</h3></summary>
+<p style="font-size:11px; color:#9ca3af; margin:8px 0 12px;">Customers inside a store's radius automatically get instant delivery. Outside it, they fall back to Pan-India marketplace delivery.</p>
 <div class="form-grid">
 <input class="form-input" id="whName" placeholder="Store name e.g. Graspion Hazratganj">
 <input class="form-input" id="whAddress" placeholder="Address">
@@ -374,11 +378,11 @@ Continue with Google
 <button class="login-btn" id="whAddBtn" style="margin-top:10px;">+ Add Dark Store</button>
 <div id="whList" style="margin-top:16px;"></div>
 <div class="empty-state" id="whEmpty" style="display:none;">No dark stores added yet</div>
-</div>
+</details>
 
-<div class="panel" data-section="warehouses">
-<h3>👤 Assign Staff to Operate a Dark Store</h3>
-<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Dark Stores are always Graspion-owned — never a public/third-party vendor. This creates the login your staff will use to manage that store's products and orders, linked to the warehouse above.</p>
+<details class="panel" data-section="warehouses">
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">👤 Assign Staff to Operate a Dark Store ▾</h3></summary>
+<p style="font-size:11px; color:#9ca3af; margin:8px 0 12px;">Dark Stores are always Graspion-owned — never a public/third-party vendor. This creates the login your staff will use to manage that store's products and orders, linked to the warehouse above.</p>
 <div class="form-grid">
 <input class="form-input" id="dsStoreName" placeholder="Store display name e.g. Graspion Hazratganj">
 <select class="form-input" id="dsWarehouse"><option value="">— Select warehouse —</option></select>
@@ -386,14 +390,14 @@ Continue with Google
 </div>
 <button class="login-btn" id="dsCreateBtn" style="margin-top:10px;">+ Create Dark Store Login</button>
 <div id="dsError" style="color:#dc2626; font-size:11px; margin-top:8px;"></div>
-</div>
+</details>
 
-<div class="panel" data-section="warehouses">
-<h3>📍 Rack / Shelf / Bin Locations</h3>
-<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">For instant-delivery (dark store) products — set exactly where each item sits so staff can pick it fast.</p>
+<details class="panel" data-section="warehouses">
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">📍 Rack / Shelf / Bin Locations ▾</h3></summary>
+<p style="font-size:11px; color:#9ca3af; margin:8px 0 12px;">For instant-delivery (dark store) products — set exactly where each item sits so staff can pick it fast.</p>
 <div id="rackBinList"></div>
 <div class="empty-state" id="rackBinEmpty" style="display:none;">No instant-delivery products found yet</div>
-</div>
+</details>
 
 <div class="panel" data-section="products">
 <h3>📦 All Products</h3>
@@ -482,19 +486,19 @@ Continue with Google
 <div class="empty-state" id="cpnEmpty" style="display:none;">No coupons created yet</div>
 </div>
 
-<div class="panel" data-section="settings">
-<h3>⚙️ General Settings</h3>
-<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Change these values without touching any code — the whole platform reads from here.</p>
+<details class="panel" data-section="settings" open>
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">⚙️ General Settings ▾</h3></summary>
+<p style="font-size:11px; color:#9ca3af; margin:8px 0 12px;">Change these values without touching any code — the whole platform reads from here.</p>
 <div id="settingsList"></div>
 <div class="empty-state" id="settingsEmpty" style="display:none;">Loading settings...</div>
-</div>
+</details>
 
-<div class="panel" data-section="settings">
-<h3>🛍️ Google Merchant Center Feed</h3>
-<p style="font-size:11px; color:#9ca3af; margin-bottom:10px;">This URL always reflects your live product catalog — paste it into Google Merchant Center as a "Scheduled fetch" feed. No manual re-upload needed; it updates automatically whenever products change.</p>
+<details class="panel" data-section="settings">
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">🛍️ Google Merchant Center Feed ▾</h3></summary>
+<p style="font-size:11px; color:#9ca3af; margin:8px 0 10px;">This URL always reflects your live product catalog — paste it into Google Merchant Center as a "Scheduled fetch" feed. No manual re-upload needed; it updates automatically whenever products change.</p>
 <div style="background:#f3f1f8; padding:12px; border-radius:10px; font-size:11px; word-break:break-all; font-family:monospace;">https://fghhbmdgelnpirysbusl.supabase.co/functions/v1/product-feed</div>
 <p style="font-size:10px; color:#9ca3af; margin-top:8px;">⚠️ Note: product images stored as uploaded files (not external URLs) won't appear in this feed yet — Google requires a real hosted image link, which needs an image-hosting upgrade (planned for later).</p>
-</div>
+</details>
 
 <div class="panel" data-section="staff">
 <h3>👤 Staff Management <span style="font-size:10px; color:#9ca3af; font-weight:400;">(Super Admin only)</span></h3>
@@ -516,31 +520,31 @@ Continue with Google
 <div class="empty-state" id="staffEmpty" style="display:none;">No staff added yet</div>
 </div>
 
-<div class="panel" data-section="applications">
-<h3>🏪 Vendor Applications</h3>
-<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Approving creates their real login (they get an email to set their password) and their store automatically.</p>
+<details class="panel" data-section="applications" open>
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">🏪 Vendor Applications ▾</h3></summary>
+<p style="font-size:11px; color:#9ca3af; margin:8px 0 12px;">Approving creates their real login (they get an email to set their password) and their store automatically.</p>
 <div id="vendorAppsList"></div>
 <div class="empty-state" id="vendorAppsEmpty" style="display:none;">No pending vendor applications</div>
-</div>
+</details>
 
-<div class="panel" data-section="applications">
-<h3>🚴 Rider Applications</h3>
+<details class="panel" data-section="applications">
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">🚴 Rider Applications ▾</h3></summary>
 <div id="riderAppsList"></div>
 <div class="empty-state" id="riderAppsEmpty" style="display:none;">No pending rider applications</div>
-</div>
+</details>
 
-<div class="panel" data-section="returns">
-<h3>↩ Return Requests</h3>
+<details class="panel" data-section="returns" open>
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">↩ Return Requests ▾</h3></summary>
 <div id="returnsList"></div>
 <div class="empty-state" id="returnsEmpty" style="display:none;">No return requests</div>
-</div>
+</details>
 
-<div class="panel" data-section="returns">
-<h3>💵 Refunds</h3>
-<p style="font-size:10.5px; color:#9ca3af; margin-bottom:10px;">Approved returns appear here — mark as refunded once you've actually sent the money back (bank/UPI, done outside this app).</p>
+<details class="panel" data-section="returns">
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">💵 Refunds ▾</h3></summary>
+<p style="font-size:10.5px; color:#9ca3af; margin:8px 0 10px;">Approved returns appear here — mark as refunded once you've actually sent the money back (bank/UPI, done outside this app).</p>
 <div id="refundsList"></div>
 <div class="empty-state" id="refundsEmpty" style="display:none;">No refunds yet</div>
-</div>
+</details>
 
 <div class="panel" data-section="reviews">
 <h3>⭐ Customer Reviews</h3>
@@ -549,9 +553,9 @@ Continue with Google
 <div class="empty-state" id="adminReviewsEmpty" style="display:none;">No reviews yet</div>
 </div>
 
-<div class="panel" data-section="pairings">
-<h3>🔗 Product Pairings — Frequently Bought Together</h3>
-<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Link two products together (e.g. Soap + Shampoo, or a gift-pack combo). When a customer adds one to their cart, the other is suggested as a quick add-on.</p>
+<details class="panel" data-section="pairings" open>
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">🔗 Product Pairings — Frequently Bought Together ▾</h3></summary>
+<p style="font-size:11px; color:#9ca3af; margin:8px 0 12px;">Link two products together (e.g. Soap + Shampoo, or a gift-pack combo). When a customer adds one to their cart, the other is suggested as a quick add-on.</p>
 <div class="form-grid">
 <select class="form-input" id="pairProductA"><option value="">— Select first product —</option></select>
 <select class="form-input" id="pairProductB"><option value="">— Select paired product —</option></select>
@@ -560,11 +564,11 @@ Continue with Google
 <button class="login-btn" id="pairAddBtn" style="margin-top:10px;">+ Add Pairing</button>
 <div id="pairList" style="margin-top:16px;"></div>
 <div class="empty-state" id="pairEmpty" style="display:none;">No pairings added yet</div>
-</div>
+</details>
 
-<div class="panel" data-section="pairings">
-<h3>🔀 Related Products</h3>
-<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Link products as Similar, Alternative, Cross-sell, Up-sell, or Recommended — shown when a customer views the product's detail page.</p>
+<details class="panel" data-section="pairings">
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">🔀 Related Products ▾</h3></summary>
+<p style="font-size:11px; color:#9ca3af; margin:8px 0 12px;">Link products as Similar, Alternative, Cross-sell, Up-sell, or Recommended — shown when a customer views the product's detail page.</p>
 <div class="form-grid">
 <select class="form-input" id="relProductA"><option value="">— Select product —</option></select>
 <select class="form-input" id="relProductB"><option value="">— Select related product —</option></select>
@@ -579,7 +583,7 @@ Continue with Google
 <button class="login-btn" id="relAddBtn" style="margin-top:10px;">+ Add Relation</button>
 <div id="relList" style="margin-top:16px;"></div>
 <div class="empty-state" id="relEmpty" style="display:none;">No related products added yet</div>
-</div>
+</details>
 
 <div class="panel" data-section="catalog">
 <h3>📋 Shared Catalog — Vendor Permission Requests</h3>
