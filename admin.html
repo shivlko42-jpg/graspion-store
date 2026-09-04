@@ -815,7 +815,14 @@ const shipment = allShipments.find(function(s) { return s.order_id === o.id; });
 const orderVendor = allVendors.find(function(v) { return v.id === o.vendor_id; });
 const vendorHtml = orderVendor ? (orderVendor.icon + ' ' + orderVendor.name) : '<span style="color:#9ca3af;">—</span>';
 let trackingHtml = '<span style="font-size:10px; color:#9ca3af;">—</span>';
-if (o.delivery_type === 'instant') {
+const assignedRider = o.rider_id ? allRiders.find(function(r) { return r.id === o.rider_id; }) : null;
+const needsRider = !shipment && (o.delivery_type === 'instant' || o.delivery_type === 'standard') && o.status !== 'delivered' && o.status !== 'cancelled';
+if (assignedRider) {
+trackingHtml = '<div style="font-size:10px;">🚴 <b>' + assignedRider.name + '</b><br>' + (assignedRider.phone || '') + '<br><a href="#" data-reassign="' + o.id + '" style="color:#7c3aed;">Reassign →</a></div>';
+} else if (needsRider) {
+const riderOptions = allRiders.filter(function(r){ return r.status === 'active'; }).map(function(r) { return '<option value="' + r.id + '">' + r.name + (r.pincode ? ' (' + r.pincode + ')' : '') + '</option>'; }).join('');
+trackingHtml = '<div style="font-size:10px;"><select class="setting-input" style="width:130px; font-size:10.5px; padding:3px;" id="riderpick-' + o.id + '"><option value="">— Assign rider —</option>' + riderOptions + '</select><button class="mini-btn" data-assignrider="' + o.id + '" style="background:#dcfce7; color:#15803d; margin-top:3px; font-size:10px; padding:2px 6px;">Assign</button></div>';
+} else if (o.delivery_type === 'instant') {
 trackingHtml = '<span style="font-size:10px; color:#9ca3af;">🚴 Rider</span>';
 } else if (shipment) {
 trackingHtml = '<div style="font-size:10px;"><b>' + (shipment.awb_number || 'AWB pending') + '</b>' + (shipment.tracking_url ? '<br><a href="' + shipment.tracking_url + '" target="_blank" style="color:#7c3aed;">Track →</a>' : '') + '</div>';
@@ -830,6 +837,25 @@ return '<tr><td><a href="#" data-timelineid="' + o.id + '" style="color:#7c3aed;
 '<td>' + (payoutDone ? '<span class="status-pill st-delivered">Paid</span>' : '<button class="mini-btn" data-payoutid="' + o.id + '" style="background:#dbeafe;color:#1d4ed8;">Mark Paid</button>') + '</td></tr>';
 }).join('');
 let currentDetailOrderId = null;
+document.querySelectorAll('[data-assignrider]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const orderId = btn.getAttribute('data-assignrider');
+const riderId = document.getElementById('riderpick-' + orderId).value;
+if (!riderId) { alert('Please pick a rider first'); return; }
+btn.disabled = true; btn.textContent = '...';
+await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ rider_id: riderId, status: 'shipped' }) });
+loadAllData();
+});
+});
+document.querySelectorAll('[data-reassign]').forEach(function(link) {
+link.addEventListener('click', async function(e) {
+e.preventDefault();
+const orderId = link.getAttribute('data-reassign');
+if (!confirm('Remove the current rider and pick a new one?')) return;
+await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ rider_id: null, status: 'preparing' }) });
+loadAllData();
+});
+});
 document.querySelectorAll('[data-timelineid]').forEach(function(link) {
 link.addEventListener('click', async function(e) {
 e.preventDefault();
