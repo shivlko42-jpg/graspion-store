@@ -156,6 +156,31 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 </div>
 </div>
 
+<div class="modal-overlay" id="avVariantModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300; align-items:center; justify-content:center; padding:16px;">
+<div style="max-width:460px; width:100%; background:#fff; border-radius:20px; padding:20px; max-height:85vh; overflow-y:auto;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="font-size:15px;">🎨 Manage Variants — <span id="avVariantProductName"></span></h3><button id="avCloseVariantBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
+<div id="avVariantList" style="margin-bottom:14px;"></div>
+<div style="border-top:1px solid #f0eef7; padding-top:12px;">
+<div style="font-size:11.5px; font-weight:700; margin-bottom:8px;">+ Add New Variant</div>
+<div id="avVariantAttrRows"></div>
+<button id="avAddAttrRowBtn" type="button" style="background:none; border:1px dashed #7c3aed; color:#7c3aed; padding:6px 10px; border-radius:8px; font-size:11px; cursor:pointer; margin-bottom:10px;">+ Add Attribute (e.g. Size, Color)</button>
+<div class="form-row">
+<div class="form-group"><label>Variant SKU</label><input class="form-input" id="avSku" placeholder="e.g. GRS-SPK-RED-L"></div>
+<div class="form-group"><label>Barcode</label><input class="form-input" id="avBarcode" placeholder="optional"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>MRP</label><input class="form-input" id="avMrp" type="number"></div>
+<div class="form-group"><label>Selling Price</label><input class="form-input" id="avPrice" type="number"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Stock</label><input class="form-input" id="avStock" type="number"></div>
+<div class="form-group"><label>Weight (grams)</label><input class="form-input" id="avWeight" type="number"></div>
+</div>
+<button id="avSaveVariantBtn" class="login-btn" style="margin-top:8px;">+ Add Variant</button>
+</div>
+</div>
+</div>
+
 <div class="login-overlay" id="loginOverlay">
 <div class="login-box">
 <div data-graspion-logo="full" data-size="22" style="justify-content:center; display:flex;"></div>
@@ -2332,7 +2357,7 @@ const isChecked = selectedProductIds.has(p.id);
 return '<div class="item-card"><input type="checkbox" class="prod-checkbox" data-prodcheck="' + p.id + '" ' + (isChecked ? 'checked' : '') + ' style="margin-right:10px;">' +
 '<div class="ic-info"><div class="ic-title">' + p.name + ' ' + typeTag + '</div>' +
 '<div class="ic-sub">' + (p.sku ? 'SKU: ' + p.sku + ' · ' : '') + (vendor ? vendor.name : 'No vendor') + ' · ₹' + p.price + ' · ' + stockTag + '</div></div>' +
-'<div class="item-actions"><button class="mini-btn" data-prodedit="' + p.id + '" style="background:#ede9fe; color:#6d28d9;">✏️ Edit</button><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-prodtoggle="' + p.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button></div></div>';
+'<div class="item-actions"><button class="mini-btn" data-prodedit="' + p.id + '" style="background:#ede9fe; color:#6d28d9;">✏️ Edit</button><button class="mini-btn" data-managevariants="' + p.id + '" data-prodname="' + p.name.replace(/"/g,'&quot;') + '" style="background:#fce7f3; color:#be185d;">🎨 Variants</button><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-prodtoggle="' + p.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button></div></div>';
 }).join('');
 document.querySelectorAll('[data-prodtoggle]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
@@ -2345,6 +2370,9 @@ loadAllData();
 });
 document.querySelectorAll('[data-prodedit]').forEach(function(btn) {
 btn.addEventListener('click', function() { populateAdminProductForm(btn.getAttribute('data-prodedit')); });
+});
+document.querySelectorAll('[data-managevariants]').forEach(function(btn) {
+btn.addEventListener('click', function() { openAdminVariantModal(btn.getAttribute('data-managevariants'), btn.getAttribute('data-prodname')); });
 });
 document.querySelectorAll('[data-prodcheck]').forEach(function(cb) {
 cb.addEventListener('change', function() {
@@ -2556,6 +2584,98 @@ loadAllData();
 } catch (err) {
 errEl.textContent = 'Error: ' + err.message;
 btn.disabled = false; btn.textContent = apEditingId ? '💾 Save Changes' : '+ Add Product';
+}
+});
+
+// ===================== ADMIN: MANAGE VARIANTS =====================
+let avCurrentProductId = null;
+let avAttrRowCount = 0;
+function avAddAttrRow() {
+avAttrRowCount++;
+const row = document.createElement('div');
+row.className = 'form-row';
+row.id = 'avAttrRow' + avAttrRowCount;
+row.innerHTML = '<div class="form-group"><input class="form-input" placeholder="Attribute (e.g. Size)" data-avattrname></div><div class="form-group"><input class="form-input" placeholder="Value (e.g. Large)" data-avattrvalue></div>';
+document.getElementById('avVariantAttrRows').appendChild(row);
+}
+document.getElementById('avAddAttrRowBtn').addEventListener('click', avAddAttrRow);
+async function openAdminVariantModal(productId, productName) {
+avCurrentProductId = productId;
+document.getElementById('avVariantProductName').textContent = productName;
+document.getElementById('avVariantAttrRows').innerHTML = '';
+avAttrRowCount = 0;
+avAddAttrRow();
+['avSku','avBarcode','avMrp','avPrice','avStock','avWeight'].forEach(function(id){ document.getElementById(id).value = ''; });
+document.getElementById('avVariantModal').style.display = 'flex';
+await loadAdminVariantsList(productId);
+}
+document.getElementById('avCloseVariantBtn').addEventListener('click', function() { document.getElementById('avVariantModal').style.display = 'none'; });
+async function loadAdminVariantsList(productId) {
+const list = document.getElementById('avVariantList');
+list.innerHTML = '<div style="font-size:11px; color:#9ca3af;">Loading...</div>';
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/product_variants?product_id=eq.' + productId + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const variants = res.ok ? await res.json() : [];
+if (variants.length === 0) { list.innerHTML = '<div style="font-size:11.5px; color:#9ca3af;">No variants yet. Add one below.</div>'; return; }
+const attrRes = await fetch(SUPABASE_URL + '/rest/v1/product_variant_attributes?variant_id=in.(' + variants.map(function(v){return v.id;}).join(',') + ')&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const allAttrs = attrRes.ok ? await attrRes.json() : [];
+list.innerHTML = variants.map(function(v) {
+const vAttrs = allAttrs.filter(function(a){ return a.variant_id === v.id; });
+const attrLabel = vAttrs.map(function(a){ return a.attribute_name + ': ' + a.attribute_value; }).join(' · ') || 'No attributes';
+return '<div style="border:1px solid #f0eef7; border-radius:10px; padding:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;"><div><div style="font-size:12px; font-weight:700;">' + attrLabel + '</div><div style="font-size:10.5px; color:#9ca3af;">SKU: ' + (v.sku || '—') + ' · ₹' + v.selling_price + ' · Stock: ' + v.stock + '</div></div><button data-avdelvariant="' + v.id + '" style="background:#fee2e2; color:#dc2626; border:none; padding:5px 9px; border-radius:6px; font-size:10.5px; cursor:pointer;">Delete</button></div>';
+}).join('');
+document.querySelectorAll('[data-avdelvariant]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Delete this variant?')) return;
+await fetch(SUPABASE_URL + '/rest/v1/product_variants?id=eq.' + btn.getAttribute('data-avdelvariant'), { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+loadAdminVariantsList(avCurrentProductId);
+});
+});
+} catch (err) { list.innerHTML = '<div style="font-size:11px; color:#dc2626;">Could not load variants.</div>'; }
+}
+document.getElementById('avSaveVariantBtn').addEventListener('click', async function() {
+const sku = document.getElementById('avSku').value.trim();
+const mrp = document.getElementById('avMrp').value;
+const price = document.getElementById('avPrice').value;
+const stock = document.getElementById('avStock').value;
+if (!price || !stock) { alert('Selling Price and Stock are required.'); return; }
+const btn = this;
+btn.textContent = '⏳ Adding...'; btn.disabled = true;
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/product_variants', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+body: JSON.stringify({
+product_id: avCurrentProductId, sku: sku || null, barcode: document.getElementById('avBarcode').value.trim() || null,
+mrp: mrp ? Number(mrp) : null, selling_price: Number(price), stock: Number(stock),
+weight_grams: document.getElementById('avWeight').value ? Number(document.getElementById('avWeight').value) : null, status: 'active'
+})
+});
+const data = await res.json();
+const newVariantId = data[0] ? data[0].id : null;
+if (newVariantId) {
+const attrInserts = [];
+document.querySelectorAll('#avVariantAttrRows [data-avattrname]').forEach(function(nameEl, idx) {
+const valueEl = document.querySelectorAll('#avVariantAttrRows [data-avattrvalue]')[idx];
+if (nameEl.value.trim() && valueEl.value.trim()) {
+attrInserts.push({ variant_id: newVariantId, attribute_name: nameEl.value.trim(), attribute_value: valueEl.value.trim() });
+}
+});
+if (attrInserts.length > 0) {
+await fetch(SUPABASE_URL + '/rest/v1/product_variant_attributes', {
+method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify(attrInserts)
+});
+}
+}
+document.getElementById('avVariantAttrRows').innerHTML = '';
+avAttrRowCount = 0; avAddAttrRow();
+['avSku','avBarcode','avMrp','avPrice','avStock','avWeight'].forEach(function(id){ document.getElementById(id).value = ''; });
+loadAdminVariantsList(avCurrentProductId);
+} catch (err) {
+alert('Could not add variant: ' + err.message);
+} finally {
+btn.textContent = '+ Add Variant'; btn.disabled = false;
 }
 });
 
