@@ -350,10 +350,10 @@ body { padding-bottom:68px; }
 <input class="form-input-like" id="appPhone" placeholder="Phone number" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
 <textarea id="appAddress" placeholder="Full store address (house/shop no., street, area)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; min-height:50px; font-family:inherit;"></textarea>
 <input class="form-input-like" id="appPincode" placeholder="Store pincode" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
-<select class="form-input-like" id="appVendorType" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
-<option value="marketplace">Ship Pan-India (Marketplace)</option>
-<option value="dark_store">Instant Delivery (Dark Store)</option>
+<select class="form-input-like" id="appVendorType" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;" disabled>
+<option value="marketplace" selected>Ship Pan-India (Marketplace)</option>
 </select>
+<p style="font-size:10px; color:#9ca3af; margin:-4px 0 8px;">ℹ️ Public sellers join as Marketplace (Pan-India shipping). Dark Store (instant delivery) locations are opened directly by Graspion.</p>
 <input class="form-input-like" id="appGstin" placeholder="GSTIN (optional)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
 <label style="font-size:10.5px; font-weight:700; color:#6b7280; display:block; margin-bottom:4px;">📎 KYC Documents (photos of documents)</label>
 <label style="font-size:10.5px; color:#9ca3af; display:block; margin-bottom:2px;">PAN Card</label>
@@ -628,7 +628,7 @@ vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(f
 productPool = visibleProducts.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
 const firstFeature = p.features ? p.features.split('\n')[0].trim() : '';
-return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '', imageAlt: p.image_alt_text || p.name, shortDescription: p.short_description || '', longDescription: p.long_description || '', warrantyAvailable: !!p.warranty_available, warrantyPeriod: p.warranty_period || '', warrantyType: p.warranty_type || '', careInstructions: p.care_instructions || '', safetyInfo: p.safety_info || '', installationInfo: p.installation_info || '', whatsIncluded: p.whats_included || '', isSponsored: !!p.is_sponsored, createdAt: p.created_at || null };
+return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '', imageAlt: p.image_alt_text || p.name, shortDescription: p.short_description || '', longDescription: p.long_description || '', warrantyAvailable: !!p.warranty_available, warrantyPeriod: p.warranty_period || '', warrantyType: p.warranty_type || '', careInstructions: p.care_instructions || '', safetyInfo: p.safety_info || '', installationInfo: p.installation_info || '', whatsIncluded: p.whats_included || '', isSponsored: !!p.is_sponsored, adBid: Number(p.ad_bid) || 0, createdAt: p.created_at || null };
 });
 renderQuickCategories();
 renderPinSuggestions();
@@ -877,7 +877,7 @@ if (isInstantZone) {
 filtered = filtered.slice().sort(function(a,b){ return (a.fulfillmentType==='instant'?0:1) - (b.fulfillmentType==='instant'?0:1); });
 }
 // sponsored listings get a boost within their group (stable sort preserves relevance/fulfillment ordering otherwise)
-filtered = filtered.slice().sort(function(a,b){ return (b.isSponsored?1:0) - (a.isSponsored?1:0); });
+filtered = filtered.slice().sort(function(a,b){ if (b.isSponsored !== a.isSponsored) return (b.isSponsored?1:0) - (a.isSponsored?1:0); return (b.isSponsored ? b.adBid - a.adBid : 0); });
 const dealGrid = document.getElementById('dealGrid');
 if(filtered.length === 0){ dealGrid.innerHTML = '<div class="no-vendor" style="grid-column:1/-1;">' + graspionT('noVendorArea') + '</div>'; return; }
 dealGrid.innerHTML = filtered.map(buildProductCardHtml).join('');
