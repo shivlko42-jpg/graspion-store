@@ -1391,6 +1391,11 @@ errEl.textContent = 'Could not create account: ' + (signupError ? signupError.me
 btn.textContent = 'Submit Application'; btn.disabled = false;
 return;
 }
+if (signupData.user.identities && signupData.user.identities.length === 0) {
+errEl.textContent = 'An account with this email already exists. Please log in with that account first (top-right Login button), then come back and apply — or use a different email for this store.';
+btn.textContent = 'Submit Application'; btn.disabled = false;
+return;
+}
 const panImg = await fileToBase64('appPanFile');
 const gstImg = await fileToBase64('appGstFile');
 const bankImg = await fileToBase64('appBankFile');
@@ -1441,6 +1446,11 @@ const tempClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { p
 const { data: signupData, error: signupError } = await tempClient.auth.signUp({ email: email, password: password });
 if (signupError || !signupData.user) {
 errEl.textContent = 'Could not create account: ' + (signupError ? signupError.message : 'Unknown error');
+btn.textContent = 'Submit Application'; btn.disabled = false;
+return;
+}
+if (signupData.user.identities && signupData.user.identities.length === 0) {
+errEl.textContent = 'An account with this email already exists. Please log in with that account first, then come back and apply — or use a different email.';
 btn.textContent = 'Submit Application'; btn.disabled = false;
 return;
 }
