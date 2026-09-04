@@ -209,20 +209,21 @@ Continue with Google
 <div class="insights-box" id="insightsBox"></div>
 
 <div class="kpi-grid" id="pageDashboard">
-<div class="kpi-card kpi-c1"><div class="kpi-val" id="kpiRevenue">₹0</div><div class="kpi-label">Total Revenue</div></div>
-<div class="kpi-card kpi-c2"><div class="kpi-val" id="kpiOrders">0</div><div class="kpi-label">Total Orders</div></div>
-<div class="kpi-card kpi-c3"><div class="kpi-val" id="kpiCustomers">0</div><div class="kpi-label">Total Customers</div></div>
-<div class="kpi-card kpi-c4"><div class="kpi-val" id="kpiVendors">0</div><div class="kpi-label">Active Vendors</div></div>
-<div class="kpi-card kpi-c5"><div class="kpi-val" id="kpiProducts">0</div><div class="kpi-label">Total Products</div></div>
+<div class="kpi-card kpi-c1" data-navigate="payments" style="cursor:pointer;"><div class="kpi-val" id="kpiRevenue">₹0</div><div class="kpi-label">Total Revenue ›</div></div>
+<div class="kpi-card kpi-c2" data-navigate="orders" style="cursor:pointer;"><div class="kpi-val" id="kpiOrders">0</div><div class="kpi-label">Total Orders ›</div></div>
+<div class="kpi-card kpi-c3" data-navigate="customers" style="cursor:pointer;"><div class="kpi-val" id="kpiCustomers">0</div><div class="kpi-label">Total Customers ›</div></div>
+<div class="kpi-card kpi-c4" data-navigate="vendors" style="cursor:pointer;"><div class="kpi-val" id="kpiVendors">0</div><div class="kpi-label">Active Vendors ›</div></div>
+<div class="kpi-card kpi-c5" data-navigate="products" style="cursor:pointer;"><div class="kpi-val" id="kpiProducts">0</div><div class="kpi-label">Total Products ›</div></div>
+<div class="kpi-card" data-navigate="warehouses" style="cursor:pointer; background:linear-gradient(135deg,#f59e0b,#ec4899);"><div class="kpi-val" id="kpiDarkStores">0</div><div class="kpi-label">⚡ Dark Stores ›</div></div>
 </div>
 
 <div class="panel" data-section="dashboard">
 <h3>⚡ Today's Snapshot</h3>
 <div class="kpi-grid" style="margin-bottom:0;">
-<div class="kpi-card" style="background:linear-gradient(135deg,#f59e0b,#fbbf24); color:#fff;"><div class="kpi-val" id="snapPending">0</div><div class="kpi-label">Pending Orders</div></div>
-<div class="kpi-card" style="background:linear-gradient(135deg,#22c55e,#4ade80); color:#fff;"><div class="kpi-val" id="snapTodayRevenue">₹0</div><div class="kpi-label">Today's Revenue</div></div>
-<div class="kpi-card" style="background:linear-gradient(135deg,#ef4444,#f87171); color:#fff;"><div class="kpi-val" id="snapLowStock">0</div><div class="kpi-label">Low Stock Products</div></div>
-<div class="kpi-card" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8); color:#fff;"><div class="kpi-val" id="snapInstantSplit">0 / 0</div><div class="kpi-label">⚡ Instant vs 📦 Pan-India Orders</div></div>
+<div class="kpi-card" data-navigate="orders" style="cursor:pointer; background:linear-gradient(135deg,#f59e0b,#fbbf24); color:#fff;"><div class="kpi-val" id="snapPending">0</div><div class="kpi-label">Pending Orders ›</div></div>
+<div class="kpi-card" data-navigate="payments" style="cursor:pointer; background:linear-gradient(135deg,#22c55e,#4ade80); color:#fff;"><div class="kpi-val" id="snapTodayRevenue">₹0</div><div class="kpi-label">Today's Revenue ›</div></div>
+<div class="kpi-card" data-navigate="products" style="cursor:pointer; background:linear-gradient(135deg,#ef4444,#f87171); color:#fff;"><div class="kpi-val" id="snapLowStock">0</div><div class="kpi-label">Low Stock Products ›</div></div>
+<div class="kpi-card" data-navigate="warehouses" style="cursor:pointer; background:linear-gradient(135deg,#0ea5e9,#38bdf8); color:#fff;"><div class="kpi-val" id="snapInstantSplit">0 / 0</div><div class="kpi-label">⚡ Instant vs 📦 Pan-India Orders ›</div></div>
 </div>
 </div>
 
@@ -373,6 +374,18 @@ Continue with Google
 <button class="login-btn" id="whAddBtn" style="margin-top:10px;">+ Add Dark Store</button>
 <div id="whList" style="margin-top:16px;"></div>
 <div class="empty-state" id="whEmpty" style="display:none;">No dark stores added yet</div>
+</div>
+
+<div class="panel" data-section="warehouses">
+<h3>👤 Assign Staff to Operate a Dark Store</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Dark Stores are always Graspion-owned — never a public/third-party vendor. This creates the login your staff will use to manage that store's products and orders, linked to the warehouse above.</p>
+<div class="form-grid">
+<input class="form-input" id="dsStoreName" placeholder="Store display name e.g. Graspion Hazratganj">
+<select class="form-input" id="dsWarehouse"><option value="">— Select warehouse —</option></select>
+<input class="form-input" id="dsStaffEmail" type="email" placeholder="Staff member's email (they'll get a login invite)">
+</div>
+<button class="login-btn" id="dsCreateBtn" style="margin-top:10px;">+ Create Dark Store Login</button>
+<div id="dsError" style="color:#dc2626; font-size:11px; margin-top:8px;"></div>
 </div>
 
 <div class="panel" data-section="warehouses">
@@ -731,21 +744,21 @@ await supaAuth.auth.signOut();
 } catch (err) { /* not logged in, show login screen as normal */ }
 })();
 
-document.querySelectorAll('.side-item[data-page]').forEach(function(item) {
-  item.addEventListener('click', function() {
-    const page = item.getAttribute('data-page');
-    document.querySelectorAll('.side-item[data-page]').forEach(function(i) { i.classList.remove('active'); });
-    item.classList.add('active');
-
-    document.getElementById('pageDashboard').style.display = page === 'dashboard' ? 'grid' : 'none';
-    document.querySelectorAll('[data-section]').forEach(function(el) {
-      const sections = el.getAttribute('data-section').split(' ');
-      el.style.display = (page === 'dashboard' || sections.includes(page)) ? '' : 'none';
-    });
-    // on mobile, close the sidebar drawer once a page is picked so the content is visible
-    closeMobileSidebar();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+function navigateToPage(page) {
+  document.querySelectorAll('.side-item[data-page]').forEach(function(i) { i.classList.toggle('active', i.getAttribute('data-page') === page); });
+  document.getElementById('pageDashboard').style.display = page === 'dashboard' ? 'grid' : 'none';
+  document.querySelectorAll('[data-section]').forEach(function(el) {
+    const sections = el.getAttribute('data-section').split(' ');
+    el.style.display = (page === 'dashboard' || sections.includes(page)) ? '' : 'none';
   });
+  closeMobileSidebar();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+document.querySelectorAll('.side-item[data-page]').forEach(function(item) {
+  item.addEventListener('click', function() { navigateToPage(item.getAttribute('data-page')); });
+});
+document.querySelectorAll('[data-navigate]').forEach(function(card) {
+  card.addEventListener('click', function() { navigateToPage(card.getAttribute('data-navigate')); });
 });
 
 function openMobileSidebar() {
@@ -938,6 +951,7 @@ allOrders.forEach(function(o) { const key = o.customer_phone || o.customer_name;
 document.getElementById('kpiCustomers').textContent = Object.keys(uniqueCustomers).length;
 document.getElementById('kpiVendors').textContent = allVendors.filter(function(v) { return v.status !== 'blocked'; }).length;
 document.getElementById('kpiProducts').textContent = allProducts.length;
+document.getElementById('kpiDarkStores').textContent = allWarehouses.filter(function(w) { return w.status === 'active'; }).length;
 }
 function renderSnapshot() {
 document.getElementById('snapPending').textContent = allOrders.filter(function(o) { return o.status === 'pending'; }).length;
@@ -1248,6 +1262,10 @@ const activeOrders = allOrders.filter(function(o) { return o.status === 'shipped
 const whSelect = document.getElementById('riderWarehouse');
 if (whSelect) {
 whSelect.innerHTML = '<option value="">— No dark store (pan-India only) —</option>' + allWarehouses.map(function(w) { return '<option value="' + w.id + '">' + w.name + '</option>'; }).join('');
+}
+const dsWhSelect = document.getElementById('dsWarehouse');
+if (dsWhSelect && dsWhSelect.options.length <= 1) {
+dsWhSelect.innerHTML = '<option value="">— Select warehouse —</option>' + allWarehouses.map(function(w) { return '<option value="' + w.id + '">' + w.name + '</option>'; }).join('');
 }
 if (allRiders.length === 0) {
 list.innerHTML = '<div class="empty-state">No riders registered yet</div>';
@@ -1814,6 +1832,38 @@ return '<div class="vendor-row-item"><div class="v-icon2">' + (p.icon || '📦')
 }).join('');
 }
 
+document.getElementById('dsCreateBtn').addEventListener('click', async function() {
+const btn = this;
+const errEl = document.getElementById('dsError');
+const storeName = document.getElementById('dsStoreName').value.trim();
+const warehouseId = document.getElementById('dsWarehouse').value;
+const staffEmail = document.getElementById('dsStaffEmail').value.trim();
+errEl.textContent = '';
+if (!storeName || !warehouseId || !staffEmail) { errEl.textContent = 'Please fill in store name, warehouse, and staff email.'; return; }
+btn.disabled = true; btn.textContent = '⏳ Creating & sending invite...';
+try {
+const res = await fetch(SUPABASE_URL + '/functions/v1/create-dark-store', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken, 'apikey': SUPABASE_KEY },
+body: JSON.stringify({ store_name: storeName, warehouse_id: warehouseId, staff_email: staffEmail })
+});
+const data = await res.json();
+if (!res.ok || !data.success) {
+errEl.textContent = 'Could not create: ' + (data.error || 'Unknown error') + (data.details ? ' — ' + JSON.stringify(data.details) : '');
+btn.disabled = false; btn.textContent = '+ Create Dark Store Login';
+return;
+}
+errEl.style.color = '#15803d';
+errEl.textContent = '✓ Dark store created. An invite email was sent to ' + staffEmail + ' to set their password.';
+document.getElementById('dsStoreName').value = '';
+document.getElementById('dsStaffEmail').value = '';
+btn.disabled = false; btn.textContent = '+ Create Dark Store Login';
+loadAllData();
+} catch (err) {
+errEl.textContent = 'Error: ' + err.message;
+btn.disabled = false; btn.textContent = '+ Create Dark Store Login';
+}
+});
 document.getElementById('riderAddBtn').addEventListener('click', async function() {
 const name = document.getElementById('riderName').value.trim();
 const phone = document.getElementById('riderPhone').value.trim();
