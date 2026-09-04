@@ -451,7 +451,15 @@
 
     <div class="panel">
       <h3 id="ordersSection">🧾 Your Orders — Delivery Pipeline <span id="orderCount" style="font-size:11px;color:#9ca3af;"></span></h3>
-      <button class="add-product-btn" id="exportOrdersBtn" style="margin-bottom:14px; background:#1e1b3a;">⬇ Download Orders CSV</button>
+      <div style="display:flex; gap:6px; overflow-x:auto; margin-bottom:12px; padding-bottom:4px;">
+        <button class="mini-btn order-tab-btn active" data-ordertab="all" style="flex:0 0 auto; background:#7c3aed; color:#fff;">All</button>
+        <button class="mini-btn order-tab-btn" data-ordertab="pending" style="flex:0 0 auto; background:#f3f1f8; color:#4b5563;">Pending</button>
+        <button class="mini-btn order-tab-btn" data-ordertab="preparing" style="flex:0 0 auto; background:#f3f1f8; color:#4b5563;">Ready to Ship</button>
+        <button class="mini-btn order-tab-btn" data-ordertab="shipped" style="flex:0 0 auto; background:#f3f1f8; color:#4b5563;">Shipped</button>
+        <button class="mini-btn order-tab-btn" data-ordertab="delivered" style="flex:0 0 auto; background:#f3f1f8; color:#4b5563;">Delivered</button>
+        <button class="mini-btn order-tab-btn" data-ordertab="cancelled" style="flex:0 0 auto; background:#f3f1f8; color:#4b5563;">Cancelled</button>
+      </div>
+      <button class="add-product-btn" id="exportOrdersBtn" style="margin-bottom:14px; background:#1e1b3a;">⬇ Download Labels / Orders CSV</button>
       <div id="orderList"></div>
       <div class="empty-state" id="orderEmpty" style="display:none;">No orders yet</div>
     </div>
@@ -483,6 +491,7 @@ let allVendors = [];
 let vendorProducts = [];
 let vendorOrders = [];
 let vendorOrderItems = [];
+let currentOrderTab = 'all';
 let selectedMode = 'local';
 let selectedReturnable = true;
 let selectedCod = true;
@@ -1076,14 +1085,23 @@ function renderProducts() {
   });
 }
 
+document.querySelectorAll('.order-tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    currentOrderTab = btn.getAttribute('data-ordertab');
+    document.querySelectorAll('.order-tab-btn').forEach(function(b) { b.style.background = '#f3f1f8'; b.style.color = '#4b5563'; });
+    btn.style.background = '#7c3aed'; btn.style.color = '#fff';
+    renderOrders();
+  });
+});
 function renderOrders() {
   const list = document.getElementById('orderList');
   const empty = document.getElementById('orderEmpty');
-  document.getElementById('orderCount').textContent = '(' + vendorOrders.length + ')';
-  if (vendorOrders.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  const filteredOrders = currentOrderTab === 'all' ? vendorOrders : vendorOrders.filter(function(o) { return (o.status || 'pending') === currentOrderTab; });
+  document.getElementById('orderCount').textContent = '(' + filteredOrders.length + ')';
+  if (filteredOrders.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; empty.textContent = currentOrderTab === 'all' ? 'No orders yet' : 'No orders in this status'; return; }
   empty.style.display = 'none';
 
-  list.innerHTML = vendorOrders.map(function(o) {
+  list.innerHTML = filteredOrders.map(function(o) {
     const currentIndex = STATUS_STEPS.indexOf(o.status || 'pending');
     const isCOD = (o.payment_method || '').toLowerCase() === 'cod';
     const payBadge = o.payment_status === 'paid'
@@ -1276,10 +1294,11 @@ function downloadCSV(filename, rows) {
 
 document.getElementById('exportOrdersBtn').addEventListener('click', function() {
   const rows = [['Order ID', 'Customer Name', 'Phone', 'Amount', 'Pincode', 'Address', 'Status', 'Payment Status', 'Return Status', 'Order Date']];
-  vendorOrders.forEach(function(o) {
+  const ordersToExport = currentOrderTab === 'all' ? vendorOrders : vendorOrders.filter(function(o) { return (o.status || 'pending') === currentOrderTab; });
+  ordersToExport.forEach(function(o) {
     rows.push([o.id, o.customer_name, o.customer_phone, o.total_amount, o.pincode, o.address, o.status, o.payment_status, o.return_status || 'not_requested', o.created_at ? new Date(o.created_at).toLocaleDateString('en-IN') : '']);
   });
-  downloadCSV('Graspion_Orders_' + currentVendor.name.replace(/\s/g,'_') + '.csv', rows);
+  downloadCSV('Graspion_Orders_' + currentOrderTab + '_' + currentVendor.name.replace(/\s/g,'_') + '.csv', rows);
 });
 
 document.getElementById('exportPaymentsBtn').addEventListener('click', function() {
