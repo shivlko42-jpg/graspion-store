@@ -11,8 +11,8 @@ function graspionFullLogoHTML(textColor, fontSize, solidMode) {
   var wordStyle = solidMode
     ? 'color:' + textColor + ';'
     : 'background:linear-gradient(90deg,' + GRASPION_COLORS.wordmarkStart + ',' + GRASPION_COLORS.wordmarkEnd + '); -webkit-background-clip:text; background-clip:text; color:transparent;';
-  return '<div style="display:flex; align-items:center; gap:8px;">' + graspionIconHTML(Math.round(fontSize * 1.6)) +
-    '<div style="font-size:' + fontSize + 'px; font-weight:900; ' + wordStyle + '">Graspion</div></div>';
+  // No placeholder icon square here — just the wordmark, until a real logo is designed.
+  return '<div style="display:flex; align-items:center; gap:8px;"><div style="font-size:' + fontSize + 'px; font-weight:900; ' + wordStyle + '">Graspion</div></div>';
 }
 
 function graspionTextLogoHTML(fontSize, textColor, solidMode) {
