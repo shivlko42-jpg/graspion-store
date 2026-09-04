@@ -376,8 +376,11 @@ Continue with Google
 </button>
 <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;"><div style="flex:1; height:1px; background:#f0eef7;"></div><span style="font-size:10.5px; color:#9ca3af;">or use email</span><div style="flex:1; height:1px; background:#f0eef7;"></div></div>
 <input id="accEmail" type="email" placeholder="Email" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<div id="accPasswordRow" style="display:none;"><input id="accPassword" type="password" placeholder="Password" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;"></div>
 <div id="accountError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
+<button id="loginWithPasswordBtn" style="display:none; width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer; margin-bottom:8px;">Login →</button>
 <button id="sendOtpBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Send OTP →</button>
+<p style="font-size:10.5px; color:#9ca3af; margin-top:10px; text-align:center;"><span id="togglePasswordMode" style="color:#7c3aed; text-decoration:underline; cursor:pointer; font-weight:700;">Have a password? Login with it instead</span></p>
 </div>
 
 <div id="otpStep2" style="display:none;">
@@ -385,6 +388,7 @@ Continue with Google
 <input id="accOtp" type="text" inputmode="numeric" maxlength="10" placeholder="Enter code" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; text-align:center; font-size:18px; letter-spacing:4px; font-weight:700;">
 <div id="signupNameField" style="display:none;"><input id="accName" placeholder="Full name" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;"></div>
 <div id="signupPhoneField" style="display:none;"><input id="accPhone" placeholder="Phone number" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;"></div>
+<div id="signupPasswordField" style="display:none;"><input id="accNewPassword" type="password" placeholder="Create a password (optional, for quicker login next time)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;"></div>
 <div id="otpError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
 <button id="verifyOtpBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Verify & Continue →</button>
 <p style="font-size:11px; color:#9ca3af; margin-top:10px; text-align:center;"><span id="resendOtpLink" style="color:#7c3aed; text-decoration:underline; cursor:pointer; font-weight:700;">Resend code</span> · <span id="changeEmailLink" style="color:#9ca3af; text-decoration:underline; cursor:pointer;">Change email</span></p>
@@ -775,14 +779,16 @@ const qty = cart[p.id] || 0;
 const deliveryBadge = p.fulfillmentType === 'instant' ? '⚡ ' + graspionT('instantTag') : '📦 ' + graspionT('standardTag');
 const allPhotos = [p.image].concat(p.additionalImages || []).filter(Boolean);
 const thumbStripHtml = allPhotos.length > 1 ? '<div class="thumb-strip">' + allPhotos.map(function(src, idx){ return '<img class="thumb-img' + (idx===0?' active':'') + '" src="' + src + '" data-thumbswap="' + p.id + '" data-src="' + src + '">'; }).join('') + '</div>' : '';
+const isStoreClosed = p.fulfillmentType === 'instant' && vendor && vendor.is_open === false;
 return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') +
 '<div class="img-wrap">' + (allPhotos.length > 0 ? '<img data-mainimg="' + p.id + '" src="' + allPhotos[0] + '" alt="' + (p.imageAlt || p.name).replace(/"/g,'&quot;') + '">' : p.icon) + '</div>' + thumbStripHtml + '<div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
 '<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
 '<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span><div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div><div class="feature-tag" style="margin-left:0;">' + deliveryBadge + '</div>' +
 (p.feature ? '<div class="feature-tag">✓ ' + p.feature + '</div>' : '') +
 '<div><span class="return-tag ' + (p.returnable ? 'return-yes' : 'return-no') + '">' + (p.returnable ? '↩️ Returnable' : '🚫 No Return') + '</span></div>' +
+(isStoreClosed ? '<div style="text-align:center; margin-top:10px; background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">🚫 Store Currently Closed</div>' :
 (p.stock <= 0 ? '<div style="text-align:center; margin-top:10px; background:#fee2e2; color:#dc2626; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">Out of Stock</div>' :
-((productVariantsMap[p.id] && productVariantsMap[p.id].length > 0) ? '<button class="add-btn" data-viewid="' + p.id + '" style="background:#f3f1f8; color:#7c3aed;">Select Options</button>' : (qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '" ' + (qty >= p.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>'))) +
+((productVariantsMap[p.id] && productVariantsMap[p.id].length > 0) ? '<button class="add-btn" data-viewid="' + p.id + '" style="background:#f3f1f8; color:#7c3aed;">Select Options</button>' : (qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '" ' + (qty >= p.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>')))) +
 '</div></div>';
 }).join('');
 document.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id = btn.getAttribute('data-add'); cart[id] = 1; logProductEvent(id, 'add_to_cart'); const p = productPool.find(function(pp){ return pp.id === id; }); if (typeof gtag === 'function' && p) { gtag('event', 'add_to_cart', { currency: 'INR', value: p.price, items: [{ item_id: p.id, item_name: p.name, price: p.price, quantity: 1 }] }); } refreshAll(); }); });
@@ -1363,6 +1369,7 @@ document.getElementById('closeMyOrdersBtn').addEventListener('click', function()
 
 let pendingOtpEmail = null;
 let awaitingProfileCompletion = false;
+let passwordModeOn = false;
 
 function resetAccountModal() {
 document.getElementById('otpStep1').style.display = 'block';
@@ -1374,6 +1381,14 @@ document.getElementById('accName').value = '';
 document.getElementById('accPhone').value = '';
 document.getElementById('signupNameField').style.display = 'none';
 document.getElementById('signupPhoneField').style.display = 'none';
+document.getElementById('signupPasswordField').style.display = 'none';
+document.getElementById('accNewPassword').value = '';
+document.getElementById('accPassword').value = '';
+document.getElementById('accPasswordRow').style.display = 'none';
+document.getElementById('loginWithPasswordBtn').style.display = 'none';
+document.getElementById('sendOtpBtn').style.display = 'block';
+document.getElementById('togglePasswordMode').textContent = 'Have a password? Login with it instead';
+passwordModeOn = false;
 document.getElementById('accountModalSubtext').textContent = "Enter your email — we'll send you a one-time code, no password needed.";
 document.getElementById('accountError').textContent = '';
 document.getElementById('otpError').textContent = '';
@@ -1410,6 +1425,40 @@ document.getElementById('otpError').textContent = 'A new code has been sent.';
 });
 document.getElementById('changeEmailLink').addEventListener('click', function(){ resetAccountModal(); });
 
+document.getElementById('togglePasswordMode').addEventListener('click', function() {
+passwordModeOn = !passwordModeOn;
+document.getElementById('accPasswordRow').style.display = passwordModeOn ? 'block' : 'none';
+document.getElementById('loginWithPasswordBtn').style.display = passwordModeOn ? 'block' : 'none';
+document.getElementById('sendOtpBtn').style.display = passwordModeOn ? 'none' : 'block';
+document.getElementById('togglePasswordMode').textContent = passwordModeOn ? "Don't have a password? Use OTP instead" : 'Have a password? Login with it instead';
+document.getElementById('accountError').textContent = '';
+});
+document.getElementById('loginWithPasswordBtn').addEventListener('click', async function() {
+const errEl = document.getElementById('accountError');
+if (!supaAuth) { errEl.textContent = 'Login system is still loading — please wait a moment and try again.'; return; }
+const email = document.getElementById('accEmail').value.trim();
+const password = document.getElementById('accPassword').value;
+errEl.textContent = '';
+if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
+const btn = document.getElementById('loginWithPasswordBtn');
+btn.textContent = '⏳ Logging in...'; btn.disabled = true;
+try {
+const { data, error } = await supaAuth.auth.signInWithPassword({ email: email, password: password });
+if (error || !data.session) { errEl.textContent = 'Incorrect email or password. If you signed up with OTP/Google and never set a password, use OTP instead.'; btn.textContent = 'Login →'; btn.disabled = false; return; }
+authToken = data.session.access_token;
+const custRes = await fetch(SUPABASE_URL + '/rest/v1/customers?auth_user_id=eq.' + data.user.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const custRows = await custRes.json();
+currentCustomer = custRows[0] || null;
+if (typeof gtag === 'function') { gtag('event', 'login', { method: 'password' }); }
+updateAccountButtonUI();
+document.getElementById('accountModal').style.display = 'none';
+resetAccountModal();
+} catch (err) {
+errEl.textContent = 'Error: ' + err.message;
+btn.textContent = 'Login →'; btn.disabled = false;
+}
+});
+
 document.getElementById('verifyOtpBtn').addEventListener('click', async function(){
 const errEl = document.getElementById('otpError');
 errEl.textContent = '';
@@ -1419,7 +1468,9 @@ if (awaitingProfileCompletion) {
 // second step for brand-new customers: save their name+phone now that they're verified
 const name = document.getElementById('accName').value.trim();
 const phone = document.getElementById('accPhone').value.trim();
+const newPassword = document.getElementById('accNewPassword').value;
 if (!name || !phone) { errEl.textContent = 'Please enter your name and phone.'; return; }
+if (newPassword && newPassword.length < 6) { errEl.textContent = 'Password must be at least 6 characters (or leave it blank).'; return; }
 btn.textContent = '⏳ Saving...'; btn.disabled = true;
 try {
 const { data: sessionData } = await supaAuth.auth.getSession();
@@ -1428,6 +1479,9 @@ method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
 body: JSON.stringify({ auth_user_id: sessionData.session.user.id, name: name, phone: phone, email: pendingOtpEmail })
 });
+if (newPassword) {
+await supaAuth.auth.updateUser({ password: newPassword });
+}
 const custRes = await fetch(SUPABASE_URL + '/rest/v1/customers?auth_user_id=eq.' + sessionData.session.user.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const custRows = await custRes.json();
 currentCustomer = custRows[0] || null;
@@ -1463,6 +1517,7 @@ awaitingProfileCompletion = true;
 document.getElementById('accOtp').style.display = 'none';
 document.getElementById('signupNameField').style.display = 'block';
 document.getElementById('signupPhoneField').style.display = 'block';
+document.getElementById('signupPasswordField').style.display = 'block';
 document.getElementById('accountModalSubtext').textContent = "You're verified! Just need a couple more details.";
 btn.textContent = 'Save & Continue →'; btn.disabled = false;
 }
