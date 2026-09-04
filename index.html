@@ -18,19 +18,16 @@ gtag('config', 'G-DTK5XRHFL6');
 <meta property="og:title" content="Graspion - Every Need. Every Area. Fast.">
 <meta property="og:description" content="Instant 10-20 min delivery from local dark stores plus Pan-India marketplace shopping, all on one platform.">
 <meta property="og:url" content="https://shivlko42-jpg.github.io/graspion-store/">
-<meta property="og:image" content="https://shivlko42-jpg.github.io/graspion-store/icon.svg">
 <meta property="og:locale" content="en_IN">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Graspion - Every Need. Every Area. Fast.">
 <meta name="twitter:description" content="Instant 10-20 min delivery from local dark stores plus Pan-India marketplace shopping.">
-<meta name="twitter:image" content="https://shivlko42-jpg.github.io/graspion-store/icon.svg">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "Graspion",
   "url": "https://shivlko42-jpg.github.io/graspion-store/",
-  "logo": "https://shivlko42-jpg.github.io/graspion-store/icon.svg",
   "description": "Hybrid e-commerce platform offering instant delivery from local dark stores and Pan-India marketplace shopping."
 }
 </script>
@@ -244,9 +241,6 @@ body { padding-bottom:68px; }
   .hero-emoji{font-size:44px;}
   .logo-wrap .logo{font-size:16px;}
   .logo-mark{width:26px;height:26px;font-size:13px;}
-  .delivery-info{ min-width:70px; max-width:160px; padding:4px 6px; }
-  .delivery-info .bottom{ max-width:160px; font-size:11px; }
-  .delivery-info .top{ font-size:9px; }
   .cart-btn{ padding:9px 12px; font-size:12px; margin-right:2px; }
 }
 </style>
@@ -263,6 +257,10 @@ body { padding-bottom:68px; }
 <input type="text" id="pinInput" class="pin-input" data-i18n-placeholder="pincodePlaceholder" placeholder="Enter Pincode e.g. 226001" maxlength="6">
 <div class="pin-error" id="pinError"></div>
 <button class="pin-submit" id="detectLocationBtn" style="background:#fff; color:#7c3aed; border:1.5px solid #7c3aed; margin-bottom:10px;">📍 Use My Current Location</button>
+<label style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11.5px; color:#6b7280; margin-bottom:10px; padding:8px 10px; background:#faf9fc; border-radius:10px;">
+<span>Auto-detect my location when I open the app</span>
+<input type="checkbox" id="autoLocationToggle" checked>
+</label>
 <div class="pin-suggestions" id="pinSuggestions"></div>
 <button class="pin-submit" id="pinSubmit" data-i18n="continue">Continue</button>
 </div>
@@ -271,15 +269,15 @@ body { padding-bottom:68px; }
 <header>
 <div class="nav">
 <a href="index.html" style="text-decoration:none; flex:0 0 auto;"><div data-graspion-logo="text" data-size="19"></div></a>
-<div class="delivery-info" id="areaBtn">
-<div class="top" data-i18n="deliveringTo">Delivering to</div>
-<div class="bottom" id="areaLabel">Select location 📍 ▾</div>
-</div>
 <div class="nav-right">
 <button id="accountBtn" style="background:#f3f1f8; color:#1e1b3a; border:none; padding:11px 14px; border-radius:12px; font-weight:700; cursor:pointer; font-size:12.5px;">👤 <span id="accountBtnLabel">Login</span></button>
 <button id="wishlistOpenBtn" style="background:#f3f1f8; color:#ec4899; border:none; padding:11px 14px; border-radius:12px; font-weight:700; cursor:pointer; font-size:12.5px; position:relative;">♡ <span class="cart-count" id="wishlistCount" style="display:none;">0</span></button>
 <button class="cart-btn" id="cartOpenBtn">🛒 <span data-i18n="cart">Cart</span> <span class="cart-count" id="cartCount">0</span></button>
 </div>
+</div>
+<div class="delivery-info" id="areaBtn" style="display:flex; flex-direction:row; align-items:center; gap:6px; max-width:1200px; margin:0 auto; padding:2px 16px 8px; cursor:pointer; width:100%; box-sizing:border-box;">
+<span style="font-size:11px; color:#9ca3af; font-weight:600; flex:0 0 auto;" data-i18n="deliveringTo">Delivering to</span>
+<span class="bottom" id="areaLabel" style="font-size:13px; font-weight:800; color:#1e1b3a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Select location 📍 ▾</span>
 </div>
 <div class="nav-search-row" style="position:relative;">
 <span style="position:absolute; left:29px; top:50%; transform:translateY(-50%); font-size:14px; color:#9ca3af; pointer-events:none;">🔍</span>
@@ -1299,10 +1297,21 @@ document.getElementById('pinModal').style.display = 'none';
 return;
 }
 } catch (e) {}
-// No saved area yet — show the picker and ask the browser for location right
-// away (this triggers the native "Allow location access?" prompt automatically)
+// Location on/off preference — defaults to ON (auto-detect) unless the customer turned it off before
+let autoLocationEnabled = true;
+try { autoLocationEnabled = localStorage.getItem('graspion_auto_location') !== 'off'; } catch (e) {}
+const autoLocToggle = document.getElementById('autoLocationToggle');
+if (autoLocToggle) {
+autoLocToggle.checked = autoLocationEnabled;
+autoLocToggle.addEventListener('change', function() {
+autoLocationEnabled = autoLocToggle.checked;
+try { localStorage.setItem('graspion_auto_location', autoLocationEnabled ? 'on' : 'off'); } catch (e) {}
+});
+}
+// No saved area yet — show the picker. Only auto-trigger the native location
+// prompt if the customer hasn't turned that off.
 document.getElementById('pinModal').style.display = 'flex';
-detectLocation(true);
+if (autoLocationEnabled) { detectLocation(true); }
 })();
 document.getElementById('startSellingBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'flex'; });
 document.getElementById('closeVendorApplyBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'none'; });
