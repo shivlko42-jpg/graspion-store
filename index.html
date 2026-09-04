@@ -275,14 +275,16 @@ body { padding-bottom:68px; }
 <button class="cart-btn" id="cartOpenBtn">🛒 <span data-i18n="cart">Cart</span> <span class="cart-count" id="cartCount">0</span></button>
 </div>
 </div>
-<div class="delivery-info" id="areaBtn" style="display:flex; flex-direction:row; align-items:center; gap:6px; max-width:1200px; margin:0 auto; padding:2px 16px 8px; cursor:pointer; width:100%; box-sizing:border-box;">
-<span style="font-size:11px; color:#9ca3af; font-weight:600; flex:0 0 auto;" data-i18n="deliveringTo">Delivering to</span>
-<span class="bottom" id="areaLabel" style="font-size:13px; font-weight:800; color:#1e1b3a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Select location 📍 ▾</span>
+<div style="display:flex; align-items:center; gap:8px; max-width:1200px; margin:0 auto; padding:2px 16px 10px; width:100%; box-sizing:border-box;">
+<div class="delivery-info" id="areaBtn" style="display:flex; align-items:center; gap:4px; cursor:pointer; flex:0 0 auto; max-width:38%; background:#f7f6fb; padding:9px 10px; border-radius:12px;">
+<span style="font-size:13px; flex:0 0 auto;">📍</span>
+<span class="bottom" id="areaLabel" style="font-size:12px; font-weight:800; color:#1e1b3a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Select location ▾</span>
 </div>
-<div class="nav-search-row" style="position:relative;">
-<span style="position:absolute; left:29px; top:50%; transform:translateY(-50%); font-size:14px; color:#9ca3af; pointer-events:none;">🔍</span>
-<input class="search-box" id="searchInput" data-i18n-placeholder="searchPlaceholder" placeholder="Search for products, brands..." autocomplete="off" style="padding-left:38px;">
+<div class="nav-search-row" style="position:relative; flex:1 1 auto; margin:0;">
+<span style="position:absolute; left:13px; top:50%; transform:translateY(-50%); font-size:14px; color:#9ca3af; pointer-events:none;">🔍</span>
+<input class="search-box" id="searchInput" data-i18n-placeholder="searchPlaceholder" placeholder="Search..." autocomplete="off" style="padding-left:34px; width:100%; box-sizing:border-box;">
 <div id="searchSuggestions" class="search-suggestions"></div>
+</div>
 </div>
 </header>
 
@@ -1242,7 +1244,7 @@ areaData[pin] = { city: cityName, area: localityName, fullAddress: fullAddress, 
 } catch (e) { /* fall through to generic fallback below */ }
 }
 const info = areaData[pin] || {city:'', area:'Your Area', eta: isInstantZone ? (siteSettings.instant_delivery_minutes + ' mins') : standardEtaText};
-document.getElementById('areaLabel').textContent = info.area + ', ' + info.city + ' 📍 ▾';
+document.getElementById('areaLabel').textContent = info.area + ', ' + info.city + ' ▾';
 document.getElementById('heroSub').textContent = (info.fullAddress || info.area) + ' — ' + info.eta + ' ' + graspionT('heroDesc');
 document.getElementById('pinModal').style.display = 'none';
 if (!dataLoaded) { await loadDataFromDatabase(); }
