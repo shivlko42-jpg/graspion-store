@@ -409,7 +409,7 @@ Continue with Google
 </button>
 <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;"><div style="flex:1; height:1px; background:#f0eef7;"></div><span style="font-size:10.5px; color:#9ca3af;">or use email</span><div style="flex:1; height:1px; background:#f0eef7;"></div></div>
 <input id="accEmail" type="email" placeholder="Email" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
-<div id="accPasswordRow" style="display:none;"><input id="accPassword" type="password" placeholder="Password" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;"></div>
+<div id="accPasswordRow" style="display:none;"><input id="accPassword" type="password" placeholder="Password" style="width:100%; padding:11px; margin-bottom:6px; border:1.5px solid #f0eef7; border-radius:10px;"><p style="text-align:right; margin-bottom:8px;"><span id="custForgotBtn" style="font-size:11px; color:#7c3aed; text-decoration:underline; cursor:pointer; font-weight:700;">Forgot password?</span></p></div>
 <div id="accountError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
 <button id="loginWithPasswordBtn" style="display:none; width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer; margin-bottom:8px;">Login →</button>
 <button id="sendOtpBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Send OTP →</button>
@@ -1651,6 +1651,15 @@ document.getElementById('loginWithPasswordBtn').style.display = passwordModeOn ?
 document.getElementById('sendOtpBtn').style.display = passwordModeOn ? 'none' : 'block';
 document.getElementById('togglePasswordMode').textContent = passwordModeOn ? "Don't have a password? Use OTP instead" : 'Have a password? Login with it instead';
 document.getElementById('accountError').textContent = '';
+});
+document.getElementById('custForgotBtn').addEventListener('click', async function() {
+const errEl = document.getElementById('accountError');
+const email = document.getElementById('accEmail').value.trim();
+if (!email) { errEl.textContent = 'Please enter your email above first, then tap "Forgot password?"'; errEl.style.color = '#dc2626'; return; }
+if (!supaAuth) { errEl.textContent = 'Login system is still loading — please wait a moment and try again.'; return; }
+const { error } = await supaAuth.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+if (error) { errEl.textContent = 'Could not send reset email: ' + error.message; errEl.style.color = '#dc2626'; }
+else { errEl.textContent = '✓ Password reset link sent to ' + email + ' — check your inbox.'; errEl.style.color = '#15803d'; }
 });
 document.getElementById('loginWithPasswordBtn').addEventListener('click', async function() {
 const errEl = document.getElementById('accountError');
