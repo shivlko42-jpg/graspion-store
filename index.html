@@ -284,7 +284,6 @@ body { padding-bottom:68px; }
 <input class="search-box" id="searchInput" data-i18n-placeholder="searchPlaceholder" placeholder="Search for products, brands..." autocomplete="off" style="padding-left:38px;">
 <div id="searchSuggestions" class="search-suggestions"></div>
 </div>
-</div>
 </header>
 
 <section class="hero">
@@ -331,7 +330,10 @@ body { padding-bottom:68px; }
 <div class="cta-banner">
 <h2 data-i18n="becomeVendor">Become a Graspion Partner</h2>
 <p data-i18n="becomeVendorDesc">List your store and start selling online — zero commission for the first 3 months</p>
+<div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
 <button id="startSellingBtn" data-i18n="startSelling">Start Selling</button>
+<button id="becomeRiderBtn" style="background:rgba(255,255,255,0.15); color:#fff; border:1.5px solid rgba(255,255,255,0.4); padding:13px 24px; border-radius:12px; font-weight:800; cursor:pointer;">🚴 Become a Delivery Partner</button>
+</div>
 </div>
 </div>
 
@@ -364,6 +366,31 @@ body { padding-bottom:68px; }
 <div id="vendorApplyError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
 <button id="submitVendorAppBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Submit Application</button>
 <button id="closeVendorApplyBtn" style="width:100%; background:none; border:none; color:#9ca3af; padding:10px; margin-top:4px; cursor:pointer;">Cancel</button>
+</div>
+</div>
+
+<div class="modal-overlay" id="riderApplyModal" style="display:none;">
+<div class="modal-box" style="max-width:420px; background:#fff; border-radius:20px; padding:24px; max-height:85vh; overflow-y:auto;">
+<h3 style="margin-bottom:4px;">🚴 Become a Delivery Partner</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:14px;">Our team will review your application and email you your login once approved.</p>
+<input class="form-input-like" id="rAppName" placeholder="Your full name" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<input class="form-input-like" id="rAppEmail" type="email" placeholder="Email" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<input class="form-input-like" id="rAppPassword" type="password" placeholder="Create a password (for your login once approved)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<input class="form-input-like" id="rAppPhone" placeholder="Phone number" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<textarea id="rAppAddress" placeholder="Your address" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; min-height:50px; font-family:inherit;"></textarea>
+<input class="form-input-like" id="rAppPincode" placeholder="Which pincode/area will you deliver in?" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<input class="form-input-like" id="rAppBike" placeholder="Bike/vehicle number" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px;">
+<label style="font-size:10.5px; font-weight:700; color:#6b7280; display:block; margin-bottom:4px;">📎 Document Photos (for verification)</label>
+<label style="font-size:10.5px; color:#9ca3af; display:block; margin-bottom:2px;">Driving Licence</label>
+<input type="file" accept="image/*" id="rAppLicenseFile" style="width:100%; margin-bottom:8px; font-size:11px;">
+<label style="font-size:10.5px; color:#9ca3af; display:block; margin-bottom:2px;">Vehicle RC (Registration Certificate)</label>
+<input type="file" accept="image/*" id="rAppRcFile" style="width:100%; margin-bottom:8px; font-size:11px;">
+<label style="font-size:10.5px; color:#9ca3af; display:block; margin-bottom:2px;">ID Proof (Aadhar / PAN / Voter ID)</label>
+<input type="file" accept="image/*" id="rAppIdFile" style="width:100%; margin-bottom:8px; font-size:11px;">
+<textarea id="rAppMessage" placeholder="Anything else you'd like us to know? (optional)" style="width:100%; padding:11px; margin-bottom:10px; border:1.5px solid #f0eef7; border-radius:10px; min-height:50px; font-family:inherit;"></textarea>
+<div id="riderApplyError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
+<button id="submitRiderAppBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Submit Application</button>
+<button id="closeRiderApplyBtn" style="width:100%; background:none; border:none; color:#9ca3af; padding:10px; margin-top:4px; cursor:pointer;">Cancel</button>
 </div>
 </div>
 
@@ -1288,15 +1315,6 @@ document.getElementById('detectLocationBtn').addEventListener('click', function(
 // If they already picked an area before on this device, restore it instantly
 // instead of asking again every single visit.
 (function autoDetectOnLoad() {
-try {
-const savedPin = localStorage.getItem('graspion_saved_pin');
-if (savedPin) {
-const savedWarehouse = localStorage.getItem('graspion_saved_warehouse') || null;
-setArea(savedPin, savedWarehouse);
-document.getElementById('pinModal').style.display = 'none';
-return;
-}
-} catch (e) {}
 // Location on/off preference — defaults to ON (auto-detect) unless the customer turned it off before
 let autoLocationEnabled = true;
 try { autoLocationEnabled = localStorage.getItem('graspion_auto_location') !== 'off'; } catch (e) {}
@@ -1308,6 +1326,15 @@ autoLocationEnabled = autoLocToggle.checked;
 try { localStorage.setItem('graspion_auto_location', autoLocationEnabled ? 'on' : 'off'); } catch (e) {}
 });
 }
+try {
+const savedPin = localStorage.getItem('graspion_saved_pin');
+if (savedPin) {
+const savedWarehouse = localStorage.getItem('graspion_saved_warehouse') || null;
+setArea(savedPin, savedWarehouse);
+document.getElementById('pinModal').style.display = 'none';
+return;
+}
+} catch (e) {}
 // No saved area yet — show the picker. Only auto-trigger the native location
 // prompt if the customer hasn't turned that off.
 document.getElementById('pinModal').style.display = 'flex';
@@ -1315,6 +1342,8 @@ if (autoLocationEnabled) { detectLocation(true); }
 })();
 document.getElementById('startSellingBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'flex'; });
 document.getElementById('closeVendorApplyBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'none'; });
+document.getElementById('becomeRiderBtn').addEventListener('click', function(){ document.getElementById('riderApplyModal').style.display = 'flex'; });
+document.getElementById('closeRiderApplyBtn').addEventListener('click', function(){ document.getElementById('riderApplyModal').style.display = 'none'; });
 function fileToBase64(inputId) {
 return new Promise(function(resolve) {
 const input = document.getElementById(inputId);
@@ -1376,6 +1405,57 @@ btn.textContent = 'Submit Application'; btn.disabled = false;
 return;
 }
 document.getElementById('vendorApplyModal').innerHTML = '<div class="modal-box" style="max-width:380px; background:#fff; border-radius:20px; padding:30px; text-align:center;"><div style="font-size:48px; margin-bottom:10px;">✅</div><h3>Application Submitted!</h3><p style="font-size:12px; color:#9ca3af; margin-top:8px;">Our team will review it. Once approved, log in on this page anytime using the email and password you just created.</p><button onclick="document.getElementById(\'vendorApplyModal\').style.display=\'none\';" style="margin-top:16px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:12px 24px; border-radius:12px; font-weight:800; cursor:pointer;">Close</button></div>';
+} catch (err) {
+errEl.textContent = 'Network error: ' + err.message;
+btn.textContent = 'Submit Application'; btn.disabled = false;
+}
+});
+document.getElementById('submitRiderAppBtn').addEventListener('click', async function(){
+const name = document.getElementById('rAppName').value.trim();
+const email = document.getElementById('rAppEmail').value.trim();
+const password = document.getElementById('rAppPassword').value;
+const phone = document.getElementById('rAppPhone').value.trim();
+const errEl = document.getElementById('riderApplyError');
+errEl.textContent = '';
+if (!name || !email || !phone) { errEl.textContent = 'Please fill in your name, email and phone.'; return; }
+if (!password || password.length < 6) { errEl.textContent = 'Please create a password (at least 6 characters).'; return; }
+if (!supaAuth) { errEl.textContent = 'Login system is still loading — please wait a moment and try again.'; return; }
+const btn = document.getElementById('submitRiderAppBtn');
+btn.textContent = '⏳ Creating your account...';
+btn.disabled = true;
+try {
+const tempClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+const { data: signupData, error: signupError } = await tempClient.auth.signUp({ email: email, password: password });
+if (signupError || !signupData.user) {
+errEl.textContent = 'Could not create account: ' + (signupError ? signupError.message : 'Unknown error');
+btn.textContent = 'Submit Application'; btn.disabled = false;
+return;
+}
+const licenseImg = await fileToBase64('rAppLicenseFile');
+const rcImg = await fileToBase64('rAppRcFile');
+const idImg = await fileToBase64('rAppIdFile');
+btn.textContent = '⏳ Submitting...';
+const res = await fetch(SUPABASE_URL + '/rest/v1/rider_applications', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+body: JSON.stringify({
+name: name, email: email, phone: phone,
+auth_user_id: signupData.user.id,
+address: document.getElementById('rAppAddress').value.trim() || null,
+pincode: document.getElementById('rAppPincode').value.trim() || null,
+bike_number: document.getElementById('rAppBike').value.trim() || null,
+message: document.getElementById('rAppMessage').value.trim() || null,
+driving_license_image: licenseImg, vehicle_rc_image: rcImg, id_proof_image: idImg,
+status: 'pending'
+})
+});
+if (!res.ok) {
+const errText = await res.text();
+errEl.textContent = 'Could not submit: ' + errText;
+btn.textContent = 'Submit Application'; btn.disabled = false;
+return;
+}
+document.getElementById('riderApplyModal').innerHTML = '<div class="modal-box" style="max-width:380px; background:#fff; border-radius:20px; padding:30px; text-align:center;"><div style="font-size:48px; margin-bottom:10px;">✅</div><h3>Application Submitted!</h3><p style="font-size:12px; color:#9ca3af; margin-top:8px;">Our team will review it. Once approved, log in on the Rider App using the email and password you just created.</p><button onclick="document.getElementById(\'riderApplyModal\').style.display=\'none\';" style="margin-top:16px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:12px 24px; border-radius:12px; font-weight:800; cursor:pointer;">Close</button></div>';
 } catch (err) {
 errEl.textContent = 'Network error: ' + err.message;
 btn.textContent = 'Submit Application'; btn.disabled = false;
