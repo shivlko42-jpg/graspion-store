@@ -828,12 +828,13 @@ document.getElementById('orderResultCount').textContent = filtered.length + ' of
 
 if (filtered.length === 0) { ordersEmpty.style.display = 'block'; ordersBody.innerHTML = ''; return; }
 ordersEmpty.style.display = 'none';
-const statusClass = { pending: 'st-pending', confirmed: 'st-preparing', preparing: 'st-preparing', shipped: 'st-shipped', delivered: 'st-delivered', cancelled: 'st-pending', returned: 'st-pending' };
+const statusClass = { pending: 'st-pending', confirmed: 'st-pending', preparing: 'st-preparing', shipped: 'st-shipped', out_for_delivery: 'st-shipped', delivered: 'st-delivered', cancelled: 'st-pending', returned: 'st-pending' };
+const statusDisplayLabels = { pending: 'Order Confirmed', confirmed: 'Order Confirmed', preparing: 'Ready to Ship', shipped: 'Shipped', out_for_delivery: 'Out for Delivery', delivered: 'Delivered', cancelled: 'Cancelled', returned: 'Returned', delivery_failed: 'Delivery Failed' };
 const statusOptions = ['pending', 'confirmed', 'preparing', 'shipped', 'delivered', 'cancelled'];
 ordersBody.innerHTML = filtered.slice(0, 50).map(function(o) {
 const payoutDone = o.payout_status === 'paid';
 const currentStatus = o.status || 'pending';
-const optionsHtml = statusOptions.map(function(s){ return '<option value="' + s + '"' + (s === currentStatus ? ' selected' : '') + '>' + s + '</option>'; }).join('');
+const optionsHtml = statusOptions.map(function(s){ return '<option value="' + s + '"' + (s === currentStatus ? ' selected' : '') + '>' + (statusDisplayLabels[s] || s) + '</option>'; }).join('');
 const shipment = allShipments.find(function(s) { return s.order_id === o.id; });
 const orderVendor = allVendors.find(function(v) { return v.id === o.vendor_id; });
 const vendorHtml = orderVendor ? (orderVendor.icon + ' ' + orderVendor.name) : '<span style="color:#9ca3af;">—</span>';
@@ -854,7 +855,7 @@ trackingHtml = '<span style="font-size:10px; color:#f59e0b;">Not shipped yet</sp
 }
 const priorityBadge = o.priority === 'urgent' ? ' <span style="background:#fee2e2; color:#dc2626; font-size:9px; padding:1px 5px; border-radius:4px; font-weight:700;">URGENT</span>' : (o.priority === 'high' ? ' <span style="background:#fef3c7; color:#b45309; font-size:9px; padding:1px 5px; border-radius:4px; font-weight:700;">HIGH</span>' : '');
 return '<tr><td><a href="#" data-timelineid="' + o.id + '" style="color:#7c3aed; text-decoration:none; font-weight:600;">' + (o.customer_name || 'Customer') + '</a>' + priorityBadge + '<br><span style="font-size:9.5px; color:#9ca3af;">#' + o.id.slice(0,8) + '</span></td><td style="font-size:11px;">' + vendorHtml + '</td><td>' + (o.customer_phone || '-') + '</td><td>₹' + o.total_amount + '</td><td>' + (o.pincode || '-') + '</td>' +
-'<td><span class="status-pill ' + (statusClass[currentStatus] || 'st-pending') + '">' + currentStatus + '</span>' +
+'<td><span class="status-pill ' + (statusClass[currentStatus] || 'st-pending') + '">' + (statusDisplayLabels[currentStatus] || currentStatus) + '</span>' +
 '<br><select class="setting-input" style="margin-top:4px; width:120px; font-size:11px;" data-statusid="' + o.id + '">' + optionsHtml + '</select></td>' +
 '<td>' + trackingHtml + '</td>' +
 '<td>' + (payoutDone ? '<span class="status-pill st-delivered">Paid</span>' : '<button class="mini-btn" data-payoutid="' + o.id + '" style="background:#dbeafe;color:#1d4ed8;">Mark Paid</button>') + '</td></tr>';
@@ -895,16 +896,25 @@ assignSel.innerHTML = '<option value="">— Unassigned —</option>' + allStaff.
 
 renderOrderNotes(orderId);
 
+const orderItems = allOrderItems.filter(function(it) { return it.order_id === orderId; });
+const itemsListHtml = orderItems.length > 0 ? orderItems.map(function(it) {
+  const prod = allProducts.find(function(p) { return p.id === it.product_id; });
+  return '<div style="display:flex; justify-content:space-between; font-size:11.5px; padding:4px 0; border-bottom:1px solid #f7f6fb;"><span>' + (prod ? prod.name : 'Item') + (it.variant_details ? ' (' + it.variant_details + ')' : '') + ' × ' + it.quantity + '</span><b>₹' + (it.price * it.quantity).toLocaleString('en-IN') + '</b></div>';
+}).join('') : '<div style="font-size:11px; color:#9ca3af;">No items found</div>';
+const paymentSummaryHtml = '<div style="background:#f7f6fb; border-radius:10px; padding:10px; margin-bottom:10px;"><div style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:6px;">🛒 Items</div>' + itemsListHtml +
+  '<div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 4px;">💳 Payment</div><div style="font-size:11.5px;">' + ((orderObj && orderObj.payment_status === 'paid') ? '✓ Paid Online (' + (orderObj.payment_method || 'Razorpay') + ')' : (orderObj && (orderObj.payment_method || '').toLowerCase() === 'cod' ? '💵 Cash on Delivery — ₹' + orderObj.total_amount + ' to collect' : '⚠️ Payment Pending')) + '</div>' +
+  '<div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 4px;">📍 Delivery Address</div><div style="font-size:11.5px;">' + ((orderObj && (orderObj.customer_address || orderObj.address)) || 'Not provided') + '</div></div>';
+
 try {
 const res = await fetch(SUPABASE_URL + '/rest/v1/order_status_history?order_id=eq.' + orderId + '&select=*&order=changed_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
 const history = res.ok ? await res.json() : [];
-if (history.length === 0) { content.innerHTML = '<div style="font-size:11px; color:#9ca3af;">No history recorded yet.</div>'; return; }
+if (history.length === 0) { content.innerHTML = paymentSummaryHtml + '<div style="font-size:11px; color:#9ca3af;">No status history recorded yet.</div>'; return; }
 const reasonHtml = (orderObj && orderObj.status === 'cancelled' && orderObj.cancellation_reason) ? '<div style="background:#fee2e2; color:#991b1b; padding:10px; border-radius:10px; font-size:11.5px; margin-bottom:10px;"><b>✕ Cancelled by ' + (orderObj.cancelled_by || 'admin') + '</b><br>Reason: ' + orderObj.cancellation_reason + '</div>' : '';
-content.innerHTML = reasonHtml + history.map(function(h) {
+content.innerHTML = paymentSummaryHtml + reasonHtml + history.map(function(h) {
 return '<div style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid #f7f6fb;"><div style="font-size:16px;">🔹</div><div><div style="font-size:12px; font-weight:700; text-transform:capitalize;">' + h.status + '</div><div style="font-size:10px; color:#9ca3af; margin-top:2px;">' + new Date(h.changed_at).toLocaleString('en-IN') + (h.changed_by_name ? ' · by ' + h.changed_by_name + ' (' + h.changed_by_type + ')' : (h.changed_by_type ? ' · ' + h.changed_by_type : '')) + '</div></div></div>';
 }).join('');
 } catch (err) {
-content.innerHTML = '<div style="font-size:11px; color:#dc2626;">Could not load timeline.</div>';
+content.innerHTML = paymentSummaryHtml + '<div style="font-size:11px; color:#dc2626;">Could not load status history.</div>';
 }
 });
 });

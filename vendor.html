@@ -469,6 +469,7 @@ let currentVendor = null;
 let allVendors = [];
 let vendorProducts = [];
 let vendorOrders = [];
+let vendorOrderItems = [];
 let selectedMode = 'local';
 let selectedReturnable = true;
 let selectedCod = true;
@@ -481,7 +482,7 @@ let selectedCatalogItemId = null;
 let editingProductId = null;
 
 const STATUS_STEPS = ['pending', 'preparing', 'shipped', 'delivered'];
-const STATUS_LABELS = { pending:'Placed', preparing:'Preparing', shipped:'Shipped', delivered:'Delivered', cancelled:'Cancelled' };
+const STATUS_LABELS = { pending:'Pending', preparing:'Ready to Ship', shipped:'Shipped', delivered:'Delivered', cancelled:'Cancelled' };
 
 async function loginAsVendor(session) {
   authToken = session.access_token;
@@ -883,6 +884,14 @@ async function loadVendorData() {
     ]);
     vendorProducts = await prodRes.json();
     vendorOrders = await orderRes.json();
+    // fetch line items for this vendor's orders (needs the order IDs first, so it's a second call)
+    if (vendorOrders.length > 0) {
+      const idList = vendorOrders.map(function(o){ return o.id; }).join(',');
+      const itemsRes2 = await fetch(SUPABASE_URL + '/rest/v1/order_items?select=*&order_id=in.(' + idList + ')', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+      vendorOrderItems = itemsRes2.ok ? await itemsRes2.json() : [];
+    } else {
+      vendorOrderItems = [];
+    }
 
     badge.className = 'db-badge live';
     badge.textContent = '✅ Live';
@@ -1052,7 +1061,10 @@ function renderOrders() {
 
   list.innerHTML = vendorOrders.map(function(o) {
     const currentIndex = STATUS_STEPS.indexOf(o.status || 'pending');
-    const payBadge = o.payment_status === 'paid' ? '<span class="pay-badge pay-paid">✓ Paid</span>' : '<span class="pay-badge pay-pending">Payment Pending</span>';
+    const isCOD = (o.payment_method || '').toLowerCase() === 'cod';
+    const payBadge = o.payment_status === 'paid'
+      ? '<span class="pay-badge pay-paid">✓ Paid Online</span>'
+      : (isCOD ? '<span class="pay-badge" style="background:#fef3c7; color:#b45309;">💵 COD — Collect ₹' + o.total_amount + '</span>' : '<span class="pay-badge pay-pending">⚠️ Payment Pending</span>');
 
     let returnInfo = '';
     if (o.return_status && o.return_status !== 'not_requested') {
@@ -1080,14 +1092,35 @@ function renderOrders() {
       '</div>';
     }).join('');
 
+    const items = vendorOrderItems.filter(function(it) { return it.order_id === o.id; });
+    const itemsHtml = items.length > 0 ? items.map(function(it) {
+      const prod = vendorProducts.find(function(vp) { return vp.id === it.product_id; });
+      const itemName = (prod ? prod.name : 'Item') + (it.variant_details ? ' (' + it.variant_details + ')' : '');
+      return '<div style="display:flex; justify-content:space-between; font-size:11.5px; padding:4px 0; border-bottom:1px solid #f3f1f8;"><span>' + itemName + ' × ' + it.quantity + '</span><b>₹' + (it.price * it.quantity).toLocaleString('en-IN') + '</b></div>';
+    }).join('') : '<div style="font-size:11px; color:#9ca3af;">No item details available</div>';
+    const expandId = 'orderExpand-' + o.id;
+
     const showShipBtn = o.delivery_type === 'standard' && o.status !== 'delivered' && o.status !== 'cancelled' && o.status !== 'shipped';
     return '<div class="order-card">' +
-      '<div class="order-top"><div><div class="order-cust">' + (o.customer_name || 'Customer') + '</div><div class="order-meta">' + (o.customer_phone || '') + ' · ' + (o.pincode || '') + '</div>' + payBadge + returnInfo + '</div><div class="order-amt">₹' + o.total_amount + '</div></div>' +
+      '<div class="order-top" data-orderexpand="' + expandId + '" style="cursor:pointer;"><div><div class="order-cust">' + (o.customer_name || 'Customer') + ' <span style="font-size:9.5px; color:#9ca3af; font-weight:400;">#' + o.id.slice(0,8) + ' · tap for details ▾</span></div><div class="order-meta">' + (o.customer_phone || '') + ' · ' + (o.pincode || '') + '</div>' + payBadge + returnInfo + '</div><div class="order-amt">₹' + o.total_amount + '</div></div>' +
+      '<div id="' + expandId + '" style="display:none; background:#f9fafb; border-radius:10px; padding:10px; margin-top:8px;">' +
+        '<div style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:4px;">📍 Delivery Address</div>' +
+        '<div style="font-size:11.5px; color:#4b5563; margin-bottom:10px;">' + (o.customer_address || o.address || 'Not provided') + '</div>' +
+        '<div style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:4px;">🛒 Items Ordered</div>' +
+        itemsHtml +
+      '</div>' +
       '<div class="pipeline">' + stepsHtml + '</div>' +
       (showShipBtn ? '<button class="mini-btn" data-shipid="' + o.id + '" style="background:#dbeafe;color:#1d4ed8;margin-top:8px;margin-right:6px;">📦 Ship via Shiprocket</button>' : '') +
       (o.status !== 'delivered' && o.status !== 'cancelled' ? '<button class="mini-btn" data-cancelid="' + o.id + '" style="background:#fee2e2;color:#dc2626;margin-top:8px;">✕ Cancel Order</button>' : (o.status === 'cancelled' ? '<div style="font-size:11px;color:#dc2626;font-weight:700;margin-top:8px;">✕ Cancelled</div>' : '')) +
     '</div>';
   }).join('');
+
+  document.querySelectorAll('[data-orderexpand]').forEach(function(row) {
+    row.addEventListener('click', function() {
+      const el = document.getElementById(row.getAttribute('data-orderexpand'));
+      if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    });
+  });
 
   document.querySelectorAll('.pipe-dot').forEach(function(dot) {
     dot.addEventListener('click', async function() {
