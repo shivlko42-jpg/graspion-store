@@ -90,8 +90,10 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .trust-row { max-width:1200px; margin:16px auto 0; padding:0 20px; display:flex; gap:10px; overflow-x:auto; }
 .trust-item { flex:0 0 auto; display:flex; align-items:center; gap:8px; background:#fff; padding:10px 16px; border-radius:14px; font-size:11.5px; font-weight:700; color:#4b4b63; }
 .quick-cats { max-width:1200px; margin:0 auto; padding:24px 20px 4px; display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:14px; text-align:center; }
-.qc-icon { width:58px; height:58px; margin:0 auto 6px; border-radius:18px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; }
+.qc-icon { width:58px; height:58px; margin:0 auto 6px; border-radius:18px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; transition:box-shadow .15s, transform .15s; }
 .qc-item span { font-size:11px; font-weight:700; color:#4b4b63; }
+.qc-item.active .qc-icon { box-shadow:0 0 0 2.5px #7c3aed, 0 6px 14px rgba(124,58,237,0.25); transform:translateY(-2px); }
+.qc-item.active span { color:#7c3aed; }
 .vendor-strip { max-width:1200px; margin:0 auto; padding:24px 20px 4px; }
 .vendor-strip h2 { font-size:17px; font-weight:800; margin-bottom:12px; }
 .vendor-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
@@ -126,6 +128,7 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .card { background:#fff; border-radius:16px; overflow:hidden; position:relative; border:1px solid #f0eef7; }
 .badge { position:absolute; top:9px; left:9px; background:#ec4899; color:#fff; font-size:10px; font-weight:800; padding:4px 9px; border-radius:8px; z-index:2; }
 .badge.new { background:linear-gradient(90deg,#22c55e,#16a34a); }
+.badge.sponsored { left:auto; right:9px; top:9px; background:rgba(30,27,58,0.72); color:#e5e3f5; font-weight:600; font-size:9px; letter-spacing:0.2px; padding:3px 8px; }
 .img-wrap { height:132px; background:linear-gradient(135deg,#f3f1f8,#fde9ee); display:flex; align-items:center; justify-content:center; font-size:42px; overflow:hidden; }
 .img-wrap img { width:100%; height:100%; object-fit:cover; }
 .thumb-strip { display:flex; gap:4px; padding:6px 8px 0; overflow-x:auto; }
@@ -278,7 +281,8 @@ body { padding-bottom:68px; }
 </div>
 </div>
 <div class="nav-search-row" style="position:relative;">
-<input class="search-box" id="searchInput" data-i18n-placeholder="searchPlaceholder" placeholder="Search for products, brands..." autocomplete="off">
+<span style="position:absolute; left:29px; top:50%; transform:translateY(-50%); font-size:14px; color:#9ca3af; pointer-events:none;">🔍</span>
+<input class="search-box" id="searchInput" data-i18n-placeholder="searchPlaceholder" placeholder="Search for products, brands..." autocomplete="off" style="padding-left:38px;">
 <div id="searchSuggestions" class="search-suggestions"></div>
 </div>
 </div>
@@ -572,11 +576,11 @@ const settingsRows = await settingsRes.json();
 settingsRows.forEach(function(s){ siteSettings[s.key] = s.value; });
 }
 pairings = pairingsRes.ok ? await pairingsRes.json() : [];
-vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){ return { id: v.id, name: v.name, icon: v.icon, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode], vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null }; });
+vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){ return { id: v.id, name: v.name, icon: v.icon, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode], vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, nearbySubscribed: !!v.nearby_subscription_active && (!v.nearby_subscription_expires_at || new Date(v.nearby_subscription_expires_at) >= new Date()) }; });
 productPool = visibleProducts.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
 const firstFeature = p.features ? p.features.split('\n')[0].trim() : '';
-return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '', imageAlt: p.image_alt_text || p.name, shortDescription: p.short_description || '', longDescription: p.long_description || '', warrantyAvailable: !!p.warranty_available, warrantyPeriod: p.warranty_period || '', warrantyType: p.warranty_type || '', careInstructions: p.care_instructions || '', safetyInfo: p.safety_info || '', installationInfo: p.installation_info || '', whatsIncluded: p.whats_included || '' };
+return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '', imageAlt: p.image_alt_text || p.name, shortDescription: p.short_description || '', longDescription: p.long_description || '', warrantyAvailable: !!p.warranty_available, warrantyPeriod: p.warranty_period || '', warrantyType: p.warranty_type || '', careInstructions: p.care_instructions || '', safetyInfo: p.safety_info || '', installationInfo: p.installation_info || '', whatsIncluded: p.whats_included || '', isSponsored: !!p.is_sponsored };
 });
 renderQuickCategories();
 renderPinSuggestions();
@@ -647,7 +651,8 @@ return;
 }
 wrap.innerHTML = categoryList.filter(function(c){ return !c.parent_id; }).map(function(c){
 const inner = c.image_url ? '<img src="' + c.image_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:18px;">' : '🛍️';
-return '<div class="qc-item" data-cat="' + c.id + '"><div class="qc-icon">' + inner + '</div><span>' + c.name + '</span></div>';
+const isActive = activeCategoryId === c.id;
+return '<div class="qc-item' + (isActive ? ' active' : '') + '" data-cat="' + c.id + '"><div class="qc-icon">' + inner + '</div><span>' + c.name + '</span></div>';
 }).join('');
 wrap.querySelectorAll('[data-cat]').forEach(function(el){ el.addEventListener('click', function(){ filterByCategory(el.getAttribute('data-cat')); }); });
 }
@@ -752,12 +757,12 @@ setTimeout(function(){ document.getElementById('searchSuggestions').classList.re
 document.getElementById('searchInput').addEventListener('focus', function(){
 if (this.value.trim().length >= 2) renderSearchSuggestions(this.value);
 });
-function filterByCategory(catId){ activeCategoryId = (activeCategoryId === catId) ? null : catId; renderProducts(selectedPin); }
+function filterByCategory(catId){ activeCategoryId = (activeCategoryId === catId) ? null : catId; renderQuickCategories(); renderProducts(selectedPin); }
 function renderVendors(pin){
-const list = vendors.filter(function(v){ return v.pincodes.includes(pin) || v.pincodes.includes('ALL'); });
+const list = vendors.filter(function(v){ return (v.pincodes.includes(pin) || v.pincodes.includes('ALL')) && v.nearbySubscribed; });
 const row = document.getElementById('vendorRow');
 document.getElementById('vendorHeading').textContent = '🏪 ' + list.length + ' ' + graspionT('vendorsNearYou').replace('🏪 ','');
-if(list.length === 0){ row.innerHTML = '<div style="font-size:12px;color:#9ca3af;">' + graspionT('noVendorArea') + '</div>'; return; }
+if(list.length === 0){ row.innerHTML = '<div style="font-size:12px;color:#9ca3af;">No featured stores in your area yet.</div>'; return; }
 row.innerHTML = '<div class="vendor-card ' + (selectedVendorId==='all'?'active':'') + '" data-v="all"><div class="v-icon">🏬</div><div class="v-name">' + graspionT('allVendors') + '</div><div class="v-eta">' + list.length + ' stores</div></div>' +
 list.map(function(v){ return '<div class="vendor-card ' + (selectedVendorId===v.id?'active':'') + '" data-v="' + v.id + '"><div class="v-icon">' + v.icon + '</div><div class="v-name">' + v.name + '</div><div class="v-eta">⏱ ' + v.eta + '</div><div class="v-rating">★ ' + v.rating + '</div></div>'; }).join('');
 row.querySelectorAll('.vendor-card').forEach(function(el){ el.addEventListener('click', function(){ selectedVendorId = el.getAttribute('data-v'); renderVendors(pin); renderProducts(pin); }); });
@@ -771,6 +776,8 @@ if(searchQuery) filtered = filtered.filter(function(p){ return scoreProductMatch
 if (isInstantZone) {
 filtered = filtered.slice().sort(function(a,b){ return (a.fulfillmentType==='instant'?0:1) - (b.fulfillmentType==='instant'?0:1); });
 }
+// sponsored listings get a boost within their group (stable sort preserves relevance/fulfillment ordering otherwise)
+filtered = filtered.slice().sort(function(a,b){ return (b.isSponsored?1:0) - (a.isSponsored?1:0); });
 const dealGrid = document.getElementById('dealGrid');
 if(filtered.length === 0){ dealGrid.innerHTML = '<div class="no-vendor" style="grid-column:1/-1;">' + graspionT('noVendorArea') + '</div>'; return; }
 dealGrid.innerHTML = filtered.map(function(p){
@@ -780,7 +787,7 @@ const deliveryBadge = p.fulfillmentType === 'instant' ? '⚡ ' + graspionT('inst
 const allPhotos = [p.image].concat(p.additionalImages || []).filter(Boolean);
 const thumbStripHtml = allPhotos.length > 1 ? '<div class="thumb-strip">' + allPhotos.map(function(src, idx){ return '<img class="thumb-img' + (idx===0?' active':'') + '" src="' + src + '" data-thumbswap="' + p.id + '" data-src="' + src + '">'; }).join('') + '</div>' : '';
 const isStoreClosed = p.fulfillmentType === 'instant' && vendor && vendor.is_open === false;
-return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') +
+return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') + (p.isSponsored ? '<div class="badge sponsored">Sponsored</div>' : '') +
 '<div class="img-wrap">' + (allPhotos.length > 0 ? '<img data-mainimg="' + p.id + '" src="' + allPhotos[0] + '" alt="' + (p.imageAlt || p.name).replace(/"/g,'&quot;') + '">' : p.icon) + '</div>' + thumbStripHtml + '<div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
 '<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
 '<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span><div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div><div class="feature-tag" style="margin-left:0;">' + deliveryBadge + '</div>' +

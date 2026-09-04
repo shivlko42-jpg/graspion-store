@@ -248,9 +248,24 @@ async function loadOrders() {
       const standardRes = await fetch(SUPABASE_URL + '/rest/v1/orders?pincode=eq.' + currentRider.pincode + '&status=eq.preparing&rider_id=is.null&delivery_type=eq.standard&select=*', {
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
       });
-      const standardOrders = await standardRes.json();
+      let standardOrders = await standardRes.json();
+      // only show orders from marketplace vendors who've opted in to local rider delivery
+      const localVendorsRes = await fetch(SUPABASE_URL + '/rest/v1/vendors_public?select=id&local_delivery_enabled=eq.true', {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+      });
+      const localVendorIds = localVendorsRes.ok ? (await localVendorsRes.json()).map(function(v){ return v.id; }) : [];
+      standardOrders = standardOrders.filter(function(o) { return localVendorIds.indexOf(o.vendor_id) !== -1; });
       // avoid duplicates if an order already matched by warehouse
       standardOrders.forEach(function(o) { if (!newOrders.find(function(x){ return x.id === o.id; })) newOrders.push(o); });
+    }
+    // if this rider is dedicated to one specific vendor, they see ALL of that
+    // vendor's standard-delivery orders regardless of local_delivery_enabled
+    if (currentRider.assigned_vendor_id) {
+      const dedicatedRes = await fetch(SUPABASE_URL + '/rest/v1/orders?vendor_id=eq.' + currentRider.assigned_vendor_id + '&status=eq.preparing&rider_id=is.null&delivery_type=eq.standard&select=*', {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+      });
+      const dedicatedOrders = dedicatedRes.ok ? await dedicatedRes.json() : [];
+      dedicatedOrders.forEach(function(o) { if (!newOrders.find(function(x){ return x.id === o.id; })) newOrders.push(o); });
     }
 
     // Today's delivered orders for earnings
@@ -277,14 +292,23 @@ async function loadOrders() {
       const isAssigned = o.status === 'shipped';
       const isCOD = o.payment_status !== 'paid';
       const deliveryBadge = o.delivery_type === 'standard' ? '📦 Pan-India' : '⚡ Instant';
+      const telHref = o.customer_phone ? 'tel:' + o.customer_phone.replace(/[^0-9+]/g, '') : null;
+      const mapsHref = o.address ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(o.address) : null;
+      const contactRow = isAssigned ? '<div style="display:flex; gap:6px; margin:8px 0;">' +
+        (telHref ? '<a href="' + telHref + '" class="action-btn" style="flex:1; text-align:center; text-decoration:none; background:#dcfce7; color:#15803d;">📞 Call</a>' : '') +
+        (mapsHref ? '<a href="' + mapsHref + '" target="_blank" class="action-btn" style="flex:1; text-align:center; text-decoration:none; background:#dbeafe; color:#1d4ed8;">🗺️ Navigate</a>' : '') +
+      '</div>' : '';
       return '<div class="order-card">' +
         '<div class="order-top"><span class="order-id">#' + o.id.slice(0,8) + ' · ' + deliveryBadge + '</span><span class="order-amt">₹' + o.total_amount + '</span></div>' +
         '<span class="pay-tag ' + (isCOD ? 'pay-cod' : 'pay-online') + '">' + (isCOD ? '💵 Collect COD' : '✅ Already Paid Online') + '</span>' +
         '<div class="order-addr">' + (o.customer_name || 'Customer') + ' · ' + (o.customer_phone || '') + '<br>' + (o.address || '') + '</div>' +
+        contactRow +
         (isCOD && isAssigned ? '<input type="number" class="cod-input" id="cod-' + o.id + '" placeholder="Enter amount collected (₹' + o.total_amount + ')" style="display:block;">' : '') +
+        (isAssigned ? '<input type="text" maxlength="4" class="cod-input" id="otp-' + o.id + '" placeholder="Enter 4-digit OTP from customer" style="display:block; margin-top:6px;">' : '') +
         '<button class="action-btn" data-id="' + o.id + '" data-assigned="' + isAssigned + '" data-cod="' + isCOD + '">' +
           (isAssigned ? 'Mark Delivered' : 'Accept & Pick Up') +
         '</button>' +
+        (isAssigned ? '<button class="action-btn" data-failid="' + o.id + '" style="background:#fef2f2; color:#dc2626; margin-top:6px;">⚠️ Couldn\'t Deliver</button>' : '') +
       '</div>';
     }).join('');
 
@@ -305,17 +329,28 @@ async function loadOrders() {
         } else {
           const codInput = document.getElementById('cod-' + id);
           const codAmount = codInput ? Number(codInput.value) || 0 : 0;
+          const otpInput = document.getElementById('otp-' + id);
+          const otp = otpInput ? otpInput.value.trim() : '';
           if (isCOD && codAmount === 0) {
             alert('Please enter the cash amount collected before marking as delivered');
             return;
           }
+          if (!otp || otp.length !== 4) {
+            alert('Ask the customer for their 4-digit delivery OTP and enter it before marking as delivered');
+            return;
+          }
           btn.textContent = '⏳';
-          const deadline = new Date(); deadline.setDate(deadline.getDate() + 7);
-          await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id, {
-            method: 'PATCH',
+          const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/rider_mark_delivered', {
+            method: 'POST',
             headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'delivered', delivered_at: new Date().toISOString(), return_deadline: deadline.toISOString(), cod_collected: codAmount, payment_status: 'paid' })
+            body: JSON.stringify({ p_order_id: id, p_otp: otp, p_cod_collected: codAmount })
           });
+          if (!res.ok) {
+            const errText = await res.text();
+            alert(errText.indexOf('INVALID_OTP') !== -1 ? 'Wrong OTP — please check with the customer and try again' : 'Could not complete delivery: ' + errText);
+            btn.textContent = 'Mark Delivered';
+            return;
+          }
           fetch(SUPABASE_URL + '/rest/v1/notifications', {
             method: 'POST',
             headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
@@ -323,6 +358,22 @@ async function loadOrders() {
           });
           loadOrders();
         }
+      });
+    });
+    document.querySelectorAll('[data-failid]').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        const id = btn.getAttribute('data-failid');
+        const reason = prompt('Why could this delivery not be completed? (e.g. customer unavailable, wrong address, refused)');
+        if (!reason || !reason.trim()) return;
+        btn.textContent = '⏳';
+        const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/rider_report_delivery_failed', {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_order_id: id, p_reason: reason.trim() })
+        });
+        if (!res.ok) { alert('Could not report failed delivery: ' + await res.text()); btn.textContent = "⚠️ Couldn't Deliver"; return; }
+        alert('Reported. If this happens 3 times, the order is automatically flagged for admin review.');
+        loadOrders();
       });
     });
   } catch (err) {

@@ -260,7 +260,10 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 </div>
 </div>
 
-<div class="panel-grid" data-section="dashboard">
+<details data-section="dashboard" style="margin-bottom:16px;">
+<summary style="cursor:pointer; background:#fff; border-radius:14px; padding:14px 18px; font-size:13px; font-weight:800; box-shadow:0 4px 16px rgba(76,29,149,0.06); list-style:none;">📊 More Analytics (Top Products, Category, Funnel, Profitability, Payments, Channels) — tap to expand ▾</summary>
+<div style="margin-top:12px;">
+<div class="panel-grid">
 <div class="panel">
 <h3>🏆 Top Selling Products</h3>
 <div id="topProductsList"></div>
@@ -273,7 +276,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 </div>
 </div>
 
-<div class="panel-grid" data-section="dashboard">
+<div class="panel-grid">
 <div class="panel">
 <h3>📊 Product Funnel (Views → Cart → Orders)</h3>
 <div id="funnelList"></div>
@@ -287,7 +290,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 </div>
 </div>
 
-<div class="panel-grid" data-section="dashboard">
+<div class="panel-grid">
 <div class="panel">
 <h3>💳 Payment Breakdown</h3>
 <div id="paymentBreakdownList"></div>
@@ -297,6 +300,8 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div id="channelBreakdownList"></div>
 </div>
 </div>
+</div>
+</details>
 
 <div class="panel" data-section="dashboard">
 <h3>⚠️ Low Stock Products</h3>
@@ -1098,11 +1103,49 @@ const hasActiveDelivery = allOrders.some(function(o) { return o.rider_id === r.i
 const statusLabel = hasActiveDelivery ? 'On delivery' : (isActive ? 'Active' : 'Inactive');
 const color = hasActiveDelivery ? '#f59e0b' : (isActive ? '#22c55e' : '#9ca3af');
 const totalDelivered = allOrders.filter(function(o) { return o.rider_id === r.id && o.status === 'delivered'; }).length;
-return '<div class="vendor-row-item"><div class="v-icon2" style="background:' + color + ';">🚴</div>' +
-'<div class="v-info"><div class="vn">' + r.name + (r.bike_number ? ' · ' + r.bike_number : '') + '</div><div class="vs">' + statusLabel + ' · ' + totalDelivered + ' delivered</div></div>' +
+const assignedVendor = r.assigned_vendor_id ? allVendors.find(function(v) { return v.id === r.assigned_vendor_id; }) : null;
+const warehouseOptionsHtml = '<option value="">— No dark store (pan-India only) —</option>' + allWarehouses.map(function(w) { return '<option value="' + w.id + '"' + (r.warehouse_id === w.id ? ' selected' : '') + '>' + w.name + '</option>'; }).join('');
+const vendorOptionsHtml = '<option value="">— Not dedicated to one vendor —</option>' + allVendors.map(function(v) { return '<option value="' + v.id + '"' + (r.assigned_vendor_id === v.id ? ' selected' : '') + '>' + v.name + '</option>'; }).join('');
+return '<div class="vendor-row-item" style="display:block;"><div style="display:flex; align-items:center;"><div class="v-icon2" style="background:' + color + ';">🚴</div>' +
+'<div class="v-info"><div class="vn">' + r.name + (r.bike_number ? ' · ' + r.bike_number : '') + '</div><div class="vs">' + statusLabel + ' · ' + totalDelivered + ' delivered' + (assignedVendor ? ' · dedicated to ' + assignedVendor.name : (r.pincode ? ' · pincode ' + r.pincode : '')) + '</div></div>' +
 '<div class="item-actions"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-ridertoggle="' + r.id + '" data-current="' + isActive + '">' + (isActive ? '✓' : 'Off') + '</button>' +
-'<button class="icon-btn del-btn" data-riderdel="' + r.id + '">Del</button></div></div>';
+'<button class="mini-btn" data-riderdetailid="' + r.id + '" style="background:#dbeafe; color:#1d4ed8;">Details</button>' +
+'<button class="icon-btn del-btn" data-riderdel="' + r.id + '">Del</button></div></div>' +
+'<div id="riderdetail-' + r.id + '" style="display:none; margin-top:10px; padding:10px; background:#f9fafb; border-radius:10px; font-size:11.5px; line-height:1.9;">' +
+'<b>Phone:</b> ' + (r.phone || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
+'<b>Address:</b> ' + (r.address || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
+'<b>Total Earnings:</b> ₹' + (r.earnings_total || 0).toLocaleString('en-IN') + ' · <b>Per-delivery fee:</b> ₹' + (r.per_delivery_fee || 0) + '<br>' +
+'<b>KYC Documents:</b> ' + (r.driving_license_image ? '<a href="' + r.driving_license_image + '" target="_blank" style="color:#7c3aed;">License</a> ' : '') + (r.vehicle_rc_image ? '<a href="' + r.vehicle_rc_image + '" target="_blank" style="color:#7c3aed;">Vehicle RC</a> ' : '') + (r.id_proof_image ? '<a href="' + r.id_proof_image + '" target="_blank" style="color:#7c3aed;">ID Proof</a>' : '') + (!r.driving_license_image && !r.vehicle_rc_image && !r.id_proof_image ? '<span style="color:#9ca3af;">none uploaded</span>' : '') + '<br><br>' +
+'<div style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:4px;">📍 Coverage Area</div>' +
+'<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">' +
+'<input type="text" id="riderpincode-' + r.id + '" value="' + (r.pincode || '') + '" placeholder="Service pincode" style="padding:6px 8px; border-radius:6px; border:1px solid #e5e7eb; width:120px; font-size:11px;">' +
+'<select id="riderwh-' + r.id + '" style="padding:6px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11px;">' + warehouseOptionsHtml + '</select>' +
+'</div>' +
+'<div style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:4px;">🏪 Dedicate to One Vendor (optional)</div>' +
+'<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">' +
+'<select id="ridervendor-' + r.id + '" style="padding:6px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11px; flex:1; min-width:180px;">' + vendorOptionsHtml + '</select>' +
+'<button class="mini-btn" data-saveriderassign="' + r.id + '" style="background:#dcfce7; color:#15803d;">Save</button>' +
+'</div>' +
+'</div>';
 }).join('') + '<div style="font-size:10.5px; color:#9ca3af; margin-top:10px;">' + activeOrders + ' order(s) currently out for delivery (status: Shipped)</div>';
+document.querySelectorAll('[data-riderdetailid]').forEach(function(btn) {
+btn.addEventListener('click', function() {
+const el = document.getElementById('riderdetail-' + btn.getAttribute('data-riderdetailid'));
+if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+});
+});
+document.querySelectorAll('[data-saveriderassign]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-saveriderassign');
+const pincode = document.getElementById('riderpincode-' + id).value.trim();
+const warehouseId = document.getElementById('riderwh-' + id).value || null;
+const vendorId = document.getElementById('ridervendor-' + id).value || null;
+btn.textContent = '...';
+await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ pincode: pincode || null, warehouse_id: warehouseId, assigned_vendor_id: vendorId }) });
+btn.textContent = 'Saved ✓';
+setTimeout(function(){ loadAllData(); }, 700);
+});
+});
 document.querySelectorAll('[data-ridertoggle]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 const id = btn.getAttribute('data-ridertoggle');
@@ -1134,20 +1177,30 @@ vendorList.innerHTML = ranked.map(function(v, i) {
 const sales = vendorOrderTotal[v.id] || 0;
 const prodCount = vendorProductCount[v.id] || 0;
 const isBlocked = v.status === 'blocked';
+const isSubscribed = !!v.nearby_subscription_active && (!v.nearby_subscription_expires_at || new Date(v.nearby_subscription_expires_at) >= new Date());
 const kycStatus = v.kyc_status || 'pending';
 const kycColors = { approved: 'background:#dcfce7;color:#15803d;', pending: 'background:#fef3c7;color:#b45309;', rejected: 'background:#fee2e2;color:#dc2626;' };
-return '<div class="vendor-row-item" style="display:block;"><div style="display:flex; align-items:center;"><span class="rank-num">#' + (i+1) + '</span><div class="v-icon2">' + v.icon + '</div><div class="v-info"><div class="vn">' + v.name + '</div><div class="vs">₹' + sales.toLocaleString('en-IN') + ' sales · ' + prodCount + ' products</div>' +
+return '<div class="vendor-row-item" style="display:block;"><div style="display:flex; align-items:center;"><span class="rank-num">#' + (i+1) + '</span><div class="v-icon2">' + v.icon + '</div><div class="v-info"><div class="vn">' + v.name + (v.owner_name ? ' <span style="font-weight:400; color:#9ca3af; font-size:10.5px;">(' + v.owner_name + ')</span>' : '') + (isSubscribed ? ' <span style="font-size:9px; background:#f5f3ff; color:#7c3aed; padding:1px 6px; border-radius:6px; font-weight:700;">⭐ Featured</span>' : '') + '</div><div class="vs">' + (v.phone ? '📞 ' + v.phone + (v.email ? ' · ' : '') : '') + (v.email ? '✉️ ' + v.email : (!v.phone ? '<span style="color:#dc2626;">No contact info on file</span>' : '')) + '</div><div class="vs">₹' + sales.toLocaleString('en-IN') + ' sales · ' + prodCount + ' products</div>' +
 '<select data-kycid="' + v.id + '" style="margin-top:4px; font-size:10px; padding:2px 6px; border-radius:6px; border:none; font-weight:700; ' + (kycColors[kycStatus] || kycColors.pending) + '"><option value="pending"' + (kycStatus === 'pending' ? ' selected' : '') + '>KYC: Pending</option><option value="approved"' + (kycStatus === 'approved' ? ' selected' : '') + '>KYC: Approved</option><option value="rejected"' + (kycStatus === 'rejected' ? ' selected' : '') + '>KYC: Rejected</option></select>' +
 '</div>' +
 '<button class="block-btn ' + (isBlocked ? 'blocked-store' : 'active-store') + '" data-vendorid="' + v.id + '" data-blocked="' + isBlocked + '">' + (isBlocked ? 'Unblock' : 'Block') + '</button>' +
 '<button class="mini-btn" data-detailid="' + v.id + '" style="background:#dbeafe; color:#1d4ed8; margin-left:6px;">Details</button>' +
 '</div>' +
 '<div id="vdetail-' + v.id + '" style="display:none; margin-top:10px; padding:10px; background:#f9fafb; border-radius:10px; font-size:11.5px; line-height:1.9;">' +
+'<b>Owner:</b> ' + (v.owner_name || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
+'<b>Phone:</b> ' + (v.phone || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
+'<b>Email:</b> ' + (v.email || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
 '<b>Contact:</b> ' + (v.address || '<span style="color:#9ca3af;">not provided</span>') + (v.state ? ' · ' + v.state : '') + '<br>' +
 '<b>Vendor type:</b> ' + (v.vendor_type || 'marketplace') + '<br>' +
 '<b>GSTIN:</b> ' + (v.gstin || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
 '<b>Bank Account:</b> ' + (v.bank_account_no || '<span style="color:#9ca3af;">not provided</span>') + (v.bank_ifsc ? ' · IFSC ' + v.bank_ifsc : '') + '<br>' +
 '<div style="margin-top:6px; display:flex; align-items:center; gap:8px;"><b>Commission %:</b> <input type="number" step="0.1" value="' + (v.commission_percent != null ? v.commission_percent : '') + '" id="comm-' + v.id + '" style="width:70px; padding:4px 8px; border-radius:6px; border:1px solid #e5e7eb;"><button class="mini-btn" data-savecomm="' + v.id + '" style="background:#dcfce7; color:#15803d;">Save</button></div>' +
+'<div style="margin-top:10px; padding-top:10px; border-top:1px dashed #e5e7eb;"><b>🏪 "Near You" Featured Placement</b> <span style="font-size:9.5px; color:#9ca3af;">(paid — only subscribed vendors show in the homepage Near You strip)</span>' +
+'<div style="margin-top:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">' +
+'<label style="display:flex; align-items:center; gap:5px; font-size:11px; font-weight:700;"><input type="checkbox" id="nearby-' + v.id + '" ' + (v.nearby_subscription_active ? 'checked' : '') + '> Active</label>' +
+'<input type="date" id="nearbyexp-' + v.id + '" value="' + (v.nearby_subscription_expires_at || '') + '" style="padding:4px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11px;">' +
+'<button class="mini-btn" data-savenearby="' + v.id + '" style="background:#dcfce7; color:#15803d;">Save</button>' +
+'</div></div>' +
 '</div></div>';
 }).join('');
 document.querySelectorAll('[data-detailid]').forEach(function(btn) {
@@ -1163,6 +1216,17 @@ const id = btn.getAttribute('data-savecomm');
 const val = document.getElementById('comm-' + id).value;
 btn.textContent = '...';
 await fetch(SUPABASE_URL + '/rest/v1/vendors?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ commission_percent: val === '' ? null : Number(val) }) });
+btn.textContent = 'Saved ✓';
+setTimeout(function(){ btn.textContent = 'Save'; }, 1500);
+});
+});
+document.querySelectorAll('[data-savenearby]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-savenearby');
+const isActive = document.getElementById('nearby-' + id).checked;
+const expiry = document.getElementById('nearbyexp-' + id).value;
+btn.textContent = '...';
+await fetch(SUPABASE_URL + '/rest/v1/vendors?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ nearby_subscription_active: isActive, nearby_subscription_expires_at: expiry || null }) });
 btn.textContent = 'Saved ✓';
 setTimeout(function(){ btn.textContent = 'Save'; }, 1500);
 });
