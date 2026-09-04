@@ -384,6 +384,14 @@
         </div>
       </div>
       <div class="form-group" style="margin-bottom:12px;">
+        <label>Short Description (1-2 lines, shown in listings)</label>
+        <textarea class="form-input" id="pShortDescription" rows="2" placeholder="A quick one-line summary of the product"></textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Full Description</label>
+        <textarea class="form-input" id="pLongDescription" rows="5" placeholder="Describe the product in detail — what it is, why it's useful, who it's for..."></textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
         <label>Key Features (one per line)</label>
         <textarea class="form-input" id="pFeatures" rows="3" placeholder="e.g.&#10;Waterproof design&#10;12-hour battery life&#10;Bluetooth 5.0"></textarea>
       </div>
@@ -470,6 +478,7 @@ let allCategories = [];
 let allCatalogItems = [];
 let myCatalogPermissions = [];
 let selectedCatalogItemId = null;
+let editingProductId = null;
 
 const STATUS_STEPS = ['pending', 'preparing', 'shipped', 'delivered'];
 const STATUS_LABELS = { pending:'Placed', preparing:'Preparing', shipped:'Shipped', delivered:'Delivered', cancelled:'Cancelled' };
@@ -921,12 +930,81 @@ function renderProducts() {
       '<div class="prod-icon">' + iconHtml + '</div>' +
       '<div class="prod-info"><div class="prod-name">' + p.name + '</div><div class="prod-price">₹' + p.price + ' · Stock: ' + p.stock + '</div>' +
       '<div class="prod-tags">' + statusTag + modeTag + hsnTag + gstTag + returnTag + codTag + brandTag + fulfillTag + catTag + '</div></div>' +
+      '<button class="mini-btn" data-editid="' + p.id + '" style="background:#ede9fe; color:#6d28d9; margin-right:4px;">✏️ Edit</button>' +
       '<button class="mini-btn" data-stockid="' + p.id + '" data-stockname="' + p.name.replace(/"/g,'&quot;') + '" style="background:#e0f2fe; color:#0369a1; margin-right:4px;">📦 Stock</button>' +
       '<button class="mini-btn" data-variantid="' + p.id + '" data-variantname="' + p.name.replace(/"/g,'&quot;') + '" style="background:#fce7f3; color:#be185d; margin-right:4px;">🎨 Variants</button>' +
       '<button class="mini-btn" data-historyid="' + p.id + '" data-historyname="' + p.name.replace(/"/g,'&quot;') + '" style="background:#f3f1f8; color:#6b21a8; margin-right:4px;">🕐 History</button>' +
       '<button class="del-btn" data-delid="' + p.id + '">✕</button>' +
     '</div>';
   }).join('');
+  document.querySelectorAll('[data-editid]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const productId = btn.getAttribute('data-editid');
+      const p = vendorProducts.find(function(x) { return x.id === productId; });
+      if (!p) return;
+      editingProductId = productId;
+      document.getElementById('pName').value = p.name || '';
+      document.getElementById('pIcon').value = p.icon || '📦';
+      document.getElementById('pPrice').value = p.price || '';
+      document.getElementById('pOldPrice').value = p.old_price || '';
+      document.getElementById('pStock').value = p.stock || 0;
+      if (p.pincode === 'ALL') { setMode('pan_india'); } else { setMode('local'); document.getElementById('pPincode').value = p.pincode || ''; }
+      document.getElementById('pHsn').value = p.hsn_code || '';
+      document.getElementById('pGst').value = p.gst_percent != null ? p.gst_percent : '';
+      document.getElementById('pFeatures').value = p.features || '';
+      document.getElementById('pShortDescription').value = p.short_description || '';
+      document.getElementById('pLongDescription').value = p.long_description || '';
+      document.getElementById('pBrand').value = p.brand || '';
+      document.getElementById('pGtin').value = p.gtin || '';
+      document.getElementById('pWeight').value = p.shipping_weight || '';
+      document.getElementById('pCondition').value = p.condition || 'new';
+      document.getElementById('pCategory').value = p.category_id || '';
+      document.getElementById('pSku').value = p.sku || '';
+      document.getElementById('pItemCode').value = p.item_code || '';
+      document.getElementById('pShortName').value = p.short_name || '';
+      document.getElementById('pProductType').value = p.product_type || 'Simple';
+      document.getElementById('pManufacturer').value = p.manufacturer || '';
+      document.getElementById('pModelNumber').value = p.model_number || '';
+      document.getElementById('pPartNumber').value = p.part_number || '';
+      document.getElementById('pBarcode').value = p.barcode || '';
+      document.getElementById('pTags').value = p.tags || '';
+      document.getElementById('pWarrantyAvailable').checked = !!p.warranty_available;
+      document.getElementById('pWarrantyPeriod').value = p.warranty_period || '';
+      document.getElementById('pWarrantyType').value = p.warranty_type || '';
+      document.getElementById('pWhatsIncluded').value = p.whats_included || '';
+      document.getElementById('pCareInstructions').value = p.care_instructions || '';
+      document.getElementById('pSafetyInfo').value = p.safety_info || '';
+      document.getElementById('pInstallationInfo').value = p.installation_info || '';
+      document.getElementById('pCostPrice').value = p.cost_price || '';
+      document.getElementById('pWholesalePrice').value = p.wholesale_price || '';
+      document.getElementById('pDealerPrice').value = p.dealer_price || '';
+      document.getElementById('pMinSellingPrice').value = p.min_selling_price || '';
+      document.getElementById('pImageAlt').value = p.image_alt_text || '';
+      document.getElementById('pStatus').value = p.status || 'active';
+      document.getElementById('pChannelWebsite').checked = p.channel_website !== false;
+      document.getElementById('pChannelB2b').checked = !!p.channel_b2b;
+      document.getElementById('pChannelOffline').checked = !!p.channel_offline;
+      document.getElementById('pChannelWholesale').checked = !!p.channel_wholesale;
+      document.getElementById('pSpecialPrice').value = p.special_price || '';
+      document.getElementById('pDiscountType').value = p.discount_type || 'percent';
+      document.getElementById('pDiscountValue').value = p.discount_value || '';
+      document.getElementById('pTaxInclusive').checked = p.tax_inclusive !== false;
+      document.getElementById('pCgst').value = p.cgst_percent || '';
+      document.getElementById('pSgst').value = p.sgst_percent || '';
+      document.getElementById('pIgst').value = p.igst_percent || '';
+      document.getElementById('pMinStockLevel').value = p.min_stock_level != null ? p.min_stock_level : 5;
+      document.getElementById('pReorderLevel').value = p.reorder_level != null ? p.reorder_level : 10;
+      document.getElementById('pMaxStockLevel').value = p.max_stock_level || '';
+      setReturnable(p.is_returnable !== false);
+      setCod(p.cod_allowed !== false);
+      if (p.image_data) { document.getElementById('photoPreview').src = p.image_data; document.getElementById('photoPreview').style.display = 'block'; uploadedPhotoBase64 = p.image_data; }
+      // if this product already has any "advanced" data filled in, open that section automatically so it's not hidden during edit
+      const hasAdvancedData = p.item_code || p.warranty_available || p.cost_price || p.cgst_percent || p.care_instructions || p.safety_info || p.installation_info || p.whats_included;
+      if (hasAdvancedData) { document.getElementById('advancedFields').style.display = 'block'; document.getElementById('advancedArrow').textContent = '▴'; }
+      document.getElementById('addProductBtn').textContent = '✏️ Update Product';
+      document.getElementById('pName').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
   document.querySelectorAll('[data-stockid]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       const productId = btn.getAttribute('data-stockid');
@@ -1184,15 +1262,14 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   btn.disabled = true;
 
   try {
-    const insertRes = await fetch(SUPABASE_URL + '/rest/v1/products', {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-      body: JSON.stringify({
+    const productPayload = {
         vendor_id: currentVendor.id, name: name, icon: icon, price: Number(price),
         old_price: oldPrice ? Number(oldPrice) : null, stock: Number(stock), pincode: pincode,
         hsn_code: hsn, gst_percent: Number(gst),
         seo_title: seo.title, seo_description: seo.description,
         image_data: uploadedPhotoBase64 || null, features: features, is_returnable: selectedReturnable,
+        short_description: document.getElementById('pShortDescription').value.trim() || null,
+        long_description: document.getElementById('pLongDescription').value.trim() || null,
         cod_allowed: selectedCod, additional_images: extraPhotosBase64.length > 0 ? extraPhotosBase64 : [],
         brand: brand || null, gtin: gtin || null, shipping_weight: weight || null, condition: condition,
         category_id: categoryId, sku: sku, fulfillment_type: fulfillmentType, mrp: oldPrice ? Number(oldPrice) : Number(price), selling_price: Number(price),
@@ -1233,10 +1310,18 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
         min_stock_level: document.getElementById('pMinStockLevel').value ? Number(document.getElementById('pMinStockLevel').value) : 5,
         reorder_level: document.getElementById('pReorderLevel').value ? Number(document.getElementById('pReorderLevel').value) : 10,
         max_stock_level: document.getElementById('pMaxStockLevel').value ? Number(document.getElementById('pMaxStockLevel').value) : null
-      })
+      };
+    // In edit mode, don't overwrite the image with null if the vendor didn't pick a new one
+    if (editingProductId && !uploadedPhotoBase64) { delete productPayload.image_data; }
+    const insertRes = await fetch(
+      editingProductId ? (SUPABASE_URL + '/rest/v1/products?id=eq.' + editingProductId) : (SUPABASE_URL + '/rest/v1/products'),
+      {
+      method: editingProductId ? 'PATCH' : 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+      body: JSON.stringify(productPayload)
     });
     const insertedData = await insertRes.json();
-    const newProductId = insertedData[0] ? insertedData[0].id : null;
+    const newProductId = editingProductId || (insertedData[0] ? insertedData[0].id : null);
 
     // Upload product document, if one was selected
     const docFile = document.getElementById('pDocFile').files[0];
@@ -1318,6 +1403,10 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
     setReturnable(true);
     setCod(true);
     document.getElementById('seoPreview').style.display = 'none';
+    document.getElementById('pShortDescription').value = '';
+    document.getElementById('pLongDescription').value = '';
+    editingProductId = null;
+    btn.textContent = '+ Add Product';
 
     await loadVendorData();
     await loadCatalogData();
