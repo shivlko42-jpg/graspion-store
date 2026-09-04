@@ -201,6 +201,18 @@
 
     <div class="panel" id="storeSettingsPanel">
       <h3>⚙️ Store Settings <span id="kycBadge" style="font-size:10px; font-weight:800; padding:4px 10px; border-radius:20px;"></span></h3>
+      <div id="storeOpenRow" style="display:none; margin-bottom:14px;">
+        <label style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:8px; display:block;">🏪 Store Status</label>
+        <div class="radio-row">
+          <div class="radio-option selected" id="storeOpenYes" data-storeopen="true"><span class="ro-icon">✅</span>Open — Taking Orders</div>
+          <div class="radio-option" id="storeOpenNo" data-storeopen="false"><span class="ro-icon">🚫</span>Closed — Pause Orders</div>
+        </div>
+        <p style="font-size:10px; color:#9ca3af; margin-top:4px;">When closed, your instant-delivery products won't be orderable — use this if you're out of stock, on a break, or done for the day.</p>
+      </div>
+      <div id="localDeliveryRow" style="display:none; margin-bottom:14px;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:#6b7280;"><input type="checkbox" id="localDeliveryEnabled"> 🚴 Accept local rider delivery for my area (in addition to Shiprocket)</label>
+        <p style="font-size:10px; color:#9ca3af; margin-top:4px; margin-left:24px;">If enabled, riders serving your pincode can pick up and hand-deliver your orders locally — often faster and cheaper than courier for nearby customers.</p>
+      </div>
       <div class="form-row">
         <div class="form-group"><label>Store Type</label><input class="form-input" id="sVendorType" disabled></div>
         <div class="form-group"><label>Default Commission %</label><input class="form-input" id="sCommission" disabled></div>
@@ -650,6 +662,7 @@ btn.textContent = '+ Add Supplier';
 loadSuppliers();
 });
 
+let selectedStoreOpen = true;
 function populateSettingsForm() {
   document.getElementById('sVendorType').value = currentVendor.vendor_type === 'dark_store' ? '⚡ Dark Store (Instant Delivery)' : '📦 Marketplace (Pan-India)';
   document.getElementById('sCommission').value = (currentVendor.commission_percent || 10) + '%';
@@ -662,7 +675,27 @@ function populateSettingsForm() {
   const kycColors = { approved: 'background:#dcfce7;color:#15803d;', pending: 'background:#fef3c7;color:#b45309;', rejected: 'background:#fee2e2;color:#dc2626;' };
   kycBadge.style.cssText += kycColors[status] || kycColors.pending;
   kycBadge.textContent = 'KYC: ' + status;
+
+  if (currentVendor.vendor_type === 'dark_store') {
+    document.getElementById('storeOpenRow').style.display = 'block';
+    selectedStoreOpen = currentVendor.is_open !== false;
+    document.getElementById('storeOpenYes').classList.toggle('selected', selectedStoreOpen);
+    document.getElementById('storeOpenNo').classList.toggle('selected', !selectedStoreOpen);
+  } else {
+    document.getElementById('localDeliveryRow').style.display = 'block';
+    document.getElementById('localDeliveryEnabled').checked = !!currentVendor.local_delivery_enabled;
+  }
 }
+document.getElementById('storeOpenYes').addEventListener('click', function() {
+  selectedStoreOpen = true;
+  document.getElementById('storeOpenYes').classList.add('selected');
+  document.getElementById('storeOpenNo').classList.remove('selected');
+});
+document.getElementById('storeOpenNo').addEventListener('click', function() {
+  selectedStoreOpen = false;
+  document.getElementById('storeOpenNo').classList.add('selected');
+  document.getElementById('storeOpenYes').classList.remove('selected');
+});
 async function loadCategoriesForVendor() {
   try {
     const res = await fetch(SUPABASE_URL + '/rest/v1/categories?select=*&status=eq.active&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
@@ -744,10 +777,14 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async funct
         gstin: document.getElementById('sGstin').value.trim(),
         address: document.getElementById('sAddress').value.trim(),
         bank_account_no: document.getElementById('sBankAccount').value.trim(),
-        bank_ifsc: document.getElementById('sBankIfsc').value.trim()
+        bank_ifsc: document.getElementById('sBankIfsc').value.trim(),
+        is_open: currentVendor.vendor_type === 'dark_store' ? selectedStoreOpen : currentVendor.is_open,
+        local_delivery_enabled: currentVendor.vendor_type !== 'dark_store' ? document.getElementById('localDeliveryEnabled').checked : currentVendor.local_delivery_enabled
       })
     });
     currentVendor.gstin = document.getElementById('sGstin').value.trim();
+    currentVendor.is_open = selectedStoreOpen;
+    currentVendor.local_delivery_enabled = document.getElementById('localDeliveryEnabled').checked;
     btn.textContent = '✓ Saved';
     setTimeout(function(){ btn.textContent = '💾 Save Store Settings'; }, 1500);
   } catch (err) {
@@ -1102,7 +1139,7 @@ function renderOrders() {
 
     const showShipBtn = o.delivery_type === 'standard' && o.status !== 'delivered' && o.status !== 'cancelled' && o.status !== 'shipped';
     return '<div class="order-card">' +
-      '<div class="order-top" data-orderexpand="' + expandId + '" style="cursor:pointer;"><div><div class="order-cust">' + (o.customer_name || 'Customer') + ' <span style="font-size:9.5px; color:#9ca3af; font-weight:400;">#' + o.id.slice(0,8) + ' · tap for details ▾</span></div><div class="order-meta">' + (o.customer_phone || '') + ' · ' + (o.pincode || '') + '</div>' + payBadge + returnInfo + '</div><div class="order-amt">₹' + o.total_amount + '</div></div>' +
+      '<div class="order-top" data-orderexpand="' + expandId + '" style="cursor:pointer;"><div><div class="order-cust">' + (o.customer_name || 'Customer') + ' <span style="font-size:9.5px; color:#9ca3af; font-weight:400;">#' + (o.order_number || o.id.slice(0,8)) + (o.suborder_count > 1 ? ' (' + o.suborder_index + '/' + o.suborder_count + ' shops)' : '') + ' · tap for details ▾</span></div><div class="order-meta">' + (o.customer_phone || '') + ' · ' + (o.pincode || '') + '</div>' + payBadge + returnInfo + '</div><div class="order-amt">₹' + o.total_amount + '</div></div>' +
       '<div id="' + expandId + '" style="display:none; background:#f9fafb; border-radius:10px; padding:10px; margin-top:8px;">' +
         '<div style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:4px;">📍 Delivery Address</div>' +
         '<div style="font-size:11.5px; color:#4b5563; margin-bottom:10px;">' + (o.customer_address || o.address || 'Not provided') + '</div>' +

@@ -911,7 +911,7 @@ document.getElementById('coBack').addEventListener('click', function(){ if(check
 async function createOrderRecord(paymentStatus){
 const t = cartTotals();
 const items = cartItemsList();
-const firstVendorId = items.length > 0 ? items[0].vendorId : null;
+if (items.length === 0) return null;
 try {
 // Step 1: atomically reserve stock for the whole cart first. If anything
 // is out of stock, nothing is deducted and no order is created at all.
@@ -928,11 +928,23 @@ console.error('[Graspion order debug]', window.lastOrderDebug);
 return null;
 }
 
+// Step 2: split the cart by vendor — a multi-vendor cart becomes multiple
+// sub-orders (one per vendor) sharing one order_group_id, exactly like
+// Amazon/Flipkart split a single checkout into per-seller shipments.
+const groupId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){ const r = Math.random()*16|0; const v = c === 'x' ? r : (r&0x3|0x8); return v.toString(16); });
+const itemsByVendor = {};
+items.forEach(function(i) { (itemsByVendor[i.vendorId] = itemsByVendor[i.vendorId] || []).push(i); });
+const vendorIds = Object.keys(itemsByVendor);
+const orderIds = [];
+
+for (var vi = 0; vi < vendorIds.length; vi++) {
+const vendorId = vendorIds[vi];
+const vendorItems = itemsByVendor[vendorId];
 const orderId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){ const r = Math.random()*16|0; const v = c === 'x' ? r : (r&0x3|0x8); return v.toString(16); });
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: firstVendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: appliedCoupon ? appliedCoupon.code : null, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null })
+body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: vendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: (vi === 0 && appliedCoupon) ? appliedCoupon.code : null, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null, order_group_id: groupId, suborder_index: vi + 1, suborder_count: vendorIds.length })
 });
 if (!orderRes.ok) {
 const orderErr = await orderRes.text();
@@ -940,7 +952,7 @@ window.lastOrderDebug = 'Order insert failed — HTTP ' + orderRes.status + ': '
 console.error('[Graspion order debug]', window.lastOrderDebug);
 return null;
 }
-const itemInserts = items.map(function(i) {
+const itemInserts = vendorItems.map(function(i) {
 return fetch(SUPABASE_URL + '/rest/v1/order_items', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
@@ -948,30 +960,33 @@ body: JSON.stringify({ order_id: orderId, product_id: i.id, quantity: i.qty, pri
 });
 });
 await Promise.all(itemInserts);
-return orderId;
+orderIds.push(orderId);
+}
+return { groupId: groupId, orderIds: orderIds };
 } catch (err) { window.lastOrderDebug = 'Exception: ' + err.message; console.error('[Graspion order debug]', window.lastOrderDebug); return null; }
 }
 async function saveOrderToDatabase(){
-const orderId = await createOrderRecord(selectedPayMethod === 'cod' ? 'pending' : 'paid');
-return !!orderId;
+const result = await createOrderRecord(selectedPayMethod === 'cod' ? 'pending' : 'paid');
+return !!(result && result.orderIds && result.orderIds.length > 0);
 }
 async function startRazorpayPayment(){
-// Step 1: create our own order row first (payment_status starts as 'pending').
-// The DB itself recomputes total_amount from real product prices + coupon —
-// never trust the client's cartTotals() for what actually gets charged.
-const orderId = await createOrderRecord('pending');
-if (!orderId) { return { success: false }; }
+// Step 1: create our own order row(s) first (payment_status starts as 'pending').
+// A multi-vendor cart creates multiple sub-orders sharing one order_group_id —
+// all paid together in a single Razorpay transaction.
+const result = await createOrderRecord('pending');
+if (!result || !result.orderIds || result.orderIds.length === 0) { return { success: false }; }
+const orderIds = result.orderIds;
 try {
-const verifiedOrderRes = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId + '&select=total_amount', {
+const verifiedOrderRes = await fetch(SUPABASE_URL + '/rest/v1/orders?id=in.(' + orderIds.join(',') + ')&select=total_amount', {
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
 });
 const verifiedOrderRows = await verifiedOrderRes.json();
-const verifiedTotal = (verifiedOrderRows && verifiedOrderRows[0]) ? Number(verifiedOrderRows[0].total_amount) : cartTotals().total;
+const verifiedTotal = (verifiedOrderRows && verifiedOrderRows.length > 0) ? verifiedOrderRows.reduce(function(sum, o){ return sum + Number(o.total_amount); }, 0) : cartTotals().total;
 // Step 2: ask our Edge Function to create a Razorpay order (Key Secret never touches this browser)
 const createRes = await fetch(SUPABASE_URL + '/functions/v1/create-razorpay-order', {
 method: 'POST',
 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY, 'apikey': SUPABASE_KEY },
-body: JSON.stringify({ amount: verifiedTotal, currency: 'INR', receipt: orderId })
+body: JSON.stringify({ amount: verifiedTotal, currency: 'INR', receipt: result.groupId })
 });
 const createData = await createRes.json();
 if (!createRes.ok || !createData.orderId) {
@@ -988,7 +1003,7 @@ amount: createData.amount,
 currency: createData.currency,
 order_id: createData.orderId,
 name: 'Graspion',
-description: 'Order payment',
+description: orderIds.length > 1 ? 'Order payment (' + orderIds.length + ' shops)' : 'Order payment',
 prefill: { name: customerInfo.name, contact: customerInfo.phone },
 theme: { color: '#7c3aed' },
 handler: async function(response){
@@ -1001,7 +1016,7 @@ body: JSON.stringify({
 razorpay_order_id: response.razorpay_order_id,
 razorpay_payment_id: response.razorpay_payment_id,
 razorpay_signature: response.razorpay_signature,
-graspion_order_id: orderId
+graspion_order_ids: orderIds
 })
 });
 const verifyData = await verifyRes.json();
@@ -1602,7 +1617,7 @@ returnHtml = '<div style="margin-top:8px; background:#fef3c7; padding:8px 10px; 
 returnHtml = '<button data-requestreturn="' + o.id + '" style="margin-top:8px; background:#fee2e2; color:#dc2626; border:none; padding:8px 12px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">↩ Request Return</button>';
 }
 return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:14px; margin-bottom:10px;">' +
-'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-size:11px; color:#9ca3af;">#' + o.id.slice(0,8) + ' · ' + new Date(o.created_at).toLocaleDateString('en-IN') + '</span><b style="font-size:14px;">₹' + o.total_amount + '</b></div>' +
+'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-size:11px; color:#9ca3af;">#' + (o.order_number || o.id.slice(0,8)) + (o.suborder_count > 1 ? ' (' + o.suborder_count + ' shops)' : '') + ' · ' + new Date(o.created_at).toLocaleDateString('en-IN') + '</span><b style="font-size:14px;">₹' + o.total_amount + '</b></div>' +
 '<div style="font-size:12.5px; font-weight:700;">' + (statusLabels[o.status] || o.status) + ' · ' + (o.delivery_type === 'instant' ? '⚡ Instant' : '📦 Pan-India') + '</div>' +
 itemsHtml +
 '<div style="font-size:11px; color:#9ca3af; margin-top:4px;">' + (o.payment_status === 'paid' ? '✓ Paid' : 'Payment: ' + (o.payment_method || 'COD')) + '</div>' +

@@ -299,7 +299,7 @@ async function loadOrders() {
         (mapsHref ? '<a href="' + mapsHref + '" target="_blank" class="action-btn" style="flex:1; text-align:center; text-decoration:none; background:#dbeafe; color:#1d4ed8;">🗺️ Navigate</a>' : '') +
       '</div>' : '';
       return '<div class="order-card">' +
-        '<div class="order-top"><span class="order-id">#' + o.id.slice(0,8) + ' · ' + deliveryBadge + '</span><span class="order-amt">₹' + o.total_amount + '</span></div>' +
+        '<div class="order-top"><span class="order-id">#' + (o.order_number || o.id.slice(0,8)) + ' · ' + deliveryBadge + '</span><span class="order-amt">₹' + o.total_amount + '</span></div>' +
         '<span class="pay-tag ' + (isCOD ? 'pay-cod' : 'pay-online') + '">' + (isCOD ? '💵 Collect COD' : '✅ Already Paid Online') + '</span>' +
         '<div class="order-addr">' + (o.customer_name || 'Customer') + ' · ' + (o.customer_phone || '') + '<br>' + (o.address || '') + '</div>' +
         contactRow +
