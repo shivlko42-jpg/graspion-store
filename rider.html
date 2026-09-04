@@ -305,6 +305,7 @@ async function loadOrders() {
         contactRow +
         (isCOD && isAssigned ? '<input type="number" class="cod-input" id="cod-' + o.id + '" placeholder="Enter amount collected (₹' + o.total_amount + ')" style="display:block;">' : '') +
         (isAssigned ? '<input type="text" maxlength="4" class="cod-input" id="otp-' + o.id + '" placeholder="Enter 4-digit OTP from customer" style="display:block; margin-top:6px;">' : '') +
+(isAssigned ? '<label style="display:block; margin-top:6px; font-size:10.5px; color:#6b7280; font-weight:700;">📸 Delivery photo (optional)</label><input type="file" accept="image/*" capture="environment" id="proof-' + o.id + '" style="display:block; margin-top:4px; font-size:10.5px;">' : '') +
         '<button class="action-btn" data-id="' + o.id + '" data-assigned="' + isAssigned + '" data-cod="' + isCOD + '">' +
           (isAssigned ? 'Mark Delivered' : 'Accept & Pick Up') +
         '</button>' +
@@ -340,10 +341,25 @@ async function loadOrders() {
             return;
           }
           btn.textContent = '⏳';
+          // upload delivery-proof photo first, if the rider selected one
+          let proofPhotoUrl = null;
+          const proofInput = document.getElementById('proof-' + id);
+          const proofFile = proofInput && proofInput.files[0];
+          if (proofFile) {
+            try {
+              const path = currentRider.id + '/' + id + '-' + Date.now() + '.jpg';
+              const uploadRes = await fetch(SUPABASE_URL + '/storage/v1/object/delivery-proof/' + path, {
+                method: 'POST',
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': proofFile.type || 'image/jpeg' },
+                body: proofFile
+              });
+              if (uploadRes.ok) { proofPhotoUrl = SUPABASE_URL + '/storage/v1/object/public/delivery-proof/' + path; }
+            } catch (e) { /* photo is optional — don't block delivery if upload fails */ }
+          }
           const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/rider_mark_delivered', {
             method: 'POST',
             headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ p_order_id: id, p_otp: otp, p_cod_collected: codAmount })
+            body: JSON.stringify({ p_order_id: id, p_otp: otp, p_cod_collected: codAmount, p_proof_photo_url: proofPhotoUrl })
           });
           if (!res.ok) {
             const errText = await res.text();

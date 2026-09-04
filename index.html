@@ -318,6 +318,7 @@ body { padding-bottom:68px; }
 <div class="vendor-row" id="vendorRow"></div>
 </div>
 
+<div id="dynamicHomeSections"></div>
 <div id="mainContent">
 <div class="deal-strip">
 <div>
@@ -524,6 +525,7 @@ let selectedWarehouseId = null;   // set when customer is inside a dark store's 
 let isInstantZone = false;        // true = dark store instant delivery available here
 let siteSettings = { instant_delivery_minutes: 20, standard_delivery_days_min: 2, standard_delivery_days_max: 7 };
 let pairings = [];
+let homepageSections = [];
 
 // distance in km between two lat/lng points
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -561,14 +563,15 @@ document.addEventListener('graspionLanguageChanged', function() {
 async function loadDataFromDatabase(){
 const badge = document.getElementById('dbStatusBadge');
 try {
-const [vendorRes, productRes, warehouseRes, categoryRes, bannerRes, settingsRes, pairingsRes] = await Promise.all([
+const [vendorRes, productRes, warehouseRes, categoryRes, bannerRes, settingsRes, pairingsRes, homeSectionsRes] = await Promise.all([
 fetch(SUPABASE_URL + '/rest/v1/vendors_public?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
 fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
 fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
 fetch(SUPABASE_URL + '/rest/v1/categories?select=*&status=eq.active&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
 fetch(SUPABASE_URL + '/rest/v1/banners?select=*&status=eq.active&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
 fetch(SUPABASE_URL + '/rest/v1/settings?select=key,value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
-fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
+fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
+fetch(SUPABASE_URL + '/rest/v1/homepage_sections?select=*&is_enabled=eq.true&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
 ]);
 const vendorData = await vendorRes.json();
 const productData = await productRes.json();
@@ -589,11 +592,12 @@ const settingsRows = await settingsRes.json();
 settingsRows.forEach(function(s){ siteSettings[s.key] = s.value; });
 }
 pairings = pairingsRes.ok ? await pairingsRes.json() : [];
+homepageSections = homeSectionsRes.ok ? await homeSectionsRes.json() : [];
 vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){ return { id: v.id, name: v.name, icon: v.icon, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode], vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, nearbySubscribed: !!v.nearby_subscription_active && (!v.nearby_subscription_expires_at || new Date(v.nearby_subscription_expires_at) >= new Date()) }; });
 productPool = visibleProducts.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
 const firstFeature = p.features ? p.features.split('\n')[0].trim() : '';
-return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '', imageAlt: p.image_alt_text || p.name, shortDescription: p.short_description || '', longDescription: p.long_description || '', warrantyAvailable: !!p.warranty_available, warrantyPeriod: p.warranty_period || '', warrantyType: p.warranty_type || '', careInstructions: p.care_instructions || '', safetyInfo: p.safety_info || '', installationInfo: p.installation_info || '', whatsIncluded: p.whats_included || '', isSponsored: !!p.is_sponsored };
+return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: null, image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '', imageAlt: p.image_alt_text || p.name, shortDescription: p.short_description || '', longDescription: p.long_description || '', warrantyAvailable: !!p.warranty_available, warrantyPeriod: p.warranty_period || '', warrantyType: p.warranty_type || '', careInstructions: p.care_instructions || '', safetyInfo: p.safety_info || '', installationInfo: p.installation_info || '', whatsIncluded: p.whats_included || '', isSponsored: !!p.is_sponsored, createdAt: p.created_at || null };
 });
 renderQuickCategories();
 renderPinSuggestions();
@@ -780,20 +784,7 @@ row.innerHTML = '<div class="vendor-card ' + (selectedVendorId==='all'?'active':
 list.map(function(v){ return '<div class="vendor-card ' + (selectedVendorId===v.id?'active':'') + '" data-v="' + v.id + '"><div class="v-icon">' + v.icon + '</div><div class="v-name">' + v.name + '</div><div class="v-eta">⏱ ' + v.eta + '</div><div class="v-rating">★ ' + v.rating + '</div></div>'; }).join('');
 row.querySelectorAll('.vendor-card').forEach(function(el){ el.addEventListener('click', function(){ selectedVendorId = el.getAttribute('data-v'); renderVendors(pin); renderProducts(pin); }); });
 }
-function renderProducts(pin){
-let filtered = productPool.filter(function(p){ return p.pincode === pin || p.pincode === 'ALL'; });
-if(selectedVendorId !== 'all') filtered = filtered.filter(function(p){ return p.vendorId === selectedVendorId; });
-if(activeCategoryId) filtered = filtered.filter(function(p){ return p.categoryId === activeCategoryId; });
-if(searchQuery) filtered = filtered.filter(function(p){ return scoreProductMatch(p, searchQuery) > 0; }).sort(function(a,b){ return scoreProductMatch(b, searchQuery) - scoreProductMatch(a, searchQuery); });
-// in a dark-store zone, instant items lead; standard (pan-India) items still show below, clearly labelled
-if (isInstantZone) {
-filtered = filtered.slice().sort(function(a,b){ return (a.fulfillmentType==='instant'?0:1) - (b.fulfillmentType==='instant'?0:1); });
-}
-// sponsored listings get a boost within their group (stable sort preserves relevance/fulfillment ordering otherwise)
-filtered = filtered.slice().sort(function(a,b){ return (b.isSponsored?1:0) - (a.isSponsored?1:0); });
-const dealGrid = document.getElementById('dealGrid');
-if(filtered.length === 0){ dealGrid.innerHTML = '<div class="no-vendor" style="grid-column:1/-1;">' + graspionT('noVendorArea') + '</div>'; return; }
-dealGrid.innerHTML = filtered.map(function(p){
+function buildProductCardHtml(p){
 const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
 const qty = cart[p.id] || 0;
 const deliveryBadge = p.fulfillmentType === 'instant' ? '⚡ ' + graspionT('instantTag') : '📦 ' + graspionT('standardTag');
@@ -812,11 +803,55 @@ return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class=
 (p.stock <= 0 ? '<div style="text-align:center; margin-top:10px; background:#fee2e2; color:#dc2626; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">Out of Stock</div>' :
 ((productVariantsMap[p.id] && productVariantsMap[p.id].length > 0) ? '<button class="add-btn" data-viewid="' + p.id + '" style="background:#f3f1f8; color:#7c3aed;">Select Options</button>' : (qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '" ' + (qty >= p.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>')))) +
 '</div></div>';
+}
+function wireProductCardEvents(container){
+container.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id = btn.getAttribute('data-add'); cart[id] = 1; logProductEvent(id, 'add_to_cart'); const p = productPool.find(function(pp){ return pp.id === id; }); if (typeof gtag === 'function' && p) { gtag('event', 'add_to_cart', { currency: 'INR', value: p.price, items: [{ item_id: p.id, item_name: p.name, price: p.price, quantity: 1 }] }); } refreshAll(); }); });
+container.querySelectorAll('[data-wishlisttoggle]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); toggleWishlist(btn.getAttribute('data-wishlisttoggle')); }); });
+container.querySelectorAll('[data-inc]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id=btn.getAttribute('data-inc'); cart[id]=(cart[id]||0)+1; refreshAll(); }); });
+container.querySelectorAll('[data-dec]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id=btn.getAttribute('data-dec'); cart[id]=(cart[id]||0)-1; if(cart[id]<=0) delete cart[id]; refreshAll(); }); });
+}
+function renderDynamicHomeSections(){
+const container = document.getElementById('dynamicHomeSections');
+if (!container || !selectedPin) { if (container) container.innerHTML = ''; return; }
+const now = new Date();
+const active = homepageSections.filter(function(s){
+if (s.start_date && new Date(s.start_date) > now) return false;
+if (s.end_date && new Date(s.end_date) < now) return false;
+return true;
+});
+if (active.length === 0) { container.innerHTML = ''; return; }
+const available = productPool.filter(function(p){ return p.pincode === selectedPin || p.pincode === 'ALL'; });
+const blocksHtml = active.map(function(s){
+let items = [];
+if (s.section_type === 'new_arrivals') {
+items = available.slice().sort(function(a,b){ return new Date(b.createdAt||0) - new Date(a.createdAt||0); }).slice(0, 10);
+} else if (s.section_type === 'deals') {
+items = available.filter(function(p){ return p.old > p.price; }).sort(function(a,b){ return ((b.old-b.price)/b.old) - ((a.old-a.price)/a.old); }).slice(0, 10);
+} else if (s.section_type === 'category') {
+items = available.filter(function(p){ return p.categoryId === s.category_id; }).slice(0, 10);
+}
+if (items.length === 0) return '';
+return '<div class="vendor-strip"><h2>' + (s.title || '') + '</h2><div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:10px;">' + items.map(function(p){ return '<div style="flex:0 0 165px;">' + buildProductCardHtml(p) + '</div>'; }).join('') + '</div></div>';
 }).join('');
-document.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id = btn.getAttribute('data-add'); cart[id] = 1; logProductEvent(id, 'add_to_cart'); const p = productPool.find(function(pp){ return pp.id === id; }); if (typeof gtag === 'function' && p) { gtag('event', 'add_to_cart', { currency: 'INR', value: p.price, items: [{ item_id: p.id, item_name: p.name, price: p.price, quantity: 1 }] }); } refreshAll(); }); });
-document.querySelectorAll('[data-wishlisttoggle]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); toggleWishlist(btn.getAttribute('data-wishlisttoggle')); }); });
-document.querySelectorAll('[data-inc]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id=btn.getAttribute('data-inc'); cart[id]=(cart[id]||0)+1; refreshAll(); }); });
-document.querySelectorAll('[data-dec]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id=btn.getAttribute('data-dec'); cart[id]=(cart[id]||0)-1; if(cart[id]<=0) delete cart[id]; refreshAll(); }); });
+container.innerHTML = blocksHtml;
+wireProductCardEvents(container);
+}
+function renderProducts(pin){
+let filtered = productPool.filter(function(p){ return p.pincode === pin || p.pincode === 'ALL'; });
+if(selectedVendorId !== 'all') filtered = filtered.filter(function(p){ return p.vendorId === selectedVendorId; });
+if(activeCategoryId) filtered = filtered.filter(function(p){ return p.categoryId === activeCategoryId; });
+if(searchQuery) filtered = filtered.filter(function(p){ return scoreProductMatch(p, searchQuery) > 0; }).sort(function(a,b){ return scoreProductMatch(b, searchQuery) - scoreProductMatch(a, searchQuery); });
+// in a dark-store zone, instant items lead; standard (pan-India) items still show below, clearly labelled
+if (isInstantZone) {
+filtered = filtered.slice().sort(function(a,b){ return (a.fulfillmentType==='instant'?0:1) - (b.fulfillmentType==='instant'?0:1); });
+}
+// sponsored listings get a boost within their group (stable sort preserves relevance/fulfillment ordering otherwise)
+filtered = filtered.slice().sort(function(a,b){ return (b.isSponsored?1:0) - (a.isSponsored?1:0); });
+const dealGrid = document.getElementById('dealGrid');
+if(filtered.length === 0){ dealGrid.innerHTML = '<div class="no-vendor" style="grid-column:1/-1;">' + graspionT('noVendorArea') + '</div>'; return; }
+dealGrid.innerHTML = filtered.map(buildProductCardHtml).join('');
+wireProductCardEvents(dealGrid);
+renderDynamicHomeSections();
 document.querySelectorAll('[data-viewid]').forEach(function(card){ card.addEventListener('click', function(){ openProductDetail(card.getAttribute('data-viewid')); }); });
 document.querySelectorAll('[data-thumbswap]').forEach(function(thumb){ thumb.addEventListener('click', function(e){ e.stopPropagation(); const id = thumb.getAttribute('data-thumbswap'); const src = thumb.getAttribute('data-src'); const mainImg = document.querySelector('[data-mainimg="' + id + '"]'); if (mainImg) mainImg.src = src; thumb.parentElement.querySelectorAll('.thumb-img').forEach(function(t){ t.classList.remove('active'); }); thumb.classList.add('active'); }); });
 }

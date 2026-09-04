@@ -16,6 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="graspion-logo.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif; }
 body { background:#eef0fb; color:#1e1b3a; }
@@ -134,6 +135,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="modal-overlay" id="orderTimelineModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:400; align-items:center; justify-content:center; padding:16px;">
 <div style="max-width:420px; width:100%; background:#fff; border-radius:20px; padding:20px; max-height:85vh; overflow-y:auto;">
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="font-size:15px;">📦 Order Details</h3><button id="closeTimelineBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
+<button id="downloadInvoiceBtn" style="width:100%; margin-bottom:10px; background:#ede9fe; color:#6d28d9; border:none; padding:10px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer;">🧾 Download Tax Invoice (PDF)</button>
 
 <div class="form-row" style="margin-bottom:10px;">
 <div class="form-group"><label style="font-size:10px;">Priority</label><select class="form-input" id="orderPrioritySelect"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div>
@@ -174,6 +176,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="side-item" data-page="warehouses">🏬 Dark Stores</div>
 <div class="side-item" data-page="products">📦 Products</div>
 <div class="side-item" data-page="categories">📁 Categories</div>
+<div class="side-item" data-page="homepage">🏠 Homepage</div>
 <div class="side-item" data-page="banners">🖼️ Banners</div>
 <div class="side-item" data-page="coupons">🏷️ Coupons</div>
 <div class="side-item" data-page="settings">⚙️ Settings</div>
@@ -408,6 +411,24 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="empty-state" id="catEmpty" style="display:none;">No categories added yet</div>
 </div>
 
+<div class="panel" data-section="homepage">
+<h3>🏠 Homepage Sections</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Control which product rows appear on the customer homepage, and in what order — no code changes needed.</p>
+<div class="form-grid">
+<select class="form-input" id="hpSectionType">
+<option value="new_arrivals">New Arrivals (recently added products)</option>
+<option value="deals">Deals (biggest discounts)</option>
+<option value="category">Specific Category</option>
+</select>
+<input class="form-input" id="hpTitle" placeholder="Section title e.g. Fresh Arrivals">
+<select class="form-input" id="hpCategory" style="display:none;"><option value="">— Select category —</option></select>
+<input class="form-input" id="hpOrder" type="number" placeholder="Display order (lower = higher up)" value="0">
+</div>
+<button class="login-btn" id="hpAddBtn" style="margin-top:10px;">+ Add Section</button>
+<div id="hpList" style="margin-top:16px;"></div>
+<div class="empty-state" id="hpEmpty" style="display:none;">No homepage sections yet — the default layout shows</div>
+</div>
+
 <div class="panel" data-section="banners">
 <h3>🖼️ Homepage Banners</h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Control the hero banners shown on the customer site — no code changes needed.</p>
@@ -558,6 +579,7 @@ let currentAdmin = null;
 let authToken = SUPABASE_KEY;
 let allVendors = [], allProducts = [], allOrders = [], allOrderItems = [];
 let allWarehouses = [], allCategories = [], allBanners = [], allSettings = [];
+let allHomepageSections = [];
 let allRiders = [];
 let allPairings = [];
 let allCatalogItems = [], allCatalogPermissions = [];
@@ -573,6 +595,112 @@ document.getElementById('orderStatusFilter').addEventListener('change', renderOr
 document.getElementById('orderPaymentFilter').addEventListener('change', renderOrders);
 document.getElementById('orderChannelFilter').addEventListener('change', renderOrders);
 document.getElementById('closeTimelineBtn').addEventListener('click', function() { document.getElementById('orderTimelineModal').style.display = 'none'; });
+document.getElementById('downloadInvoiceBtn').addEventListener('click', function() { if (currentDetailOrderId) generateInvoicePDF(currentDetailOrderId); });
+async function generateInvoicePDF(orderId) {
+const btn = document.getElementById('downloadInvoiceBtn');
+btn.textContent = '⏳ Generating...';
+try {
+const order = allOrders.find(function(o) { return o.id === orderId; });
+if (!order) { alert('Order not found'); btn.textContent = '🧾 Download Tax Invoice (PDF)'; return; }
+const vendor = allVendors.find(function(v) { return v.id === order.vendor_id; });
+const items = allOrderItems.filter(function(it) { return it.order_id === orderId; });
+const platformGstinSetting = allSettings.find(function(s) { return s.key === 'platform_gstin'; });
+const platformAddrSetting = allSettings.find(function(s) { return s.key === 'platform_business_address'; });
+const platformGstin = platformGstinSetting ? platformGstinSetting.value : '';
+const platformAddr = platformAddrSetting ? platformAddrSetting.value : '';
+const sellerName = (vendor && vendor.name) || 'Graspion';
+const sellerGstin = (vendor && vendor.gstin) || platformGstin || 'Not registered';
+const sellerAddr = (vendor && vendor.address) || platformAddr || '';
+
+const { PDFDocument, rgb, StandardFonts } = PDFLib;
+const pdfDoc = await PDFDocument.create();
+const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+const page = pdfDoc.addPage([595, 842]);
+const { width, height } = page.getSize();
+let y = height - 50;
+const purple = rgb(0.486, 0.227, 0.929);
+const gray = rgb(0.4, 0.4, 0.4);
+const black = rgb(0.12, 0.11, 0.23);
+
+function text(str, x, yy, opts) {
+opts = opts || {};
+page.drawText(String(str == null ? '' : str), { x: x, y: yy, size: opts.size || 10, font: opts.bold ? fontBold : font, color: opts.color || black });
+}
+
+text('GRASPION', 50, y, { size: 20, bold: true, color: purple });
+text('Tax Invoice', width - 150, y, { size: 16, bold: true });
+y -= 20;
+text('Invoice #: ' + (order.order_number || order.id.slice(0,8)), width - 200, y, { size: 10 });
+y -= 14;
+text('Date: ' + new Date(order.created_at || Date.now()).toLocaleDateString('en-IN'), width - 200, y, { size: 10 });
+y -= 30;
+page.drawLine({ start: { x: 50, y: y }, end: { x: width - 50, y: y }, thickness: 1, color: rgb(0.9,0.9,0.9) });
+y -= 20;
+
+text('Sold By', 50, y, { bold: true, size: 10, color: gray });
+text('Billed To', width/2 + 10, y, { bold: true, size: 10, color: gray });
+y -= 16;
+text(sellerName, 50, y, { bold: true });
+text(order.customer_name || 'Customer', width/2 + 10, y, { bold: true });
+y -= 14;
+text('GSTIN: ' + sellerGstin, 50, y, { size: 9 });
+text(order.customer_phone || '', width/2 + 10, y, { size: 9 });
+y -= 14;
+text(sellerAddr || '', 50, y, { size: 9 });
+text(order.customer_address || order.address || '', width/2 + 10, y, { size: 9 });
+y -= 30;
+
+// item table header
+page.drawRectangle({ x: 50, y: y - 4, width: width - 100, height: 20, color: rgb(0.96,0.95,0.99) });
+text('Item', 55, y, { size: 8, bold: true });
+text('HSN', 250, y, { size: 8, bold: true });
+text('Qty', 300, y, { size: 8, bold: true });
+text('Taxable', 335, y, { size: 8, bold: true });
+text('GST', 390, y, { size: 8, bold: true });
+text('CGST', 430, y, { size: 8, bold: true });
+text('SGST', 465, y, { size: 8, bold: true });
+text('IGST', 500, y, { size: 8, bold: true });
+text('Total', 535, y, { size: 8, bold: true });
+y -= 24;
+
+items.forEach(function(it) {
+const prod = allProducts.find(function(p) { return p.id === it.product_id; });
+const lineTotal = Number(it.price) * Number(it.quantity);
+text((prod ? prod.name : 'Item').slice(0, 32), 55, y, { size: 8 });
+text(it.hsn_code || '-', 250, y, { size: 8 });
+text(String(it.quantity), 303, y, { size: 8 });
+text(Number(it.taxable_amount || 0).toFixed(2), 335, y, { size: 8 });
+text((it.gst_percent || 0) + '%', 393, y, { size: 8 });
+text(Number(it.cgst_amount || 0).toFixed(2), 428, y, { size: 8 });
+text(Number(it.sgst_amount || 0).toFixed(2), 463, y, { size: 8 });
+text(Number(it.igst_amount || 0).toFixed(2), 498, y, { size: 8 });
+text('Rs ' + lineTotal.toFixed(2), 530, y, { size: 8 });
+y -= 16;
+});
+y -= 10;
+page.drawLine({ start: { x: 50, y: y }, end: { x: width - 50, y: y }, thickness: 1, color: rgb(0.9,0.9,0.9) });
+y -= 20;
+
+text('Payment Method: ' + (order.payment_method || '-').toUpperCase(), 50, y, { size: 9 });
+text('Payment Status: ' + (order.payment_status || '-'), 50, y - 14, { size: 9 });
+text('Grand Total: Rs ' + Number(order.total_amount).toLocaleString('en-IN'), width - 220, y, { size: 13, bold: true, color: purple });
+y -= 50;
+
+text('This is a system-generated invoice.', 50, 40, { size: 8, color: gray });
+
+const pdfBytes = await pdfDoc.save();
+const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+const link = document.createElement('a');
+link.href = URL.createObjectURL(blob);
+link.download = 'Invoice-' + (order.order_number || order.id.slice(0,8)) + '.pdf';
+link.click();
+btn.textContent = '🧾 Download Tax Invoice (PDF)';
+} catch (err) {
+alert('Could not generate invoice: ' + err.message);
+btn.textContent = '🧾 Download Tax Invoice (PDF)';
+}
+}
 
 (async function restoreSession() {
 try {
@@ -666,7 +794,7 @@ function applyRolePermissions(role) {
 const roleSections = {
 orders_manager: ['dashboard','orders','delivery','customers'],
 inventory_manager: ['dashboard','products','warehouses','categories','pairings','catalog'],
-marketing_manager: ['dashboard','banners','pairings','ads','settings','coupons'],
+marketing_manager: ['dashboard','banners','pairings','ads','settings','coupons','homepage'],
 finance_manager: ['dashboard','payments','vendors'],
 support_staff: ['dashboard','orders','customers']
 };
@@ -694,7 +822,7 @@ document.getElementById('adminPass').value = '';
 async function loadAllData() {
 const badge = document.getElementById('dbBadge');
 try {
-const [vendorRes, productRes, orderRes, orderItemsRes, shipmentsRes, settlementsRes, relationsRes, eventsRes, warehouseRes, categoryRes, bannerRes, settingsRes, ridersRes, pairingsRes, catalogItemsRes, catalogPermsRes, returnsRes, refundsRes, couponsRes] = await Promise.all([
+const [vendorRes, productRes, orderRes, orderItemsRes, shipmentsRes, settlementsRes, relationsRes, eventsRes, warehouseRes, categoryRes, bannerRes, settingsRes, ridersRes, pairingsRes, catalogItemsRes, catalogPermsRes, returnsRes, refundsRes, couponsRes, homepageSectionsRes] = await Promise.all([
 fetch(SUPABASE_URL + '/rest/v1/vendors?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
 fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
 fetch(SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
@@ -713,7 +841,8 @@ fetch(SUPABASE_URL + '/rest/v1/catalog_items?select=*', { headers: { 'apikey': S
 fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?select=*&order=requested_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
 fetch(SUPABASE_URL + '/rest/v1/order_returns?select=*&order=requested_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
 fetch(SUPABASE_URL + '/rest/v1/refunds?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
-fetch(SUPABASE_URL + '/rest/v1/coupons?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } })
+fetch(SUPABASE_URL + '/rest/v1/coupons?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/homepage_sections?select=*&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } })
 ]);
 allVendors = await vendorRes.json();
 allProducts = await productRes.json();
@@ -734,6 +863,7 @@ allCatalogPermissions = catalogPermsRes.ok ? await catalogPermsRes.json() : [];
 allReturns = returnsRes.ok ? await returnsRes.json() : [];
 allRefunds = refundsRes.ok ? await refundsRes.json() : [];
 allCoupons = couponsRes.ok ? await couponsRes.json() : [];
+allHomepageSections = homepageSectionsRes.ok ? await homepageSectionsRes.json() : [];
 badge.className = 'db-badge live';
 badge.textContent = '✅ Live';
 renderKPIs();
@@ -748,6 +878,7 @@ renderProductFunnel();
 renderReturns();
 renderRefunds();
 renderCoupons();
+renderHomepageSections();
 renderProfitability();
 renderPaymentBreakdown();
 renderChannelBreakdown();
@@ -941,7 +1072,8 @@ const itemsListHtml = orderItems.length > 0 ? orderItems.map(function(it) {
 }).join('') : '<div style="font-size:11px; color:#9ca3af;">No items found</div>';
 const paymentSummaryHtml = '<div style="background:#f7f6fb; border-radius:10px; padding:10px; margin-bottom:10px;"><div style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:6px;">🛒 Items</div>' + itemsListHtml +
   '<div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 4px;">💳 Payment</div><div style="font-size:11.5px;">' + ((orderObj && orderObj.payment_status === 'paid') ? '✓ Paid Online (' + (orderObj.payment_method || 'Razorpay') + ')' : (orderObj && (orderObj.payment_method || '').toLowerCase() === 'cod' ? '💵 Cash on Delivery — ₹' + orderObj.total_amount + ' to collect' : '⚠️ Payment Pending')) + '</div>' +
-  '<div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 4px;">📍 Delivery Address</div><div style="font-size:11.5px;">' + ((orderObj && (orderObj.customer_address || orderObj.address)) || 'Not provided') + '</div></div>';
+  '<div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 4px;">📍 Delivery Address</div><div style="font-size:11.5px;">' + ((orderObj && (orderObj.customer_address || orderObj.address)) || 'Not provided') + '</div>' +
+(orderObj && orderObj.delivery_proof_photo ? '<div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 4px;">📸 Delivery Proof</div><a href="' + orderObj.delivery_proof_photo + '" target="_blank"><img src="' + orderObj.delivery_proof_photo + '" style="width:100%; max-width:200px; border-radius:10px;"></a>' : '') + '</div>';
 
 try {
 const res = await fetch(SUPABASE_URL + '/rest/v1/order_status_history?order_id=eq.' + orderId + '&select=*&order=changed_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
@@ -2080,6 +2212,63 @@ loadAllData();
 }
 document.getElementById('prodBulkActivate').addEventListener('click', function() { bulkSetProductStatus('active'); });
 document.getElementById('prodBulkDeactivate').addEventListener('click', function() { bulkSetProductStatus('inactive'); });
+function renderHomepageSections() {
+const catSelect = document.getElementById('hpCategory');
+if (catSelect && catSelect.options.length <= 1) {
+catSelect.innerHTML = '<option value="">— Select category —</option>' + allCategories.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
+}
+const list = document.getElementById('hpList');
+const empty = document.getElementById('hpEmpty');
+if (allHomepageSections.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+const typeLabels = { new_arrivals: '🆕 New Arrivals', deals: '🔥 Deals', category: '📁 Category' };
+list.innerHTML = allHomepageSections.map(function(s) {
+const isActive = s.is_enabled !== false;
+const cat = s.category_id ? allCategories.find(function(c) { return c.id === s.category_id; }) : null;
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + (s.title || typeLabels[s.section_type] || s.section_type) + '</div>' +
+'<div class="ic-sub">' + (typeLabels[s.section_type] || s.section_type) + (cat ? ' — ' + cat.name : '') + ' · order ' + (s.display_order || 0) + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-hptoggle="' + s.id + '" data-current="' + isActive + '">' + (isActive ? '✓ On' : 'Off') + '</button>' +
+'<button class="icon-btn del-btn" data-hpdel="' + s.id + '">🗑</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-hptoggle]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-hptoggle');
+const current = btn.getAttribute('data-current') === 'true';
+await fetch(SUPABASE_URL + '/rest/v1/homepage_sections?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ is_enabled: !current }) });
+loadAllData();
+});
+});
+document.querySelectorAll('[data-hpdel]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Remove this homepage section?')) return;
+await fetch(SUPABASE_URL + '/rest/v1/homepage_sections?id=eq.' + btn.getAttribute('data-hpdel'), { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+loadAllData();
+});
+});
+}
+const hpTypeSelect = document.getElementById('hpSectionType');
+if (hpTypeSelect) hpTypeSelect.addEventListener('change', function() {
+document.getElementById('hpCategory').style.display = hpTypeSelect.value === 'category' ? 'block' : 'none';
+});
+const hpAddBtn = document.getElementById('hpAddBtn');
+if (hpAddBtn) hpAddBtn.addEventListener('click', async function() {
+const sectionType = document.getElementById('hpSectionType').value;
+const title = document.getElementById('hpTitle').value.trim();
+const categoryId = document.getElementById('hpCategory').value || null;
+const order = Number(document.getElementById('hpOrder').value) || 0;
+if (!title) { alert('Please enter a section title'); return; }
+if (sectionType === 'category' && !categoryId) { alert('Please select a category'); return; }
+hpAddBtn.disabled = true; hpAddBtn.textContent = 'Adding...';
+await fetch(SUPABASE_URL + '/rest/v1/homepage_sections', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ section_type: sectionType, title: title, category_id: categoryId, display_order: order, is_enabled: true })
+});
+hpAddBtn.disabled = false; hpAddBtn.textContent = '+ Add Section';
+document.getElementById('hpTitle').value = '';
+document.getElementById('hpOrder').value = '0';
+loadAllData();
+});
 function renderCoupons() {
 const list = document.getElementById('cpnList');
 const empty = document.getElementById('cpnEmpty');
