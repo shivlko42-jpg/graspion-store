@@ -158,6 +158,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="side-item" data-page="warehouses">🏬 Dark Stores</div>
 <div class="side-item" data-page="categories">📁 Categories</div>
 <div class="side-item" data-page="banners">🖼️ Banners</div>
+<div class="side-item" data-page="coupons">🏷️ Coupons</div>
 <div class="side-item" data-page="settings">⚙️ Settings</div>
 <div class="side-item" data-page="staff">👤 Staff Management</div>
 <div class="side-item" data-page="applications">📋 New Applications</div>
@@ -378,6 +379,23 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 <div class="empty-state" id="banEmpty" style="display:none;">No banners added yet</div>
 </div>
 
+<div class="panel" data-section="coupons">
+<h3>🏷️ Coupons</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Create discount codes for checkout. Percentage or fixed-amount, with optional minimum order and usage limits.</p>
+<div class="form-grid">
+<input class="form-input" id="cpnCode" placeholder="Code e.g. WELCOME10" style="text-transform:uppercase;">
+<select class="form-input" id="cpnType"><option value="percent">Percentage off</option><option value="fixed">Fixed amount off</option></select>
+<input class="form-input" id="cpnValue" placeholder="Value (e.g. 10 for 10%, or 100 for ₹100)" type="number">
+<input class="form-input" id="cpnMinOrder" placeholder="Minimum order amount (optional)" type="number">
+<input class="form-input" id="cpnMaxUses" placeholder="Max total uses (optional, blank = unlimited)" type="number">
+<input class="form-input" id="cpnStartDate" placeholder="Start date" type="date">
+<input class="form-input" id="cpnEndDate" placeholder="End date (optional)" type="date">
+</div>
+<button class="login-btn" id="cpnAddBtn" style="margin-top:10px;">+ Create Coupon</button>
+<div id="cpnList" style="margin-top:16px;"></div>
+<div class="empty-state" id="cpnEmpty" style="display:none;">No coupons created yet</div>
+</div>
+
 <div class="panel" data-section="settings">
 <h3>⚙️ General Settings</h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Change these values without touching any code — the whole platform reads from here.</p>
@@ -502,6 +520,7 @@ let allReviews = [];
 let allWarehouseInventory = [];
 let allShipments = [];
 let allSettlements = [];
+let allCoupons = [];
 
 document.getElementById('orderSearchInput').addEventListener('input', renderOrders);
 document.getElementById('orderStatusFilter').addEventListener('change', renderOrders);
@@ -587,7 +606,7 @@ function applyRolePermissions(role) {
 const roleSections = {
 orders_manager: ['dashboard','orders','delivery','customers'],
 inventory_manager: ['dashboard','warehouses','categories','pairings','catalog'],
-marketing_manager: ['dashboard','banners','pairings','ads','settings'],
+marketing_manager: ['dashboard','banners','pairings','ads','settings','coupons'],
 finance_manager: ['dashboard','payments','vendors'],
 support_staff: ['dashboard','orders','customers']
 };
@@ -615,7 +634,7 @@ document.getElementById('adminPass').value = '';
 async function loadAllData() {
 const badge = document.getElementById('dbBadge');
 try {
-const [vendorRes, productRes, orderRes, orderItemsRes, shipmentsRes, settlementsRes, relationsRes, eventsRes, warehouseRes, categoryRes, bannerRes, settingsRes, ridersRes, pairingsRes, catalogItemsRes, catalogPermsRes, returnsRes, refundsRes] = await Promise.all([
+const [vendorRes, productRes, orderRes, orderItemsRes, shipmentsRes, settlementsRes, relationsRes, eventsRes, warehouseRes, categoryRes, bannerRes, settingsRes, ridersRes, pairingsRes, catalogItemsRes, catalogPermsRes, returnsRes, refundsRes, couponsRes] = await Promise.all([
 fetch(SUPABASE_URL + '/rest/v1/vendors?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
 fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
 fetch(SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
@@ -633,7 +652,8 @@ fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&order=created_at.desc',
 fetch(SUPABASE_URL + '/rest/v1/catalog_items?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
 fetch(SUPABASE_URL + '/rest/v1/catalog_permissions?select=*&order=requested_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
 fetch(SUPABASE_URL + '/rest/v1/order_returns?select=*&order=requested_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
-fetch(SUPABASE_URL + '/rest/v1/refunds?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } })
+fetch(SUPABASE_URL + '/rest/v1/refunds?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/coupons?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } })
 ]);
 allVendors = await vendorRes.json();
 allProducts = await productRes.json();
@@ -653,6 +673,7 @@ allCatalogItems = catalogItemsRes.ok ? await catalogItemsRes.json() : [];
 allCatalogPermissions = catalogPermsRes.ok ? await catalogPermsRes.json() : [];
 allReturns = returnsRes.ok ? await returnsRes.json() : [];
 allRefunds = refundsRes.ok ? await refundsRes.json() : [];
+allCoupons = couponsRes.ok ? await couponsRes.json() : [];
 badge.className = 'db-badge live';
 badge.textContent = '✅ Live';
 renderKPIs();
@@ -665,6 +686,7 @@ renderTopProducts();
 renderProductFunnel();
 renderReturns();
 renderRefunds();
+renderCoupons();
 renderProfitability();
 renderPaymentBreakdown();
 renderChannelBreakdown();
@@ -949,13 +971,14 @@ const list = document.getElementById('payoutList');
 const empty = document.getElementById('payoutEmpty');
 if (allSettlements.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
 empty.style.display = 'none';
-const pending = allSettlements.filter(function(s) { return s.status !== 'paid'; });
-list.innerHTML = pending.length === 0 ? '<div class="empty-state">✅ All settlements are paid up!</div>' : pending.map(function(s) {
+const pending = allSettlements.filter(function(s) { return s.status === 'pending'; });
+const cancelledCount = allSettlements.filter(function(s) { return s.status === 'cancelled'; }).length;
+list.innerHTML = (pending.length === 0 ? '<div class="empty-state">✅ All settlements are paid up!</div>' : pending.map(function(s) {
 const vendor = allVendors.find(function(v) { return v.id === s.vendor_id; });
 return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + (vendor ? vendor.icon + ' ' + vendor.name : 'Vendor') + ' — Order #' + s.order_id.slice(0,8) + '</div>' +
 '<div class="ic-sub">Sale ₹' + Number(s.sale_amount).toLocaleString('en-IN') + ' − Commission ₹' + Number(s.commission_amount || 0).toLocaleString('en-IN') + ' − Delivery ₹' + Number(s.delivery_charge || 0).toLocaleString('en-IN') + (Number(s.gateway_fee) > 0 ? ' − Gateway ₹' + Number(s.gateway_fee).toLocaleString('en-IN') : '') + ' = <b style="color:#15803d;">₹' + Number(s.payable_amount).toLocaleString('en-IN') + ' payable</b></div></div>' +
 '<div class="item-actions"><button class="icon-btn on-btn" data-settleid="' + s.id + '">✓ Approve & Mark Paid</button></div></div>';
-}).join('');
+}).join('')) + (cancelledCount > 0 ? '<div style="margin-top:10px; font-size:11px; color:#dc2626; background:#fee2e2; padding:8px; border-radius:8px;">⚠️ ' + cancelledCount + ' settlement(s) were auto-cancelled because the order was returned — no payment needed, nothing to do for these.</div>' : '');
 document.querySelectorAll('[data-settleid]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 if (!confirm('Confirm you have transferred this amount to the vendor\'s bank account?')) return;
@@ -1813,6 +1836,64 @@ return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + p.
 }
 
 // ===================== RETURNS & REFUNDS (Order Mgmt Phase 4) =====================
+function renderCoupons() {
+const list = document.getElementById('cpnList');
+const empty = document.getElementById('cpnEmpty');
+if (allCoupons.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = allCoupons.map(function(c) {
+const isActive = c.status === 'active';
+const usageText = c.max_uses ? (c.used_count || 0) + ' / ' + c.max_uses + ' used' : (c.used_count || 0) + ' used (unlimited)';
+const valueText = c.discount_type === 'percent' ? c.discount_value + '% off' : '₹' + c.discount_value + ' off';
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + c.code + ' — ' + valueText + '</div>' +
+'<div class="ic-sub">' + (c.min_order_amount ? 'Min order ₹' + c.min_order_amount + ' · ' : '') + usageText + (c.end_date ? ' · expires ' + new Date(c.end_date).toLocaleDateString('en-IN') : '') + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-cpntoggle="' + c.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button>' +
+'<button class="icon-btn off-btn" data-cpndel="' + c.id + '">🗑</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-cpntoggle]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-cpntoggle');
+const current = btn.getAttribute('data-current') === 'true';
+await fetch(SUPABASE_URL + '/rest/v1/coupons?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: current ? 'inactive' : 'active' }) });
+loadAllData();
+});
+});
+document.querySelectorAll('[data-cpndel]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Delete this coupon permanently?')) return;
+const id = btn.getAttribute('data-cpndel');
+await fetch(SUPABASE_URL + '/rest/v1/coupons?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+loadAllData();
+});
+});
+}
+document.getElementById('cpnAddBtn').addEventListener('click', async function() {
+const btn = this;
+const code = document.getElementById('cpnCode').value.trim().toUpperCase();
+const type = document.getElementById('cpnType').value;
+const value = Number(document.getElementById('cpnValue').value);
+const minOrder = document.getElementById('cpnMinOrder').value ? Number(document.getElementById('cpnMinOrder').value) : null;
+const maxUses = document.getElementById('cpnMaxUses').value ? Number(document.getElementById('cpnMaxUses').value) : null;
+const startDate = document.getElementById('cpnStartDate').value || null;
+const endDate = document.getElementById('cpnEndDate').value || null;
+if (!code || !value || value <= 0) { alert('Please enter a coupon code and a valid discount value'); return; }
+if (type === 'percent' && value > 100) { alert('Percentage discount cannot be more than 100'); return; }
+btn.disabled = true; btn.textContent = 'Creating...';
+const res = await fetch(SUPABASE_URL + '/rest/v1/coupons', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+body: JSON.stringify({ code: code, discount_type: type, discount_value: value, min_order_amount: minOrder, max_uses: maxUses, used_count: 0, start_date: startDate, end_date: endDate, status: 'active' })
+});
+btn.disabled = false; btn.textContent = '+ Create Coupon';
+if (!res.ok) { alert('Could not create coupon — code may already exist, or check the values entered.'); return; }
+document.getElementById('cpnCode').value = '';
+document.getElementById('cpnValue').value = '';
+document.getElementById('cpnMinOrder').value = '';
+document.getElementById('cpnMaxUses').value = '';
+document.getElementById('cpnStartDate').value = '';
+document.getElementById('cpnEndDate').value = '';
+loadAllData();
+});
 function renderReturns() {
 const list = document.getElementById('returnsList');
 const empty = document.getElementById('returnsEmpty');
