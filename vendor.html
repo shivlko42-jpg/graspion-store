@@ -188,6 +188,15 @@
       <div class="kpi-card"><div class="kpi-val" id="kpiPayout">₹0</div><div class="kpi-label">Pending Payout</div></div>
     </div>
 
+    <div class="panel">
+      <h3>✅ To-Do List</h3>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-top:10px;">
+        <div data-scrollto="ordersSection" style="cursor:pointer; background:#fef3c7; border-radius:12px; padding:12px;"><div style="font-size:20px; font-weight:900; color:#92400e;" id="todoPendingOrders">0</div><div style="font-size:10.5px; color:#92400e; font-weight:700;">📦 Pending Orders ›</div></div>
+        <div data-scrollto="productsSection" style="cursor:pointer; background:#fee2e2; border-radius:12px; padding:12px;"><div style="font-size:20px; font-weight:900; color:#991b1b;" id="todoOutOfStock">0</div><div style="font-size:10.5px; color:#991b1b; font-weight:700;">🚫 Out of Stock ›</div></div>
+        <div data-scrollto="productsSection" style="cursor:pointer; background:#ffedd5; border-radius:12px; padding:12px;"><div style="font-size:20px; font-weight:900; color:#9a3412;" id="todoLowStock">0</div><div style="font-size:10.5px; color:#9a3412; font-weight:700;">⚠️ Low Stock ›</div></div>
+      </div>
+    </div>
+
     <div class="panel" id="suppliersPanel">
       <h3>🚚 Suppliers</h3>
       <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Keep track of who you buy stock from — link products to suppliers with purchase price, item code, and lead time.</p>
@@ -981,7 +990,17 @@ function renderKPIs() {
   document.getElementById('kpiRevenue').textContent = '₹' + revenue.toLocaleString('en-IN');
   const pendingPayout = vendorOrders.filter(function(o) { return o.payout_status !== 'paid'; }).reduce(function(s, o) { return s + Number(o.total_amount || 0); }, 0);
   document.getElementById('kpiPayout').textContent = '₹' + pendingPayout.toLocaleString('en-IN');
+  const pendingOrdersCount = vendorOrders.filter(function(o) { return ['pending','confirmed','preparing'].indexOf(o.status) !== -1; }).length;
+  document.getElementById('todoPendingOrders').textContent = pendingOrdersCount;
+  document.getElementById('todoOutOfStock').textContent = vendorProducts.filter(function(p) { return Number(p.stock) <= 0; }).length;
+  document.getElementById('todoLowStock').textContent = vendorProducts.filter(function(p) { return Number(p.stock) > 0 && Number(p.stock) <= (p.reorder_level || 10); }).length;
 }
+document.querySelectorAll('[data-scrollto]').forEach(function(el) {
+  el.addEventListener('click', function() {
+    const target = document.getElementById(el.getAttribute('data-scrollto'));
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
 
 function renderProducts() {
   const list = document.getElementById('prodList');
