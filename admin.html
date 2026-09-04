@@ -399,6 +399,44 @@ Continue with Google
 <div class="empty-state" id="rackBinEmpty" style="display:none;">No instant-delivery products found yet</div>
 </details>
 
+<details class="panel" data-section="products">
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">➕ Add / Edit Product ▾</h3></summary>
+<p style="font-size:11px; color:#9ca3af; margin:8px 0 12px;">Add a new product on behalf of any vendor, or fix an existing one. Choose the vendor first — the product belongs to them just like if they'd added it themselves.</p>
+<div class="form-grid">
+<select class="form-input" id="apVendor"><option value="">— Select vendor —</option></select>
+<select class="form-input" id="apCategory"><option value="">— Select category —</option></select>
+<input class="form-input" id="apName" placeholder="Product name">
+<input class="form-input" id="apSku" placeholder="SKU (optional, must be unique)">
+<input class="form-input" id="apPrice" placeholder="Selling price ₹" type="number">
+<input class="form-input" id="apOldPrice" placeholder="MRP ₹ (optional, shows as strikethrough)" type="number">
+<input class="form-input" id="apStock" placeholder="Stock quantity" type="number" value="0">
+<input class="form-input" id="apHsn" placeholder="HSN Code">
+<input class="form-input" id="apGst" placeholder="GST %" type="number" value="0">
+<input class="form-input" id="apBrand" placeholder="Brand (optional)">
+</div>
+<div style="margin:10px 0;">
+<label style="font-size:11px; font-weight:700; color:#6b7280; display:block; margin-bottom:6px;">Where should this sell?</label>
+<div class="radio-row" style="display:flex; gap:8px;">
+<div class="radio-option selected" id="apModePanIndia" data-mode="pan_india" style="cursor:pointer; padding:8px 14px; border-radius:10px; background:#f3f1f8; font-size:11.5px;">🇮🇳 Pan-India</div>
+<div class="radio-option" id="apModeLocal" data-mode="local" style="cursor:pointer; padding:8px 14px; border-radius:10px; background:#f3f1f8; font-size:11.5px;">📍 Specific Pincode</div>
+</div>
+<input class="form-input" id="apPincode" placeholder="Pincode" style="display:none; margin-top:8px;">
+</div>
+<textarea id="apShortDesc" placeholder="Short description (1-2 lines)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; min-height:44px; font-family:inherit; box-sizing:border-box;"></textarea>
+<textarea id="apLongDesc" placeholder="Full description" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; min-height:70px; font-family:inherit; box-sizing:border-box;"></textarea>
+<textarea id="apFeatures" placeholder="Key features (one per line)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; min-height:60px; font-family:inherit; box-sizing:border-box;"></textarea>
+<label style="font-size:10.5px; color:#6b7280; display:block; margin-bottom:4px;">Product Photo</label>
+<input type="file" accept="image/*" id="apPhotoFile" style="margin-bottom:10px; font-size:11px;">
+<img id="apPhotoPreview" style="display:none; width:70px; height:70px; object-fit:cover; border-radius:10px; margin-bottom:10px;">
+<div style="display:flex; gap:14px; margin-bottom:10px; font-size:11.5px;">
+<label style="display:flex; align-items:center; gap:5px;"><input type="checkbox" id="apReturnable" checked> Returnable</label>
+<label style="display:flex; align-items:center; gap:5px;"><input type="checkbox" id="apCod" checked> COD Allowed</label>
+</div>
+<div id="apError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
+<button class="login-btn" id="apSaveBtn">+ Add Product</button>
+<button class="mini-btn" id="apCancelEditBtn" style="display:none; margin-top:8px; background:#f3f1f8; color:#6b7280;">Cancel Edit</button>
+</details>
+
 <div class="panel" data-section="products">
 <h3>📦 All Products</h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Every product across every vendor, in one place — filter, activate/deactivate, or bulk-manage.</p>
@@ -920,6 +958,7 @@ renderReturns();
 renderRefunds();
 renderCoupons();
 renderHomepageSections();
+populateAdminProductDropdowns();
 renderProfitability();
 renderPaymentBreakdown();
 renderChannelBreakdown();
@@ -2293,7 +2332,7 @@ const isChecked = selectedProductIds.has(p.id);
 return '<div class="item-card"><input type="checkbox" class="prod-checkbox" data-prodcheck="' + p.id + '" ' + (isChecked ? 'checked' : '') + ' style="margin-right:10px;">' +
 '<div class="ic-info"><div class="ic-title">' + p.name + ' ' + typeTag + '</div>' +
 '<div class="ic-sub">' + (p.sku ? 'SKU: ' + p.sku + ' · ' : '') + (vendor ? vendor.name : 'No vendor') + ' · ₹' + p.price + ' · ' + stockTag + '</div></div>' +
-'<div class="item-actions"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-prodtoggle="' + p.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button></div></div>';
+'<div class="item-actions"><button class="mini-btn" data-prodedit="' + p.id + '" style="background:#ede9fe; color:#6d28d9;">✏️ Edit</button><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-prodtoggle="' + p.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button></div></div>';
 }).join('');
 document.querySelectorAll('[data-prodtoggle]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
@@ -2303,6 +2342,9 @@ btn.textContent = '...';
 await fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: current ? 'inactive' : 'active' }) });
 loadAllData();
 });
+});
+document.querySelectorAll('[data-prodedit]').forEach(function(btn) {
+btn.addEventListener('click', function() { populateAdminProductForm(btn.getAttribute('data-prodedit')); });
 });
 document.querySelectorAll('[data-prodcheck]').forEach(function(cb) {
 cb.addEventListener('change', function() {
@@ -2353,6 +2395,157 @@ loadAllData();
 }
 document.getElementById('prodBulkActivate').addEventListener('click', function() { bulkSetProductStatus('active'); });
 document.getElementById('prodBulkDeactivate').addEventListener('click', function() { bulkSetProductStatus('inactive'); });
+
+// ===================== ADMIN: ADD / EDIT PRODUCT =====================
+let apEditingId = null;
+let apSelectedMode = 'pan_india';
+let apPhotoUrl = null;
+
+function populateAdminProductDropdowns() {
+const vendorSel = document.getElementById('apVendor');
+if (vendorSel && vendorSel.options.length <= 1) {
+vendorSel.innerHTML = '<option value="">— Select vendor —</option>' + allVendors.map(function(v) { return '<option value="' + v.id + '">' + v.name + ' (' + (v.vendor_type === 'dark_store' ? 'Dark Store' : 'Marketplace') + ')</option>'; }).join('');
+}
+const catSel = document.getElementById('apCategory');
+if (catSel && catSel.options.length <= 1) {
+catSel.innerHTML = '<option value="">— Select category —</option>' + allCategories.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
+}
+}
+document.getElementById('apModePanIndia').addEventListener('click', function() { setApMode('pan_india'); });
+document.getElementById('apModeLocal').addEventListener('click', function() { setApMode('local'); });
+function setApMode(mode) {
+apSelectedMode = mode;
+document.getElementById('apModePanIndia').classList.toggle('selected', mode === 'pan_india');
+document.getElementById('apModeLocal').classList.toggle('selected', mode === 'local');
+document.getElementById('apPincode').style.display = mode === 'local' ? 'block' : 'none';
+}
+document.getElementById('apPhotoFile').addEventListener('change', async function() {
+const file = this.files[0];
+if (!file) return;
+const preview = document.getElementById('apPhotoPreview');
+preview.src = URL.createObjectURL(file);
+preview.style.display = 'block';
+const btn = document.getElementById('apSaveBtn');
+const origText = btn.textContent;
+btn.textContent = '⏳ Uploading photo...';
+try {
+const img = new Image();
+const loaded = new Promise(function(res) { img.onload = res; });
+img.src = URL.createObjectURL(file);
+await loaded;
+const maxDim = 1000;
+let w = img.width, h = img.height;
+if (w > maxDim || h > maxDim) { if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; } else { w = Math.round(w * maxDim / h); h = maxDim; } }
+const canvas = document.createElement('canvas');
+canvas.width = w; canvas.height = h;
+canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+const blob = await new Promise(function(res) { canvas.toBlob(res, 'image/jpeg', 0.85); });
+const path = 'admin-added/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.jpg';
+const uploadRes = await fetch(SUPABASE_URL + '/storage/v1/object/product-images/' + path, {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'image/jpeg' },
+body: blob
+});
+if (uploadRes.ok) { apPhotoUrl = SUPABASE_URL + '/storage/v1/object/public/product-images/' + path; }
+} catch (e) { /* photo optional, don't block save */ }
+btn.textContent = origText;
+});
+function resetAdminProductForm() {
+['apName','apSku','apPrice','apOldPrice','apHsn','apBrand','apPincode','apShortDesc','apLongDesc','apFeatures'].forEach(function(id) { document.getElementById(id).value = ''; });
+document.getElementById('apStock').value = '0';
+document.getElementById('apGst').value = '0';
+document.getElementById('apVendor').value = '';
+document.getElementById('apCategory').value = '';
+document.getElementById('apReturnable').checked = true;
+document.getElementById('apCod').checked = true;
+document.getElementById('apPhotoPreview').style.display = 'none';
+document.getElementById('apPhotoFile').value = '';
+apPhotoUrl = null;
+apEditingId = null;
+setApMode('pan_india');
+document.getElementById('apSaveBtn').textContent = '+ Add Product';
+document.getElementById('apCancelEditBtn').style.display = 'none';
+document.getElementById('apError').textContent = '';
+}
+function populateAdminProductForm(productId) {
+const p = allProducts.find(function(pp) { return pp.id === productId; });
+if (!p) return;
+populateAdminProductDropdowns();
+apEditingId = productId;
+document.getElementById('apVendor').value = p.vendor_id || '';
+document.getElementById('apCategory').value = p.category_id || '';
+document.getElementById('apName').value = p.name || '';
+document.getElementById('apSku').value = p.sku || '';
+document.getElementById('apPrice').value = p.price || '';
+document.getElementById('apOldPrice').value = p.old_price || '';
+document.getElementById('apStock').value = p.stock || 0;
+document.getElementById('apHsn').value = p.hsn_code || '';
+document.getElementById('apGst').value = p.gst_percent != null ? p.gst_percent : 0;
+document.getElementById('apBrand').value = p.brand || '';
+document.getElementById('apShortDesc').value = p.short_description || '';
+document.getElementById('apLongDesc').value = p.long_description || '';
+document.getElementById('apFeatures').value = p.features || '';
+document.getElementById('apReturnable').checked = p.is_returnable !== false;
+document.getElementById('apCod').checked = p.cod_allowed !== false;
+if (p.pincode === 'ALL') { setApMode('pan_india'); } else { setApMode('local'); document.getElementById('apPincode').value = p.pincode || ''; }
+if (p.image_data) { document.getElementById('apPhotoPreview').src = p.image_data; document.getElementById('apPhotoPreview').style.display = 'block'; apPhotoUrl = p.image_data; }
+document.getElementById('apSaveBtn').textContent = '💾 Save Changes';
+document.getElementById('apCancelEditBtn').style.display = 'block';
+document.getElementById('apError').textContent = '';
+const apDetailsPanel = document.querySelector('details.panel[data-section="products"]');
+if (apDetailsPanel) apDetailsPanel.open = true;
+document.getElementById('apName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+document.getElementById('apCancelEditBtn').addEventListener('click', resetAdminProductForm);
+document.getElementById('apSaveBtn').addEventListener('click', async function() {
+const btn = this;
+const errEl = document.getElementById('apError');
+errEl.textContent = '';
+const vendorId = document.getElementById('apVendor').value;
+const name = document.getElementById('apName').value.trim();
+const price = document.getElementById('apPrice').value;
+if (!vendorId) { errEl.textContent = 'Please select which vendor this product belongs to.'; return; }
+if (!name) { errEl.textContent = 'Please enter a product name.'; return; }
+if (!price || Number(price) <= 0) { errEl.textContent = 'Please enter a valid price.'; return; }
+const pincode = apSelectedMode === 'pan_india' ? 'ALL' : document.getElementById('apPincode').value.trim();
+if (apSelectedMode === 'local' && !pincode) { errEl.textContent = 'Please enter a pincode, or switch to Pan-India.'; return; }
+const payload = {
+vendor_id: vendorId,
+category_id: document.getElementById('apCategory').value || null,
+name: name,
+sku: document.getElementById('apSku').value.trim() || null,
+price: Number(price),
+old_price: document.getElementById('apOldPrice').value ? Number(document.getElementById('apOldPrice').value) : null,
+selling_price: Number(price),
+mrp: document.getElementById('apOldPrice').value ? Number(document.getElementById('apOldPrice').value) : Number(price),
+stock: Number(document.getElementById('apStock').value) || 0,
+hsn_code: document.getElementById('apHsn').value.trim() || null,
+gst_percent: Number(document.getElementById('apGst').value) || 0,
+brand: document.getElementById('apBrand').value.trim() || null,
+pincode: pincode,
+short_description: document.getElementById('apShortDesc').value.trim() || null,
+long_description: document.getElementById('apLongDesc').value.trim() || null,
+features: document.getElementById('apFeatures').value.trim() || null,
+is_returnable: document.getElementById('apReturnable').checked,
+cod_allowed: document.getElementById('apCod').checked,
+icon: '📦'
+};
+if (!apEditingId || apPhotoUrl) { payload.image_data = apPhotoUrl; }
+btn.disabled = true; btn.textContent = '⏳ Saving...';
+try {
+const res = await fetch(
+apEditingId ? (SUPABASE_URL + '/rest/v1/products?id=eq.' + apEditingId) : (SUPABASE_URL + '/rest/v1/products'),
+{ method: apEditingId ? 'PATCH' : 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+);
+if (!res.ok) { errEl.textContent = 'Could not save: ' + await res.text(); btn.disabled = false; btn.textContent = apEditingId ? '💾 Save Changes' : '+ Add Product'; return; }
+resetAdminProductForm();
+loadAllData();
+} catch (err) {
+errEl.textContent = 'Error: ' + err.message;
+btn.disabled = false; btn.textContent = apEditingId ? '💾 Save Changes' : '+ Add Product';
+}
+});
+
 function renderHomepageSections() {
 const catSelect = document.getElementById('hpCategory');
 if (catSelect && catSelect.options.length <= 1) {
