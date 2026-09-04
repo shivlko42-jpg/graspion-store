@@ -876,7 +876,7 @@ canvas.toBlob(async function(blob) {
 if (!blob) { resolve(null); return; }
 const publicUrl = await uploadProductImageBlob(blob);
 resolve(publicUrl);
-}, 'image/jpeg', 0.8); // compressed JPEG, ~80% quality
+}, 'image/jpeg', 0.85); // compressed JPEG, ~85% quality — good balance of sharp/visible vs lightweight
 };
 img.onerror = function() { resolve(null); };
 img.src = evt.target.result;
