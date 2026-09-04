@@ -439,6 +439,10 @@ Continue with Google
 <button id="closeMyOrdersBtn" style="background:#f3f1f8; border:none; padding:7px 12px; border-radius:8px; font-size:11px; cursor:pointer;">✕</button>
 </div>
 </div>
+<div style="display:flex; gap:8px; margin-bottom:12px;">
+<button id="ordersTabRecent" data-orderstab="recent" style="flex:1; background:#7c3aed; color:#fff; border:none; padding:9px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer;">Recent</button>
+<button id="ordersTabHistory" data-orderstab="history" style="flex:1; background:#f3f1f8; color:#6b7280; border:none; padding:9px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer;">History</button>
+</div>
 <div id="myOrdersList"></div>
 <div class="empty-state" id="myOrdersEmpty" style="display:none;">No orders yet — go shopping!</div>
 </div>
@@ -1748,6 +1752,8 @@ updateAccountButtonUI();
 document.getElementById('myOrdersModal').style.display = 'none';
 });
 
+let myOrdersCache = null;
+let myOrdersTab = 'recent';
 async function loadMyOrders(){
 const list = document.getElementById('myOrdersList');
 const empty = document.getElementById('myOrdersEmpty');
@@ -1757,18 +1763,58 @@ const res = await fetch(SUPABASE_URL + '/rest/v1/orders?customer_id=eq.' + curre
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
 });
 const orders = res.ok ? await res.json() : [];
-if (orders.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
-empty.style.display = 'none';
-const statusLabels = { pending: '🕐 Order Confirmed', confirmed: '🕐 Order Confirmed', preparing: '📦 Preparing', shipped: '🚚 Shipped', out_for_delivery: '🚴 Out for Delivery', delivered: '✅ Delivered', cancelled: '✕ Cancelled', returned: '↩️ Returned' };
 const orderIds = orders.map(function(o) { return o.id; }).join(',');
 const [shipRes, itemsRes, returnsRes] = await Promise.all([
 fetch(SUPABASE_URL + '/rest/v1/shipments?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
 orderIds ? fetch(SUPABASE_URL + '/rest/v1/order_items?order_id=in.(' + orderIds + ')&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }) : Promise.resolve(null),
 fetch(SUPABASE_URL + '/rest/v1/order_returns?customer_id=eq.' + currentCustomer.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } })
 ]);
-const allMyOrderItems = itemsRes && itemsRes.ok ? await itemsRes.json() : [];
-const myReturns = returnsRes.ok ? await returnsRes.json() : [];
-const shipments = shipRes.ok ? await shipRes.json() : [];
+myOrdersCache = {
+orders: orders,
+allMyOrderItems: itemsRes && itemsRes.ok ? await itemsRes.json() : [],
+myReturns: returnsRes.ok ? await returnsRes.json() : [],
+shipments: shipRes.ok ? await shipRes.json() : []
+};
+myOrdersTab = 'recent';
+document.getElementById('ordersTabRecent').style.background = '#7c3aed'; document.getElementById('ordersTabRecent').style.color = '#fff';
+document.getElementById('ordersTabHistory').style.background = '#f3f1f8'; document.getElementById('ordersTabHistory').style.color = '#6b7280';
+await renderMyOrdersFiltered();
+} catch (err) {
+list.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626; font-size:12px;">Could not load orders.</div>';
+}
+}
+document.querySelectorAll('[data-orderstab]').forEach(function(btn) {
+btn.addEventListener('click', function() {
+myOrdersTab = btn.getAttribute('data-orderstab');
+document.getElementById('ordersTabRecent').style.background = myOrdersTab === 'recent' ? '#7c3aed' : '#f3f1f8';
+document.getElementById('ordersTabRecent').style.color = myOrdersTab === 'recent' ? '#fff' : '#6b7280';
+document.getElementById('ordersTabHistory').style.background = myOrdersTab === 'history' ? '#7c3aed' : '#f3f1f8';
+document.getElementById('ordersTabHistory').style.color = myOrdersTab === 'history' ? '#fff' : '#6b7280';
+renderMyOrdersFiltered();
+});
+});
+async function renderMyOrdersFiltered(){
+const list = document.getElementById('myOrdersList');
+const empty = document.getElementById('myOrdersEmpty');
+if (!myOrdersCache) return;
+const ACTIVE_STATUSES = ['pending','confirmed','preparing','shipped','out_for_delivery'];
+const orders = myOrdersCache.orders.filter(function(o) {
+const isActive = ACTIVE_STATUSES.indexOf(o.status) !== -1;
+const recentlyDelivered = o.status === 'delivered' && o.delivered_at && (new Date() - new Date(o.delivered_at)) < (7*24*60*60*1000);
+const isRecent = isActive || recentlyDelivered;
+return myOrdersTab === 'recent' ? isRecent : !isRecent;
+});
+if (orders.length === 0) {
+empty.style.display = 'block';
+empty.textContent = myOrdersTab === 'recent' ? 'No recent/active orders — go shopping!' : 'No older orders yet.';
+list.innerHTML = '';
+return;
+}
+empty.style.display = 'none';
+const allMyOrderItems = myOrdersCache.allMyOrderItems;
+const myReturns = myOrdersCache.myReturns;
+const shipments = myOrdersCache.shipments;
+const statusLabels = { pending: '🕐 Order Confirmed', confirmed: '🕐 Order Confirmed', preparing: '📦 Preparing', shipped: '🚚 Shipped', out_for_delivery: '🚴 Out for Delivery', delivered: '✅ Delivered', cancelled: '✕ Cancelled', returned: '↩️ Returned' };
 const cardsHtml = await Promise.all(orders.map(async function(o) {
 const shipment = shipments.find(function(s) { return s.order_id === o.id; });
 const trackHtml = shipment && shipment.tracking_url ? '<a href="' + shipment.tracking_url + '" target="_blank" style="font-size:11px; color:#7c3aed; font-weight:700;">Track Shipment →</a>' : '';
@@ -1823,9 +1869,6 @@ list.innerHTML = cardsHtml.join('');
 document.querySelectorAll('[data-requestreturn]').forEach(function(btn) {
 btn.addEventListener('click', function() { openReturnModal(btn.getAttribute('data-requestreturn')); });
 });
-} catch (err) {
-list.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626; font-size:12px;">Could not load orders.</div>';
-}
 }
 
 // ===================== BOTTOM NAVIGATION =====================
