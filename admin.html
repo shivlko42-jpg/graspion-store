@@ -112,7 +112,22 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 .icon-btn.off-btn { background:#fee2e2; color:#dc2626; }
 .icon-btn.del-btn { background:#f3f1f8; color:#6b7280; }
 @media(max-width:900px){ .panel-grid{grid-template-columns:1fr;} }
-@media(max-width:700px){ .sidebar{display:none;} }
+.mobile-hamburger { display:none; }
+.sidebar-backdrop { display:none; }
+@media(max-width:700px){
+  .sidebar { position:fixed; left:0; top:0; z-index:250; transform:translateX(-100%); transition:transform 0.25s ease; box-shadow:4px 0 24px rgba(0,0,0,0.25); }
+  .sidebar.open { transform:translateX(0); }
+  .sidebar-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:240; }
+  .sidebar-backdrop.open { display:block; }
+  .mobile-hamburger { display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; background:#fff; border:none; box-shadow:0 2px 8px rgba(0,0,0,0.08); font-size:18px; cursor:pointer; flex:0 0 auto; }
+  .main { padding:16px 14px; }
+  .topbar h1 { font-size:18px; }
+  .kpi-grid { grid-template-columns:repeat(2,1fr); gap:10px; }
+  .kpi-card { padding:13px; }
+  .kpi-val { font-size:19px; }
+  table { font-size:11px; }
+  th, td { padding:7px 4px; }
+}
 </style>
 </head>
 <body>
@@ -146,7 +161,8 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 </div>
 </div>
 <div class="app-wrap" id="appWrap">
-<div class="sidebar">
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+<div class="sidebar" id="mainSidebar">
 <div class="side-logo-wrap"><div data-graspion-logo="full" data-size="18" data-color="#ffffff"></div></div>
 <div class="side-item active" data-page="dashboard">📊 Dashboard</div>
 <div class="side-item" data-page="vendors">🏪 Vendors</div>
@@ -171,9 +187,12 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 </div>
 <div class="main">
 <div class="topbar">
+<div style="display:flex; align-items:center; gap:12px;">
+<button class="mobile-hamburger" id="mobileHamburgerBtn">☰</button>
 <div>
 <h1>Master Dashboard</h1>
 <div class="sub">Live overview from Graspion Cloud</div>
+</div>
 </div>
 <span class="db-badge loading" id="dbBadge">⏳ Loading...</span>
 </div>
@@ -581,8 +600,22 @@ document.querySelectorAll('.side-item[data-page]').forEach(function(item) {
       const sections = el.getAttribute('data-section').split(' ');
       el.style.display = (page === 'dashboard' || sections.includes(page)) ? '' : 'none';
     });
+    // on mobile, close the sidebar drawer once a page is picked so the content is visible
+    closeMobileSidebar();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 });
+
+function openMobileSidebar() {
+  document.getElementById('mainSidebar').classList.add('open');
+  document.getElementById('sidebarBackdrop').classList.add('open');
+}
+function closeMobileSidebar() {
+  document.getElementById('mainSidebar').classList.remove('open');
+  document.getElementById('sidebarBackdrop').classList.remove('open');
+}
+document.getElementById('mobileHamburgerBtn').addEventListener('click', openMobileSidebar);
+document.getElementById('sidebarBackdrop').addEventListener('click', closeMobileSidebar);
 
 document.getElementById('adminLoginBtn').addEventListener('click', async function() {
 const email = document.getElementById('adminEmail').value.trim();
