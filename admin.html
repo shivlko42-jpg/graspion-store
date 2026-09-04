@@ -1300,7 +1300,7 @@ return '<div class="vendor-row-item" style="display:block;"><div style="display:
 '<select id="ridervendor-' + r.id + '" style="padding:6px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11px; flex:1; min-width:180px;">' + vendorOptionsHtml + '</select>' +
 '<button class="mini-btn" data-saveriderassign="' + r.id + '" style="background:#dcfce7; color:#15803d;">Save</button>' +
 '</div>' +
-'</div>';
+'</div></div>';
 }).join('') + '<div style="font-size:10.5px; color:#9ca3af; margin-top:10px;">' + activeOrders + ' order(s) currently out for delivery (status: Shipped)</div>';
 document.querySelectorAll('[data-riderdetailid]').forEach(function(btn) {
 btn.addEventListener('click', function() {
