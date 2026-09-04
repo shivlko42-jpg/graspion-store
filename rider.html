@@ -123,6 +123,10 @@ Continue with Google
 <div class="earnings-item"><div class="earnings-val" id="deliveryEarnings">₹0</div><div class="earnings-label">Earnings</div></div>
 <div class="earnings-item"><div class="earnings-val" id="codCollected">₹0</div><div class="earnings-label">COD Collected</div></div>
 </div>
+<div id="cashInHandBanner" style="display:none; margin-top:10px; background:#fef3c7; border-radius:10px; padding:10px; text-align:center;">
+<div style="font-size:10.5px; color:#92400e; font-weight:700;">💵 Total cash to hand over to office</div>
+<div style="font-size:20px; font-weight:900; color:#92400e;" id="cashInHandTotal">₹0</div>
+</div>
 </div>
 
 <div class="section-label">🚴 ORDERS TO DELIVER</div>
@@ -301,6 +305,10 @@ async function loadOrders() {
     document.getElementById('deliveryEarnings').textContent = '₹' + (todaysDeliveries.length * (currentRider.per_delivery_fee || 25));
     const codTotal = todaysDeliveries.reduce(function(s, o) { return s + Number(o.cod_collected || 0); }, 0);
     document.getElementById('codCollected').textContent = '₹' + codTotal;
+    if (currentRider.cash_in_hand > 0) {
+      document.getElementById('cashInHandBanner').style.display = 'block';
+      document.getElementById('cashInHandTotal').textContent = '₹' + Number(currentRider.cash_in_hand).toLocaleString('en-IN');
+    }
 
     const allOrders = activeOrders.concat(newOrders);
 
@@ -393,6 +401,10 @@ async function loadOrders() {
             headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
             body: JSON.stringify({ recipient_type: 'customer', channel: 'sms', template_key: 'order_delivered', payload: { order_id: id }, status: 'pending' })
           });
+          // refresh our own record so the cash-in-hand banner reflects this delivery immediately
+          const refreshedRes = await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + currentRider.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+          const refreshedRows = refreshedRes.ok ? await refreshedRes.json() : [];
+          if (refreshedRows[0]) { currentRider = refreshedRows[0]; }
           loadOrders();
         }
       });

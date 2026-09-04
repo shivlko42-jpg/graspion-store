@@ -1289,6 +1289,15 @@ return '<div class="vendor-row-item" style="display:block;"><div style="display:
 '<b>Phone:</b> ' + (r.phone || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
 '<b>Address:</b> ' + (r.address || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
 '<b>Total Earnings:</b> ₹' + (r.earnings_total || 0).toLocaleString('en-IN') + ' · <b>Per-delivery fee:</b> ₹' + (r.per_delivery_fee || 0) + '<br>' +
+'<div style="margin-top:8px; padding-top:8px; border-top:1px dashed #e5e7eb;"><b>💰 Cash & Earnings Settlement</b></div>' +
+'<div style="display:flex; gap:8px; margin-top:6px;">' +
+'<div style="flex:1; background:' + ((r.cash_in_hand || 0) > 0 ? '#fef3c7' : '#f3f4f6') + '; border-radius:8px; padding:8px;"><div style="font-size:9.5px; color:#92400e;">💵 Cash in hand (owed TO company)</div><div style="font-size:15px; font-weight:900; color:#92400e;">₹' + (r.cash_in_hand || 0).toLocaleString('en-IN') + '</div></div>' +
+'<div style="flex:1; background:' + (((r.earnings_total||0) - (r.earnings_paid_total||0)) > 0 ? '#dcfce7' : '#f3f4f6') + '; border-radius:8px; padding:8px;"><div style="font-size:9.5px; color:#15803d;">🧾 Earnings pending (owed TO rider)</div><div style="font-size:15px; font-weight:900; color:#15803d;">₹' + (((r.earnings_total||0) - (r.earnings_paid_total||0))).toLocaleString('en-IN') + '</div></div>' +
+'</div>' +
+'<div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">' +
+'<button class="mini-btn" data-markcashreceived="' + r.id + '" style="background:#fef3c7; color:#92400e;">✓ Mark Cash Received</button>' +
+'<button class="mini-btn" data-markearningspaid="' + r.id + '" style="background:#dcfce7; color:#15803d;">✓ Mark Earnings Paid</button>' +
+'</div><br>' +
 '<b>KYC Documents:</b> ' + (r.driving_license_image ? '<a href="' + r.driving_license_image + '" target="_blank" style="color:#7c3aed;">License</a> ' : '') + (r.vehicle_rc_image ? '<a href="' + r.vehicle_rc_image + '" target="_blank" style="color:#7c3aed;">Vehicle RC</a> ' : '') + (r.id_proof_image ? '<a href="' + r.id_proof_image + '" target="_blank" style="color:#7c3aed;">ID Proof</a>' : '') + (!r.driving_license_image && !r.vehicle_rc_image && !r.id_proof_image ? '<span style="color:#9ca3af;">none uploaded</span>' : '') + '<br><br>' +
 '<div style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:4px;">📍 Coverage Area</div>' +
 '<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">' +
@@ -1306,6 +1315,40 @@ document.querySelectorAll('[data-riderdetailid]').forEach(function(btn) {
 btn.addEventListener('click', function() {
 const el = document.getElementById('riderdetail-' + btn.getAttribute('data-riderdetailid'));
 if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+});
+});
+document.querySelectorAll('[data-markcashreceived]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const riderId = btn.getAttribute('data-markcashreceived');
+const amountStr = prompt('How much cash did you receive from this rider? (₹)');
+if (!amountStr) return;
+const amount = Number(amountStr);
+if (!amount || amount <= 0) { alert('Please enter a valid amount'); return; }
+btn.textContent = '⏳';
+const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/record_rider_cash_remittance', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ p_rider_id: riderId, p_amount: amount })
+});
+if (!res.ok) { alert('Could not record: ' + await res.text()); btn.textContent = '✓ Mark Cash Received'; return; }
+loadAllData();
+});
+});
+document.querySelectorAll('[data-markearningspaid]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const riderId = btn.getAttribute('data-markearningspaid');
+const amountStr = prompt('How much did you pay this rider? (₹)');
+if (!amountStr) return;
+const amount = Number(amountStr);
+if (!amount || amount <= 0) { alert('Please enter a valid amount'); return; }
+btn.textContent = '⏳';
+const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/record_rider_earnings_payout', {
+method: 'POST',
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ p_rider_id: riderId, p_amount: amount })
+});
+if (!res.ok) { alert('Could not record: ' + await res.text()); btn.textContent = '✓ Mark Earnings Paid'; return; }
+loadAllData();
 });
 });
 document.querySelectorAll('[data-saveriderassign]').forEach(function(btn) {
