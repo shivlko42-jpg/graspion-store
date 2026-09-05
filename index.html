@@ -20,6 +20,9 @@ gtag('config', 'G-DTK5XRHFL6');
 <meta property="og:type" content="website">
 <meta property="og:title" content="Graspion - Every Need. Every Area. Fast.">
 <meta property="og:description" content="Instant 10-20 min delivery from local dark stores plus Pan-India marketplace shopping, all on one platform.">
+<meta property="og:image" content="https://shivlko42-jpg.github.io/graspion-store/icon-customer.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Graspion">
 <meta property="og:url" content="https://shivlko42-jpg.github.io/graspion-store/">
 <meta property="og:locale" content="en_IN">
 <meta name="twitter:card" content="summary">
@@ -2002,6 +2005,32 @@ const p = productPool.find(function(pp) { return pp.id === productId; });
 if (!p) return;
 logProductEvent(productId, 'view');
 if (typeof gtag === 'function') { gtag('event', 'view_item', { currency: 'INR', value: p.price, items: [{ item_id: p.id, item_name: p.name, price: p.price }] }); }
+
+// SEO: update the tab title and inject Product structured data while this
+// product is open, so search engines that execute JS can pick up rich
+// snippet info (price, availability). Reverted when the modal closes.
+document.title = p.name + ' - Buy Online at Best Price | Graspion';
+let productSchemaTag = document.getElementById('productSchema');
+if (!productSchemaTag) {
+  productSchemaTag = document.createElement('script');
+  productSchemaTag.type = 'application/ld+json';
+  productSchemaTag.id = 'productSchema';
+  document.head.appendChild(productSchemaTag);
+}
+productSchemaTag.textContent = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": p.name,
+  "description": p.shortDescription || p.name,
+  "brand": p.brand || "Graspion",
+  "offers": {
+    "@type": "Offer",
+    "priceCurrency": "INR",
+    "price": p.price,
+    "availability": Number(p.stock) > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+  }
+});
+
 const vendor = vendors.find(function(v) { return v.id === p.vendorId; });
 const content = document.getElementById('productDetailContent');
 content.innerHTML = '<div style="text-align:center; padding:40px 0; color:#9ca3af;">Loading...</div>';
@@ -2192,10 +2221,16 @@ const key = selectedVariant ? makeCartKey(productId, selectedVariant.id) : makeC
 cart[key] = (cart[key] || 0) + pdSelectedQty;
 logProductEvent(productId, 'add_to_cart');
 refreshAll();
-document.getElementById('productDetailModal').style.display = 'none';
+closeProductDetailModal();
 });
 }
-document.getElementById('closeProductDetailBtn').addEventListener('click', function() { document.getElementById('productDetailModal').style.display = 'none'; });
+function closeProductDetailModal() {
+  document.getElementById('productDetailModal').style.display = 'none';
+  document.title = 'Graspion - Every Need, Fast Delivery';
+  const productSchemaTag = document.getElementById('productSchema');
+  if (productSchemaTag) productSchemaTag.remove();
+}
+document.getElementById('closeProductDetailBtn').addEventListener('click', closeProductDetailModal);
 
 // ===================== RETURN REQUEST (Phase 4) =====================
 let returnOrderId = null;
