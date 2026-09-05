@@ -631,7 +631,37 @@ window.addEventListener('appinstalled', function() {
   }).catch(function() {});
   const banner = document.getElementById('installNudgeBanner');
   if (banner) banner.remove();
+  setTimeout(subscribeToPushNotifications, 2000);
 });
+
+// ===================== PUSH NOTIFICATION SUBSCRIPTION =====================
+const VAPID_PUBLIC_KEY = 'BAQFj_STKkA-mZ_LQa8pz1BYM5KVy-1THDla_DsociPbBtlNxrLxci6UiCF52qkUlVWo0VaRo2qTJKgZUe4fTtQ';
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
+  return outputArray;
+}
+async function subscribeToPushNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
+    }
+    const subJson = sub.toJSON();
+    await fetch(SUPABASE_URL + '/rest/v1/push_subscriptions', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ customer_id: currentCustomer ? currentCustomer.id : null, endpoint: subJson.endpoint, p256dh: subJson.keys.p256dh, auth: subJson.keys.auth })
+    });
+  } catch (e) { /* permission denied or unsupported — offers/campaigns just won't reach this device, everything else still works */ }
+}
 let lastInstallNudgeAt = 0;
 function maybeShowInstallNudge() {
   if (isStandaloneApp) return; // already installed, don't nag

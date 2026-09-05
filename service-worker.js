@@ -11,7 +11,7 @@
 // Net effect: the app always shows the latest deployed version
 // automatically — no manual cache-clearing needed by anyone, ever.
 
-const CACHE_NAME = 'graspion-static-v5';
+const CACHE_NAME = 'graspion-static-v6';
 const STATIC_ONLY_FILES = [
   './icon.svg',
   './icon-customer.png',
@@ -74,4 +74,29 @@ self.addEventListener('fetch', function(event) {
       return cached || fetch(event.request);
     })
   );
+});
+
+// ===================== PUSH NOTIFICATIONS =====================
+// Shows a rich notification (title, body, image, custom icon) when the
+// server sends a push message — used for offers/announcements/campaigns to
+// people who've installed the app. Free (uses the browser's own push
+// service via Web Push), no SMS/email API needed for this channel.
+self.addEventListener('push', function(event) {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { data = { title: 'Graspion', body: event.data ? event.data.text() : '' }; }
+  const title = data.title || 'Graspion';
+  const options = {
+    body: data.body || '',
+    icon: data.icon || './icon-customer.png',
+    badge: './icon-customer.png',
+    image: data.image || undefined,
+    data: { url: data.url || './' },
+    vibrate: [200, 100, 200]
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || './';
+  event.waitUntil(clients.openWindow(url));
 });
