@@ -611,6 +611,59 @@ function findNearestWarehouse(lat, lng) {
   });
   return nearest;
 }
+// ===================== APP INSTALL PROMPT + TRACKING =====================
+// Chrome/Android fires this before showing its own install UI — we capture
+// it so we can trigger the SAME native install prompt ourselves, at a
+// moment we choose (opening a product), rather than whenever Chrome feels
+// like showing it.
+let deferredInstallPrompt = null;
+const isStandaloneApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const isIOSDevice = /iphone|ipad|ipod/i.test(navigator.userAgent);
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+window.addEventListener('appinstalled', function() {
+  fetch(SUPABASE_URL + '/rest/v1/app_install_events', {
+    method: 'POST',
+    headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ customer_id: currentCustomer ? currentCustomer.id : null, platform: navigator.userAgent.match(/android/i) ? 'android' : (isIOSDevice ? 'ios' : 'desktop') })
+  }).catch(function() {});
+  const banner = document.getElementById('installNudgeBanner');
+  if (banner) banner.remove();
+});
+let lastInstallNudgeAt = 0;
+function maybeShowInstallNudge() {
+  if (isStandaloneApp) return; // already installed, don't nag
+  if (!deferredInstallPrompt && !isIOSDevice) return; // Chrome hasn't offered the prompt yet, nothing to trigger
+  if (Date.now() - lastInstallNudgeAt < 60000) return; // don't show more than once a minute
+  if (localStorage.getItem('graspion_install_dismissed_at') && (Date.now() - Number(localStorage.getItem('graspion_install_dismissed_at'))) < 24 * 60 * 60 * 1000) return; // respect a dismissal for 24h
+  lastInstallNudgeAt = Date.now();
+  if (document.getElementById('installNudgeBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'installNudgeBanner';
+  banner.style.cssText = 'position:fixed; bottom:70px; left:16px; right:16px; z-index:600; background:#1e1b3a; color:#fff; padding:14px 16px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.35); display:flex; align-items:center; gap:12px;';
+  banner.innerHTML = '<div style="width:42px; height:42px; border-radius:12px; overflow:hidden; flex-shrink:0;"><img src="icon-customer.png" style="width:100%; height:100%; object-fit:cover;"></div>' +
+    '<div style="flex:1; min-width:0;"><div style="font-size:12.5px; font-weight:800;">Get the Graspion App</div><div style="font-size:10.5px; color:#c4c4d4;">' + (isIOSDevice ? 'Tap Share → Add to Home Screen' : 'Faster, works offline, one tap to open') + '</div></div>' +
+    (isIOSDevice ? '' : '<button id="installNudgeBtn" style="background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:9px 16px; border-radius:10px; font-size:11.5px; font-weight:800; cursor:pointer; flex-shrink:0;">Install</button>') +
+    '<button id="installNudgeCloseBtn" style="background:none; border:none; color:#9ca3af; font-size:16px; cursor:pointer; flex-shrink:0; padding:0 4px;">✕</button>';
+  document.body.appendChild(banner);
+  if (!isIOSDevice) {
+    document.getElementById('installNudgeBtn').addEventListener('click', async function() {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      banner.remove();
+    });
+  }
+  document.getElementById('installNudgeCloseBtn').addEventListener('click', function() {
+    localStorage.setItem('graspion_install_dismissed_at', Date.now().toString());
+    banner.remove();
+  });
+  setTimeout(function() { const b = document.getElementById('installNudgeBanner'); if (b) b.remove(); }, 12000);
+}
+
 let cart = {};
 restoreCartFromLocalStorage();
 let wishlistIds = new Set();
@@ -2132,6 +2185,7 @@ const p = productPool.find(function(pp) { return pp.id === productId; });
 if (!p) return;
 logProductEvent(productId, 'view');
 if (typeof gtag === 'function') { gtag('event', 'view_item', { currency: 'INR', value: p.price, items: [{ item_id: p.id, item_name: p.name, price: p.price }] }); }
+setTimeout(maybeShowInstallNudge, 1200); // slight delay so it doesn't fight with the product modal opening
 
 // SEO: update the tab title and inject Product structured data while this
 // product is open, so search engines that execute JS can pick up rich
