@@ -1407,11 +1407,13 @@ const totalDelivered = allOrders.filter(function(o) { return o.rider_id === r.id
 const assignedVendor = r.assigned_vendor_id ? allVendors.find(function(v) { return v.id === r.assigned_vendor_id; }) : null;
 const warehouseOptionsHtml = '<option value="">— No dark store (pan-India only) —</option>' + allWarehouses.map(function(w) { return '<option value="' + w.id + '"' + (r.warehouse_id === w.id ? ' selected' : '') + '>' + w.name + '</option>'; }).join('');
 const vendorOptionsHtml = '<option value="">— Not dedicated to one vendor —</option>' + allVendors.map(function(v) { return '<option value="' + v.id + '"' + (r.assigned_vendor_id === v.id ? ' selected' : '') + '>' + v.name + '</option>'; }).join('');
-return '<div class="vendor-row-item" style="display:block;"><div style="display:flex; align-items:center; flex-wrap:wrap; row-gap:8px;"><div class="v-icon2" style="background:' + color + ';">🚴</div>' +
-'<div class="v-info" style="min-width:140px;"><div class="vn">' + r.name + (r.bike_number ? ' · ' + r.bike_number : '') + '</div><div class="vs">' + statusLabel + ' · ' + totalDelivered + ' delivered' + (assignedVendor ? ' · dedicated to ' + assignedVendor.name : (r.pincode ? ' · pincode ' + r.pincode : '')) + '</div></div>' +
-'<div class="item-actions" style="margin-left:auto;"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-ridertoggle="' + r.id + '" data-current="' + isActive + '">' + (isActive ? '✓' : 'Off') + '</button>' +
-'<button class="mini-btn" data-riderdetailid="' + r.id + '" style="background:#dbeafe; color:#1d4ed8;">Details</button>' +
-'<button class="icon-btn del-btn" data-riderdel="' + r.id + '">Del</button></div></div>' +
+return '<div class="vendor-row-item" style="display:block;">' +
+'<div style="display:flex; align-items:center; gap:10px;"><div class="v-icon2" style="background:' + color + ';">🚴</div>' +
+'<div class="v-info" style="min-width:0; flex:1;"><div class="vn">' + r.name + (r.bike_number ? ' · ' + r.bike_number : '') + '</div><div class="vs">' + statusLabel + ' · ' + totalDelivered + ' delivered' + (assignedVendor ? ' · dedicated to ' + assignedVendor.name : (r.pincode ? ' · pincode ' + r.pincode : '')) + '</div></div>' +
+'</div>' +
+'<div class="item-actions" style="margin-top:10px; padding-left:2px;"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-ridertoggle="' + r.id + '" data-current="' + isActive + '" style="flex:1;">' + (isActive ? '✓' : 'Off') + '</button>' +
+'<button class="mini-btn" data-riderdetailid="' + r.id + '" style="background:#dbeafe; color:#1d4ed8; flex:1;">Details</button>' +
+'<button class="icon-btn del-btn" data-riderdel="' + r.id + '" style="flex:1;">Del</button></div>' +
 '<div id="riderdetail-' + r.id + '" style="display:none; margin-top:10px; padding:10px; background:#f9fafb; border-radius:10px; font-size:11.5px; line-height:1.9;">' +
 '<b>Phone:</b> ' + (r.phone || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
 '<b>Address:</b> ' + (r.address || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
@@ -1524,12 +1526,15 @@ const isBlocked = v.status === 'blocked';
 const isSubscribed = !!v.nearby_subscription_active && (!v.nearby_subscription_expires_at || new Date(v.nearby_subscription_expires_at) >= new Date());
 const kycStatus = v.kyc_status || 'pending';
 const kycColors = { approved: 'background:#dcfce7;color:#15803d;', pending: 'background:#fef3c7;color:#b45309;', rejected: 'background:#fee2e2;color:#dc2626;' };
-return '<div class="vendor-row-item" style="display:block;"><div style="display:flex; align-items:center; flex-wrap:wrap; row-gap:8px;"><span class="rank-num">#' + (i+1) + '</span><div class="v-icon2">' + v.icon + '</div><div class="v-info" style="min-width:150px;"><div class="vn">' + v.name + (v.owner_name ? ' <span style="font-weight:400; color:#9ca3af; font-size:10.5px;">(' + v.owner_name + ')</span>' : '') + (isSubscribed ? ' <span style="font-size:9px; background:#f5f3ff; color:#7c3aed; padding:1px 6px; border-radius:6px; font-weight:700;">⭐ Featured</span>' : '') + '</div><div class="vs">' + (v.phone ? '📞 ' + v.phone + (v.email ? ' · ' : '') : '') + (v.email ? '✉️ ' + v.email : (!v.phone ? '<span style="color:#dc2626;">No contact info on file</span>' : '')) + '</div><div class="vs">₹' + sales.toLocaleString('en-IN') + ' sales · ' + prodCount + ' products</div>' +
+return '<div class="vendor-row-item" style="display:block;">' +
+'<div style="display:flex; align-items:center; gap:10px;">' +
+'<span class="rank-num">#' + (i+1) + '</span><div class="v-icon2">' + v.icon + '</div>' +
+'<div class="v-info" style="min-width:0; flex:1;"><div class="vn">' + v.name + (v.owner_name ? ' <span style="font-weight:400; color:#9ca3af; font-size:10.5px;">(' + v.owner_name + ')</span>' : '') + (isSubscribed ? ' <span style="font-size:9px; background:#f5f3ff; color:#7c3aed; padding:1px 6px; border-radius:6px; font-weight:700;">⭐ Featured</span>' : '') + '</div><div class="vs">' + (v.phone ? '📞 ' + v.phone + (v.email ? ' · ' : '') : '') + (v.email ? '✉️ ' + v.email : (!v.phone ? '<span style="color:#dc2626;">No contact info on file</span>' : '')) + '</div><div class="vs">₹' + sales.toLocaleString('en-IN') + ' sales · ' + prodCount + ' products</div>' +
 '<select data-kycid="' + v.id + '" style="margin-top:4px; font-size:10px; padding:2px 6px; border-radius:6px; border:none; font-weight:700; ' + (kycColors[kycStatus] || kycColors.pending) + '"><option value="pending"' + (kycStatus === 'pending' ? ' selected' : '') + '>KYC: Pending</option><option value="approved"' + (kycStatus === 'approved' ? ' selected' : '') + '>KYC: Approved</option><option value="rejected"' + (kycStatus === 'rejected' ? ' selected' : '') + '>KYC: Rejected</option></select>' +
 '</div>' +
-'<div style="display:flex; gap:6px; flex:0 0 auto; margin-left:auto;"><button class="block-btn ' + (isBlocked ? 'blocked-store' : 'active-store') + '" data-vendorid="' + v.id + '" data-blocked="' + isBlocked + '">' + (isBlocked ? 'Unblock' : 'Block') + '</button>' +
-'<button class="mini-btn" data-detailid="' + v.id + '" style="background:#dbeafe; color:#1d4ed8;">Details</button></div>' +
 '</div>' +
+'<div style="display:flex; gap:8px; margin-top:10px; padding-left:2px;"><button class="block-btn ' + (isBlocked ? 'blocked-store' : 'active-store') + '" data-vendorid="' + v.id + '" data-blocked="' + isBlocked + '" style="flex:1;">' + (isBlocked ? 'Unblock' : 'Block') + '</button>' +
+'<button class="mini-btn" data-detailid="' + v.id + '" style="background:#dbeafe; color:#1d4ed8; flex:1;">Details</button></div>' +
 '<div id="vdetail-' + v.id + '" style="display:none; margin-top:10px; padding:10px; background:#f9fafb; border-radius:10px; font-size:11.5px; line-height:1.9;">' +
 '<b>Owner:</b> ' + (v.owner_name || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
 '<b>Phone:</b> ' + (v.phone || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
