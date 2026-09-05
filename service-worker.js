@@ -11,7 +11,7 @@
 // Net effect: the app always shows the latest deployed version
 // automatically — no manual cache-clearing needed by anyone, ever.
 
-const CACHE_NAME = 'graspion-static-v3';
+const CACHE_NAME = 'graspion-static-v4';
 const STATIC_ONLY_FILES = [
   './icon.svg',
   './manifest.json',
