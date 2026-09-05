@@ -828,6 +828,13 @@ await supaAuth.auth.signOut();
 } catch (err) { /* not logged in, show login screen as normal */ }
 })();
 
+// After an "Add X" form successfully saves, collapse its panel back down —
+// keeps the mobile dashboard compact instead of every used form staying
+// permanently expanded.
+function collapseDetailsAfterSave(btnId) {
+  const details = document.getElementById(btnId).closest('details.panel');
+  if (details) details.open = false;
+}
 function navigateToPage(page) {
   document.querySelectorAll('.side-item[data-page]').forEach(function(i) { i.classList.toggle('active', i.getAttribute('data-page') === page); });
   document.getElementById('pageDashboard').style.display = page === 'dashboard' ? 'grid' : 'none';
@@ -1747,6 +1754,7 @@ return;
 ['whName','whAddress','whPincode','whLat','whLng'].forEach(function(id){ document.getElementById(id).value = ''; });
 document.getElementById('whRadius').value = 3;
 btn.textContent = '+ Add Dark Store';
+collapseDetailsAfterSave('whAddBtn');
 loadAllData();
 } catch (err) {
 alert('Network/connection error while adding dark store: ' + err.message);
@@ -1927,6 +1935,7 @@ alert('Could not add pairing (it may already exist):\n' + errText);
 document.getElementById('pairProductA').value = '';
 document.getElementById('pairProductB').value = '';
 document.getElementById('pairLabel').value = 'Frequently Bought Together';
+collapseDetailsAfterSave('pairAddBtn');
 }
 btn.textContent = '+ Add Pairing';
 loadAllData();
@@ -1983,6 +1992,7 @@ alert('Could not add relation:\n' + errText);
 } else {
 document.getElementById('relProductA').value = '';
 document.getElementById('relProductB').value = '';
+collapseDetailsAfterSave('relAddBtn');
 }
 btn.textContent = '+ Add Relation';
 loadAllData();
@@ -2073,6 +2083,7 @@ errEl.textContent = '✓ Dark store created. An invite email was sent to ' + sta
 document.getElementById('dsStoreName').value = '';
 document.getElementById('dsStaffEmail').value = '';
 btn.disabled = false; btn.textContent = '+ Create Dark Store Login';
+setTimeout(function() { collapseDetailsAfterSave('dsCreateBtn'); }, 1800);
 loadAllData();
 } catch (err) {
 errEl.textContent = 'Error: ' + err.message;
@@ -2579,6 +2590,8 @@ setApMode('pan_india');
 document.getElementById('apSaveBtn').textContent = '+ Add Product';
 document.getElementById('apCancelEditBtn').style.display = 'none';
 document.getElementById('apError').textContent = '';
+const apDetails = document.querySelector('details.panel[data-section="products"]');
+if (apDetails) apDetails.open = false;
 }
 function populateAdminProductForm(productId) {
 const p = allProducts.find(function(pp) { return pp.id === productId; });
