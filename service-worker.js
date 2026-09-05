@@ -11,7 +11,7 @@
 // Net effect: the app always shows the latest deployed version
 // automatically — no manual cache-clearing needed by anyone, ever.
 
-const CACHE_NAME = 'graspion-static-v6';
+const CACHE_NAME = 'graspion-static-v7';
 const STATIC_ONLY_FILES = [
   './icon.svg',
   './icon-customer.png',
@@ -53,11 +53,13 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  // HTML pages (navigations) and any .html file: ALWAYS network-first,
-  // never served from a stale cache. This is the fix for the "old
-  // version keeps showing" problem.
-  const isHtmlRequest = event.request.mode === 'navigate' || url.endsWith('.html');
-  if (isHtmlRequest) {
+  // HTML pages (navigations), any .html file, and manifest*.json files:
+  // ALWAYS network-first, never served from a stale cache. Manifests
+  // control PWA identity (scope/id/icon per app) — a stale cached one
+  // caused a real bug (couldn't install Vendor/Rider/Admin separately
+  // from Customer) that only went away after forcing a fresh fetch.
+  const isAlwaysFreshRequest = event.request.mode === 'navigate' || url.endsWith('.html') || /manifest(-\w+)?\.json$/.test(url);
+  if (isAlwaysFreshRequest) {
     event.respondWith(
       fetch(event.request).catch(function() {
         // only if genuinely offline, fall back to whatever's cached
