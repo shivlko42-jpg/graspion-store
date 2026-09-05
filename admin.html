@@ -139,6 +139,26 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 </style>
 </head>
 <body>
+<div id="splashScreen" style="position:fixed; inset:0; z-index:99999; background:linear-gradient(135deg,#0a0f1f,#1e2749 55%,#3b4a7a); display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity 0.4s ease;">
+  <div style="width:96px; height:96px; border-radius:24px; overflow:hidden; animation:splashPulse 1.4s ease-in-out infinite; box-shadow:0 8px 30px rgba(0,0,0,0.3);">
+    <img src="icon-admin.png" style="width:100%; height:100%; object-fit:cover;" alt="Graspion">
+  </div>
+  <div style="margin-top:18px; color:#fff; font-weight:800; font-size:15px; letter-spacing:1px; opacity:0.95;">GRASPION ADMIN</div>
+  <div style="margin-top:16px; width:34px; height:34px; border:3px solid rgba(255,255,255,0.25); border-top-color:#fff; border-radius:50%; animation:splashSpin 0.8s linear infinite;"></div>
+</div>
+<style>
+@keyframes splashPulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.08); } }
+@keyframes splashSpin { to { transform:rotate(360deg); } }
+</style>
+<script>
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    const s = document.getElementById('splashScreen');
+    if (s) { s.style.opacity = '0'; setTimeout(function(){ s.remove(); }, 400); }
+  }, 400);
+});
+</script>
+
 <div class="modal-overlay" id="orderTimelineModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:400; align-items:center; justify-content:center; padding:16px;">
 <div style="max-width:420px; width:100%; background:#fff; border-radius:20px; padding:20px; max-height:85vh; overflow-y:auto;">
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="font-size:15px;">📦 Order Details</h3><button id="closeTimelineBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
