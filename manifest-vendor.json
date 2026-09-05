@@ -1,6 +1,7 @@
 {
   "name": "Graspion Vendor",
   "short_name": "Graspion Vendor",
+  "id": "graspion-vendor",
   "description": "Graspion vendor panel \u2014 manage your products, orders, and store settings.",
   "start_url": "./vendor.html",
   "scope": "./",

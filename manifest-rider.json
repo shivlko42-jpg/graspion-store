@@ -1,6 +1,7 @@
 {
   "name": "Graspion Rider",
   "short_name": "Graspion Rider",
+  "id": "graspion-rider",
   "description": "Graspion delivery partner app \u2014 accept and deliver orders.",
   "start_url": "./rider.html",
   "scope": "./",

@@ -1,6 +1,7 @@
 {
   "name": "Graspion Admin",
   "short_name": "Graspion Admin",
+  "id": "graspion-admin",
   "description": "Graspion admin dashboard \u2014 manage orders, vendors, products, and settings.",
   "start_url": "./admin.html",
   "scope": "./",
