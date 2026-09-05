@@ -612,6 +612,7 @@ function findNearestWarehouse(lat, lng) {
   return nearest;
 }
 let cart = {};
+restoreCartFromLocalStorage();
 let wishlistIds = new Set();
 let checkoutStep = 'address';
 let appliedCoupon = null; // { code, discount } — set by applyCoupon(), verified live against the server
@@ -671,6 +672,7 @@ loadProductVariants();
 dataLoaded = true;
 badge.className = 'db-status-badge live';
 badge.textContent = '✅ Live · ' + vendors.length + ' vendors, ' + productPool.length + ' products';
+checkAbandonedCartReminder();
 const deepLinkProductId = new URLSearchParams(window.location.search).get('product');
 if (deepLinkProductId && productPool.some(function(p){ return p.id === deepLinkProductId; })) {
 openProductDetail(deepLinkProductId);
@@ -1058,7 +1060,71 @@ return '<div class="pair-card"><div class="pair-icon">' + p.icon + '</div><div c
 }).join('');
 return '<div class="pair-suggest-box"><div class="pair-suggest-title">🔗 Frequently Bought Together</div><div class="pair-suggest-row">' + cardsHtml + '</div></div>';
 }
-function refreshAll(){ renderProducts(selectedPin); renderCartDrawer(); }
+function refreshAll(){ renderProducts(selectedPin); renderCartDrawer(); persistCart(); }
+
+// Cart persistence — saved instantly to localStorage (works for guests too,
+// survives closing the tab), and synced to Supabase (debounced) for logged-in
+// customers so it's also visible to admin as "abandoned cart" data and
+// restorable even from a different device.
+let persistCartTimeout = null;
+function persistCart() {
+  try { localStorage.setItem('graspion_cart', JSON.stringify(cart)); } catch (e) { /* storage full/unavailable — not critical */ }
+  if (!currentCustomer) return;
+  clearTimeout(persistCartTimeout);
+  persistCartTimeout = setTimeout(async function() {
+    try {
+      const entries = Object.keys(cart).map(function(key) {
+        const parts = key.split('::'); // productId or productId::variantId depending on makeCartKey format
+        return { product_id: parts[0], variant_id: parts[1] || null, quantity: cart[key] };
+      }).filter(function(e) { return e.quantity > 0; });
+      await fetch(SUPABASE_URL + '/rest/v1/rpc/sync_customer_cart', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_customer_id: currentCustomer.id, p_items: entries })
+      });
+    } catch (e) { /* best-effort — localStorage copy is already safe regardless */ }
+  }, 1500);
+}
+function restoreCartFromLocalStorage() {
+  try {
+    const saved = localStorage.getItem('graspion_cart');
+    if (saved) cart = JSON.parse(saved) || {};
+  } catch (e) { cart = {}; }
+}
+async function mergeServerCart() {
+  if (!currentCustomer) return;
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/carts?customer_id=eq.' + currentCustomer.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+    const serverItems = res.ok ? await res.json() : [];
+    serverItems.forEach(function(item) {
+      const key = item.variant_id ? (item.product_id + '::' + item.variant_id) : item.product_id;
+      // local (this device, more recent) wins over server on conflict; server fills in anything local doesn't have
+      if (!(key in cart)) cart[key] = item.quantity;
+    });
+    persistCart();
+  } catch (e) { /* best-effort — local cart still works fine on its own */ }
+}
+function checkAbandonedCartReminder() {
+  const itemCount = Object.keys(cart).length;
+  if (itemCount === 0) return;
+  const lastActive = Number(localStorage.getItem('graspion_cart_last_active') || 0);
+  const hoursSince = lastActive ? (Date.now() - lastActive) / (1000 * 60 * 60) : 0;
+  localStorage.setItem('graspion_cart_last_active', Date.now().toString());
+  // Only nudge if they've been away a while (30 min+) — not on every single reload
+  if (hoursSince < 0.5) return;
+  const totalQty = Object.values(cart).reduce(function(s, q) { return s + q; }, 0);
+  const banner = document.createElement('div');
+  banner.id = 'abandonedCartBanner';
+  banner.style.cssText = 'position:fixed; bottom:70px; left:16px; right:16px; z-index:500; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; padding:12px 16px; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:space-between; gap:10px;';
+  banner.innerHTML = '<div style="font-size:12.5px; font-weight:700;">🛒 You left ' + totalQty + ' item' + (totalQty > 1 ? 's' : '') + ' in your cart!</div><button id="abandonedCartViewBtn" style="background:#fff; color:#7c3aed; border:none; padding:7px 14px; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer; flex-shrink:0;">View Cart</button>';
+  document.body.appendChild(banner);
+  document.getElementById('abandonedCartViewBtn').addEventListener('click', function() {
+    banner.remove();
+    document.getElementById('cartDrawer').classList.add('open');
+    document.getElementById('drawerOverlay').classList.add('open');
+  });
+  setTimeout(function() { const b = document.getElementById('abandonedCartBanner'); if (b) b.remove(); }, 10000);
+}
 document.getElementById('cartOpenBtn').addEventListener('click', function(){ document.getElementById('cartDrawer').classList.add('open'); document.getElementById('drawerOverlay').classList.add('open'); });
 function closeDrawer(){ document.getElementById('cartDrawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('open'); }
 document.getElementById('drawerClose').addEventListener('click', closeDrawer);
@@ -1633,6 +1699,7 @@ headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
 const rows = await res.json();
 if (rows[0]) {
 currentCustomer = rows[0]; updateAccountButtonUI();
+mergeServerCart();
 } else {
 // First time logging in via Google (or any provider that skips our
 // manual profile step) — auto-create their profile using what Google gave us
