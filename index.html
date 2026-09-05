@@ -48,6 +48,8 @@ gtag('config', 'G-DTK5XRHFL6');
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <link rel="icon" href="icon-customer.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-customer.png">
 <meta name="theme-color" content="#7c3aed">
@@ -501,6 +503,14 @@ Continue with Google
 <div id="returnRequestError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>
 <button id="submitReturnBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">Submit Return Request</button>
 <button id="closeReturnModalBtn" style="width:100%; background:none; border:none; color:#9ca3af; padding:10px; margin-top:4px; cursor:pointer;">Cancel</button>
+</div>
+</div>
+
+<div class="modal-overlay" id="trackLiveModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:400; align-items:center; justify-content:center; padding:16px;">
+<div style="max-width:480px; width:100%; background:#fff; border-radius:20px; padding:16px; max-height:85vh;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><h3 style="font-size:14px;">🗺️ Live Rider Location</h3><button id="closeTrackLiveBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
+<div id="trackLiveMap" style="width:100%; height:340px; border-radius:14px; background:#f3f1f8;"></div>
+<div id="trackLiveStatus" style="font-size:11px; color:#9ca3af; margin-top:8px; text-align:center;">Locating rider...</div>
 </div>
 </div>
 
@@ -1919,6 +1929,9 @@ let riderHtml = '';
 if (riderResult[0] && riderResult[0].rider_name) {
 const r = riderResult[0];
 riderHtml = '<div style="margin-top:6px; background:#F1F8ED; padding:8px 10px; border-radius:8px; font-size:11px;">🚴 <b>' + r.rider_name + '</b>' + (r.bike_number ? ' · ' + r.bike_number : '') + (r.rider_phone ? ' · <a href="tel:' + r.rider_phone + '" style="color:#7c3aed; font-weight:700;">📞 Call</a>' : '') + '</div>';
+if (o.status === 'shipped') {
+riderHtml += '<button data-tracklive="' + o.id + '" style="margin-top:6px; width:100%; background:#7c3aed; color:#fff; border:none; padding:8px; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer;">🗺️ Track Live Location</button>';
+}
 }
 let timelineHtml = '';
 const history = historyResult;
@@ -1957,7 +1970,54 @@ list.innerHTML = cardsHtml.join('');
 document.querySelectorAll('[data-requestreturn]').forEach(function(btn) {
 btn.addEventListener('click', function() { openReturnModal(btn.getAttribute('data-requestreturn')); });
 });
+document.querySelectorAll('[data-tracklive]').forEach(function(btn) {
+btn.addEventListener('click', function() { openTrackLiveModal(btn.getAttribute('data-tracklive')); });
+});
 }
+
+// ===================== LIVE RIDER TRACKING (free — Leaflet + OpenStreetMap, no API key) =====================
+let trackLiveMapInstance = null, trackLiveMarker = null, trackLivePollInterval = null;
+async function fetchRiderLocationForOrder(orderId) {
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/rider_live_location?order_id=eq.' + orderId + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const rows = res.ok ? await res.json() : [];
+return rows[0] || null;
+} catch (err) { return null; }
+}
+async function openTrackLiveModal(orderId) {
+document.getElementById('trackLiveModal').style.display = 'flex';
+document.getElementById('trackLiveStatus').textContent = 'Locating rider...';
+const loc = await fetchRiderLocationForOrder(orderId);
+if (!loc) {
+document.getElementById('trackLiveStatus').textContent = 'Rider location isn\'t available right now — they may not have location sharing on, or haven\'t moved recently. Try again in a moment.';
+return;
+}
+if (!trackLiveMapInstance) {
+trackLiveMapInstance = L.map('trackLiveMap').setView([loc.current_lat, loc.current_lng], 15);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(trackLiveMapInstance);
+trackLiveMarker = L.marker([loc.current_lat, loc.current_lng]).addTo(trackLiveMapInstance).bindPopup('Your delivery partner').openPopup();
+} else {
+trackLiveMapInstance.setView([loc.current_lat, loc.current_lng], 15);
+trackLiveMarker.setLatLng([loc.current_lat, loc.current_lng]);
+setTimeout(function() { trackLiveMapInstance.invalidateSize(); }, 100);
+}
+document.getElementById('trackLiveStatus').textContent = '📍 Updated ' + new Date(loc.location_updated_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+if (trackLivePollInterval) clearInterval(trackLivePollInterval);
+trackLivePollInterval = setInterval(async function() {
+const updated = await fetchRiderLocationForOrder(orderId);
+if (updated && trackLiveMarker) {
+trackLiveMarker.setLatLng([updated.current_lat, updated.current_lng]);
+trackLiveMapInstance.panTo([updated.current_lat, updated.current_lng]);
+document.getElementById('trackLiveStatus').textContent = '📍 Updated ' + new Date(updated.location_updated_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+} else if (!updated) {
+document.getElementById('trackLiveStatus').textContent = 'Rider location no longer available (may have completed delivery).';
+}
+}, 15000);
+}
+document.getElementById('closeTrackLiveBtn').addEventListener('click', function() {
+document.getElementById('trackLiveModal').style.display = 'none';
+if (trackLivePollInterval) { clearInterval(trackLivePollInterval); trackLivePollInterval = null; }
+});
 
 // ===================== BOTTOM NAVIGATION =====================
 function setBottomNavActive(id) {

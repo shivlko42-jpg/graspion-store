@@ -163,6 +163,25 @@ const supaAuth = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let authToken = SUPABASE_KEY;
 let currentRider = null;
 
+// Live location for order tracking — only sends an update while the rider
+// is actually logged in and moving, throttled to once every ~20 seconds so
+// it doesn't spam the database. Customers only ever see this for their OWN
+// active delivery (enforced by the rider_live_location view, not just the UI).
+let lastLocationSendAt = 0;
+function startLocationTracking() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(function(pos) {
+    const now = Date.now();
+    if (now - lastLocationSendAt < 20000) return; // throttle to every 20s
+    lastLocationSendAt = now;
+    fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + currentRider.id, {
+      method: 'PATCH',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current_lat: pos.coords.latitude, current_lng: pos.coords.longitude, location_updated_at: new Date().toISOString() })
+    }).catch(function() { /* silent — location tracking is best-effort, never blocks core delivery flow */ });
+  }, function() { /* location permission denied or unavailable — tracking just won't show for this rider, everything else still works */ }, { enableHighAccuracy: true, maximumAge: 15000 });
+}
+
 async function loginAsRider(session) {
   authToken = session.access_token;
   const res = await fetch(SUPABASE_URL + '/rest/v1/riders?auth_user_id=eq.' + session.user.id + '&select=*', {
@@ -181,6 +200,7 @@ async function loginAsRider(session) {
   document.getElementById('riderNameLabel').textContent = '👋 ' + currentRider.name;
   document.getElementById('riderBikeLabel').textContent = '🏍️ ' + (currentRider.bike_number || 'No bike registered');
   loadOrders();
+  startLocationTracking();
   return true;
 }
 
