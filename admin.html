@@ -16,7 +16,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="graspion-logo.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif; }
 body { background:#eef0fb; color:#1e1b3a; }
@@ -707,6 +706,15 @@ const sellerName = (vendor && vendor.name) || 'Graspion';
 const sellerGstin = (vendor && vendor.gstin) || platformGstin || 'Not registered';
 const sellerAddr = (vendor && vendor.address) || platformAddr || '';
 
+if (typeof PDFLib === 'undefined') {
+await new Promise(function(resolve, reject) {
+const s = document.createElement('script');
+s.src = 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+s.onload = resolve;
+s.onerror = reject;
+document.head.appendChild(s);
+});
+}
 const { PDFDocument, rgb, StandardFonts } = PDFLib;
 const pdfDoc = await PDFDocument.create();
 const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
