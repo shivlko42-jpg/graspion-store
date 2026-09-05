@@ -897,11 +897,45 @@ return '<div class="vendor-strip"><h2>' + (s.title || '') + '</h2><div style="di
 container.innerHTML = blocksHtml;
 wireProductCardEvents(container);
 }
+// "Smart" search (no AI, just pattern-matching) — pulls a price range out of
+// natural phrasing like "under 1000", "1000 se kam", "500 se 1500 ke beech",
+// so the customer doesn't need to use the price-filter UI separately.
+function parseSmartQuery(query) {
+  let q = ' ' + query.toLowerCase().trim() + ' ';
+  let maxPrice = null, minPrice = null;
+
+  // range: "500 se 1500", "500 to 1500", "500-1500"
+  let m = q.match(/(\d+)\s*(?:se|to|-)\s*(\d+)/);
+  if (m) { minPrice = Number(m[1]); maxPrice = Number(m[2]); q = q.replace(m[0], ' '); }
+
+  // under/below/kam/andar
+  if (maxPrice === null) {
+    m = q.match(/(?:under|below|less than|se kam|ke andar|tak)\s*(?:rs\.?|₹|rupee[s]?)?\s*(\d+)/) || q.match(/(\d+)\s*(?:se kam|ke andar|se niche)/);
+    if (m) { maxPrice = Number(m[1]); q = q.replace(m[0], ' '); }
+  }
+  // above/over/zyada
+  if (minPrice === null) {
+    m = q.match(/(?:above|over|more than|se zyada|se jyada|ke upar)\s*(?:rs\.?|₹|rupee[s]?)?\s*(\d+)/) || q.match(/(\d+)\s*(?:se zyada|se jyada|ke upar)/);
+    if (m) { minPrice = Number(m[1]); q = q.replace(m[0], ' '); }
+  }
+
+  // strip filler words that don't help name-matching, so the leftover is cleaner keywords
+  q = q.replace(/\b(rs\.?|₹|rupee[s]?|price|dikhao|batao|chahiye|wala|wali|ke|ka|ki|for|me|mein|in|under|below|above|over)\b/g, ' ');
+  const keywords = q.replace(/\s+/g, ' ').trim();
+  return { minPrice, maxPrice, keywords };
+}
+
 function renderProducts(pin){
 let filtered = productPool.filter(function(p){ return productMatchesPincode(p, pin); });
 if(selectedVendorId !== 'all') filtered = filtered.filter(function(p){ return p.vendorId === selectedVendorId; });
 if(activeCategoryId) filtered = filtered.filter(function(p){ return p.categoryId === activeCategoryId; });
-if(searchQuery) filtered = filtered.filter(function(p){ return scoreProductMatch(p, searchQuery) > 0; }).sort(function(a,b){ return scoreProductMatch(b, searchQuery) - scoreProductMatch(a, searchQuery); });
+if(searchQuery) {
+  const smart = parseSmartQuery(searchQuery);
+  if (smart.minPrice !== null) filtered = filtered.filter(function(p){ return Number(p.price) >= smart.minPrice; });
+  if (smart.maxPrice !== null) filtered = filtered.filter(function(p){ return Number(p.price) <= smart.maxPrice; });
+  const effectiveQuery = smart.keywords || searchQuery;
+  if (effectiveQuery) filtered = filtered.filter(function(p){ return scoreProductMatch(p, effectiveQuery) > 0; }).sort(function(a,b){ return scoreProductMatch(b, effectiveQuery) - scoreProductMatch(a, effectiveQuery); });
+}
 // in a dark-store zone, instant items lead; standard (pan-India) items still show below, clearly labelled
 if (isInstantZone) {
 filtered = filtered.slice().sort(function(a,b){ return (a.fulfillmentType==='instant'?0:1) - (b.fulfillmentType==='instant'?0:1); });

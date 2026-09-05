@@ -420,6 +420,10 @@ window.addEventListener('load', function() {
         </div>
       </div>
       <div class="form-group" style="margin-bottom:12px;">
+        <button type="button" class="mini-btn" id="autoDescBtn" style="background:#f5f3ff; color:#7c3aed; font-weight:700;">✨ Auto-fill Description (free, from product name)</button>
+        <p style="font-size:10px; color:#9ca3af; margin-top:4px;">Fill in the product name and category above first, then tap this — you can still edit anything it writes.</p>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
         <label>Short Description (1-2 lines, shown in listings)</label>
         <textarea class="form-input" id="pShortDescription" rows="2" placeholder="A quick one-line summary of the product"></textarea>
       </div>
@@ -1696,6 +1700,38 @@ row.innerHTML = '<div class="form-group"><input class="form-input" placeholder="
 document.getElementById('variantAttrRows').appendChild(row);
 }
 document.getElementById('addAttrRowBtn').addEventListener('click', addAttrRow);
+
+// "Smart" description generator (no AI/no cost) — uses varied sentence
+// templates so products don't all read identically, filling in the name,
+// category, and (if entered) brand the vendor already typed.
+function generateSmartDescription(name, categoryName, brand) {
+  const brandTxt = brand ? brand + ' ' : '';
+  const shortTemplates = [
+    'Premium ' + name.toLowerCase() + ' built for everyday use — great quality at a fair price.',
+    brandTxt + name + ' — a reliable pick in ' + (categoryName || 'this category') + ', loved by customers for its quality and value.',
+    'Looking for a dependable ' + name.toLowerCase() + '? This one delivers on both style and durability.'
+  ];
+  const longTemplates = [
+    'This ' + brandTxt + name + ' is crafted for those who value both quality and affordability. Perfect for daily use, it combines durability with a design that fits seamlessly into your lifestyle. ' + (categoryName ? 'As part of our ' + categoryName + ' collection, ' : '') + 'it has been chosen for its dependable performance and great customer feedback. Order now and experience the difference.',
+    'Introducing the ' + brandTxt + name + ' — thoughtfully designed to meet your everyday needs. ' + (categoryName ? 'A trusted choice in ' + categoryName + ', ' : '') + 'it offers a great balance of quality, comfort, and value. Whether for personal use or as a gift, this product is built to impress and built to last.'
+  ];
+  const idx = Math.floor(Math.random() * shortTemplates.length);
+  const idx2 = Math.floor(Math.random() * longTemplates.length);
+  return { short: shortTemplates[idx], long: longTemplates[idx2] };
+}
+document.getElementById('autoDescBtn').addEventListener('click', function() {
+  const name = document.getElementById('pName').value.trim();
+  if (!name) { alert('Please enter the product name first.'); return; }
+  const categorySelect = document.getElementById('pCategory');
+  const categoryName = categorySelect.options[categorySelect.selectedIndex] ? categorySelect.options[categorySelect.selectedIndex].text : '';
+  const brand = document.getElementById('pBrand') ? document.getElementById('pBrand').value.trim() : '';
+  const result = generateSmartDescription(name, categoryName === '— Select category —' ? '' : categoryName, brand);
+  document.getElementById('pShortDescription').value = result.short;
+  document.getElementById('pLongDescription').value = result.long;
+  if (!document.getElementById('pFeatures').value.trim()) {
+    document.getElementById('pFeatures').value = 'High-quality build\nGreat value for money\nTrusted by customers\nFast, reliable delivery';
+  }
+});
 document.getElementById('pStatus').addEventListener('change', function() {
 document.getElementById('pPublishAtGroup').style.display = this.value === 'scheduled' ? 'block' : 'none';
 });

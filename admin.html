@@ -280,6 +280,11 @@ Continue with Google
 </div>
 
 <div class="panel" data-section="dashboard">
+<h3>🧠 Smart Insights <span style="font-size:10px; font-weight:400; color:#9ca3af;">(auto-generated from your data, free)</span></h3>
+<div id="smartInsightsList" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
+</div>
+
+<div class="panel" data-section="dashboard">
 <h3>📈 Revenue Trend (Last 7 Days)</h3>
 <div class="bar-chart" id="trendChart"></div>
 </div>
@@ -477,6 +482,7 @@ Continue with Google
 </div>
 <input class="form-input" id="apPincode" placeholder="e.g. 226001, 226002, 226010 (comma-separated for multiple areas)" style="display:none; margin-top:8px;">
 </div>
+<button type="button" class="mini-btn" id="apAutoDescBtn" style="background:#f5f3ff; color:#7c3aed; font-weight:700; margin-bottom:8px;">✨ Auto-fill Description (free, from product name)</button>
 <textarea id="apShortDesc" placeholder="Short description (1-2 lines)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; min-height:44px; font-family:inherit; box-sizing:border-box;"></textarea>
 <textarea id="apLongDesc" placeholder="Full description" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; min-height:70px; font-family:inherit; box-sizing:border-box;"></textarea>
 <textarea id="apFeatures" placeholder="Key features (one per line)" style="width:100%; padding:11px; margin-bottom:8px; border:1.5px solid #f0eef7; border-radius:10px; min-height:60px; font-family:inherit; box-sizing:border-box;"></textarea>
@@ -862,7 +868,71 @@ function collapseDetailsAfterSave(btnId) {
   const details = document.getElementById(btnId).closest('details.panel');
   if (details) details.open = false;
 }
-function navigateToPage(page) {
+// "Smart Insights" — genuinely useful business signals computed straight
+// from your own data with plain math, no AI subscription needed.
+function renderSmartInsights() {
+  const list = document.getElementById('smartInsightsList');
+  if (!list) return;
+  const insights = [];
+  const now = new Date();
+  const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - 7);
+  const startOfPrevWeek = new Date(now); startOfPrevWeek.setDate(now.getDate() - 14);
+
+  const paidOrders = allOrders.filter(function(o) { return o.payment_status === 'paid' || o.status === 'delivered'; });
+  const thisWeekOrders = paidOrders.filter(function(o) { return new Date(o.created_at) >= startOfWeek; });
+  const prevWeekOrders = paidOrders.filter(function(o) { const d = new Date(o.created_at); return d >= startOfPrevWeek && d < startOfWeek; });
+  const thisWeekRev = thisWeekOrders.reduce(function(s,o){ return s + Number(o.total_amount||0); }, 0);
+  const prevWeekRev = prevWeekOrders.reduce(function(s,o){ return s + Number(o.total_amount||0); }, 0);
+
+  if (prevWeekRev > 0) {
+    const pct = Math.round(((thisWeekRev - prevWeekRev) / prevWeekRev) * 100);
+    if (pct !== 0) insights.push({ icon: pct > 0 ? '📈' : '📉', color: pct > 0 ? '#dcfce7' : '#fee2e2', text: 'Revenue is ' + (pct > 0 ? 'up' : 'down') + ' ' + Math.abs(pct) + '% this week vs last week (₹' + thisWeekRev.toLocaleString('en-IN') + ' vs ₹' + prevWeekRev.toLocaleString('en-IN') + ').' });
+  } else if (thisWeekRev > 0) {
+    insights.push({ icon: '📈', color: '#dcfce7', text: 'You made ₹' + thisWeekRev.toLocaleString('en-IN') + ' this week — no orders last week to compare against yet.' });
+  }
+
+  // top-selling product this week, by item count
+  const productCounts = {};
+  allOrderItems.forEach(function(item) {
+    const order = allOrders.find(function(o) { return o.id === item.order_id; });
+    if (!order || new Date(order.created_at) < startOfWeek) return;
+    productCounts[item.product_id] = (productCounts[item.product_id] || 0) + Number(item.quantity || 1);
+  });
+  const topProductId = Object.keys(productCounts).sort(function(a,b) { return productCounts[b] - productCounts[a]; })[0];
+  if (topProductId) {
+    const topProduct = allProducts.find(function(p) { return p.id === topProductId; });
+    if (topProduct) insights.push({ icon: '🏆', color: '#fef3c7', text: '"' + topProduct.name + '" is your best-seller this week — ' + productCounts[topProductId] + ' units sold.' });
+  }
+
+  // low stock warning
+  const lowStockCount = allProducts.filter(function(p) { return Number(p.stock) > 0 && Number(p.stock) <= (p.reorder_level || 10); }).length;
+  if (lowStockCount > 0) insights.push({ icon: '⚠️', color: '#fee2e2', text: lowStockCount + ' product' + (lowStockCount > 1 ? 's are' : ' is') + ' running low on stock — restock soon to avoid missed sales.' });
+
+  // top vendor by sales this week
+  const vendorRevThisWeek = {};
+  thisWeekOrders.forEach(function(o) { vendorRevThisWeek[o.vendor_id] = (vendorRevThisWeek[o.vendor_id] || 0) + Number(o.total_amount || 0); });
+  const topVendorId = Object.keys(vendorRevThisWeek).sort(function(a,b) { return vendorRevThisWeek[b] - vendorRevThisWeek[a]; })[0];
+  if (topVendorId) {
+    const topVendor = allVendors.find(function(v) { return v.id === topVendorId; });
+    if (topVendor) insights.push({ icon: '🏪', color: '#f5f3ff', text: topVendor.name + ' is your top-performing vendor this week with ₹' + vendorRevThisWeek[topVendorId].toLocaleString('en-IN') + ' in sales.' });
+  }
+
+  // best day of week (all-time, from paid orders)
+  const dayRevenue = [0,0,0,0,0,0,0];
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  paidOrders.forEach(function(o) { dayRevenue[new Date(o.created_at).getDay()] += Number(o.total_amount || 0); });
+  const bestDayIdx = dayRevenue.indexOf(Math.max.apply(null, dayRevenue));
+  if (Math.max.apply(null, dayRevenue) > 0) insights.push({ icon: '📅', color: '#eff6ff', text: dayNames[bestDayIdx] + ' has historically been your best day for sales — consider running promotions then.' });
+
+  if (insights.length === 0) {
+    list.innerHTML = '<div style="font-size:11.5px; color:#9ca3af; text-align:center; padding:10px;">Not enough order history yet for insights — check back once you have some sales.</div>';
+    return;
+  }
+  list.innerHTML = insights.map(function(ins) {
+    return '<div style="background:' + ins.color + '; border-radius:10px; padding:10px 12px; font-size:12px; display:flex; gap:8px; align-items:flex-start;"><span style="font-size:16px;">' + ins.icon + '</span><span>' + ins.text + '</span></div>';
+  }).join('');
+}
+  function navigateToPage(page) {
   document.querySelectorAll('.side-item[data-page]').forEach(function(i) { i.classList.toggle('active', i.getAttribute('data-page') === page); });
   document.getElementById('pageDashboard').style.display = page === 'dashboard' ? 'grid' : 'none';
   document.querySelectorAll('[data-section]').forEach(function(el) {
@@ -1061,6 +1131,7 @@ renderProductFunnel();
 renderReturns();
 renderRefunds();
 renderCoupons();
+renderSmartInsights();
 renderHomepageSections();
 populateAdminProductDropdowns();
 renderProfitability();
@@ -2578,6 +2649,32 @@ let apEditingId = null;
 let apSelectedMode = 'pan_india';
 let apPhotoUrl = null;
 
+function generateSmartDescriptionAdmin(name, categoryName, brand) {
+  const brandTxt = brand ? brand + ' ' : '';
+  const shortTemplates = [
+    'Premium ' + name.toLowerCase() + ' built for everyday use — great quality at a fair price.',
+    brandTxt + name + ' — a reliable pick in ' + (categoryName || 'this category') + ', loved by customers for its quality and value.',
+    'Looking for a dependable ' + name.toLowerCase() + '? This one delivers on both style and durability.'
+  ];
+  const longTemplates = [
+    'This ' + brandTxt + name + ' is crafted for those who value both quality and affordability. Perfect for daily use, it combines durability with a design that fits seamlessly into your lifestyle. ' + (categoryName ? 'As part of our ' + categoryName + ' collection, ' : '') + 'it has been chosen for its dependable performance and great customer feedback. Order now and experience the difference.',
+    'Introducing the ' + brandTxt + name + ' — thoughtfully designed to meet your everyday needs. ' + (categoryName ? 'A trusted choice in ' + categoryName + ', ' : '') + 'it offers a great balance of quality, comfort, and value. Whether for personal use or as a gift, this product is built to impress and built to last.'
+  ];
+  return { short: shortTemplates[Math.floor(Math.random() * shortTemplates.length)], long: longTemplates[Math.floor(Math.random() * longTemplates.length)] };
+}
+document.getElementById('apAutoDescBtn').addEventListener('click', function() {
+  const name = document.getElementById('apName').value.trim();
+  if (!name) { alert('Please enter the product name first.'); return; }
+  const categorySelect = document.getElementById('apCategory');
+  const categoryName = categorySelect.options[categorySelect.selectedIndex] ? categorySelect.options[categorySelect.selectedIndex].text : '';
+  const brand = document.getElementById('apBrand').value.trim();
+  const result = generateSmartDescriptionAdmin(name, categoryName === '— Select category —' ? '' : categoryName, brand);
+  document.getElementById('apShortDesc').value = result.short;
+  document.getElementById('apLongDesc').value = result.long;
+  if (!document.getElementById('apFeatures').value.trim()) {
+    document.getElementById('apFeatures').value = 'High-quality build\nGreat value for money\nTrusted by customers\nFast, reliable delivery';
+  }
+});
 function populateAdminProductDropdowns() {
 const vendorSel = document.getElementById('apVendor');
 if (vendorSel && vendorSel.options.length <= 1) {
