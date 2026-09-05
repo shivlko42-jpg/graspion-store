@@ -1862,14 +1862,35 @@ const list = document.getElementById('settingsList');
 const empty = document.getElementById('settingsEmpty');
 if (allSettings.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
 empty.style.display = 'none';
-list.innerHTML = allSettings.map(function(s) {
-let rawVal = s.value;
-try { rawVal = JSON.parse(s.value); } catch(e) {}
-const displayVal = (typeof rawVal === 'object' && rawVal !== null) ? JSON.stringify(rawVal) : rawVal;
-return '<div class="setting-row"><div class="setting-label">' + (s.label || s.key) + '<div class="setting-desc">' + s.key + '</div></div>' +
-'<input class="setting-input" data-settingkey="' + s.key + '" value=\'' + String(displayVal).replace(/'/g,"&#39;") + '\'>' +
-'<button class="icon-btn on-btn" data-settingsave="' + s.key + '">Save</button></div>';
-}).join('');
+
+const groups = [
+  { title: '🏢 Business Info', keys: ['site_name','platform_gstin','platform_business_address','platform_state'] },
+  { title: '🚚 Delivery & Shipping', keys: ['standard_delivery_charge','standard_delivery_days_min','standard_delivery_days_max','instant_delivery_charge','instant_delivery_minutes','dark_store_default_radius_km','free_shipping_min_amount'] },
+  { title: '💳 Payments & Commission', keys: ['cod_enabled','default_commission_percent','payment_gateway_fee_percent'] },
+  { title: '⚙️ System', keys: ['maintenance_mode'] }
+];
+
+function settingRowHtml(s) {
+  let rawVal = s.value;
+  try { rawVal = JSON.parse(s.value); } catch(e) {}
+  const displayVal = (typeof rawVal === 'object' && rawVal !== null) ? JSON.stringify(rawVal) : rawVal;
+  return '<div class="setting-row"><div class="setting-label">' + (s.label || s.key) + '<div class="setting-desc">' + s.key + '</div></div>' +
+  '<input class="setting-input" data-settingkey="' + s.key + '" value=\'' + String(displayVal).replace(/'/g,"&#39;") + '\'>' +
+  '<button class="icon-btn on-btn" data-settingsave="' + s.key + '">Save</button></div>';
+}
+
+const groupedKeys = groups.flatMap(function(g) { return g.keys; });
+const ungrouped = allSettings.filter(function(s) { return groupedKeys.indexOf(s.key) === -1; });
+
+list.innerHTML = groups.map(function(g, idx) {
+  const rows = g.keys.map(function(k) { return allSettings.find(function(s) { return s.key === k; }); }).filter(Boolean);
+  if (rows.length === 0) return '';
+  return '<details style="margin-bottom:10px; border:1px solid #f0eef7; border-radius:12px; padding:10px 12px;"' + (idx === 0 ? ' open' : '') + '>' +
+    '<summary style="cursor:pointer; list-style:none; font-weight:700; font-size:12.5px;">' + g.title + ' ▾</summary>' +
+    '<div style="margin-top:8px;">' + rows.map(settingRowHtml).join('') + '</div>' +
+  '</details>';
+}).join('') + (ungrouped.length > 0 ? ungrouped.map(settingRowHtml).join('') : '');
+
 document.querySelectorAll('[data-settingsave]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 const key = btn.getAttribute('data-settingsave');
