@@ -1196,6 +1196,16 @@ function renderOrders() {
       const orderId = dot.getAttribute('data-orderid');
       const step = Number(dot.getAttribute('data-step'));
       const newStatus = STATUS_STEPS[step];
+      const order = vendorOrders.find(function(o) { return o.id === orderId; });
+      // For Pan-India (courier) orders, "Shipped" must ONLY happen via a real
+      // Shiprocket booking (which generates an actual AWB/tracking number) —
+      // otherwise a customer would see "Shipped" with nothing to track, and
+      // the "Ship via Shiprocket" button disappears once status=shipped,
+      // permanently blocking a real shipment from ever being booked.
+      if (newStatus === 'shipped' && order && order.delivery_type === 'standard') {
+        alert('For Pan-India orders, please use the "📦 Ship via Shiprocket" button below to book the actual courier — this also generates the tracking number your customer will see. Marking it Shipped here without booking would leave the order with no real tracking.');
+        return;
+      }
       const patchBody = { status: newStatus };
       if (newStatus === 'delivered') {
         const now = new Date();
