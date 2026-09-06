@@ -188,6 +188,7 @@ window.addEventListener('load', function() {
     <div class="side-item active" id="navDashboard">📊 Dashboard</div>
     <div class="side-item" id="navProducts">📦 Products</div>
     <div class="side-item" id="navOrders">🧾 Orders</div>
+    <div class="side-item" id="navPrebookings">📦 Pre-Bookings</div>
     <div class="side-item" id="navPayments">💳 Payments</div>
     <div class="side-item" id="navPromote">🎯 Promote / Ads</div>
     <div class="side-item" id="navSettings">⚙️ Store Settings</div>
@@ -236,6 +237,17 @@ window.addEventListener('load', function() {
       <div class="form-row">
         <div class="form-group"><label>Store Type</label><input class="form-input" id="sVendorType" disabled></div>
         <div class="form-group"><label>Default Commission %</label><input class="form-input" id="sCommission" disabled></div>
+      </div>
+
+      <div id="prebookingSection" style="margin:16px 0; padding:12px; background:#faf9fd; border-radius:12px; border:1px solid #f0eef7;">
+        <label style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:6px; display:block;">📦 Bulk / Pre-Order Selling</label>
+        <p style="font-size:10px; color:#9ca3af; margin-bottom:10px;">For sellers who take advance bookings on bulk/custom items (like FPOs making food or gift items to order) — customers can request a sample or book with a token advance instead of instant checkout.</p>
+        <div id="prebookingNotEnabled">
+          <textarea class="form-input" id="pbReason" placeholder="Tell admin why you need this (e.g. we take bulk festival gift orders in advance)" rows="2"></textarea>
+          <button class="add-product-btn" id="pbRequestBtn" style="margin-top:8px;">Request Pre-Booking Permission</button>
+          <div id="pbRequestStatus" style="font-size:10.5px; margin-top:8px;"></div>
+        </div>
+        <div id="prebookingEnabled" style="display:none; color:#15803d; font-size:11.5px; font-weight:700;">✅ Pre-Booking approved — you can now mark products as Pre-Order in the product form.</div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>GSTIN</label><input class="form-input" id="sGstin" placeholder="e.g. 09ABCDE1234F1Z5"></div>
@@ -435,6 +447,20 @@ window.addEventListener('load', function() {
         <label>Key Features (one per line)</label>
         <textarea class="form-input" id="pFeatures" rows="3" placeholder="e.g.&#10;Waterproof design&#10;12-hour battery life&#10;Bluetooth 5.0"></textarea>
       </div>
+
+      <div id="preorderProductSection" style="display:none; margin-bottom:14px; padding:12px; background:#faf9fd; border-radius:12px; border:1px solid #f0eef7;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:700; color:#6b7280;"><input type="checkbox" id="pIsPreorder"> 📦 This is a Bulk / Pre-Order item</label>
+        <p style="font-size:10px; color:#9ca3af; margin:4px 0 10px 24px;">Customers will book this in advance with a token payment instead of instant checkout.</p>
+        <div id="preorderFields" style="display:none;">
+          <div class="form-row">
+            <div class="form-group"><label>Advance / Token Amount (₹)</label><input class="form-input" id="pAdvanceAmount" type="number" placeholder="e.g. 500"></div>
+            <div class="form-group"><label>Minimum Order Quantity</label><input class="form-input" id="pMinQty" type="number" placeholder="e.g. 10"></div>
+          </div>
+          <div class="form-group"><label>Lead Time (days to prepare)</label><input class="form-input" id="pLeadTime" type="number" placeholder="e.g. 5"></div>
+          <label style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:#6b7280; margin-top:6px;"><input type="checkbox" id="pSampleAvailable"> Offer a sample before bulk booking</label>
+          <div class="form-group" id="pSamplePriceRow" style="display:none; margin-top:6px;"><label>Sample Price (₹, 0 = free)</label><input class="form-input" id="pSamplePrice" type="number" placeholder="0"></div>
+        </div>
+      </div>
       <label style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:8px; display:block;">Is this item returnable?</label>
       <div class="radio-row">
         <div class="radio-option selected" id="returnYes" data-return="true"><span class="ro-icon">✅</span>Returnable</div>
@@ -489,6 +515,13 @@ window.addEventListener('load', function() {
       <button class="add-product-btn" id="exportOrdersBtn" style="margin-bottom:14px; background:#1e1b3a;">⬇ Download Labels / Orders CSV</button>
       <div id="orderList"></div>
       <div class="empty-state" id="orderEmpty" style="display:none;">No orders yet</div>
+    </div>
+
+    <div class="panel">
+      <h3 id="prebookingsSection">📦 Pre-Bookings <span id="prebookingCount" style="font-size:11px;color:#9ca3af;"></span></h3>
+      <p style="font-size:10.5px; color:#9ca3af; margin-bottom:10px;">Sample requests and advance-paid bulk bookings from customers.</p>
+      <div id="prebookingList"></div>
+      <div class="empty-state" id="prebookingEmpty" style="display:none;">No pre-bookings yet</div>
     </div>
 
     <div class="panel">
@@ -655,6 +688,10 @@ document.getElementById('navProducts').addEventListener('click', function() {
 document.getElementById('navOrders').addEventListener('click', function() {
   document.getElementById('ordersSection').scrollIntoView({ behavior: 'smooth' });
 });
+document.getElementById('navPrebookings').addEventListener('click', function() {
+  document.getElementById('prebookingsSection').scrollIntoView({ behavior: 'smooth' });
+  loadVendorPrebookings();
+});
 document.getElementById('navPayments').addEventListener('click', function() {
   document.getElementById('paymentsSection').scrollIntoView({ behavior: 'smooth' });
 });
@@ -671,6 +708,7 @@ document.querySelectorAll('.side-item[id^="nav"]').forEach(function(item) {
 let selectedStoreOpen = true;
 function populateSettingsForm() {
   document.getElementById('sVendorType').value = currentVendor.vendor_type === 'dark_store' ? '⚡ Dark Store (Instant Delivery)' : '📦 Marketplace (Pan-India)';
+  loadPrebookingStatus();
   document.getElementById('sCommission').value = (currentVendor.commission_percent || 10) + '%';
   document.getElementById('sGstin').value = currentVendor.gstin || '';
   document.getElementById('sAddress').value = currentVendor.address || '';
@@ -1015,6 +1053,15 @@ function renderProducts() {
       document.getElementById('pHsn').value = p.hsn_code || '';
       document.getElementById('pGst').value = p.gst_percent != null ? p.gst_percent : '';
       document.getElementById('pFeatures').value = p.features || '';
+      document.getElementById('preorderProductSection').style.display = currentVendor.prebooking_enabled ? 'block' : 'none';
+      document.getElementById('pIsPreorder').checked = !!p.is_preorder;
+      document.getElementById('preorderFields').style.display = p.is_preorder ? 'block' : 'none';
+      document.getElementById('pAdvanceAmount').value = p.preorder_advance_amount || '';
+      document.getElementById('pMinQty').value = p.preorder_min_qty || '';
+      document.getElementById('pLeadTime').value = p.preorder_lead_time_days || '';
+      document.getElementById('pSampleAvailable').checked = !!p.sample_available;
+      document.getElementById('pSamplePriceRow').style.display = p.sample_available ? 'block' : 'none';
+      document.getElementById('pSamplePrice').value = p.sample_price || '';
       document.getElementById('pShortDescription').value = p.short_description || '';
       document.getElementById('pLongDescription').value = p.long_description || '';
       document.getElementById('pBrand').value = p.brand || '';
@@ -1483,6 +1530,97 @@ async function generateVendorInvoice(orderId) {
   }
 }
 
+// ===================== VENDOR: MANAGE PRE-BOOKINGS =====================
+const PB_STATUS_STEPS = ['pending','confirmed','in_production','ready','delivered'];
+const PB_STATUS_LABELS = { pending:'Pending', confirmed:'Confirmed', in_production:'In Production', ready:'Ready', delivered:'Delivered', cancelled:'Cancelled' };
+async function loadVendorPrebookings() {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/prebookings?vendor_id=eq.' + currentVendor.id + '&select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+    const bookings = res.ok ? await res.json() : [];
+    document.getElementById('prebookingCount').textContent = bookings.length ? '(' + bookings.length + ')' : '';
+    const list = document.getElementById('prebookingList');
+    const empty = document.getElementById('prebookingEmpty');
+    if (bookings.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+    empty.style.display = 'none';
+    list.innerHTML = bookings.map(function(b) {
+      const product = vendorProducts.find(function(p) { return p.id === b.product_id; });
+      const typeLabel = b.booking_type === 'sample' ? '🧪 Sample Request' : '📦 Bulk Pre-Order';
+      let statusButtons = '';
+      if (b.status !== 'cancelled' && b.status !== 'delivered') {
+        const currentIdx = PB_STATUS_STEPS.indexOf(b.status);
+        const nextStatus = PB_STATUS_STEPS[currentIdx + 1];
+        if (nextStatus) statusButtons += '<button data-pbadvance="' + b.id + '" data-nextstatus="' + nextStatus + '" style="background:#7c3aed; color:#fff; border:none; padding:6px 12px; border-radius:8px; font-size:10.5px; font-weight:700; margin-right:6px;">Mark ' + PB_STATUS_LABELS[nextStatus] + '</button>';
+        statusButtons += '<button data-pbcancel="' + b.id + '" style="background:#fee2e2; color:#dc2626; border:none; padding:6px 12px; border-radius:8px; font-size:10.5px; font-weight:700;">Cancel</button>';
+      }
+      return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:12px; margin-bottom:10px;">' +
+        '<div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><div style="font-size:11px; font-weight:700; color:#7c3aed;">' + typeLabel + '</div><div style="font-size:12.5px; font-weight:700; margin-top:2px;">' + (product ? product.name : 'Product') + ' × ' + b.quantity + '</div></div><span style="font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px; background:#f3f1f8; color:#4b5563;">' + PB_STATUS_LABELS[b.status] + '</span></div>' +
+        '<div style="font-size:10.5px; color:#6b7280; margin-top:6px;">👤 ' + (b.customer_name || '-') + ' · 📞 ' + (b.customer_phone || '-') + '</div>' +
+        (b.customer_address ? '<div style="font-size:10px; color:#9ca3af; margin-top:2px;">📍 ' + b.customer_address + '</div>' : '') +
+        (b.customization_notes ? '<div style="font-size:10.5px; margin-top:6px; background:#faf9fd; padding:6px 8px; border-radius:6px;">📝 ' + b.customization_notes + '</div>' : '') +
+        '<div style="font-size:10.5px; margin-top:8px;">Advance: ₹' + b.advance_amount + ' ' + (b.advance_paid ? '✅ Paid' : '⏳ Pending') + (b.full_amount ? ' · Full: ₹' + b.full_amount : '') + '</div>' +
+        (statusButtons ? '<div style="margin-top:10px;">' + statusButtons + '</div>' : '') +
+        '</div>';
+    }).join('');
+    document.querySelectorAll('[data-pbadvance]').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        await fetch(SUPABASE_URL + '/rest/v1/prebookings?id=eq.' + btn.getAttribute('data-pbadvance'), {
+          method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: btn.getAttribute('data-nextstatus') })
+        });
+        loadVendorPrebookings();
+      });
+    });
+    document.querySelectorAll('[data-pbcancel]').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        if (!confirm('Cancel this pre-booking?')) return;
+        await fetch(SUPABASE_URL + '/rest/v1/prebookings?id=eq.' + btn.getAttribute('data-pbcancel'), {
+          method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'cancelled' })
+        });
+        loadVendorPrebookings();
+      });
+    });
+  } catch (e) {}
+}
+
+// ===================== PRE-BOOKING PERMISSION (bulk/custom order selling) =====================
+async function loadPrebookingStatus() {
+  if (currentVendor.prebooking_enabled) {
+    document.getElementById('prebookingNotEnabled').style.display = 'none';
+    document.getElementById('prebookingEnabled').style.display = 'block';
+    document.getElementById('preorderProductSection').style.display = 'block';
+    return;
+  }
+  document.getElementById('prebookingEnabled').style.display = 'none';
+  document.getElementById('prebookingNotEnabled').style.display = 'block';
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/prebooking_permission_requests?vendor_id=eq.' + currentVendor.id + '&select=*&order=requested_at.desc&limit=1', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+    const rows = res.ok ? await res.json() : [];
+    const statusEl = document.getElementById('pbRequestStatus');
+    if (rows[0]) {
+      if (rows[0].status === 'pending') { statusEl.style.color = '#b45309'; statusEl.textContent = '⏳ Request pending admin review.'; document.getElementById('pbRequestBtn').disabled = true; }
+      else if (rows[0].status === 'rejected') { statusEl.style.color = '#dc2626'; statusEl.textContent = '✗ Previous request was declined' + (rows[0].admin_notes ? ': ' + rows[0].admin_notes : '') + '. You can request again.'; }
+    }
+  } catch (e) {}
+}
+document.getElementById('pbRequestBtn').addEventListener('click', async function() {
+  const reason = document.getElementById('pbReason').value.trim();
+  if (!reason) { alert('Please tell admin why you need this.'); return; }
+  const btn = this;
+  btn.disabled = true; btn.textContent = 'Sending...';
+  try {
+    await fetch(SUPABASE_URL + '/rest/v1/prebooking_permission_requests', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vendor_id: currentVendor.id, reason: reason })
+    });
+    document.getElementById('pbRequestStatus').style.color = '#15803d';
+    document.getElementById('pbRequestStatus').textContent = '✓ Request sent — admin will review it soon.';
+    document.getElementById('pbReason').value = '';
+  } catch (e) { alert('Could not send request.'); btn.disabled = false; }
+  btn.textContent = 'Request Pre-Booking Permission';
+});
+
 let vendorSettlements = [];
 async function loadVendorSettlements() {
 try {
@@ -1569,6 +1707,12 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   const categoryId = document.getElementById('pCategory').value || null;
   const sku = document.getElementById('pSku').value.trim() || ('GRS-' + Date.now().toString().slice(-8));
   const fulfillmentType = currentVendor.vendor_type === 'dark_store' ? 'instant' : 'standard';
+  const isPreorder = currentVendor.prebooking_enabled && document.getElementById('pIsPreorder').checked;
+  const advanceAmount = isPreorder ? (Number(document.getElementById('pAdvanceAmount').value) || 0) : null;
+  const minQty = isPreorder ? (Number(document.getElementById('pMinQty').value) || 1) : 1;
+  const leadTime = isPreorder ? (Number(document.getElementById('pLeadTime').value) || null) : null;
+  const sampleAvailable = isPreorder && document.getElementById('pSampleAvailable').checked;
+  const samplePrice = sampleAvailable ? (Number(document.getElementById('pSamplePrice').value) || 0) : 0;
 
   if (!name || !price || (selectedMode === 'local' && !pincode)) {
     alert('Product Name, Price, and Pincode (for Local mode) are required');
@@ -1628,7 +1772,13 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
         igst_percent: document.getElementById('pIgst').value ? Number(document.getElementById('pIgst').value) : null,
         min_stock_level: document.getElementById('pMinStockLevel').value ? Number(document.getElementById('pMinStockLevel').value) : 5,
         reorder_level: document.getElementById('pReorderLevel').value ? Number(document.getElementById('pReorderLevel').value) : 10,
-        max_stock_level: document.getElementById('pMaxStockLevel').value ? Number(document.getElementById('pMaxStockLevel').value) : null
+        max_stock_level: document.getElementById('pMaxStockLevel').value ? Number(document.getElementById('pMaxStockLevel').value) : null,
+        is_preorder: isPreorder,
+        preorder_advance_amount: advanceAmount,
+        preorder_min_qty: minQty,
+        preorder_lead_time_days: leadTime,
+        sample_available: sampleAvailable,
+        sample_price: samplePrice
       };
     // In edit mode, don't overwrite the image with null if the vendor didn't pick a new one
     if (editingProductId && !uploadedPhotoBase64) { delete productPayload.image_data; }
@@ -1916,6 +2066,12 @@ row.innerHTML = '<div class="form-group"><input class="form-input" placeholder="
 document.getElementById('variantAttrRows').appendChild(row);
 }
 document.getElementById('addAttrRowBtn').addEventListener('click', addAttrRow);
+document.getElementById('pIsPreorder').addEventListener('change', function() {
+  document.getElementById('preorderFields').style.display = this.checked ? 'block' : 'none';
+});
+document.getElementById('pSampleAvailable').addEventListener('change', function() {
+  document.getElementById('pSamplePriceRow').style.display = this.checked ? 'block' : 'none';
+});
 
 // "Smart" description generator (no AI/no cost) — uses varied sentence
 // templates so products don't all read identically, filling in the name,
