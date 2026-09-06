@@ -827,13 +827,63 @@ wrap.innerHTML = fallback.map(function(c){ return '<div class="qc-item"><div cla
 return;
 }
 wrap.innerHTML = categoryList.filter(function(c){ return !c.parent_id; }).map(function(c){
-const inner = c.image_url ? '<img src="' + c.image_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:18px;">' : '🛍️';
+const visual = CATEGORY_VISUALS[c.slug];
+const inner = c.image_url ? '<img src="' + c.image_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:18px;">' : (visual ? visual.icon : '🛍️');
+const bg = c.image_url ? '#fff' : (visual ? visual.color : '#fff');
 const isActive = activeCategoryId === c.id;
-return '<div class="qc-item' + (isActive ? ' active' : '') + '" data-cat="' + c.id + '"><div class="qc-icon">' + inner + '</div><span>' + c.name + '</span></div>';
+return '<div class="qc-item' + (isActive ? ' active' : '') + '" data-cat="' + c.id + '"><div class="qc-icon" style="background:' + bg + ';' + (visual && !c.image_url ? 'box-shadow:0 4px 12px rgba(0,0,0,0.12);' : '') + '">' + inner + '</div><span>' + c.name + '</span></div>';
 }).join('');
 wrap.querySelectorAll('[data-cat]').forEach(function(el){ el.addEventListener('click', function(){ filterByCategory(el.getAttribute('data-cat')); }); });
+renderSubcategoryChips();
+}
+function renderSubcategoryChips() {
+let chipWrap = document.getElementById('subcategoryChips');
+if (!activeCategoryId) { if (chipWrap) chipWrap.style.display = 'none'; return; }
+const subs = categoryList.filter(function(c) { return c.parent_id === activeCategoryId; });
+if (!chipWrap) {
+chipWrap = document.createElement('div');
+chipWrap.id = 'subcategoryChips';
+chipWrap.style.cssText = 'display:flex; gap:8px; overflow-x:auto; padding:10px 16px; -webkit-overflow-scrolling:touch;';
+const quickCatsWrap = document.getElementById('quickCats');
+if (quickCatsWrap && quickCatsWrap.parentNode) quickCatsWrap.parentNode.insertBefore(chipWrap, quickCatsWrap.nextSibling);
+}
+if (subs.length === 0) { chipWrap.style.display = 'none'; return; }
+chipWrap.style.display = 'flex';
+chipWrap.innerHTML = '<button data-subchip="" style="flex:0 0 auto; background:' + (!activeSubcategoryId ? '#7c3aed' : '#f3f1f8') + '; color:' + (!activeSubcategoryId ? '#fff' : '#4b5563') + '; border:none; padding:7px 14px; border-radius:20px; font-size:11.5px; font-weight:700; white-space:nowrap;">All</button>' +
+subs.map(function(s) { return '<button data-subchip="' + s.id + '" style="flex:0 0 auto; background:' + (activeSubcategoryId === s.id ? '#7c3aed' : '#f3f1f8') + '; color:' + (activeSubcategoryId === s.id ? '#fff' : '#4b5563') + '; border:none; padding:7px 14px; border-radius:20px; font-size:11.5px; font-weight:700; white-space:nowrap;">' + s.name + '</button>'; }).join('');
+chipWrap.querySelectorAll('[data-subchip]').forEach(function(btn) {
+btn.addEventListener('click', function() {
+activeSubcategoryId = btn.getAttribute('data-subchip') || null;
+renderSubcategoryChips();
+renderProducts(selectedPin);
+});
+});
 }
 let activeCategoryId = null;
+let activeSubcategoryId = null;
+// Curated look for each Main Category so the homepage feels polished even
+// before every category has a custom uploaded image — a colored circle +
+// a well-chosen icon reads far better than a generic bag icon repeated 18 times.
+const CATEGORY_VISUALS = {
+  'mobiles-accessories': { icon: '📱', color: 'linear-gradient(135deg,#3b82f6,#60a5fa)' },
+  'electronics-gadgets': { icon: '🎧', color: 'linear-gradient(135deg,#7c3aed,#a78bfa)' },
+  'computers-laptops-office-technology': { icon: '💻', color: 'linear-gradient(135deg,#4338ca,#818cf8)' },
+  'home-kitchen': { icon: '🍳', color: 'linear-gradient(135deg,#ea580c,#fb923c)' },
+  'home-decor-furnishing': { icon: '🛋️', color: 'linear-gradient(135deg,#db2777,#f472b6)' },
+  'grocery-daily-essentials': { icon: '🥬', color: 'linear-gradient(135deg,#16a34a,#4ade80)' },
+  'beauty-personal-care-grooming': { icon: '💄', color: 'linear-gradient(135deg,#e11d48,#fb7185)' },
+  'health-wellness': { icon: '🩺', color: 'linear-gradient(135deg,#0d9488,#2dd4bf)' },
+  'fashion': { icon: '👗', color: 'linear-gradient(135deg,#c026d3,#e879f9)' },
+  'footwear': { icon: '👟', color: 'linear-gradient(135deg,#d97706,#fbbf24)' },
+  'baby-kids-toys': { icon: '🧸', color: 'linear-gradient(135deg,#ca8a04,#fde047)' },
+  'sports-fitness-outdoor': { icon: '🏸', color: 'linear-gradient(135deg,#65a30d,#a3e635)' },
+  'automotive': { icon: '🚗', color: 'linear-gradient(135deg,#334155,#64748b)' },
+  'tools-hardware-electrical': { icon: '🔧', color: 'linear-gradient(135deg,#78716c,#a8a29e)' },
+  'office-products-stationery': { icon: '✏️', color: 'linear-gradient(135deg,#0891b2,#22d3ee)' },
+  'books-education': { icon: '📚', color: 'linear-gradient(135deg,#92400e,#d97706)' },
+  'pet-supplies': { icon: '🐾', color: 'linear-gradient(135deg,#7c3aed,#c4b5fd)' },
+  'puja-spiritual-festival': { icon: '🪔', color: 'linear-gradient(135deg,#b91c1c,#f59e0b)' }
+};
 let searchQuery = '';
 
 // Effective (non-AI) search: matches name/brand/features/category, tolerates
@@ -934,7 +984,7 @@ setTimeout(function(){ document.getElementById('searchSuggestions').classList.re
 document.getElementById('searchInput').addEventListener('focus', function(){
 if (this.value.trim().length >= 2) renderSearchSuggestions(this.value);
 });
-function filterByCategory(catId){ activeCategoryId = (activeCategoryId === catId) ? null : catId; renderQuickCategories(); renderProducts(selectedPin); }
+function filterByCategory(catId){ activeCategoryId = (activeCategoryId === catId) ? null : catId; activeSubcategoryId = null; renderQuickCategories(); renderProducts(selectedPin); }
 function renderVendors(pin){
 const list = vendors.filter(function(v){ return (v.pincodes.includes(pin) || v.pincodes.includes('ALL')) && v.nearbySubscribed; });
 const row = document.getElementById('vendorRow');
@@ -1035,7 +1085,8 @@ function parseSmartQuery(query) {
 function renderProducts(pin){
 let filtered = productPool.filter(function(p){ return productMatchesPincode(p, pin); });
 if(selectedVendorId !== 'all') filtered = filtered.filter(function(p){ return p.vendorId === selectedVendorId; });
-if(activeCategoryId) filtered = filtered.filter(function(p){ return p.categoryId === activeCategoryId; });
+if(activeSubcategoryId) filtered = filtered.filter(function(p){ return p.categoryId === activeSubcategoryId; });
+else if(activeCategoryId) filtered = filtered.filter(function(p){ return p.categoryId === activeCategoryId; });
 if(searchQuery) {
   const smart = parseSmartQuery(searchQuery);
   if (smart.minPrice !== null) filtered = filtered.filter(function(p){ return Number(p.price) >= smart.minPrice; });
@@ -1446,6 +1497,7 @@ async function setArea(pin, resolvedWarehouseId){
 selectedPin = pin;
 selectedVendorId = 'all';
 activeCategoryId = null;
+activeSubcategoryId = null;
 if (resolvedWarehouseId !== undefined) {
 // caller (e.g. GPS radius match) already resolved this explicitly
 selectedWarehouseId = resolvedWarehouseId;
@@ -2431,6 +2483,7 @@ if (el) el.classList.add('active');
 document.getElementById('bnHome').addEventListener('click', function(){
 setBottomNavActive('bnHome');
 activeCategoryId = null;
+activeSubcategoryId = null;
 searchQuery = '';
 document.getElementById('searchInput').value = '';
 window.scrollTo({ top: 0, behavior: 'smooth' });
