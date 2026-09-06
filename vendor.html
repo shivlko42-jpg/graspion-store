@@ -1180,6 +1180,7 @@ function renderOrders() {
       '</div>' +
       '<div class="pipeline">' + stepsHtml + '</div>' +
       (showShipBtn ? '<button class="mini-btn" data-shipid="' + o.id + '" style="background:#dbeafe;color:#1d4ed8;margin-top:8px;margin-right:6px;">📦 Ship via Shiprocket</button>' : '') +
+      (o.status !== 'cancelled' ? '<button class="mini-btn" data-printlabel="' + o.id + '" style="background:#f3f1f8;color:#4b5563;margin-top:8px;margin-right:6px;">🏷️ Print Shipping Label</button>' : '') +
       (o.status !== 'delivered' && o.status !== 'cancelled' ? '<button class="mini-btn" data-cancelid="' + o.id + '" style="background:#fee2e2;color:#dc2626;margin-top:8px;">✕ Cancel Order</button>' : (o.status === 'cancelled' ? '<div style="font-size:11px;color:#dc2626;font-weight:700;margin-top:8px;">✕ Cancelled</div>' : '')) +
     '</div>';
   }).join('');
@@ -1275,6 +1276,94 @@ function renderOrders() {
       }
     });
   });
+  document.querySelectorAll('[data-printlabel]').forEach(function(btn) {
+    btn.addEventListener('click', function() { generateShippingLabel(btn.getAttribute('data-printlabel')); });
+  });
+}
+
+// ===================== SHIPPING LABEL PDF (standard 4x6 courier label) =====================
+async function generateShippingLabel(orderId) {
+  const order = vendorOrders.find(function(o) { return o.id === orderId; });
+  if (!order) { alert('Order not found.'); return; }
+  try {
+    if (typeof PDFLib === 'undefined') {
+      await new Promise(function(resolve, reject) {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+    const { PDFDocument, rgb, StandardFonts } = PDFLib;
+    // Standard courier label size: 4in x 6in = 288 x 432 points
+    const doc = await PDFDocument.create();
+    const page = doc.addPage([288, 432]);
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+    let y = 410;
+    const left = 14;
+
+    function line(text, size, useFont, gap) {
+      page.drawText(text, { x: left, y: y, size: size, font: useFont || font, color: rgb(0,0,0) });
+      y -= (gap || size + 6);
+    }
+    function rule() { page.drawLine({ start: { x: left, y: y }, end: { x: 274, y: y }, thickness: 1, color: rgb(0.7,0.7,0.7) }); y -= 12; }
+
+    line('GRASPION', 16, bold, 20);
+    line('Order #' + (order.order_number || order.id.slice(0,8)), 9, font, 16);
+    rule();
+
+    line('FROM:', 8, bold, 12);
+    line(currentVendor.name || 'Graspion Seller', 10, bold, 13);
+    const fromAddr = (currentVendor.address || 'Address not on file');
+    const fromLines = fromAddr.match(/.{1,42}(\s|$)/g) || [fromAddr];
+    fromLines.slice(0,2).forEach(function(l) { line(l.trim(), 8.5, font, 11); });
+    if (currentVendor.phone) line('Ph: ' + currentVendor.phone, 8.5, font, 14); else y -= 14;
+    rule();
+
+    line('TO:', 8, bold, 12);
+    line(order.customer_name || 'Customer', 11, bold, 14);
+    const toAddr = (order.customer_address || order.address || 'Address not provided');
+    const toLines = toAddr.match(/.{1,40}(\s|$)/g) || [toAddr];
+    toLines.slice(0,3).forEach(function(l) { line(l.trim(), 9, font, 12); });
+    line('PIN: ' + (order.pincode || '-'), 9.5, bold, 13);
+    line('Ph: ' + (order.customer_phone || '-'), 9, font, 16);
+    rule();
+
+    const isCOD = (order.payment_method || '').toLowerCase() === 'cod' && order.payment_status !== 'paid';
+    if (isCOD) {
+      page.drawRectangle({ x: left, y: y - 24, width: 260, height: 26, color: rgb(1, 0.95, 0.7) });
+      page.drawText('COD: COLLECT ₹' + order.total_amount, { x: left + 6, y: y - 17, size: 13, font: bold, color: rgb(0.6,0.3,0) });
+      y -= 36;
+    } else {
+      page.drawRectangle({ x: left, y: y - 24, width: 260, height: 26, color: rgb(0.85, 0.95, 0.85) });
+      page.drawText('PREPAID — Paid Online', { x: left + 6, y: y - 17, size: 12, font: bold, color: rgb(0.1,0.5,0.1) });
+      y -= 36;
+    }
+
+    const items = vendorOrderItems.filter(function(it) { return it.order_id === order.id; });
+    line('ITEMS (' + items.length + '):', 8, bold, 12);
+    items.slice(0, 5).forEach(function(it) {
+      const prod = vendorProducts.find(function(vp) { return vp.id === it.product_id; });
+      const name = (prod ? prod.name : 'Item').slice(0, 32);
+      line('• ' + name + ' x' + it.quantity, 8, font, 11);
+    });
+
+    y = 20;
+    page.drawText('Delivery type: ' + (order.delivery_type === 'instant' ? 'Instant / Local' : 'Pan-India Courier'), { x: left, y: y, size: 7, font: font, color: rgb(0.5,0.5,0.5) });
+
+    const pdfBytes = await doc.save();
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Graspion_Label_' + (order.order_number || order.id.slice(0,8)) + '.pdf';
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+  } catch (err) {
+    alert('Could not generate label: ' + err.message);
+  }
 }
 
 let vendorSettlements = [];
