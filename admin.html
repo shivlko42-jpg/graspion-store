@@ -561,7 +561,7 @@ Continue with Google
 <input class="form-input" id="catName" placeholder="Category name e.g. Grocery">
 <input class="form-input" id="catImage" placeholder="Image URL (optional)">
 <select class="form-input" id="catParent"><option value="">No parent (top-level)</option></select>
-<input class="form-input" id="catOrder" placeholder="Display order (0,1,2...)" type="number" value="0">
+<div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Display Order (0 = shows first)</label><input class="form-input" id="catOrder" placeholder="e.g. 0, 1, 2..." type="number"></div>
 </div>
 <button class="login-btn" id="catAddBtn" style="margin-top:10px;">+ Add Category</button>
 <div id="catList" style="margin-top:16px;"></div>
@@ -579,7 +579,7 @@ Continue with Google
 </select>
 <input class="form-input" id="hpTitle" placeholder="Section title e.g. Fresh Arrivals">
 <select class="form-input" id="hpCategory" style="display:none;"><option value="">— Select category —</option></select>
-<input class="form-input" id="hpOrder" type="number" placeholder="Display order (lower = higher up)" value="0">
+<div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Display Order (lower number = shows higher up)</label><input class="form-input" id="hpOrder" type="number" placeholder="e.g. 0, 1, 2..."></div>
 </div>
 <button class="login-btn" id="hpAddBtn" style="margin-top:10px;">+ Add Section</button>
 <div id="hpList" style="margin-top:16px;"></div>
@@ -596,7 +596,7 @@ Continue with Google
 <input class="form-input" id="banMobileImg" placeholder="Mobile image URL">
 <input class="form-input" id="banButtonText" placeholder="Button text e.g. Shop Now">
 <input class="form-input" id="banLink" placeholder="Link URL">
-<input class="form-input" id="banPriority" placeholder="Priority (lower = shown first)" type="number" value="0">
+<div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Priority (lower number = shown first)</label><input class="form-input" id="banPriority" placeholder="e.g. 0, 1, 2..." type="number"></div>
 </div>
 <button class="login-btn" id="banAddBtn" style="margin-top:10px;">+ Add Banner</button>
 <div id="banList" style="margin-top:16px;"></div>
@@ -2026,7 +2026,7 @@ headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Cont
 body: JSON.stringify({ name: name, slug: slug, image_url: document.getElementById('catImage').value.trim() || null, parent_id: document.getElementById('catParent').value || null, display_order: parseInt(document.getElementById('catOrder').value) || 0, status: 'active' })
 });
 ['catName','catImage'].forEach(function(id){ document.getElementById(id).value = ''; });
-document.getElementById('catOrder').value = 0;
+document.getElementById('catOrder').value = '';
 btn.textContent = '+ Add Category';
 loadAllData();
 });
@@ -2071,7 +2071,7 @@ headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Cont
 body: JSON.stringify({ title: title, subtitle: document.getElementById('banSubtitle').value.trim(), desktop_image: document.getElementById('banDesktopImg').value.trim(), mobile_image: document.getElementById('banMobileImg').value.trim(), button_text: document.getElementById('banButtonText').value.trim(), link_url: document.getElementById('banLink').value.trim(), priority: parseInt(document.getElementById('banPriority').value) || 0, status: 'active' })
 });
 ['banTitle','banSubtitle','banDesktopImg','banMobileImg','banButtonText','banLink'].forEach(function(id){ document.getElementById(id).value = ''; });
-document.getElementById('banPriority').value = 0;
+document.getElementById('banPriority').value = '';
 btn.textContent = '+ Add Banner';
 loadAllData();
 });
@@ -3098,7 +3098,7 @@ body: JSON.stringify({ section_type: sectionType, title: title, category_id: cat
 });
 hpAddBtn.disabled = false; hpAddBtn.textContent = '+ Add Section';
 document.getElementById('hpTitle').value = '';
-document.getElementById('hpOrder').value = '0';
+document.getElementById('hpOrder').value = '';
 loadAllData();
 });
 function renderCoupons() {
