@@ -495,7 +495,9 @@ Continue with Google
 <div style="background:#f5f3ff; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:11px; color:#6d28d9; line-height:1.6;">ℹ️ <b>SEO</b> (title & description for Google) is generated automatically when you save — nothing to fill in here. <b>Variants</b> (Size/Color) are added after saving, from the 🎨 Variants button on this product in the list below.</div>
 <div class="form-grid">
 <select class="form-input" id="apVendor"><option value="">— Select vendor —</option></select>
-<select class="form-input" id="apCategory"><option value="">— Select category —</option></select>
+<select class="form-input" id="apCategory"><option value="">— Select Main Category —</option></select>
+<select class="form-input" id="apSubcategory"><option value="">— Select Subcategory —</option></select>
+<select class="form-input" id="apProductType"><option value="">— Select Product Type (optional) —</option></select>
 <input class="form-input" id="apName" placeholder="Product name">
 <input class="form-input" id="apSku" placeholder="SKU (optional, must be unique)">
 <input class="form-input" id="apPrice" placeholder="Selling price ₹" type="number">
@@ -3022,9 +3024,25 @@ vendorSel.innerHTML = '<option value="">— Select vendor —</option>' + allVen
 }
 const catSel = document.getElementById('apCategory');
 if (catSel && catSel.options.length <= 1) {
-catSel.innerHTML = '<option value="">— Select category —</option>' + allCategories.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
+const mainCats = allCategories.filter(function(c) { return !c.parent_id; });
+catSel.innerHTML = '<option value="">— Select Main Category —</option>' + mainCats.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
 }
 }
+function updateApSubcategoryDropdown(selectedSubId) {
+const mainCatId = document.getElementById('apCategory').value;
+const subSelect = document.getElementById('apSubcategory');
+const subs = allCategories.filter(function(c) { return c.parent_id === mainCatId; });
+subSelect.innerHTML = '<option value="">— Select Subcategory —</option>' + subs.map(function(c) { return '<option value="' + c.id + '"' + (c.id === selectedSubId ? ' selected' : '') + '>' + c.name + '</option>'; }).join('');
+updateApProductTypeDropdown(null);
+}
+function updateApProductTypeDropdown(selectedTypeId) {
+const subCatId = document.getElementById('apSubcategory').value;
+const typeSelect = document.getElementById('apProductType');
+const types = allProductTypes.filter(function(pt) { return pt.subcategory_id === subCatId; });
+typeSelect.innerHTML = '<option value="">— Select Product Type (optional) —</option>' + types.map(function(pt) { return '<option value="' + pt.id + '"' + (pt.id === selectedTypeId ? ' selected' : '') + '>' + pt.name + '</option>'; }).join('');
+}
+document.getElementById('apCategory').addEventListener('change', function() { updateApSubcategoryDropdown(null); });
+document.getElementById('apSubcategory').addEventListener('change', function() { updateApProductTypeDropdown(null); });
 document.getElementById('apModePanIndia').addEventListener('click', function() { setApMode('pan_india'); });
 document.getElementById('apModeLocal').addEventListener('click', function() { setApMode('local'); });
 function setApMode(mode) {
@@ -3070,6 +3088,7 @@ document.getElementById('apStock').value = '0';
 document.getElementById('apGst').value = '0';
 document.getElementById('apVendor').value = '';
 document.getElementById('apCategory').value = '';
+updateApSubcategoryDropdown(null);
 document.getElementById('apReturnable').checked = true;
 document.getElementById('apCod').checked = true;
 document.getElementById('apPhotoPreview').style.display = 'none';
@@ -3090,6 +3109,8 @@ populateAdminProductDropdowns();
 apEditingId = productId;
 document.getElementById('apVendor').value = p.vendor_id || '';
 document.getElementById('apCategory').value = p.category_id || '';
+updateApSubcategoryDropdown(p.subcategory_id || null);
+updateApProductTypeDropdown(p.product_type_id || null);
 document.getElementById('apName').value = p.name || '';
 document.getElementById('apSku').value = p.sku || '';
 document.getElementById('apPrice').value = p.price || '';
@@ -3139,6 +3160,8 @@ const seoDescription = ('Buy ' + name + ' online for just ₹' + price + '. ' + 
 const payload = {
 vendor_id: vendorId,
 category_id: document.getElementById('apCategory').value || null,
+subcategory_id: document.getElementById('apSubcategory').value || null,
+product_type_id: document.getElementById('apProductType').value || null,
 name: name,
 sku: document.getElementById('apSku').value.trim() || null,
 price: Number(price),
