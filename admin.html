@@ -572,6 +572,7 @@ Continue with Google
 <input class="form-input" id="catCanonical" placeholder="Canonical URL (optional)">
 <textarea class="form-input" id="catSeoDesc" placeholder="SEO Description (optional)" rows="2" style="grid-column:1/-1;"></textarea>
 <input class="form-input" id="catSeoKeywords" placeholder="SEO Keywords, comma separated (optional)" style="grid-column:1/-1;">
+<div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Standard Commission % (for products in this category)</label><input class="form-input" id="catCommission" type="number" step="0.5" placeholder="e.g. 10"></div>
 </div>
 <div style="display:flex; gap:16px; margin-top:10px; flex-wrap:wrap;">
 <label style="font-size:11px; display:flex; align-items:center; gap:5px;"><input type="checkbox" id="catMenuVisible" checked> Menu Visible</label>
@@ -919,12 +920,15 @@ const adminRes = await fetch(SUPABASE_URL + '/rest/v1/admins?auth_user_id=eq.' +
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
 });
 const adminRows = await adminRes.json();
-if (adminRows[0]) {
+if (adminRows[0] && adminRows[0].status === 'active') {
 currentAdmin = adminRows[0];
 applyRolePermissions(currentAdmin.role);
 document.getElementById('loginOverlay').style.display = 'none';
 document.getElementById('appWrap').classList.add('active');
 loadAllData();
+} else if (adminRows[0] && adminRows[0].status !== 'active') {
+document.getElementById('loginError').textContent = 'This staff account is no longer active. Contact your super admin if this seems wrong.';
+await supaAuth.auth.signOut();
 } else if (data.session.user.app_metadata && data.session.user.app_metadata.provider === 'google') {
 document.getElementById('loginError').textContent = 'This Google account is not registered as an admin. Please use a registered email, or log in with password.';
 await supaAuth.auth.signOut();
@@ -1229,6 +1233,13 @@ headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
 const adminRows = await adminRes.json();
 if (!adminRows[0]) {
 errEl.textContent = 'This account is not registered as admin staff. Contact your super admin.';
+await supaAuth.auth.signOut();
+authToken = SUPABASE_KEY;
+btn.textContent = 'Log In →'; btn.disabled = false;
+return;
+}
+if (adminRows[0].status !== 'active') {
+errEl.textContent = 'This staff account is no longer active. Contact your super admin if this seems wrong.';
 await supaAuth.auth.signOut();
 authToken = SUPABASE_KEY;
 btn.textContent = 'Log In →'; btn.disabled = false;
@@ -1715,6 +1726,7 @@ return '<div class="vendor-row-item" style="display:block;">' +
 '<div id="riderdetail-' + r.id + '" style="display:none; margin-top:10px; padding:10px; background:#f9fafb; border-radius:10px; font-size:11.5px; line-height:1.9;">' +
 '<b>Phone:</b> ' + (r.phone || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
 '<b>Address:</b> ' + (r.address || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
+'<div style="margin-top:6px; display:flex; align-items:center; gap:6px;"><b>Email (for ERP payroll sync):</b> <input type="email" value="' + (r.email || '') + '" id="riderEmail-' + r.id + '" placeholder="rider@email.com" style="flex:1; min-width:120px; padding:4px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11px;"><button class="mini-btn" data-saverideremail="' + r.id + '" style="background:#dcfce7; color:#15803d; font-size:10px;">Save</button></div>' +
 '<b>Total Earnings:</b> ₹' + (r.earnings_total || 0).toLocaleString('en-IN') + ' · <b>Per-delivery fee:</b> ₹' + (r.per_delivery_fee || 0) + '<br>' +
 '<div style="margin-top:8px; padding-top:8px; border-top:1px dashed #e5e7eb;"><b>💰 Cash & Earnings Settlement</b></div>' +
 '<div style="display:flex; gap:8px; margin-top:6px;">' +
@@ -1742,6 +1754,15 @@ document.querySelectorAll('[data-riderdetailid]').forEach(function(btn) {
 btn.addEventListener('click', function() {
 const el = document.getElementById('riderdetail-' + btn.getAttribute('data-riderdetailid'));
 if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+});
+});
+document.querySelectorAll('[data-saverideremail]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const riderId = btn.getAttribute('data-saverideremail');
+const email = document.getElementById('riderEmail-' + riderId).value.trim();
+await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + riderId, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email || null }) });
+btn.textContent = '✓ Saved';
+setTimeout(function() { btn.textContent = 'Save'; }, 1500);
 });
 });
 document.querySelectorAll('[data-markcashreceived]').forEach(function(btn) {
@@ -1864,7 +1885,7 @@ return '<div style="display:flex; gap:8px; flex-wrap:wrap; margin:6px 0;">' +
 '<div style="flex:1;"><label style="font-size:10px; color:#6b7280; display:block;">IFSC</label><input type="text" id="vifsc-' + v.id + '" value="' + (v.bank_ifsc || '').replace(/"/g,'&quot;') + '" placeholder="IFSC code" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11px; box-sizing:border-box;"></div>' +
 '</div>' +
 '<button class="mini-btn" data-savestoreinfo="' + v.id + '" style="background:#dcfce7; color:#15803d; margin-top:8px;">💾 Save Store Info</button>' +
-'<div style="margin-top:6px; display:flex; align-items:center; gap:8px;"><b>Commission %:</b> <input type="number" step="0.1" value="' + (v.commission_percent != null ? v.commission_percent : '') + '" id="comm-' + v.id + '" style="width:70px; padding:4px 8px; border-radius:6px; border:1px solid #e5e7eb;"><button class="mini-btn" data-savecomm="' + v.id + '" style="background:#dcfce7; color:#15803d;">Save</button></div>' +
+'<div style="margin-top:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><b>Commission Override %:</b> <input type="number" step="0.1" placeholder="blank = use category rates" value="' + (v.commission_percent != null ? v.commission_percent : '') + '" id="comm-' + v.id + '" style="width:110px; padding:4px 8px; border-radius:6px; border:1px solid #e5e7eb;"><button class="mini-btn" data-savecomm="' + v.id + '" style="background:#dcfce7; color:#15803d;">Save</button><span style="font-size:9.5px; color:#9ca3af;">Leave blank to use each product\'s category commission rate instead</span></div>' +
 '<div style="margin-top:10px; padding-top:10px; border-top:1px dashed #e5e7eb;"><b>🏪 "Near You" Featured Placement</b> <span style="font-size:9.5px; color:#9ca3af;">(paid — only subscribed vendors show in the homepage Near You strip)</span>' +
 '<div style="margin-top:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">' +
 '<label style="display:flex; align-items:center; gap:5px; font-size:11px; font-weight:700;"><input type="checkbox" id="nearby-' + v.id + '" ' + (v.nearby_subscription_active ? 'checked' : '') + '> Active</label>' +
@@ -2088,7 +2109,7 @@ const filtered = searchTerm ? allCategories.filter(function(c) { return c.name.t
 
 function catRow(c) {
 const isActive = c.status !== 'inactive';
-return '<div class="item-card" style="' + (c.parent_id ? 'margin-left:20px; background:#faf9fd;' : '') + '"><div class="ic-info"><div class="ic-title">' + (c.parent_id ? '　└ ' : '📁 ') + c.name + (c.featured ? ' ⭐' : '') + '</div><div class="ic-sub">' + (c.category_code || '') + ' · order: ' + c.display_order + (c.menu_visible === false ? ' · hidden from menu' : '') + '</div></div>' +
+return '<div class="item-card" style="' + (c.parent_id ? 'margin-left:20px; background:#faf9fd;' : '') + '"><div class="ic-info"><div class="ic-title">' + (c.parent_id ? '　└ ' : '📁 ') + c.name + (c.featured ? ' ⭐' : '') + '</div><div class="ic-sub">' + (c.category_code || '') + ' · order: ' + c.display_order + (c.default_commission_percent != null ? ' · commission: ' + c.default_commission_percent + '%' : '') + (c.menu_visible === false ? ' · hidden from menu' : '') + '</div></div>' +
 '<div class="item-actions"><button class="icon-btn" data-catedit="' + c.id + '" style="background:#eff6ff; color:#1d4ed8;">Edit</button><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-cattoggle="' + c.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button>' +
 '<button class="icon-btn del-btn" data-catdel="' + c.id + '">Delete</button></div></div>';
 }
@@ -2122,6 +2143,7 @@ document.getElementById('catSeoTitle').value = c.seo_title || '';
 document.getElementById('catCanonical').value = c.canonical_url || '';
 document.getElementById('catSeoDesc').value = c.seo_description || '';
 document.getElementById('catSeoKeywords').value = c.seo_keywords || '';
+document.getElementById('catCommission').value = c.default_commission_percent || '';
 document.getElementById('catMenuVisible').checked = c.menu_visible !== false;
 document.getElementById('catMobileVisible').checked = c.mobile_visible !== false;
 document.getElementById('catFeatured').checked = !!c.featured;
@@ -2152,7 +2174,7 @@ loadAllData();
 document.getElementById('catSearch').addEventListener('input', renderCategories);
 function resetCategoryForm() {
 editingCategoryId = null;
-['catName','catCode','catOrder','catImage','catIcon','catBanner','catShortDesc','catSeoTitle','catCanonical','catSeoDesc','catSeoKeywords'].forEach(function(id){ document.getElementById(id).value = ''; });
+['catName','catCode','catOrder','catImage','catIcon','catBanner','catShortDesc','catSeoTitle','catCanonical','catSeoDesc','catSeoKeywords','catCommission'].forEach(function(id){ document.getElementById(id).value = ''; });
 document.getElementById('catParent').value = '';
 document.getElementById('catMenuVisible').checked = true;
 document.getElementById('catMobileVisible').checked = true;
@@ -2181,6 +2203,7 @@ const payload = {
   canonical_url: document.getElementById('catCanonical').value.trim() || null,
   seo_description: document.getElementById('catSeoDesc').value.trim() || null,
   seo_keywords: document.getElementById('catSeoKeywords').value.trim() || null,
+  default_commission_percent: document.getElementById('catCommission').value ? Number(document.getElementById('catCommission').value) : null,
   menu_visible: document.getElementById('catMenuVisible').checked,
   mobile_visible: document.getElementById('catMobileVisible').checked,
   featured: document.getElementById('catFeatured').checked,
