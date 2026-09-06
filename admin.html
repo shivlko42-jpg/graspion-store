@@ -555,17 +555,49 @@ Continue with Google
 </div>
 
 <div class="panel" data-section="categories">
-<h3>📁 Categories</h3>
-<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">These appear as quick-category tiles on the customer homepage automatically.</p>
+<h3>📁 Categories <span id="catCount" style="font-size:11px;color:#9ca3af;"></span></h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Main Categories and Subcategories. These power the customer homepage tiles, menu, and search — no code changes needed to add more.</p>
 <div class="form-grid">
 <input class="form-input" id="catName" placeholder="Category name e.g. Grocery">
-<input class="form-input" id="catImage" placeholder="Image URL (optional)">
-<select class="form-input" id="catParent"><option value="">No parent (top-level)</option></select>
+<select class="form-input" id="catParent"><option value="">No parent (top-level Main Category)</option></select>
+<input class="form-input" id="catCode" placeholder="Category code (optional, e.g. MOB)">
 <div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Display Order (0 = shows first)</label><input class="form-input" id="catOrder" placeholder="e.g. 0, 1, 2..." type="number"></div>
+<input class="form-input" id="catImage" placeholder="Image URL (optional)">
+<input class="form-input" id="catIcon" placeholder="Icon URL (optional)">
+<input class="form-input" id="catBanner" placeholder="Banner URL (optional)" style="grid-column:1/-1;">
+<textarea class="form-input" id="catShortDesc" placeholder="Short description (optional)" rows="2" style="grid-column:1/-1;"></textarea>
+<input class="form-input" id="catSeoTitle" placeholder="SEO Title (optional)">
+<input class="form-input" id="catCanonical" placeholder="Canonical URL (optional)">
+<textarea class="form-input" id="catSeoDesc" placeholder="SEO Description (optional)" rows="2" style="grid-column:1/-1;"></textarea>
+<input class="form-input" id="catSeoKeywords" placeholder="SEO Keywords, comma separated (optional)" style="grid-column:1/-1;">
 </div>
-<button class="login-btn" id="catAddBtn" style="margin-top:10px;">+ Add Category</button>
-<div id="catList" style="margin-top:16px;"></div>
+<div style="display:flex; gap:16px; margin-top:10px; flex-wrap:wrap;">
+<label style="font-size:11px; display:flex; align-items:center; gap:5px;"><input type="checkbox" id="catMenuVisible" checked> Menu Visible</label>
+<label style="font-size:11px; display:flex; align-items:center; gap:5px;"><input type="checkbox" id="catMobileVisible" checked> Mobile Visible</label>
+<label style="font-size:11px; display:flex; align-items:center; gap:5px;"><input type="checkbox" id="catFeatured"> Featured (extra homepage prominence)</label>
+<label style="font-size:11px; display:flex; align-items:center; gap:5px;"><input type="checkbox" id="catPopular"> Popular</label>
+</div>
+<div style="display:flex; gap:8px; margin-top:10px;">
+<button class="login-btn" id="catAddBtn" style="flex:1;">+ Add Category</button>
+<button class="mini-btn" id="catCancelEditBtn" style="display:none; background:#f3f1f8; color:#4b5563;">Cancel Edit</button>
+</div>
+<input class="form-input" id="catSearch" placeholder="🔍 Search categories..." style="margin-top:16px;">
+<div id="catList" style="margin-top:12px;"></div>
 <div class="empty-state" id="catEmpty" style="display:none;">No categories added yet</div>
+</div>
+
+<div class="panel" data-section="categories">
+<h3>🏷️ Product Types <span id="ptCount" style="font-size:11px;color:#9ca3af;"></span></h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Level below Subcategory (e.g. Home & Kitchen → Cookware → "Pressure Cooker"). Dynamic — add as many as you need, no code required.</p>
+<div class="form-grid">
+<input class="form-input" id="ptName" placeholder="Product Type name e.g. Pressure Cooker">
+<select class="form-input" id="ptCategory"><option value="">— Select Subcategory —</option></select>
+<input class="form-input" id="ptGoogleCategory" placeholder="Google Product Category (optional)">
+<div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Display Order</label><input class="form-input" id="ptOrder" type="number" placeholder="e.g. 0, 1, 2..."></div>
+</div>
+<button class="login-btn" id="ptAddBtn" style="margin-top:10px;">+ Add Product Type</button>
+<div id="ptList" style="margin-top:16px;"></div>
+<div class="empty-state" id="ptEmpty" style="display:none;">No product types added yet</div>
 </div>
 
 <div class="panel" data-section="homepage">
@@ -1317,6 +1349,7 @@ renderPayouts();
 renderDeliveryPartners();
 renderWarehouses();
 renderCategories();
+loadProductTypes();
 renderBanners();
 renderSettings();
 renderPairings();
@@ -2037,20 +2070,65 @@ btn.textContent = '+ Add Dark Store';
 });
 
 // ===================== CATEGORIES =====================
+let editingCategoryId = null;
 function renderCategories() {
 const list = document.getElementById('catList');
 const empty = document.getElementById('catEmpty');
 const parentSelect = document.getElementById('catParent');
-parentSelect.innerHTML = '<option value="">No parent (top-level)</option>' + allCategories.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
+const mainCats = allCategories.filter(function(c) { return !c.parent_id; }).sort(function(a,b){ return (a.display_order||0)-(b.display_order||0); });
+parentSelect.innerHTML = '<option value="">No parent (top-level Main Category)</option>' + mainCats.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
+document.getElementById('catCount').textContent = allCategories.length ? '(' + allCategories.length + ')' : '';
 if (allCategories.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
 empty.style.display = 'none';
-list.innerHTML = allCategories.map(function(c) {
+
+const searchTerm = (document.getElementById('catSearch').value || '').toLowerCase().trim();
+const filtered = searchTerm ? allCategories.filter(function(c) { return c.name.toLowerCase().indexOf(searchTerm) !== -1; }) : null;
+
+function catRow(c) {
 const isActive = c.status !== 'inactive';
-const parent = allCategories.find(function(p) { return p.id === c.parent_id; });
-return '<div class="item-card"><div class="ic-info"><div class="ic-title">📁 ' + c.name + '</div><div class="ic-sub">' + (parent ? 'Sub-category of ' + parent.name : 'Top-level') + ' · order: ' + c.display_order + '</div></div>' +
-'<div class="item-actions"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-cattoggle="' + c.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button>' +
+return '<div class="item-card" style="' + (c.parent_id ? 'margin-left:20px; background:#faf9fd;' : '') + '"><div class="ic-info"><div class="ic-title">' + (c.parent_id ? '　└ ' : '📁 ') + c.name + (c.featured ? ' ⭐' : '') + '</div><div class="ic-sub">' + (c.category_code || '') + ' · order: ' + c.display_order + (c.menu_visible === false ? ' · hidden from menu' : '') + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn" data-catedit="' + c.id + '" style="background:#eff6ff; color:#1d4ed8;">Edit</button><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-cattoggle="' + c.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button>' +
 '<button class="icon-btn del-btn" data-catdel="' + c.id + '">Delete</button></div></div>';
+}
+
+if (filtered) {
+list.innerHTML = filtered.length ? filtered.map(catRow).join('') : '<p style="font-size:12px; color:#9ca3af; text-align:center; padding:16px;">No matches.</p>';
+} else {
+// Tree view: each Main Category collapsible, showing its Subcategories nested
+list.innerHTML = mainCats.map(function(main) {
+const subs = allCategories.filter(function(c) { return c.parent_id === main.id; }).sort(function(a,b){ return (a.display_order||0)-(b.display_order||0); });
+const isActive = main.status !== 'inactive';
+const summaryHtml = '<div style="display:flex; justify-content:space-between; align-items:center;"><div><b>📁 ' + main.name + '</b>' + (main.featured ? ' ⭐' : '') + '<span style="font-size:10px; color:#9ca3af; margin-left:8px;">' + subs.length + ' subcategories</span></div><div style="display:flex; gap:6px;"><button class="icon-btn" data-catedit="' + main.id + '" style="background:#eff6ff; color:#1d4ed8; font-size:10px;">Edit</button><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-cattoggle="' + main.id + '" data-current="' + isActive + '" style="font-size:10px;">' + (isActive ? '✓ Active' : 'Inactive') + '</button></div></div>';
+return '<details style="margin-bottom:8px; border:1px solid #f0eef7; border-radius:10px; padding:8px;"><summary style="cursor:pointer; list-style:none;">' + summaryHtml + '</summary><div style="margin-top:8px;">' + subs.map(catRow).join('') + '</div></details>';
 }).join('');
+}
+
+document.querySelectorAll('[data-catedit]').forEach(function(btn) {
+btn.addEventListener('click', function() {
+const c = allCategories.find(function(cc) { return cc.id === btn.getAttribute('data-catedit'); });
+if (!c) return;
+editingCategoryId = c.id;
+document.getElementById('catName').value = c.name || '';
+document.getElementById('catParent').value = c.parent_id || '';
+document.getElementById('catCode').value = c.category_code || '';
+document.getElementById('catOrder').value = c.display_order || '';
+document.getElementById('catImage').value = c.image_url || '';
+document.getElementById('catIcon').value = c.icon_url || '';
+document.getElementById('catBanner').value = c.banner_url || '';
+document.getElementById('catShortDesc').value = c.short_description || '';
+document.getElementById('catSeoTitle').value = c.seo_title || '';
+document.getElementById('catCanonical').value = c.canonical_url || '';
+document.getElementById('catSeoDesc').value = c.seo_description || '';
+document.getElementById('catSeoKeywords').value = c.seo_keywords || '';
+document.getElementById('catMenuVisible').checked = c.menu_visible !== false;
+document.getElementById('catMobileVisible').checked = c.mobile_visible !== false;
+document.getElementById('catFeatured').checked = !!c.featured;
+document.getElementById('catPopular').checked = !!c.popular;
+document.getElementById('catAddBtn').textContent = '✓ Save Changes';
+document.getElementById('catCancelEditBtn').style.display = 'inline-block';
+document.getElementById('catName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+});
 document.querySelectorAll('[data-cattoggle]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 const id = btn.getAttribute('data-cattoggle');
@@ -2061,28 +2139,119 @@ loadAllData();
 });
 document.querySelectorAll('[data-catdel]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
-if (!confirm('Delete this category?')) return;
+if (!confirm('Delete this category? This cannot be undone.')) return;
 const id = btn.getAttribute('data-catdel');
-await fetch(SUPABASE_URL + '/rest/v1/categories?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const res = await fetch(SUPABASE_URL + '/rest/v1/categories?id=eq.' + id, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+if (!res.ok) alert('Could not delete — it may have subcategories or products linked. Try marking it Inactive instead.');
 loadAllData();
 });
 });
 }
+document.getElementById('catSearch').addEventListener('input', renderCategories);
+function resetCategoryForm() {
+editingCategoryId = null;
+['catName','catCode','catOrder','catImage','catIcon','catBanner','catShortDesc','catSeoTitle','catCanonical','catSeoDesc','catSeoKeywords'].forEach(function(id){ document.getElementById(id).value = ''; });
+document.getElementById('catParent').value = '';
+document.getElementById('catMenuVisible').checked = true;
+document.getElementById('catMobileVisible').checked = true;
+document.getElementById('catFeatured').checked = false;
+document.getElementById('catPopular').checked = false;
+document.getElementById('catAddBtn').textContent = '+ Add Category';
+document.getElementById('catCancelEditBtn').style.display = 'none';
+}
+document.getElementById('catCancelEditBtn').addEventListener('click', resetCategoryForm);
 document.getElementById('catAddBtn').addEventListener('click', async function() {
 const name = document.getElementById('catName').value.trim();
 if (!name) { alert('Category name is required'); return; }
 const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+const parentId = document.getElementById('catParent').value || null;
 const btn = document.getElementById('catAddBtn');
-btn.textContent = '⏳ Adding...';
-await fetch(SUPABASE_URL + '/rest/v1/categories', {
-method: 'POST',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-body: JSON.stringify({ name: name, slug: slug, image_url: document.getElementById('catImage').value.trim() || null, parent_id: document.getElementById('catParent').value || null, display_order: parseInt(document.getElementById('catOrder').value) || 0, status: 'active' })
+btn.disabled = true; btn.textContent = editingCategoryId ? '⏳ Saving...' : '⏳ Adding...';
+const payload = {
+  name: name, slug: slug, parent_id: parentId, level: parentId ? 2 : 1,
+  category_code: document.getElementById('catCode').value.trim() || null,
+  display_order: parseInt(document.getElementById('catOrder').value) || 0,
+  image_url: document.getElementById('catImage').value.trim() || null,
+  icon_url: document.getElementById('catIcon').value.trim() || null,
+  banner_url: document.getElementById('catBanner').value.trim() || null,
+  short_description: document.getElementById('catShortDesc').value.trim() || null,
+  seo_title: document.getElementById('catSeoTitle').value.trim() || null,
+  canonical_url: document.getElementById('catCanonical').value.trim() || null,
+  seo_description: document.getElementById('catSeoDesc').value.trim() || null,
+  seo_keywords: document.getElementById('catSeoKeywords').value.trim() || null,
+  menu_visible: document.getElementById('catMenuVisible').checked,
+  mobile_visible: document.getElementById('catMobileVisible').checked,
+  featured: document.getElementById('catFeatured').checked,
+  popular: document.getElementById('catPopular').checked,
+  status: 'active'
+};
+try {
+  const res = await fetch(
+    editingCategoryId ? (SUPABASE_URL + '/rest/v1/categories?id=eq.' + editingCategoryId) : (SUPABASE_URL + '/rest/v1/categories'),
+    { method: editingCategoryId ? 'PATCH' : 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+  );
+  if (!res.ok) { const err = await res.json(); alert('Could not save: ' + (err.message || JSON.stringify(err))); }
+  else { resetCategoryForm(); loadAllData(); }
+} catch (e) { alert('Error: ' + e.message); }
+btn.disabled = false;
 });
-['catName','catImage'].forEach(function(id){ document.getElementById(id).value = ''; });
-document.getElementById('catOrder').value = '';
-btn.textContent = '+ Add Category';
-loadAllData();
+
+// ===================== PRODUCT TYPES (dynamic, Level 3 of taxonomy) =====================
+let allProductTypes = [];
+async function loadProductTypes() {
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/product_types?select=*&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+allProductTypes = res.ok ? await res.json() : [];
+renderProductTypes();
+} catch (e) {}
+}
+function renderProductTypes() {
+const list = document.getElementById('ptList');
+const empty = document.getElementById('ptEmpty');
+const catSelect = document.getElementById('ptCategory');
+const subCats = allCategories.filter(function(c) { return c.parent_id; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+catSelect.innerHTML = '<option value="">— Select Subcategory —</option>' + subCats.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
+document.getElementById('ptCount').textContent = allProductTypes.length ? '(' + allProductTypes.length + ')' : '';
+if (allProductTypes.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+list.innerHTML = allProductTypes.map(function(pt) {
+const cat = allCategories.find(function(c) { return c.id === pt.subcategory_id; });
+const isActive = pt.status !== 'inactive';
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">🏷️ ' + pt.name + '</div><div class="ic-sub">' + (cat ? cat.name : '—') + '</div></div>' +
+'<div class="item-actions"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-pttoggle="' + pt.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button>' +
+'<button class="icon-btn del-btn" data-ptdel="' + pt.id + '">Delete</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-pttoggle]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const isActive = btn.getAttribute('data-current') === 'true';
+await fetch(SUPABASE_URL + '/rest/v1/product_types?id=eq.' + btn.getAttribute('data-pttoggle'), { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: isActive ? 'inactive' : 'active' }) });
+loadProductTypes();
+});
+});
+document.querySelectorAll('[data-ptdel]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Delete this product type?')) return;
+await fetch(SUPABASE_URL + '/rest/v1/product_types?id=eq.' + btn.getAttribute('data-ptdel'), { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+loadProductTypes();
+});
+});
+}
+document.getElementById('ptAddBtn').addEventListener('click', async function() {
+const name = document.getElementById('ptName').value.trim();
+const subcategoryId = document.getElementById('ptCategory').value;
+if (!name || !subcategoryId) { alert('Please enter a name and select a subcategory.'); return; }
+const cat = allCategories.find(function(c) { return c.id === subcategoryId; });
+const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString().slice(-5);
+const btn = this;
+btn.disabled = true; btn.textContent = '⏳ Adding...';
+await fetch(SUPABASE_URL + '/rest/v1/product_types', {
+method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ name: name, slug: slug, subcategory_id: subcategoryId, category_id: cat ? cat.parent_id : null, google_product_category: document.getElementById('ptGoogleCategory').value.trim() || null, display_order: parseInt(document.getElementById('ptOrder').value) || 0, status: 'active' })
+});
+['ptName','ptGoogleCategory','ptOrder'].forEach(function(id){ document.getElementById(id).value = ''; });
+document.getElementById('ptCategory').value = '';
+btn.disabled = false; btn.textContent = '+ Add Product Type';
+loadProductTypes();
 });
 
 // ===================== BANNERS =====================
