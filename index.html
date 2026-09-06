@@ -2232,6 +2232,11 @@ async function generateCustomerInvoice(orderId) {
     text('Payment Method: ' + (order.payment_method || '-').toUpperCase(), 50, y, { size: 9 });
     text('Payment Status: ' + (order.payment_status || '-'), 50, y - 14, { size: 9 });
     text('Grand Total: Rs ' + Number(order.total_amount).toLocaleString('en-IN'), width - 220, y, { size: 13, bold: true, color: purple });
+    if (order.return_status === 'returned' || order.return_status === 'approved') {
+      y -= 30;
+      page.drawRectangle({ x: 50, y: y - 4, width: 200, height: 20, color: rgb(1, 0.9, 0.9) });
+      text('⚠ ' + (order.return_status === 'returned' ? 'ITEM RETURNED' : 'RETURN APPROVED'), 56, y, { size: 10, bold: true, color: rgb(0.7,0,0) });
+    }
 
     text('This is a system-generated invoice.', 50, 40, { size: 8, color: gray });
 
