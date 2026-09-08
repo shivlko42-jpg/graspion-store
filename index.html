@@ -113,12 +113,8 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .shop-main { flex:1; min-width:0; }
 .subcat-rail { display:flex; gap:10px; overflow-x:auto; padding:12px 14px; scrollbar-width:none; background:rgba(124,58,237,0.03); backdrop-filter:blur(4px); }
 .subcat-rail::-webkit-scrollbar { display:none; }
-.subcat-chip { flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; width:58px; }
-.subcat-chip-thumb { width:44px; height:44px; border-radius:12px; overflow:hidden; background:rgba(255,255,255,0.7); box-shadow:0 2px 6px rgba(0,0,0,0.06); border:2px solid transparent; }
-.subcat-chip.active .subcat-chip-thumb { border-color:#7c3aed; }
-.subcat-chip-thumb img { width:100%; height:100%; object-fit:cover; opacity:0.88; }
-.subcat-chip span { font-size:8.5px; font-weight:700; color:#6b5b8f; text-align:center; line-height:1.1; }
-.subcat-chip.active span { color:#7c3aed; }
+.subcat-chip { flex:0 0 auto; padding:8px 16px; border-radius:20px; cursor:pointer; background:rgba(255,255,255,0.7); font-size:11.5px; font-weight:700; color:#6b5b8f; white-space:nowrap; border:1.5px solid transparent; }
+.subcat-chip.active { background:#7c3aed; color:#fff; }
 .vendor-strip { max-width:1200px; margin:0 auto; padding:24px 20px 4px; }
 .vendor-strip h2 { font-size:17px; font-weight:800; margin-bottom:12px; }
 .vendor-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
@@ -864,18 +860,36 @@ function renderSubcategoryChips() {
 const outerWrap = document.getElementById('subcatRailWrap');
 if (!outerWrap) return;
 if (!activeCategoryId) { outerWrap.innerHTML = ''; return; }
-const parentCat = categoryList.find(function(c) { return c.id === activeCategoryId; });
 const subs = categoryList.filter(function(c) { return c.parent_id === activeCategoryId; });
 if (subs.length === 0) { outerWrap.innerHTML = ''; return; }
 // Subcategories reuse their parent category's real photo at a small size —
 // keeps the page light (no extra images to fetch) while still giving each
 // chip a visual rather than plain text.
-const parentImg = parentCat && parentCat.image_url ? parentCat.image_url : null;
-const thumbInner = parentImg ? '<img src="' + parentImg + '" loading="lazy">' : '📦';
+const SUBCATEGORY_EMOJI = {
+  'smartphones':'📱','feature-phones':'📞','mobile-cases-covers':'🛡️','screen-protectors':'🔍','chargers-adapters':'🔌','power-banks':'🔋','cables-connectors':'🔗','mobile-holders-stands':'📐','selfie-sticks-tripods':'🤳','mobile-audio-accessories':'🎧','sim-mobile-accessories':'💳','other-mobile-accessories':'📦',
+  'headphones-earphones':'🎧','tws-earbuds':'🎵','bluetooth-speakers':'🔊','smart-watches':'⌚','smart-bands':'⌚','cameras-accessories':'📷','cctv-security':'🎥','tv-video':'📺','projectors':'📽️','gaming':'🎮','computer-peripherals-ele':'🖱️','smart-home-devices':'🏠','electronic-accessories':'🔧','batteries-power-solutions':'🔋','other-gadgets':'📦',
+  'laptops':'💻','desktop-computers':'🖥️','tablets':'📱','monitors':'🖥️','printers-scanners':'🖨️','keyboards-mice':'⌨️','storage-devices':'💾','networking':'📡','computer-components':'🔩','laptop-accessories':'💼','printer-supplies':'🖨️','ups-power-backup':'🔋','software-digital-products':'💿','office-technology':'🖥️',
+  'kitchen-appliances':'🍳','cookware':'🍲','bakeware':'🧁','kitchen-tools':'🔪','kitchen-storage':'🥫','dining-serveware':'🍽️','water-bottles-flasks':'🍶','home-appliances':'🏠','cleaning-appliances':'🧹','bathroom-essentials':'🚿','home-utility':'🧺','electrical-appliances':'💡',
+  'home-decor':'🖼️','wall-decor':'🖼️','lighting-lamps':'💡','curtains-blinds':'🪟','cushions-covers':'🛋️','bedsheets-bedding':'🛏️','carpets-rugs':'🧶','furniture':'🪑','clocks':'🕐','mirrors':'🪞','artificial-plants-flowers':'🪴','storage-organization':'📦','decorative-accessories':'✨','festive-home-decor':'🎊',
+  'atta-flour-grains':'🌾','rice':'🍚','dal-pulses':'🫘','cooking-oil-ghee':'🫙','spices-masala':'🌶️','salt-sugar':'🧂','dry-fruits-nuts':'🥜','tea-coffee':'☕','snacks-biscuits':'🍪','packaged-foods':'📦','breakfast-foods':'🥣','beverages':'🥤','sauces-condiments':'🍯','instant-ready-to-eat':'🍜','cleaning-essentials':'🧴','laundry':'🧺','kitchen-cleaning':'🧽','paper-household-consumables':'🧻','other-daily-essentials':'🛒',
+  'face-care':'🧴','skin-care':'🧴','hair-care':'💇','hair-styling':'💇‍♀️','bath-body':'🧼','oral-care':'🪥','mens-grooming':'🪒','womens-grooming':'💅','fragrance':'🌸','makeup':'💄','personal-hygiene':'🧴','beauty-tools':'🖌️','grooming-appliances':'🔌',
+  'health-care-devices':'🩺','first-aid':'🩹','personal-care-health':'💊','fitness-wellness':'🧘','orthopedic-support':'🦵','elder-care':'👵','home-health-monitoring':'📟','healthcare-accessories':'⚕️','wellness-products':'🌿',
+  'mens-clothing':'👔','womens-clothing':'👗','kids-clothing-fashion':'👕','innerwear':'🩲','sleepwear':'👘','ethnic-wear':'🥻','western-wear':'👖','traditional-wear':'🥻','winter-wear':'🧥','summer-wear':'👚','sportswear-fashion':'🎽','fashion-accessories':'👜','bags-wallets':'👛','jewellery-accessories':'💍','watches':'⌚',
+  'mens-footwear':'👞','womens-footwear':'👠','kids-footwear':'👟','sports-shoes':'👟','casual-shoes':'👟','formal-shoes':'👞','sandals':'👡','slippers':'🩴','ethnic-footwear':'👡','school-footwear':'👞','safety-footwear':'🥾','footwear-accessories':'🧦',
+  'baby-care':'🍼','diapering':'🧷','baby-feeding':'🍼','baby-bath-hygiene':'🛁','baby-clothing':'👶','kids-clothing-baby':'👕','toys':'🧸','educational-toys':'🧩','games-puzzles':'🧩','outdoor-toys':'⚽','baby-gear':'👶','school-supplies':'🎒','kids-accessories':'🎀','kids-room':'🛏️',
+  'fitness-equipment':'🏋️','yoga':'🧘','gym-accessories':'💪','running':'🏃','cycling':'🚴','cricket':'🏏','football':'⚽','badminton':'🏸','basketball':'🏀','outdoor-recreation':'🏕️','sportswear-sports':'🎽','sports-accessories':'🎽','camping-hiking':'⛺',
+  'car-accessories':'🚗','bike-accessories':'🏍️','car-care':'🧴','bike-care':'🧴','interior-accessories':'🚙','exterior-accessories':'🚗','lighting-auto':'💡','safety-emergency':'🚨','tools-maintenance':'🔧','car-electronics':'📻','bike-electronics':'🔋','tyre-wheel-accessories':'🛞','cleaning-products-auto':'🧽',
+  'hand-tools':'🔨','power-tools':'🪛','hardware':'🔩','electrical':'💡','plumbing':'🚰','safety-equipment':'🦺','measuring-tools':'📏','fasteners':'🔩','paint-accessories':'🎨','industrial-supplies':'🏭','construction-supplies':'🧱','gardening-tools':'🌱',
+  'writing-instruments':'🖊️','notebooks-registers':'📓','school-stationery':'✏️','office-stationery':'📎','files-folders':'🗂️','desk-accessories':'🖇️','printing-supplies':'🖨️','art-craft':'🎨','packaging-supplies':'📦','office-organization':'🗄️','presentation-supplies':'📊',
+  'school-books':'📚','competitive-exam-books':'📖','academic-books':'📘','general-knowledge':'🌍','fiction':'📕','non-fiction':'📗','children-books':'📙','religious-spiritual-books':'📿','business-management':'💼','self-help':'🌟','reference-books':'📔','educational-materials':'🎓',
+  'dog-supplies':'🐕','cat-supplies':'🐈','pet-food':'🍖','pet-grooming':'🧴','pet-toys':'🎾','pet-accessories':'🐾','pet-bedding':'🛏️','pet-hygiene':'🧼','pet-training':'🦴','aquarium-supplies':'🐠','bird-supplies':'🦜',
+  'puja-samagri':'🪔','diyas-lamps':'🪔','incense-dhoop':'🕯️','spiritual-accessories':'📿','religious-decor':'🛕','hindu-religious-products':'🕉️','festival-essentials':'🎉','rakhi':'🧵','diwali':'🪔','navratri':'💃','holi':'🎨','ganesh-chaturthi':'🐘','janmashtami':'🦚','durga-puja':'🙏','makar-sankranti':'🪁','gift-puja-hampers':'🎁'
+};
 outerWrap.innerHTML = '<div class="subcat-rail">' +
-'<div class="subcat-chip' + (!activeSubcategoryId ? ' active' : '') + '" data-subchip="">' + '<div class="subcat-chip-thumb" style="display:flex;align-items:center;justify-content:center;font-size:18px;">🏠</div><span>All</span></div>' +
+'<div class="subcat-chip' + (!activeSubcategoryId ? ' active' : '') + '" data-subchip="">🏠 All</div>' +
 subs.map(function(s) {
-return '<div class="subcat-chip' + (activeSubcategoryId === s.id ? ' active' : '') + '" data-subchip="' + s.id + '"><div class="subcat-chip-thumb">' + thumbInner + '</div><span>' + s.name + '</span></div>';
+const emoji = SUBCATEGORY_EMOJI[s.slug] || '📦';
+return '<div class="subcat-chip' + (activeSubcategoryId === s.id ? ' active' : '') + '" data-subchip="' + s.id + '">' + emoji + ' ' + s.name + '</div>';
 }).join('') + '</div>';
 outerWrap.querySelectorAll('[data-subchip]').forEach(function(btn) {
 btn.addEventListener('click', function() {
