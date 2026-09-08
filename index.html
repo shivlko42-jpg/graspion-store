@@ -16,14 +16,14 @@ gtag('config', 'G-DTK5XRHFL6');
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Graspion - Every Need, Fast Delivery</title>
 <meta name="description" content="Graspion — instant 10-20 min delivery from local dark stores plus Pan-India marketplace shopping. Groceries, fashion, electronics and more, delivered fast across India.">
-<link rel="canonical" href="https://shivlko42-jpg.github.io/graspion-store/">
+<link rel="canonical" href="https://graspion.in/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Graspion - Every Need. Every Area. Fast.">
 <meta property="og:description" content="Instant 10-20 min delivery from local dark stores plus Pan-India marketplace shopping, all on one platform.">
-<meta property="og:image" content="https://shivlko42-jpg.github.io/graspion-store/icon-customer.png">
+<meta property="og:image" content="https://graspion.in/icon-customer.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Graspion">
-<meta property="og:url" content="https://shivlko42-jpg.github.io/graspion-store/">
+<meta property="og:url" content="https://graspion.in/">
 <meta property="og:locale" content="en_IN">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Graspion - Every Need. Every Area. Fast.">
@@ -33,7 +33,7 @@ gtag('config', 'G-DTK5XRHFL6');
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "Graspion",
-  "url": "https://shivlko42-jpg.github.io/graspion-store/",
+  "url": "https://graspion.in/",
   "description": "Hybrid e-commerce platform offering instant delivery from local dark stores and Pan-India marketplace shopping."
 }
 </script>
@@ -42,7 +42,7 @@ gtag('config', 'G-DTK5XRHFL6');
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "Graspion",
-  "url": "https://shivlko42-jpg.github.io/graspion-store/"
+  "url": "https://graspion.in/"
 }
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -94,11 +94,31 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .hero-emoji { font-size:64px; }
 .trust-row { max-width:1200px; margin:16px auto 0; padding:0 20px; display:flex; gap:10px; overflow-x:auto; }
 .trust-item { flex:0 0 auto; display:flex; align-items:center; gap:8px; background:#fff; padding:10px 16px; border-radius:14px; font-size:11.5px; font-weight:700; color:#4b4b63; }
-.quick-cats { max-width:1200px; margin:0 auto; padding:24px 20px 4px; display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:14px; text-align:center; }
-.qc-icon { width:58px; height:58px; margin:0 auto 6px; border-radius:18px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; transition:box-shadow .15s, transform .15s; }
-.qc-item span { font-size:11px; font-weight:700; color:#4b4b63; }
-.qc-item.active .qc-icon { box-shadow:0 0 0 2.5px #7c3aed, 0 6px 14px rgba(124,58,237,0.25); transform:translateY(-2px); }
-.qc-item.active span { color:#7c3aed; }
+
+/* ===== Swiggy/Zepto-style category rail + product area — a lighter,
+   glassmorphic take rather than a plain white sidebar, since this is a
+   general marketplace not a food app: soft frosted panels, gentle brand
+   tint, no heavy new images (subcategories reuse their parent's real photo
+   at a small size, so nothing extra needs loading). ===== */
+.shop-layout { display:flex; max-width:1200px; margin:0 auto; align-items:flex-start; }
+.category-rail { width:74px; flex-shrink:0; position:sticky; top:0; max-height:100vh; overflow-y:auto; scrollbar-width:none; padding:10px 4px 40px; background:rgba(124,58,237,0.04); backdrop-filter:blur(6px); border-right:1px solid rgba(124,58,237,0.08); }
+.category-rail::-webkit-scrollbar { display:none; }
+.rail-item { display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 2px; cursor:pointer; border-radius:14px; margin-bottom:2px; transition:background .15s; }
+.rail-item.active { background:rgba(124,58,237,0.1); }
+.rail-thumb { width:46px; height:46px; border-radius:50%; overflow:hidden; background:rgba(255,255,255,0.6); backdrop-filter:blur(4px); border:2px solid transparent; display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.rail-item.active .rail-thumb { border-color:#7c3aed; box-shadow:0 4px 12px rgba(124,58,237,0.25); }
+.rail-thumb img { width:100%; height:100%; object-fit:cover; }
+.rail-item span { font-size:9px; font-weight:700; color:#6b5b8f; line-height:1.15; max-width:66px; }
+.rail-item.active span { color:#7c3aed; }
+.shop-main { flex:1; min-width:0; }
+.subcat-rail { display:flex; gap:10px; overflow-x:auto; padding:12px 14px; scrollbar-width:none; background:rgba(124,58,237,0.03); backdrop-filter:blur(4px); }
+.subcat-rail::-webkit-scrollbar { display:none; }
+.subcat-chip { flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; width:58px; }
+.subcat-chip-thumb { width:44px; height:44px; border-radius:12px; overflow:hidden; background:rgba(255,255,255,0.7); box-shadow:0 2px 6px rgba(0,0,0,0.06); border:2px solid transparent; }
+.subcat-chip.active .subcat-chip-thumb { border-color:#7c3aed; }
+.subcat-chip-thumb img { width:100%; height:100%; object-fit:cover; opacity:0.88; }
+.subcat-chip span { font-size:8.5px; font-weight:700; color:#6b5b8f; text-align:center; line-height:1.1; }
+.subcat-chip.active span { color:#7c3aed; }
 .vendor-strip { max-width:1200px; margin:0 auto; padding:24px 20px 4px; }
 .vendor-strip h2 { font-size:17px; font-weight:800; margin-bottom:12px; }
 .vendor-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
@@ -119,8 +139,6 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .hero-emoji { font-size:92px; }
 .trust-row { justify-content:center; gap:18px; }
 .trust-item { padding:12px 22px; font-size:13px; }
-.quick-cats { grid-template-columns:repeat(8,1fr); gap:20px; }
-.qc-icon { width:68px; height:68px; font-size:30px; }
 .vendor-row { flex-wrap:wrap; }
 .vendor-card { width:180px; padding:18px; }
 .grid { grid-template-columns:repeat(5,1fr); gap:20px; }
@@ -338,7 +356,10 @@ window.addEventListener('load', function() {
 <span class="db-status-badge loading" id="dbStatusBadge">⏳ Connecting...</span>
 </div>
 
-<div class="quick-cats" id="quickCats" style="min-height:76px;"></div>
+<div class="shop-layout">
+<div class="category-rail" id="categoryRail"></div>
+<div class="shop-main">
+<div id="subcatRailWrap"></div>
 
 <div class="vendor-strip">
 <h2 id="vendorHeading" data-i18n="vendorsNearYou">🏪 Vendors Near You</h2>
@@ -354,6 +375,8 @@ window.addEventListener('load', function() {
 </div>
 </div>
 <div class="grid" id="dealGrid" style="min-height:280px;"></div>
+</div>
+</div>
 </div>
 
 <div class="bottom-cta">
@@ -817,41 +840,44 @@ if (b.link_url) banner.style.cursor = 'pointer';
 if (b.link_url) banner.addEventListener('click', function(){ window.location.href = b.link_url; });
 }
 function renderQuickCategories(){
-const wrap = document.getElementById('quickCats');
+const wrap = document.getElementById('categoryRail');
 if (!wrap) return;
 updateCategoryNameMap();
-if (categoryList.length === 0) {
-// fallback so the section never looks broken if admin hasn't added categories yet
+const mainCats = categoryList.filter(function(c){ return !c.parent_id; });
+if (mainCats.length === 0) {
 const fallback = [{icon:'🎧',label:'Headphones'},{icon:'📱',label:'Mobiles'},{icon:'🥬',label:'Grocery'},{icon:'🏠',label:'Home'}];
-wrap.innerHTML = fallback.map(function(c){ return '<div class="qc-item"><div class="qc-icon">' + c.icon + '</div><span>' + c.label + '</span></div>'; }).join('');
+wrap.innerHTML = fallback.map(function(c){ return '<div class="rail-item"><div class="rail-thumb">' + c.icon + '</div><span>' + c.label + '</span></div>'; }).join('');
 return;
 }
-wrap.innerHTML = categoryList.filter(function(c){ return !c.parent_id; }).map(function(c){
+const allActive = !activeCategoryId;
+wrap.innerHTML = '<div class="rail-item' + (allActive ? ' active' : '') + '" data-cat=""><div class="rail-thumb" style="font-size:20px;">🏠</div><span>All</span></div>' +
+mainCats.map(function(c){
 const visual = CATEGORY_VISUALS[c.slug];
-const inner = c.image_url ? '<img src="' + c.image_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:18px;">' : (visual ? visual.icon : '🛍️');
-const bg = c.image_url ? '#fff' : (visual ? visual.color : '#fff');
+const inner = c.image_url ? '<img src="' + c.image_url + '" loading="lazy">' : (visual ? visual.icon : '🛍️');
 const isActive = activeCategoryId === c.id;
-return '<div class="qc-item' + (isActive ? ' active' : '') + '" data-cat="' + c.id + '"><div class="qc-icon" style="background:' + bg + ';' + (visual && !c.image_url ? 'box-shadow:0 4px 12px rgba(0,0,0,0.12);' : '') + '">' + inner + '</div><span>' + c.name + '</span></div>';
+return '<div class="rail-item' + (isActive ? ' active' : '') + '" data-cat="' + c.id + '"><div class="rail-thumb" style="' + (!c.image_url && visual ? 'background:' + visual.color + ';' : '') + '">' + inner + '</div><span>' + c.name + '</span></div>';
 }).join('');
-wrap.querySelectorAll('[data-cat]').forEach(function(el){ el.addEventListener('click', function(){ filterByCategory(el.getAttribute('data-cat')); }); });
+wrap.querySelectorAll('[data-cat]').forEach(function(el){ el.addEventListener('click', function(){ filterByCategory(el.getAttribute('data-cat') || null); }); });
 renderSubcategoryChips();
 }
 function renderSubcategoryChips() {
-let chipWrap = document.getElementById('subcategoryChips');
-if (!activeCategoryId) { if (chipWrap) chipWrap.style.display = 'none'; return; }
+const outerWrap = document.getElementById('subcatRailWrap');
+if (!outerWrap) return;
+if (!activeCategoryId) { outerWrap.innerHTML = ''; return; }
+const parentCat = categoryList.find(function(c) { return c.id === activeCategoryId; });
 const subs = categoryList.filter(function(c) { return c.parent_id === activeCategoryId; });
-if (!chipWrap) {
-chipWrap = document.createElement('div');
-chipWrap.id = 'subcategoryChips';
-chipWrap.style.cssText = 'display:flex; gap:8px; overflow-x:auto; padding:10px 16px; -webkit-overflow-scrolling:touch;';
-const quickCatsWrap = document.getElementById('quickCats');
-if (quickCatsWrap && quickCatsWrap.parentNode) quickCatsWrap.parentNode.insertBefore(chipWrap, quickCatsWrap.nextSibling);
-}
-if (subs.length === 0) { chipWrap.style.display = 'none'; return; }
-chipWrap.style.display = 'flex';
-chipWrap.innerHTML = '<button data-subchip="" style="flex:0 0 auto; background:' + (!activeSubcategoryId ? '#7c3aed' : '#f3f1f8') + '; color:' + (!activeSubcategoryId ? '#fff' : '#4b5563') + '; border:none; padding:7px 14px; border-radius:20px; font-size:11.5px; font-weight:700; white-space:nowrap;">All</button>' +
-subs.map(function(s) { return '<button data-subchip="' + s.id + '" style="flex:0 0 auto; background:' + (activeSubcategoryId === s.id ? '#7c3aed' : '#f3f1f8') + '; color:' + (activeSubcategoryId === s.id ? '#fff' : '#4b5563') + '; border:none; padding:7px 14px; border-radius:20px; font-size:11.5px; font-weight:700; white-space:nowrap;">' + s.name + '</button>'; }).join('');
-chipWrap.querySelectorAll('[data-subchip]').forEach(function(btn) {
+if (subs.length === 0) { outerWrap.innerHTML = ''; return; }
+// Subcategories reuse their parent category's real photo at a small size —
+// keeps the page light (no extra images to fetch) while still giving each
+// chip a visual rather than plain text.
+const parentImg = parentCat && parentCat.image_url ? parentCat.image_url : null;
+const thumbInner = parentImg ? '<img src="' + parentImg + '" loading="lazy">' : '📦';
+outerWrap.innerHTML = '<div class="subcat-rail">' +
+'<div class="subcat-chip' + (!activeSubcategoryId ? ' active' : '') + '" data-subchip="">' + '<div class="subcat-chip-thumb" style="display:flex;align-items:center;justify-content:center;font-size:18px;">🏠</div><span>All</span></div>' +
+subs.map(function(s) {
+return '<div class="subcat-chip' + (activeSubcategoryId === s.id ? ' active' : '') + '" data-subchip="' + s.id + '"><div class="subcat-chip-thumb">' + thumbInner + '</div><span>' + s.name + '</span></div>';
+}).join('') + '</div>';
+outerWrap.querySelectorAll('[data-subchip]').forEach(function(btn) {
 btn.addEventListener('click', function() {
 activeSubcategoryId = btn.getAttribute('data-subchip') || null;
 renderSubcategoryChips();
@@ -2491,7 +2517,7 @@ if (selectedPin) renderProducts(selectedPin);
 });
 document.getElementById('bnCategories').addEventListener('click', function(){
 setBottomNavActive('bnCategories');
-const catSection = document.getElementById('quickCats');
+const catSection = document.getElementById('categoryRail');
 if (catSection) catSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 document.getElementById('bnCart').addEventListener('click', function(){
