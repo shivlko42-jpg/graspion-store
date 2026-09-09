@@ -653,6 +653,7 @@ Continue with Google
 <input class="form-input" id="banDesktopImg" placeholder="Desktop image URL">
 <input class="form-input" id="banMobileImg" placeholder="Mobile image URL">
 <input class="form-input" id="banVideoUrl" placeholder="Video URL (optional — plays instead of image if set)" style="grid-column:1/-1;">
+<div style="grid-column:1/-1;"><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Relevant Category (optional — lets this banner get priority for customers interested in this category)</label><select class="form-input" id="banCategory"><option value="">— No specific category —</option></select></div>
 <input class="form-input" id="banButtonText" placeholder="Button text e.g. Shop Now">
 <input class="form-input" id="banLink" placeholder="Link URL">
 <div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Priority (lower number = shown first)</label><input class="form-input" id="banPriority" placeholder="e.g. 0, 1, 2..." type="number"></div>
@@ -2423,6 +2424,11 @@ loadProductTypes();
 
 // ===================== BANNERS =====================
 function renderBanners() {
+const catSel = document.getElementById('banCategory');
+if (catSel && catSel.options.length <= 1) {
+const mainCats = allCategories.filter(function(c) { return !c.parent_id; });
+catSel.innerHTML = '<option value="">— No specific category —</option>' + mainCats.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
+}
 const list = document.getElementById('banList');
 const empty = document.getElementById('banEmpty');
 if (allBanners.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
@@ -2458,9 +2464,9 @@ btn.textContent = '⏳ Adding...';
 await fetch(SUPABASE_URL + '/rest/v1/banners', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-body: JSON.stringify({ title: title, subtitle: document.getElementById('banSubtitle').value.trim(), desktop_image: document.getElementById('banDesktopImg').value.trim(), mobile_image: document.getElementById('banMobileImg').value.trim(), video_url: document.getElementById('banVideoUrl').value.trim() || null, button_text: document.getElementById('banButtonText').value.trim(), link_url: document.getElementById('banLink').value.trim(), priority: parseInt(document.getElementById('banPriority').value) || 0, status: 'active' })
+body: JSON.stringify({ title: title, subtitle: document.getElementById('banSubtitle').value.trim(), desktop_image: document.getElementById('banDesktopImg').value.trim(), mobile_image: document.getElementById('banMobileImg').value.trim(), video_url: document.getElementById('banVideoUrl').value.trim() || null, category_id: document.getElementById('banCategory').value || null, button_text: document.getElementById('banButtonText').value.trim(), link_url: document.getElementById('banLink').value.trim(), priority: parseInt(document.getElementById('banPriority').value) || 0, status: 'active' })
 });
-['banTitle','banSubtitle','banDesktopImg','banMobileImg','banVideoUrl','banButtonText','banLink'].forEach(function(id){ document.getElementById(id).value = ''; });
+['banTitle','banSubtitle','banDesktopImg','banMobileImg','banVideoUrl','banCategory','banButtonText','banLink'].forEach(function(id){ document.getElementById(id).value = ''; });
 document.getElementById('banPriority').value = '';
 btn.textContent = '+ Add Banner';
 loadAllData();

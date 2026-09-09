@@ -861,14 +861,24 @@ wrap.querySelectorAll('.pin-chip').forEach(function(chip){ chip.addEventListener
 let heroBannerSlides = [];
 let heroBannerIndex = 0;
 let heroBannerTimer = null;
-function applyActiveBanner(bannerList){
+async function applyActiveBanner(bannerList){
 const now = new Date();
-const eligible = bannerList.filter(function(b){
+let eligible = bannerList.filter(function(b){
 const startsOk = !b.start_date || new Date(b.start_date) <= now;
 const endsOk = !b.end_date || new Date(b.end_date) >= now;
 return startsOk && endsOk;
 });
 if (eligible.length === 0) return; // keep default hero text
+if (eligible.length > 1) {
+const interestCats = await getCustomerInterestCategories();
+if (interestCats.size > 0) {
+eligible = eligible.slice().sort(function(a, b) {
+const aMatch = a.category_id && interestCats.has(a.category_id) ? 1 : 0;
+const bMatch = b.category_id && interestCats.has(b.category_id) ? 1 : 0;
+return bMatch - aMatch;
+});
+}
+}
 heroBannerSlides = eligible;
 heroBannerIndex = 0;
 renderHeroBannerDots();
@@ -1804,12 +1814,41 @@ const PARTNER_CTA_HTML = document.getElementById('ctaSlideContent').innerHTML;
 let ctaSlides = [{ type: 'partner' }];
 let ctaIndex = 0;
 let ctaTimer = null;
+async function getCustomerInterestCategories() {
+if (!currentCustomer) return new Set();
+try {
+const [wishRes, orderRes] = await Promise.all([
+fetch(SUPABASE_URL + '/rest/v1/wishlists?customer_id=eq.' + currentCustomer.id + '&select=products(category_id)', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/orders?customer_id=eq.' + currentCustomer.id + '&select=order_items(products(category_id))&limit=10&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } })
+]);
+const wishRows = wishRes.ok ? await wishRes.json() : [];
+const orderRows = orderRes.ok ? await orderRes.json() : [];
+const cats = new Set();
+wishRows.forEach(function(w) { if (w.products && w.products.category_id) cats.add(w.products.category_id); });
+orderRows.forEach(function(o) { (o.order_items || []).forEach(function(oi) { if (oi.products && oi.products.category_id) cats.add(oi.products.category_id); }); });
+return cats;
+} catch (e) { return new Set(); }
+}
 async function loadSponsoredBanners() {
 try {
-const res = await fetch(SUPABASE_URL + '/rest/v1/sponsored_banners?select=*&status=eq.active&start_date=lte.' + new Date().toISOString().slice(0,10) + '&end_date=gte.' + new Date().toISOString().slice(0,10), {
+const res = await fetch(SUPABASE_URL + '/rest/v1/sponsored_banners?select=*,products(category_id)&status=eq.active&start_date=lte.' + new Date().toISOString().slice(0,10) + '&end_date=gte.' + new Date().toISOString().slice(0,10), {
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
 });
-const banners = res.ok ? await res.json() : [];
+let banners = res.ok ? await res.json() : [];
+// Lightweight, real-data "remarketing": a logged-in customer's own
+// wishlist + past-order categories decide which sponsored banner gets
+// priority for THEM specifically — no two customers necessarily see the
+// same order, without needing any paid ad-tech or ML model.
+if (banners.length > 1) {
+const interestCats = await getCustomerInterestCategories();
+if (interestCats.size > 0) {
+banners.sort(function(a, b) {
+const aMatch = a.products && interestCats.has(a.products.category_id) ? 1 : 0;
+const bMatch = b.products && interestCats.has(b.products.category_id) ? 1 : 0;
+return bMatch - aMatch;
+});
+}
+}
 ctaSlides = [{ type: 'partner' }].concat(banners.map(function(b) { return { type: 'sponsored', data: b }; }));
 renderCtaDots();
 showCtaSlide(0);
