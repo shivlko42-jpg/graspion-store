@@ -539,6 +539,22 @@ window.addEventListener('load', function() {
       <div id="promoteList"></div>
       <div class="empty-state" id="promoteEmpty" style="display:none;">No products yet — add a product first.</div>
     </div>
+
+    <div class="panel">
+      <h3>🖼️ Homepage Banner Ad</h3>
+      <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Get your product featured in the rotating homepage banner (same spot as "Become a Partner"). Submit for admin approval — once live, tapping your banner takes customers straight to your product.</p>
+      <div class="form-grid">
+        <select class="form-input" id="sbProduct"><option value="">— Select your product —</option></select>
+        <input class="form-input" id="sbTitle" placeholder="Banner title e.g. Big Diwali Sale">
+        <input class="form-input" id="sbSubtitle" placeholder="Subtitle e.g. Flat 50% off">
+        <input class="form-input" id="sbImage" placeholder="Background image URL (optional)">
+        <div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Start Date</label><input class="form-input" id="sbStart" type="date"></div>
+        <div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">End Date</label><input class="form-input" id="sbEnd" type="date"></div>
+      </div>
+      <button class="add-product-btn" id="sbSubmitBtn" style="margin-top:10px;">Submit for Approval</button>
+      <div id="sbList" style="margin-top:16px;"></div>
+      <div class="empty-state" id="sbEmpty" style="display:none;">No banner requests yet</div>
+    </div>
   </div>
 </div>
 
@@ -699,6 +715,7 @@ document.getElementById('navPayments').addEventListener('click', function() {
 });
 document.getElementById('navPromote').addEventListener('click', function() {
   document.getElementById('promoteSection').scrollIntoView({ behavior: 'smooth' });
+  loadSponsoredBannerPanel();
 });
 document.querySelectorAll('.side-item[id^="nav"]').forEach(function(item) {
   item.addEventListener('click', function() {
@@ -1642,6 +1659,47 @@ document.getElementById('pbRequestBtn').addEventListener('click', async function
     document.getElementById('pbReason').value = '';
   } catch (e) { alert('Could not send request.'); btn.disabled = false; }
   btn.textContent = 'Request Pre-Booking Permission';
+});
+
+// ===================== HOMEPAGE SPONSORED BANNER =====================
+let mySponsoredBanners = [];
+async function loadSponsoredBannerPanel() {
+const sel = document.getElementById('sbProduct');
+if (sel && sel.options.length <= 1) {
+sel.innerHTML = '<option value="">— Select your product —</option>' + vendorProducts.map(function(p) { return '<option value="' + p.id + '">' + p.name + '</option>'; }).join('');
+}
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/sponsored_banners?vendor_id=eq.' + currentVendor.id + '&select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+mySponsoredBanners = res.ok ? await res.json() : [];
+} catch (e) { mySponsoredBanners = []; }
+const list = document.getElementById('sbList');
+const empty = document.getElementById('sbEmpty');
+if (mySponsoredBanners.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+const statusColor = { pending: '#b45309', active: '#15803d', rejected: '#dc2626', expired: '#6b7280' };
+list.innerHTML = mySponsoredBanners.map(function(b) {
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + b.title + '</div><div class="ic-sub">' + b.start_date + ' to ' + b.end_date + ' · ' + (b.clicks || 0) + ' clicks</div></div>' +
+'<span style="font-size:10px; font-weight:700; padding:4px 10px; border-radius:8px; background:#f3f1f8; color:' + (statusColor[b.status] || '#6b7280') + ';">' + b.status.toUpperCase() + '</span></div>';
+}).join('');
+}
+document.getElementById('sbSubmitBtn').addEventListener('click', async function() {
+const productId = document.getElementById('sbProduct').value;
+const title = document.getElementById('sbTitle').value.trim();
+const startDate = document.getElementById('sbStart').value;
+const endDate = document.getElementById('sbEnd').value;
+if (!productId || !title || !startDate || !endDate) { alert('Please fill in product, title, and both dates.'); return; }
+const btn = this;
+btn.disabled = true; btn.textContent = '⏳ Submitting...';
+try {
+await fetch(SUPABASE_URL + '/rest/v1/sponsored_banners', {
+method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ vendor_id: currentVendor.id, product_id: productId, title: title, subtitle: document.getElementById('sbSubtitle').value.trim() || null, image_url: document.getElementById('sbImage').value.trim() || null, start_date: startDate, end_date: endDate })
+});
+['sbTitle','sbSubtitle','sbImage','sbStart','sbEnd'].forEach(function(id){ document.getElementById(id).value = ''; });
+document.getElementById('sbProduct').value = '';
+loadSponsoredBannerPanel();
+} catch (e) { alert('Could not submit — please try again.'); }
+btn.disabled = false; btn.textContent = 'Submit for Approval';
 });
 
 let vendorSettlements = [];
