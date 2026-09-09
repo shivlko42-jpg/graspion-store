@@ -172,7 +172,7 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .qty-btn { background:linear-gradient(135deg,#7c3aed,#ec4899); color:#fff; border:none; width:24px; height:24px; border-radius:7px; font-weight:800; cursor:pointer; font-size:14px; }
 .qty-val { font-weight:800; font-size:13px; }
 .bottom-cta { max-width:1200px; margin:28px auto; padding:0 20px; }
-.cta-banner { background:linear-gradient(120deg,#1e1b3a,#4c1d95); border-radius:20px; padding:20px 22px; text-align:center; color:#fff; position:relative; min-height:130px; display:flex; flex-direction:column; justify-content:center; }
+.cta-banner { background:linear-gradient(120deg,#1e1b3a,#4c1d95); border-radius:20px; padding:20px 22px; text-align:center; color:#fff; position:relative; overflow:hidden; min-height:130px; display:flex; flex-direction:column; justify-content:center; }
 .cta-banner h2 { font-size:17px; font-weight:900; margin-bottom:5px; }
 .cta-banner p { font-size:11px; color:#cbd5e1; margin-bottom:12px; }
 .cta-banner button { background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:13px 30px; border-radius:12px; font-weight:800; cursor:pointer; }
@@ -402,7 +402,8 @@ window.addEventListener('load', function() {
 
 <div class="bottom-cta">
 <div class="cta-banner" id="ctaBanner">
-<div id="ctaSlideContent">
+<video id="ctaBannerVideo" muted autoplay loop playsinline style="display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:inherit; z-index:0;"></video>
+<div id="ctaSlideContent" style="position:relative; z-index:1;">
 <h2 data-i18n="becomeVendor">Become a Graspion Partner</h2>
 <p data-i18n="becomeVendorDesc">List your store and start selling online — zero commission for the first 3 months</p>
 <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
@@ -1875,17 +1876,24 @@ const content = document.getElementById('ctaSlideContent');
 const banner = document.getElementById('ctaBanner');
 if (!slide || slide.type === 'partner') {
 content.innerHTML = PARTNER_CTA_HTML;
-banner.style.backgroundImage = 'none';
+const ctaVideo = document.getElementById('ctaBannerVideo');
+if (ctaVideo) {
+ctaVideo.src = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
+ctaVideo.style.display = 'block';
+}
+banner.style.backgroundImage = 'linear-gradient(120deg,#1e1b3a,#4c1d95)';
 banner.onclick = null;
 banner.style.cursor = 'default';
 document.getElementById('startSellingBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'flex'; });
 document.getElementById('becomeRiderBtn').addEventListener('click', function(){ const el = document.getElementById('riderApplyModal'); if (el) el.style.display = 'flex'; });
 } else {
+const ctaVideo2 = document.getElementById('ctaBannerVideo');
+if (ctaVideo2) { ctaVideo2.style.display = 'none'; ctaVideo2.removeAttribute('src'); }
 const b = slide.data;
 content.innerHTML = '<div style="display:inline-block; background:rgba(255,255,255,0.15); font-size:9.5px; font-weight:700; padding:3px 10px; border-radius:10px; margin-bottom:6px;">SPONSORED</div>' +
 '<h2 style="cursor:pointer;">' + b.title + '</h2>' + (b.subtitle ? '<p>' + b.subtitle + '</p>' : '') +
 '<button style="background:#fff; color:#4c1d95; border:none; padding:8px 20px; border-radius:10px; font-weight:700; font-size:12.5px; cursor:pointer;">Shop Now →</button>';
-if (b.image_url) banner.style.backgroundImage = 'linear-gradient(120deg,rgba(30,27,58,0.7),rgba(76,29,149,0.55)), url(' + b.image_url + ')';
+banner.style.backgroundImage = b.image_url ? ('linear-gradient(120deg,rgba(30,27,58,0.7),rgba(76,29,149,0.55)), url(' + b.image_url + ')') : 'linear-gradient(120deg,#1e1b3a,#4c1d95)';
 banner.style.backgroundSize = 'cover';
 banner.style.backgroundPosition = 'center';
 banner.style.cursor = 'pointer';
