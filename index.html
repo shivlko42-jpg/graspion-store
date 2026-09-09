@@ -87,7 +87,7 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .cart-btn { background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:11px 16px; border-radius:12px; font-weight:700; cursor:pointer; font-size:13px; position:relative; flex:0 0 auto; white-space:nowrap; }
 .cart-count { position:absolute; top:-6px; right:-6px; background:#fff; color:#ec4899; font-size:10px; font-weight:900; width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
 .hero { max-width:1200px; margin:0 auto; padding:22px 20px 0; }
-.hero-banner { background:linear-gradient(120deg,#1e1b3a 0%, #4c1d95 45%, #ec4899 100%); border-radius:26px; padding:38px 32px; display:flex; align-items:center; justify-content:space-between; }
+.hero-banner { position:relative; overflow:hidden; background:linear-gradient(120deg,#1e1b3a 0%, #4c1d95 45%, #ec4899 100%); border-radius:26px; padding:38px 32px; display:flex; align-items:center; justify-content:space-between; }
 .hero-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.15); color:#fde68a; font-size:11px; font-weight:800; padding:6px 14px; border-radius:20px; margin-bottom:14px; }
 .hero-banner h1 { font-size:clamp(24px,4vw,38px); font-weight:900; color:#fff; line-height:1.2; }
 .hero-banner p { font-size:13.5px; color:rgba(255,255,255,0.8); margin-top:10px; max-width:340px; }
@@ -332,13 +332,15 @@ window.addEventListener('load', function() {
 
 <section class="hero">
 <div class="hero-banner" id="heroBanner">
-<div class="hero-text">
+<video id="heroBannerVideo" muted autoplay loop playsinline style="display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:inherit; z-index:0;"></video>
+<div class="hero-text" style="position:relative; z-index:1;">
 <div class="hero-badge">⚡ <span data-i18n="deliveryBadge">10-20 Min Delivery</span></div>
 <h1 id="heroTitle" data-i18n="tagline">Every Need. Every Area. Fast.</h1>
 <p id="heroSub" data-i18n="heroDesc">Shop from the best local sellers in your area, with lightning-fast delivery</p>
 </div>
-<div class="hero-emoji">🛍️</div>
+<div class="hero-emoji" style="position:relative; z-index:1;">🛍️</div>
 </div>
+<div id="heroBannerDots" style="display:flex; justify-content:center; gap:6px; margin:10px 0 0;"></div>
 </section>
 
 <div class="trust-row">
@@ -816,6 +818,9 @@ return '<div class="pin-chip" data-pin="' + w.pincode + '">' + w.pincode + ' · 
 }).join('');
 wrap.querySelectorAll('.pin-chip').forEach(function(chip){ chip.addEventListener('click', function(){ const pin = chip.getAttribute('data-pin'); document.getElementById('pinInput').value = pin; setArea(pin); }); });
 }
+let heroBannerSlides = [];
+let heroBannerIndex = 0;
+let heroBannerTimer = null;
 function applyActiveBanner(bannerList){
 const now = new Date();
 const eligible = bannerList.filter(function(b){
@@ -824,16 +829,65 @@ const endsOk = !b.end_date || new Date(b.end_date) >= now;
 return startsOk && endsOk;
 });
 if (eligible.length === 0) return; // keep default hero text
-const b = eligible[0];
+heroBannerSlides = eligible;
+heroBannerIndex = 0;
+renderHeroBannerDots();
+showHeroBannerSlide(0);
+if (heroBannerTimer) clearInterval(heroBannerTimer);
+if (heroBannerSlides.length > 1) {
+heroBannerTimer = setInterval(function() {
+heroBannerIndex = (heroBannerIndex + 1) % heroBannerSlides.length;
+showHeroBannerSlide(heroBannerIndex);
+}, 5000);
+}
+}
+function renderHeroBannerDots() {
+const dotsWrap = document.getElementById('heroBannerDots');
+if (!dotsWrap) return;
+if (heroBannerSlides.length <= 1) { dotsWrap.innerHTML = ''; return; }
+dotsWrap.innerHTML = heroBannerSlides.map(function(_, i) {
+return '<div data-dot="' + i + '" style="width:' + (i === heroBannerIndex ? '20px' : '6px') + '; height:6px; border-radius:3px; background:' + (i === heroBannerIndex ? '#7c3aed' : '#d4d4d8') + '; cursor:pointer; transition:width .2s;"></div>';
+}).join('');
+dotsWrap.querySelectorAll('[data-dot]').forEach(function(dot) {
+dot.addEventListener('click', function() {
+heroBannerIndex = Number(dot.getAttribute('data-dot'));
+showHeroBannerSlide(heroBannerIndex);
+if (heroBannerTimer) clearInterval(heroBannerTimer);
+if (heroBannerSlides.length > 1) {
+heroBannerTimer = setInterval(function() {
+heroBannerIndex = (heroBannerIndex + 1) % heroBannerSlides.length;
+showHeroBannerSlide(heroBannerIndex);
+}, 5000);
+}
+});
+});
+}
+function showHeroBannerSlide(i) {
+const b = heroBannerSlides[i];
+if (!b) return;
 if (b.title) document.getElementById('heroTitle').textContent = b.title;
 if (b.subtitle) document.getElementById('heroSub').textContent = b.subtitle;
 const banner = document.getElementById('heroBanner');
+const video = document.getElementById('heroBannerVideo');
+// Video support: if this slide has a video_url, play it as the background
+// instead of a static image — a genuinely eye-catching option for
+// promoting a flagship product/offer, not just static banners.
+if (b.video_url) {
+video.src = b.video_url;
+video.style.display = 'block';
+banner.style.backgroundImage = 'none';
+} else {
+video.style.display = 'none';
+video.removeAttribute('src');
 const desktopImg = window.matchMedia('(min-width:700px)').matches ? b.desktop_image : (b.mobile_image || b.desktop_image);
 if (desktopImg) banner.style.backgroundImage = 'linear-gradient(120deg,rgba(30,27,58,0.75),rgba(219,39,119,0.55)), url(' + desktopImg + ')';
+else banner.style.backgroundImage = 'none';
 banner.style.backgroundSize = 'cover';
 banner.style.backgroundPosition = 'center';
-if (b.link_url) banner.style.cursor = 'pointer';
-if (b.link_url) banner.addEventListener('click', function(){ window.location.href = b.link_url; });
+}
+banner.style.cursor = b.link_url ? 'pointer' : 'default';
+banner.onclick = b.link_url ? function(){ window.location.href = b.link_url; } : null;
+renderHeroBannerDots();
 }
 function renderQuickCategories(){
 const wrap = document.getElementById('categoryRail');

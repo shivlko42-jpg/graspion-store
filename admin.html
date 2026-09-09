@@ -288,6 +288,13 @@ Continue with Google
 <div id="smartInsightsList" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
 </div>
 
+<div class="panel" data-section="dashboard">
+<h3>🏢 Company Updates <span style="font-size:10px; font-weight:400; color:#9ca3af;">(from Grasp Infotech ERP)</span></h3>
+<div id="erpOnLeaveList" style="margin:10px 0;"></div>
+<div id="erpNoticesList"></div>
+<div class="empty-state" id="erpUpdatesEmpty" style="display:none;">No recent updates from ERP</div>
+</div>
+
 <details class="panel" data-section="dashboard">
 <summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">📢 Send Campaign / Offer Notification ▾</h3></summary>
 <p style="font-size:10.5px; color:#9ca3af; margin:8px 0 10px;">Sends a real push notification to everyone who has installed the app — an offer, announcement, or reminder. Free (no SMS/email cost). People must have installed the app and allowed notifications to receive it.</p>
@@ -629,6 +636,7 @@ Continue with Google
 <input class="form-input" id="banSubtitle" placeholder="Subtitle">
 <input class="form-input" id="banDesktopImg" placeholder="Desktop image URL">
 <input class="form-input" id="banMobileImg" placeholder="Mobile image URL">
+<input class="form-input" id="banVideoUrl" placeholder="Video URL (optional — plays instead of image if set)" style="grid-column:1/-1;">
 <input class="form-input" id="banButtonText" placeholder="Button text e.g. Shop Now">
 <input class="form-input" id="banLink" placeholder="Link URL">
 <div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Priority (lower number = shown first)</label><input class="form-input" id="banPriority" placeholder="e.g. 0, 1, 2..." type="number"></div>
@@ -982,6 +990,28 @@ resultEl.style.color = '#dc2626'; resultEl.textContent = 'Error: ' + err.message
 }
 btn.disabled = false; btn.textContent = '📤 Send to All Installed Users';
 });
+async function loadErpUpdates() {
+try {
+const res = await fetch(SUPABASE_URL + '/functions/v1/get-erp-updates', {
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+});
+if (!res.ok) { document.getElementById('erpUpdatesEmpty').style.display = 'block'; return; }
+const data = await res.json();
+const notices = data.notices || [];
+const onLeave = data.onLeave || [];
+const empty = document.getElementById('erpUpdatesEmpty');
+if (notices.length === 0 && onLeave.length === 0) { empty.style.display = 'block'; return; }
+empty.style.display = 'none';
+
+document.getElementById('erpOnLeaveList').innerHTML = onLeave.length === 0 ? '' : onLeave.map(function(l) {
+return '<div style="background:#fef3c7; border-radius:8px; padding:8px 10px; font-size:11.5px; margin-bottom:6px;">🏖️ <b>' + l.staff_email + '</b> is on ' + (l.leave_type || 'leave') + ' until ' + new Date(l.to_date).toLocaleDateString('en-IN') + '</div>';
+}).join('');
+
+document.getElementById('erpNoticesList').innerHTML = notices.map(function(n) {
+return '<div style="border:1px solid #f0eef7; border-radius:10px; padding:10px; margin-bottom:8px;"><div style="font-size:12px; font-weight:700;">📌 ' + n.title + '</div><div style="font-size:11px; color:#6b7280; margin-top:4px;">' + n.message + '</div><div style="font-size:9.5px; color:#9ca3af; margin-top:4px;">' + new Date(n.created_at).toLocaleDateString('en-IN') + '</div></div>';
+}).join('');
+} catch (err) { document.getElementById('erpUpdatesEmpty').style.display = 'block'; }
+}
 async function loadInstallStats() {
 try {
 const res = await fetch(SUPABASE_URL + '/rest/v1/app_install_events?select=installed_at', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
@@ -1347,6 +1377,7 @@ renderCoupons();
 renderSmartInsights();
 loadAbandonedCarts();
 loadInstallStats();
+loadErpUpdates();
 loadPrebookingRequests();
 renderHomepageSections();
 populateAdminProductDropdowns();
@@ -1679,7 +1710,7 @@ const cancelledCount = allSettlements.filter(function(s) { return s.status === '
 list.innerHTML = (pending.length === 0 ? '<div class="empty-state">✅ All settlements are paid up!</div>' : pending.map(function(s) {
 const vendor = allVendors.find(function(v) { return v.id === s.vendor_id; });
 return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + (vendor ? vendor.icon + ' ' + vendor.name : 'Vendor') + ' — Order #' + s.order_id.slice(0,8) + '</div>' +
-'<div class="ic-sub">Sale ₹' + Number(s.sale_amount).toLocaleString('en-IN') + ' − Commission ₹' + Number(s.commission_amount || 0).toLocaleString('en-IN') + ' − Delivery ₹' + Number(s.delivery_charge || 0).toLocaleString('en-IN') + (Number(s.gateway_fee) > 0 ? ' − Gateway ₹' + Number(s.gateway_fee).toLocaleString('en-IN') : '') + ' = <b style="color:#15803d;">₹' + Number(s.payable_amount).toLocaleString('en-IN') + ' payable</b></div></div>' +
+'<div class="ic-sub">Sale ₹' + Number(s.sale_amount).toLocaleString('en-IN') + ' − Commission ₹' + Number(s.commission_amount || 0).toLocaleString('en-IN') + (Number(s.gst_on_commission) > 0 ? ' − GST ₹' + Number(s.gst_on_commission).toLocaleString('en-IN') : '') + (Number(s.tcs_amount) > 0 ? ' − TCS ₹' + Number(s.tcs_amount).toLocaleString('en-IN') : '') + (Number(s.ads_charge) > 0 ? ' − Ads ₹' + Number(s.ads_charge).toLocaleString('en-IN') : '') + ' − Delivery ₹' + Number(s.delivery_charge || 0).toLocaleString('en-IN') + (Number(s.gateway_fee) > 0 ? ' − Gateway ₹' + Number(s.gateway_fee).toLocaleString('en-IN') : '') + ' = <b style="color:#15803d;">₹' + Number(s.payable_amount).toLocaleString('en-IN') + ' payable</b></div></div>' +
 '<div class="item-actions"><button class="icon-btn on-btn" data-settleid="' + s.id + '">✓ Approve & Mark Paid</button></div></div>';
 }).join('')) + (cancelledCount > 0 ? '<div style="margin-top:10px; font-size:11px; color:#dc2626; background:#fee2e2; padding:8px; border-radius:8px;">⚠️ ' + cancelledCount + ' settlement(s) were auto-cancelled because the order was returned — no payment needed, nothing to do for these.</div>' : '');
 document.querySelectorAll('[data-settleid]').forEach(function(btn) {
@@ -2316,9 +2347,9 @@ btn.textContent = '⏳ Adding...';
 await fetch(SUPABASE_URL + '/rest/v1/banners', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-body: JSON.stringify({ title: title, subtitle: document.getElementById('banSubtitle').value.trim(), desktop_image: document.getElementById('banDesktopImg').value.trim(), mobile_image: document.getElementById('banMobileImg').value.trim(), button_text: document.getElementById('banButtonText').value.trim(), link_url: document.getElementById('banLink').value.trim(), priority: parseInt(document.getElementById('banPriority').value) || 0, status: 'active' })
+body: JSON.stringify({ title: title, subtitle: document.getElementById('banSubtitle').value.trim(), desktop_image: document.getElementById('banDesktopImg').value.trim(), mobile_image: document.getElementById('banMobileImg').value.trim(), video_url: document.getElementById('banVideoUrl').value.trim() || null, button_text: document.getElementById('banButtonText').value.trim(), link_url: document.getElementById('banLink').value.trim(), priority: parseInt(document.getElementById('banPriority').value) || 0, status: 'active' })
 });
-['banTitle','banSubtitle','banDesktopImg','banMobileImg','banButtonText','banLink'].forEach(function(id){ document.getElementById(id).value = ''; });
+['banTitle','banSubtitle','banDesktopImg','banMobileImg','banVideoUrl','banButtonText','banLink'].forEach(function(id){ document.getElementById(id).value = ''; });
 document.getElementById('banPriority').value = '';
 btn.textContent = '+ Add Banner';
 loadAllData();
@@ -2334,7 +2365,7 @@ empty.style.display = 'none';
 const groups = [
   { title: '🏢 Business Info', keys: ['site_name','platform_gstin','platform_business_address','platform_state'] },
   { title: '🚚 Delivery & Shipping', keys: ['standard_delivery_charge','standard_delivery_days_min','standard_delivery_days_max','instant_delivery_charge','instant_delivery_minutes','dark_store_default_radius_km','free_shipping_min_amount'] },
-  { title: '💳 Payments & Commission', keys: ['cod_enabled','default_commission_percent','payment_gateway_fee_percent'] },
+  { title: '💳 Payments & Commission', keys: ['cod_enabled','default_commission_percent','payment_gateway_fee_percent','tcs_percent','gst_on_commission_percent'] },
   { title: '⚙️ System', keys: ['maintenance_mode'] }
 ];
 
