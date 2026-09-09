@@ -927,6 +927,8 @@ const DEFAULT_HERO_GRADIENT = 'linear-gradient(120deg,#1e1b3a 0%, #4c1d95 45%, #
 if (b.video_url) {
 video.src = b.video_url;
 video.style.display = 'block';
+video.load();
+video.play().catch(function(){});
 banner.style.backgroundImage = DEFAULT_HERO_GRADIENT;
 } else {
 video.style.display = 'none';
@@ -1880,6 +1882,8 @@ const ctaVideo = document.getElementById('ctaBannerVideo');
 if (ctaVideo) {
 ctaVideo.src = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 ctaVideo.style.display = 'block';
+ctaVideo.load();
+ctaVideo.play().catch(function(){});
 }
 banner.style.backgroundImage = 'linear-gradient(120deg,#1e1b3a,#4c1d95)';
 banner.onclick = null;
