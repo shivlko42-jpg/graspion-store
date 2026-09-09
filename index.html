@@ -337,7 +337,6 @@ window.addEventListener('load', function() {
 <a href="index.html" style="text-decoration:none; flex:0 0 auto;"><div data-graspion-logo="text" data-size="19"></div></a>
 <div class="nav-right">
 <button id="accountBtn" style="background:#f3f1f8; color:#1e1b3a; border:none; padding:11px 14px; border-radius:12px; font-weight:700; cursor:pointer; font-size:12.5px;">👤 <span id="accountBtnLabel">Login</span></button>
-<button id="wishlistOpenBtn" style="background:#f3f1f8; color:#ec4899; border:none; padding:11px 14px; border-radius:12px; font-weight:700; cursor:pointer; font-size:12.5px; position:relative;">♡ <span class="cart-count" id="wishlistCount" style="display:none;">0</span></button>
 <button class="cart-btn" id="cartOpenBtn">🛒 <span data-i18n="cart">Cart</span> <span class="cart-count" id="cartCount">0</span></button>
 </div>
 </div>
@@ -2079,7 +2078,7 @@ if (selectedPin) renderProducts(selectedPin);
 }
 function updateWishlistCount() {
 const el = document.getElementById('wishlistCount');
-if (wishlistIds.size > 0) { el.style.display = 'flex'; el.textContent = wishlistIds.size; } else { el.style.display = 'none'; }
+if (el) { if (wishlistIds.size > 0) { el.style.display = 'flex'; el.textContent = wishlistIds.size; } else { el.style.display = 'none'; } }
 const bnBadge = document.getElementById('bnWishlistBadge');
 if (bnBadge) { if (wishlistIds.size > 0) { bnBadge.style.display = 'flex'; bnBadge.textContent = wishlistIds.size > 9 ? '9+' : wishlistIds.size; } else { bnBadge.style.display = 'none'; } }
 }
@@ -2117,7 +2116,6 @@ list.querySelectorAll('[data-wlremove]').forEach(function(btn) {
 btn.addEventListener('click', async function() { await toggleWishlist(btn.getAttribute('data-wlremove')); renderWishlistModal(); });
 });
 }
-document.getElementById('wishlistOpenBtn').addEventListener('click', function() { renderWishlistModal(); document.getElementById('wishlistModal').style.display = 'flex'; });
 document.getElementById('bnWishlist').addEventListener('click', function() { setBottomNavActive('bnWishlist'); renderWishlistModal(); document.getElementById('wishlistModal').style.display = 'flex'; });
 document.getElementById('closeWishlistBtn').addEventListener('click', function() { document.getElementById('wishlistModal').style.display = 'none'; });
 function initSupaAuthWhenReady(attemptsLeft) {
