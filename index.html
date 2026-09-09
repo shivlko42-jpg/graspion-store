@@ -87,7 +87,7 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .cart-btn { background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:11px 16px; border-radius:12px; font-weight:700; cursor:pointer; font-size:13px; position:relative; flex:0 0 auto; white-space:nowrap; }
 .cart-count { position:absolute; top:-6px; right:-6px; background:#fff; color:#ec4899; font-size:10px; font-weight:900; width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
 .hero { max-width:1200px; margin:0 auto; padding:22px 20px 0; }
-.hero-banner { position:relative; overflow:hidden; background:linear-gradient(120deg,#1e1b3a 0%, #4c1d95 45%, #ec4899 100%); border-radius:26px; padding:38px 32px; display:flex; align-items:center; justify-content:space-between; }
+.hero-banner { position:relative; overflow:hidden; background:linear-gradient(120deg,#1e1b3a 0%, #4c1d95 45%, #ec4899 100%); border-radius:22px; padding:26px 24px; display:flex; align-items:center; justify-content:space-between; }
 .hero-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.15); color:#fde68a; font-size:11px; font-weight:800; padding:6px 14px; border-radius:20px; margin-bottom:14px; }
 .hero-banner h1 { font-size:clamp(24px,4vw,38px); font-weight:900; color:#fff; line-height:1.2; }
 .hero-banner p { font-size:13.5px; color:rgba(255,255,255,0.8); margin-top:10px; max-width:340px; }
@@ -198,6 +198,25 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 .pair-add-btn { width:100%; background:#ec4899; color:#fff; border:none; padding:6px; border-radius:8px; font-size:10.5px; font-weight:700; cursor:pointer; }
 body { padding-bottom:68px; }
 .bottom-nav { position:fixed; bottom:0; left:0; right:0; background:#fff; box-shadow:0 -2px 12px rgba(0,0,0,0.08); display:flex; justify-content:space-around; align-items:center; padding:8px 0 max(8px, env(safe-area-inset-bottom)); z-index:80; }
+
+/* ===== Support Chat Bot — a floating bubble above the bottom-nav, not a
+   real-LLM (no per-message cost) but genuinely useful: answers pull from
+   real order data, real settings, not canned generic text. ===== */
+.chatbot-bubble { position:fixed; right:16px; bottom:76px; width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,#7c3aed,#ec4899); display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow:0 6px 18px rgba(124,58,237,0.4); cursor:pointer; z-index:85; border:none; }
+.chatbot-panel { position:fixed; right:12px; left:12px; bottom:136px; max-width:380px; margin:0 auto; max-height:60vh; background:#fff; border-radius:20px; box-shadow:0 12px 40px rgba(0,0,0,0.2); z-index:90; display:none; flex-direction:column; overflow:hidden; }
+.chatbot-panel.open { display:flex; }
+.chatbot-header { background:linear-gradient(135deg,#7c3aed,#ec4899); color:#fff; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; }
+.chatbot-header b { font-size:13.5px; }
+.chatbot-header span { font-size:10px; opacity:0.85; }
+.chatbot-close { background:rgba(255,255,255,0.2); border:none; color:#fff; width:26px; height:26px; border-radius:50%; cursor:pointer; font-size:14px; }
+.chatbot-body { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; background:#faf9fd; }
+.chatbot-msg-bot { background:#fff; border-radius:14px 14px 14px 3px; padding:9px 13px; font-size:12px; color:#374151; align-self:flex-start; max-width:85%; box-shadow:0 1px 4px rgba(0,0,0,0.05); line-height:1.5; white-space:pre-line; }
+.chatbot-msg-user { background:#7c3aed; color:#fff; border-radius:14px 14px 3px 14px; padding:9px 13px; font-size:12px; align-self:flex-end; max-width:85%; }
+.chatbot-quick-replies { display:flex; flex-direction:column; gap:6px; align-self:flex-start; max-width:90%; }
+.chatbot-quick-btn { background:#fff; border:1.5px solid #ede9fe; color:#7c3aed; padding:8px 12px; border-radius:12px; font-size:11.5px; font-weight:700; text-align:left; cursor:pointer; }
+.chatbot-input-row { display:flex; gap:8px; padding:10px; border-top:1px solid #f0eef7; background:#fff; }
+.chatbot-input-row input { flex:1; border:1.5px solid #e5e7eb; border-radius:20px; padding:9px 14px; font-size:12px; outline:none; }
+.chatbot-input-row button { background:#7c3aed; color:#fff; border:none; width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:14px; }
 .bn-item { display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer; color:#9ca3af; flex:1; padding:4px 0; position:relative; }
 .bn-item.active { color:#7c3aed; }
 .bn-icon { font-size:20px; position:relative; }
@@ -551,6 +570,19 @@ Continue with Google
 </div>
 </div>
 
+<button class="chatbot-bubble" id="chatbotBubble" aria-label="Chat with us">💬</button>
+<div class="chatbot-panel" id="chatbotPanel">
+<div class="chatbot-header">
+<div><b>Graspion Support</b><br><span>Usually replies instantly</span></div>
+<button class="chatbot-close" id="chatbotCloseBtn">✕</button>
+</div>
+<div class="chatbot-body" id="chatbotBody"></div>
+<div class="chatbot-input-row">
+<input type="text" id="chatbotInput" placeholder="Type your question...">
+<button id="chatbotSendBtn">➤</button>
+</div>
+</div>
+
 <div class="bottom-nav">
 <div class="bn-item active" id="bnHome"><div class="bn-icon">🏠</div><div class="bn-label">Home</div></div>
 <div class="bn-item" id="bnCategories"><div class="bn-icon">📁</div><div class="bn-label">Categories</div></div>
@@ -872,16 +904,17 @@ const video = document.getElementById('heroBannerVideo');
 // Video support: if this slide has a video_url, play it as the background
 // instead of a static image — a genuinely eye-catching option for
 // promoting a flagship product/offer, not just static banners.
+const DEFAULT_HERO_GRADIENT = 'linear-gradient(120deg,#1e1b3a 0%, #4c1d95 45%, #ec4899 100%)';
 if (b.video_url) {
 video.src = b.video_url;
 video.style.display = 'block';
-banner.style.backgroundImage = 'none';
+banner.style.backgroundImage = DEFAULT_HERO_GRADIENT;
 } else {
 video.style.display = 'none';
 video.removeAttribute('src');
 const desktopImg = window.matchMedia('(min-width:700px)').matches ? b.desktop_image : (b.mobile_image || b.desktop_image);
 if (desktopImg) banner.style.backgroundImage = 'linear-gradient(120deg,rgba(30,27,58,0.75),rgba(219,39,119,0.55)), url(' + desktopImg + ')';
-else banner.style.backgroundImage = 'none';
+else banner.style.backgroundImage = DEFAULT_HERO_GRADIENT;
 banner.style.backgroundSize = 'cover';
 banner.style.backgroundPosition = 'center';
 }
@@ -1728,6 +1761,128 @@ document.getElementById('pinModal').style.display = 'flex';
 if (autoLocationEnabled) { detectLocation(true); }
 })();
 document.getElementById('startSellingBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'flex'; });
+
+// ===================== SUPPORT CHAT BOT =====================
+function chatBotAddMsg(text, isUser) {
+  const body = document.getElementById('chatbotBody');
+  const div = document.createElement('div');
+  div.className = isUser ? 'chatbot-msg-user' : 'chatbot-msg-bot';
+  div.textContent = text;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+function chatBotAddQuickReplies(options) {
+  const body = document.getElementById('chatbotBody');
+  const wrap = document.createElement('div');
+  wrap.className = 'chatbot-quick-replies';
+  options.forEach(function(opt) {
+    const btn = document.createElement('button');
+    btn.className = 'chatbot-quick-btn';
+    btn.textContent = opt.label;
+    btn.addEventListener('click', function() { chatBotAddMsg(opt.label, true); opt.action(); });
+    wrap.appendChild(btn);
+  });
+  body.appendChild(wrap);
+  body.scrollTop = body.scrollHeight;
+}
+function chatBotShowMainMenu() {
+  chatBotAddQuickReplies([
+    { label: '📦 Track my order', action: chatBotTrackOrder },
+    { label: '🚚 Delivery time & charges', action: chatBotDeliveryInfo },
+    { label: '↩️ Return / Refund policy', action: chatBotReturnPolicy },
+    { label: '🏪 Become a seller', action: function() { chatBotAddMsg('Opening the seller signup form for you!', false); setTimeout(function(){ document.getElementById('chatbotPanel').classList.remove('open'); document.getElementById('vendorApplyModal').style.display = 'flex'; }, 600); } },
+    { label: '💬 Talk to a human', action: chatBotTalkToHuman }
+  ]);
+}
+async function chatBotTrackOrder() {
+  if (!currentCustomer) {
+    chatBotAddMsg('Please log in first so I can look up your orders — tap the Account tab, then come back and ask again!', false);
+    return;
+  }
+  chatBotAddMsg('Checking your recent orders...', false);
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/orders?customer_id=eq.' + currentCustomer.id + '&select=order_number,status,total_amount,created_at&order=created_at.desc&limit=3', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    const orders = res.ok ? await res.json() : [];
+    if (orders.length === 0) {
+      chatBotAddMsg('You don\'t have any orders yet. Once you place one, I can track it for you right here!', false);
+      return;
+    }
+    const statusEmoji = { pending:'⏳', confirmed:'✅', preparing:'📦', shipped:'🚚', delivered:'🎉', cancelled:'❌' };
+    const lines = orders.map(function(o) {
+      return (statusEmoji[o.status] || '•') + ' #' + (o.order_number || o.id) + ' — ' + (o.status || 'pending').toUpperCase() + ' (₹' + o.total_amount + ')';
+    }).join('\n');
+    chatBotAddMsg('Here are your recent orders:\n' + lines, false);
+  } catch (e) {
+    chatBotAddMsg('Sorry, I couldn\'t fetch your orders right now. Please check "My Orders" in your account, or talk to a human below.', false);
+  }
+  chatBotShowMainMenu();
+}
+function chatBotDeliveryInfo() {
+  chatBotAddMsg('We have two delivery types:\n\n⚡ Instant (Dark Store areas): 10-20 minutes\n📦 Standard (Pan-India): 2-7 days depending on your location\n\nDelivery charges depend on your order value and area — you\'ll always see the exact charge before you pay, at checkout.', false);
+  chatBotShowMainMenu();
+}
+async function chatBotReturnPolicy() {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/settings?key=eq.return_policy_text&select=value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+    const rows = res.ok ? await res.json() : [];
+    const policy = rows[0] ? rows[0].value : 'Most items can be returned within 7 days of delivery if unused and in original packaging.';
+    chatBotAddMsg(policy, false);
+  } catch (e) {
+    chatBotAddMsg('Most items can be returned within 7 days of delivery if unused and in original packaging.', false);
+  }
+  chatBotShowMainMenu();
+}
+async function chatBotTalkToHuman() {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/settings?key=eq.support_whatsapp_number&select=value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+    const rows = res.ok ? await res.json() : [];
+    const waNumber = rows[0] ? rows[0].value : '';
+    if (waNumber) {
+      chatBotAddMsg('Connecting you to our support team on WhatsApp...', false);
+      setTimeout(function() { window.open('https://wa.me/' + waNumber, '_blank'); }, 500);
+    } else {
+      chatBotAddMsg('Our support line isn\'t set up yet — please try again later, or email us.', false);
+    }
+  } catch (e) {
+    chatBotAddMsg('Could not connect right now, please try again shortly.', false);
+  }
+}
+// Very light keyword matching for free-typed questions — not a real AI,
+// but enough to route common phrasings to the right canned, DATA-BACKED
+// answer instead of a generic "I don't understand."
+function chatBotHandleFreeText(text) {
+  const t = text.toLowerCase();
+  if (t.indexOf('order') !== -1 || t.indexOf('track') !== -1 || t.indexOf('kaha') !== -1 || t.indexOf('status') !== -1) { chatBotTrackOrder(); return; }
+  if (t.indexOf('deliver') !== -1 || t.indexOf('shipping') !== -1 || t.indexOf('kab') !== -1) { chatBotDeliveryInfo(); return; }
+  if (t.indexOf('return') !== -1 || t.indexOf('refund') !== -1 || t.indexOf('cancel') !== -1) { chatBotReturnPolicy(); return; }
+  if (t.indexOf('sell') !== -1 || t.indexOf('vendor') !== -1 || t.indexOf('becha') !== -1) { document.getElementById('chatbotPanel').classList.remove('open'); document.getElementById('vendorApplyModal').style.display = 'flex'; return; }
+  chatBotAddMsg('I\'m not fully sure about that one — here are some things I can definitely help with:', false);
+  chatBotShowMainMenu();
+}
+
+document.getElementById('chatbotBubble').addEventListener('click', function() {
+  const panel = document.getElementById('chatbotPanel');
+  panel.classList.add('open');
+  if (document.getElementById('chatbotBody').children.length === 0) {
+    chatBotAddMsg('Hi! 👋 I\'m the Graspion assistant. How can I help you today?', false);
+    chatBotShowMainMenu();
+  }
+});
+document.getElementById('chatbotCloseBtn').addEventListener('click', function() {
+  document.getElementById('chatbotPanel').classList.remove('open');
+});
+function chatBotSendTyped() {
+  const input = document.getElementById('chatbotInput');
+  const text = input.value.trim();
+  if (!text) return;
+  chatBotAddMsg(text, true);
+  input.value = '';
+  setTimeout(function() { chatBotHandleFreeText(text); }, 400);
+}
+document.getElementById('chatbotSendBtn').addEventListener('click', chatBotSendTyped);
+document.getElementById('chatbotInput').addEventListener('keypress', function(e) { if (e.key === 'Enter') chatBotSendTyped(); });
 document.getElementById('closeVendorApplyBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'none'; });
 document.getElementById('becomeRiderBtn').addEventListener('click', function(){ document.getElementById('riderApplyModal').style.display = 'flex'; });
 document.getElementById('closeRiderApplyBtn').addEventListener('click', function(){ document.getElementById('riderApplyModal').style.display = 'none'; });
