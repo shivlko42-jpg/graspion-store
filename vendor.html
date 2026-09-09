@@ -711,7 +711,7 @@ let selectedStoreOpen = true;
 function populateSettingsForm() {
   document.getElementById('sVendorType').value = currentVendor.vendor_type === 'dark_store' ? '⚡ Dark Store (Instant Delivery)' : '📦 Marketplace (Pan-India)';
   loadPrebookingStatus();
-  document.getElementById('sCommission').value = (currentVendor.commission_percent || 10) + '%';
+  document.getElementById('sCommission').value = currentVendor.commission_percent != null ? (currentVendor.commission_percent + '% (special rate)') : 'Standard category rates apply';
   document.getElementById('sGstin').value = currentVendor.gstin || '';
   document.getElementById('sAddress').value = currentVendor.address || '';
   document.getElementById('sBankAccount').value = currentVendor.bank_account_no || '';
@@ -1671,8 +1671,15 @@ return '<div class="order-card" style="padding:14px;' + (isCancelled ? ' opacity
 '<div style="font-size:11.5px; line-height:1.8;">' +
 '<div style="display:flex; justify-content:space-between;"><span style="color:#6b7280;">Sale Amount</span><b>₹' + Number(s.sale_amount).toLocaleString('en-IN') + '</b></div>' +
 '<div style="display:flex; justify-content:space-between;"><span style="color:#6b7280;">− Commission</span><span style="color:#dc2626;">−₹' + Number(s.commission_amount || 0).toLocaleString('en-IN') + '</span></div>' +
+(Number(s.gst_on_commission) > 0 ? '<div style="display:flex; justify-content:space-between;"><span style="color:#6b7280;">− GST on Commission</span><span style="color:#dc2626;">−₹' + Number(s.gst_on_commission).toLocaleString('en-IN') + '</span></div>' : '') +
+(Number(s.tcs_amount) > 0 ? '<div style="display:flex; justify-content:space-between;"><span style="color:#6b7280;">− TCS</span><span style="color:#dc2626;">−₹' + Number(s.tcs_amount).toLocaleString('en-IN') + '</span></div>' : '') +
+(Number(s.tds_amount) > 0 ? '<div style="display:flex; justify-content:space-between;"><span style="color:#6b7280;">− TDS</span><span style="color:#dc2626;">−₹' + Number(s.tds_amount).toLocaleString('en-IN') + '</span></div>' : '') +
+(Number(s.ads_charge) > 0 ? '<div style="display:flex; justify-content:space-between;"><span style="color:#6b7280;">− Ads (sponsored listing)</span><span style="color:#dc2626;">−₹' + Number(s.ads_charge).toLocaleString('en-IN') + '</span></div>' : '') +
 '<div style="display:flex; justify-content:space-between;"><span style="color:#6b7280;">− Delivery Charge</span><span style="color:#dc2626;">−₹' + Number(s.delivery_charge || 0).toLocaleString('en-IN') + '</span></div>' +
+(Number(s.fulfillment_charge) > 0 ? '<div style="display:flex; justify-content:space-between;"><span style="color:#6b7280;">− Fulfillment/Handling</span><span style="color:#dc2626;">−₹' + Number(s.fulfillment_charge).toLocaleString('en-IN') + '</span></div>' : '') +
+(Number(s.return_rto_charge) > 0 ? '<div style="display:flex; justify-content:space-between;"><span style="color:#dc2626;">− Return/RTO Charge</span><span style="color:#dc2626;">−₹' + Number(s.return_rto_charge).toLocaleString('en-IN') + '</span></div>' : '') +
 (Number(s.gateway_fee) > 0 ? '<div style="display:flex; justify-content:space-between;"><span style="color:#6b7280;">− Gateway Fee</span><span style="color:#dc2626;">−₹' + Number(s.gateway_fee).toLocaleString('en-IN') + '</span></div>' : '') +
+(Number(s.adjustment_amount) !== 0 ? '<div style="display:flex; justify-content:space-between;"><span style="color:' + (Number(s.adjustment_amount) > 0 ? '#15803d' : '#dc2626') + ';">' + (Number(s.adjustment_amount) > 0 ? '+ Adjustment' : '− Adjustment') + '</span><span style="color:' + (Number(s.adjustment_amount) > 0 ? '#15803d' : '#dc2626') + ';">' + (Number(s.adjustment_amount) > 0 ? '+' : '') + '₹' + Number(s.adjustment_amount).toLocaleString('en-IN') + '</span></div>' + (s.adjustment_reason ? '<div style="font-size:9.5px; color:#9ca3af; padding:2px 0 4px;">' + s.adjustment_reason + '</div>' : '') : '') +
 '<div style="display:flex; justify-content:space-between; border-top:1px solid #f0eef7; margin-top:4px; padding-top:4px;"><b>You Receive</b><b style="color:#15803d; font-size:13px;">₹' + Number(s.payable_amount).toLocaleString('en-IN') + '</b></div>' +
 '</div></div>';
 }).join('');

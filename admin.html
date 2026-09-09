@@ -580,6 +580,15 @@ Continue with Google
 <textarea class="form-input" id="catSeoDesc" placeholder="SEO Description (optional)" rows="2" style="grid-column:1/-1;"></textarea>
 <input class="form-input" id="catSeoKeywords" placeholder="SEO Keywords, comma separated (optional)" style="grid-column:1/-1;">
 <div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Standard Commission % (for products in this category)</label><input class="form-input" id="catCommission" type="number" step="0.5" placeholder="e.g. 10"></div>
+<div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Minimum Commission % (floor — protects against too-large discounts stacking)</label><input class="form-input" id="catMinCommission" type="number" step="0.5" placeholder="e.g. 7"></div>
+<div style="grid-column:1/-1; padding:10px; background:#fdf4ff; border-radius:10px; margin-top:4px;">
+<label style="font-size:10.5px; font-weight:700; color:#a21caf; display:block; margin-bottom:6px;">🎉 Promotional Commission (temporary override for a date range)</label>
+<div class="form-row">
+<input class="form-input" id="catPromoCommission" type="number" step="0.5" placeholder="Promo % (e.g. 5)">
+<input class="form-input" id="catPromoStart" type="date" placeholder="Start date">
+<input class="form-input" id="catPromoEnd" type="date" placeholder="End date">
+</div>
+</div>
 </div>
 <div style="display:flex; gap:16px; margin-top:10px; flex-wrap:wrap;">
 <label style="font-size:11px; display:flex; align-items:center; gap:5px;"><input type="checkbox" id="catMenuVisible" checked> Menu Visible</label>
@@ -604,10 +613,17 @@ Continue with Google
 <select class="form-input" id="ptCategory"><option value="">— Select Subcategory —</option></select>
 <input class="form-input" id="ptGoogleCategory" placeholder="Google Product Category (optional)">
 <div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Display Order</label><input class="form-input" id="ptOrder" type="number" placeholder="e.g. 0, 1, 2..."></div>
+<div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Commission % override (optional — wins over Subcategory/Category rate)</label><input class="form-input" id="ptCommission" type="number" step="0.5" placeholder="Leave blank to inherit"></div>
 </div>
 <button class="login-btn" id="ptAddBtn" style="margin-top:10px;">+ Add Product Type</button>
 <div id="ptList" style="margin-top:16px;"></div>
 <div class="empty-state" id="ptEmpty" style="display:none;">No product types added yet</div>
+</div>
+
+<div class="panel" data-section="categories">
+<h3>📈 Volume Incentive Tiers</h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Vendors automatically get a commission discount as their monthly sales (GMV) grow. Edit any tier below.</p>
+<div id="volumeTiersList"></div>
 </div>
 
 <div class="panel" data-section="homepage">
@@ -1394,6 +1410,7 @@ renderDeliveryPartners();
 renderWarehouses();
 renderCategories();
 loadProductTypes();
+loadVolumeTiers();
 renderBanners();
 renderSettings();
 renderPairings();
@@ -1710,7 +1727,7 @@ const cancelledCount = allSettlements.filter(function(s) { return s.status === '
 list.innerHTML = (pending.length === 0 ? '<div class="empty-state">✅ All settlements are paid up!</div>' : pending.map(function(s) {
 const vendor = allVendors.find(function(v) { return v.id === s.vendor_id; });
 return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + (vendor ? vendor.icon + ' ' + vendor.name : 'Vendor') + ' — Order #' + s.order_id.slice(0,8) + '</div>' +
-'<div class="ic-sub">Sale ₹' + Number(s.sale_amount).toLocaleString('en-IN') + ' − Commission ₹' + Number(s.commission_amount || 0).toLocaleString('en-IN') + (Number(s.gst_on_commission) > 0 ? ' − GST ₹' + Number(s.gst_on_commission).toLocaleString('en-IN') : '') + (Number(s.tcs_amount) > 0 ? ' − TCS ₹' + Number(s.tcs_amount).toLocaleString('en-IN') : '') + (Number(s.ads_charge) > 0 ? ' − Ads ₹' + Number(s.ads_charge).toLocaleString('en-IN') : '') + ' − Delivery ₹' + Number(s.delivery_charge || 0).toLocaleString('en-IN') + (Number(s.gateway_fee) > 0 ? ' − Gateway ₹' + Number(s.gateway_fee).toLocaleString('en-IN') : '') + ' = <b style="color:#15803d;">₹' + Number(s.payable_amount).toLocaleString('en-IN') + ' payable</b></div></div>' +
+'<div class="ic-sub">Sale ₹' + Number(s.sale_amount).toLocaleString('en-IN') + ' − Commission ₹' + Number(s.commission_amount || 0).toLocaleString('en-IN') + (Number(s.gst_on_commission) > 0 ? ' − GST ₹' + Number(s.gst_on_commission).toLocaleString('en-IN') : '') + (Number(s.tcs_amount) > 0 ? ' − TCS ₹' + Number(s.tcs_amount).toLocaleString('en-IN') : '') + (Number(s.tds_amount) > 0 ? ' − TDS ₹' + Number(s.tds_amount).toLocaleString('en-IN') : '') + (Number(s.ads_charge) > 0 ? ' − Ads ₹' + Number(s.ads_charge).toLocaleString('en-IN') : '') + ' − Delivery ₹' + Number(s.delivery_charge || 0).toLocaleString('en-IN') + (Number(s.fulfillment_charge) > 0 ? ' − Fulfillment ₹' + Number(s.fulfillment_charge).toLocaleString('en-IN') : '') + (Number(s.return_rto_charge) > 0 ? ' − RTO ₹' + Number(s.return_rto_charge).toLocaleString('en-IN') : '') + (Number(s.gateway_fee) > 0 ? ' − Gateway ₹' + Number(s.gateway_fee).toLocaleString('en-IN') : '') + (Number(s.adjustment_amount) !== 0 ? ' ' + (Number(s.adjustment_amount) > 0 ? '+' : '−') + ' Adj ₹' + Math.abs(Number(s.adjustment_amount)).toLocaleString('en-IN') : '') + ' = <b style="color:#15803d;">₹' + Number(s.payable_amount).toLocaleString('en-IN') + ' payable</b>' + (s.adjustment_reason ? '<div style="font-size:9px; color:#9ca3af; margin-top:2px;">' + s.adjustment_reason + '</div>' : '') + '</div></div>' +
 '<div class="item-actions"><button class="icon-btn on-btn" data-settleid="' + s.id + '">✓ Approve & Mark Paid</button></div></div>';
 }).join('')) + (cancelledCount > 0 ? '<div style="margin-top:10px; font-size:11px; color:#dc2626; background:#fee2e2; padding:8px; border-radius:8px;">⚠️ ' + cancelledCount + ' settlement(s) were auto-cancelled because the order was returned — no payment needed, nothing to do for these.</div>' : '');
 document.querySelectorAll('[data-settleid]').forEach(function(btn) {
@@ -2175,6 +2192,10 @@ document.getElementById('catCanonical').value = c.canonical_url || '';
 document.getElementById('catSeoDesc').value = c.seo_description || '';
 document.getElementById('catSeoKeywords').value = c.seo_keywords || '';
 document.getElementById('catCommission').value = c.default_commission_percent || '';
+document.getElementById('catMinCommission').value = c.minimum_commission_percent || '';
+document.getElementById('catPromoCommission').value = c.promotional_commission_percent || '';
+document.getElementById('catPromoStart').value = c.promotional_commission_start || '';
+document.getElementById('catPromoEnd').value = c.promotional_commission_end || '';
 document.getElementById('catMenuVisible').checked = c.menu_visible !== false;
 document.getElementById('catMobileVisible').checked = c.mobile_visible !== false;
 document.getElementById('catFeatured').checked = !!c.featured;
@@ -2205,7 +2226,7 @@ loadAllData();
 document.getElementById('catSearch').addEventListener('input', renderCategories);
 function resetCategoryForm() {
 editingCategoryId = null;
-['catName','catCode','catOrder','catImage','catIcon','catBanner','catShortDesc','catSeoTitle','catCanonical','catSeoDesc','catSeoKeywords','catCommission'].forEach(function(id){ document.getElementById(id).value = ''; });
+['catName','catCode','catOrder','catImage','catIcon','catBanner','catShortDesc','catSeoTitle','catCanonical','catSeoDesc','catSeoKeywords','catCommission','catMinCommission','catPromoCommission','catPromoStart','catPromoEnd'].forEach(function(id){ document.getElementById(id).value = ''; });
 document.getElementById('catParent').value = '';
 document.getElementById('catMenuVisible').checked = true;
 document.getElementById('catMobileVisible').checked = true;
@@ -2235,6 +2256,10 @@ const payload = {
   seo_description: document.getElementById('catSeoDesc').value.trim() || null,
   seo_keywords: document.getElementById('catSeoKeywords').value.trim() || null,
   default_commission_percent: document.getElementById('catCommission').value ? Number(document.getElementById('catCommission').value) : null,
+  minimum_commission_percent: document.getElementById('catMinCommission').value ? Number(document.getElementById('catMinCommission').value) : null,
+  promotional_commission_percent: document.getElementById('catPromoCommission').value ? Number(document.getElementById('catPromoCommission').value) : null,
+  promotional_commission_start: document.getElementById('catPromoStart').value || null,
+  promotional_commission_end: document.getElementById('catPromoEnd').value || null,
   menu_visible: document.getElementById('catMenuVisible').checked,
   mobile_visible: document.getElementById('catMobileVisible').checked,
   featured: document.getElementById('catFeatured').checked,
@@ -2254,6 +2279,43 @@ btn.disabled = false;
 
 // ===================== PRODUCT TYPES (dynamic, Level 3 of taxonomy) =====================
 let allProductTypes = [];
+// ===================== VOLUME INCENTIVE TIERS =====================
+let allVolumeTiers = [];
+async function loadVolumeTiers() {
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/volume_incentive_tiers?select=*&order=min_gmv.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+allVolumeTiers = res.ok ? await res.json() : [];
+renderVolumeTiers();
+} catch (e) {}
+}
+function renderVolumeTiers() {
+const list = document.getElementById('volumeTiersList');
+if (!list) return;
+list.innerHTML = allVolumeTiers.map(function(t) {
+return '<div class="item-card"><div class="ic-info" style="flex:1;">' +
+'<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">' +
+'<input class="form-input" data-tierfield="label" data-tierid="' + t.id + '" value="' + (t.label || '') + '" placeholder="Label" style="width:90px; font-size:11px;">' +
+'<span style="font-size:10px; color:#9ca3af;">₹</span><input class="form-input" data-tierfield="min_gmv" data-tierid="' + t.id + '" type="number" value="' + t.min_gmv + '" style="width:80px; font-size:11px;">' +
+'<span style="font-size:10px; color:#9ca3af;">to ₹</span><input class="form-input" data-tierfield="max_gmv" data-tierid="' + t.id + '" type="number" value="' + (t.max_gmv || '') + '" placeholder="no limit" style="width:80px; font-size:11px;">' +
+'<span style="font-size:10px; color:#9ca3af;">→ discount</span><input class="form-input" data-tierfield="commission_discount_percent" data-tierid="' + t.id + '" type="number" step="0.5" value="' + t.commission_discount_percent + '" style="width:60px; font-size:11px;"><span style="font-size:10px; color:#9ca3af;">%</span>' +
+'</div></div><div class="item-actions"><button class="icon-btn on-btn" data-tiersave="' + t.id + '">Save</button></div></div>';
+}).join('');
+document.querySelectorAll('[data-tiersave]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+const id = btn.getAttribute('data-tiersave');
+const label = document.querySelector('[data-tierfield="label"][data-tierid="' + id + '"]').value;
+const minGmv = Number(document.querySelector('[data-tierfield="min_gmv"][data-tierid="' + id + '"]').value) || 0;
+const maxGmvRaw = document.querySelector('[data-tierfield="max_gmv"][data-tierid="' + id + '"]').value;
+const discount = Number(document.querySelector('[data-tierfield="commission_discount_percent"][data-tierid="' + id + '"]').value) || 0;
+await fetch(SUPABASE_URL + '/rest/v1/volume_incentive_tiers?id=eq.' + id, {
+method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ label: label, min_gmv: minGmv, max_gmv: maxGmvRaw ? Number(maxGmvRaw) : null, commission_discount_percent: discount })
+});
+btn.textContent = '✓ Saved';
+setTimeout(function(){ btn.textContent = 'Save'; }, 1500);
+});
+});
+}
 async function loadProductTypes() {
 try {
 const res = await fetch(SUPABASE_URL + '/rest/v1/product_types?select=*&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
@@ -2273,7 +2335,7 @@ empty.style.display = 'none';
 list.innerHTML = allProductTypes.map(function(pt) {
 const cat = allCategories.find(function(c) { return c.id === pt.subcategory_id; });
 const isActive = pt.status !== 'inactive';
-return '<div class="item-card"><div class="ic-info"><div class="ic-title">🏷️ ' + pt.name + '</div><div class="ic-sub">' + (cat ? cat.name : '—') + '</div></div>' +
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">🏷️ ' + pt.name + '</div><div class="ic-sub">' + (cat ? cat.name : '—') + (pt.commission_percent != null ? ' · commission: ' + pt.commission_percent + '%' : '') + '</div></div>' +
 '<div class="item-actions"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-pttoggle="' + pt.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button>' +
 '<button class="icon-btn del-btn" data-ptdel="' + pt.id + '">Delete</button></div></div>';
 }).join('');
@@ -2302,9 +2364,9 @@ const btn = this;
 btn.disabled = true; btn.textContent = '⏳ Adding...';
 await fetch(SUPABASE_URL + '/rest/v1/product_types', {
 method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-body: JSON.stringify({ name: name, slug: slug, subcategory_id: subcategoryId, category_id: cat ? cat.parent_id : null, google_product_category: document.getElementById('ptGoogleCategory').value.trim() || null, display_order: parseInt(document.getElementById('ptOrder').value) || 0, status: 'active' })
+body: JSON.stringify({ name: name, slug: slug, subcategory_id: subcategoryId, category_id: cat ? cat.parent_id : null, google_product_category: document.getElementById('ptGoogleCategory').value.trim() || null, display_order: parseInt(document.getElementById('ptOrder').value) || 0, commission_percent: document.getElementById('ptCommission').value ? Number(document.getElementById('ptCommission').value) : null, status: 'active' })
 });
-['ptName','ptGoogleCategory','ptOrder'].forEach(function(id){ document.getElementById(id).value = ''; });
+['ptName','ptGoogleCategory','ptOrder','ptCommission'].forEach(function(id){ document.getElementById(id).value = ''; });
 document.getElementById('ptCategory').value = '';
 btn.disabled = false; btn.textContent = '+ Add Product Type';
 loadProductTypes();
@@ -2365,7 +2427,7 @@ empty.style.display = 'none';
 const groups = [
   { title: '🏢 Business Info', keys: ['site_name','platform_gstin','platform_business_address','platform_state','support_whatsapp_number','return_policy_text'] },
   { title: '🚚 Delivery & Shipping', keys: ['standard_delivery_charge','standard_delivery_days_min','standard_delivery_days_max','instant_delivery_charge','instant_delivery_minutes','dark_store_default_radius_km','free_shipping_min_amount'] },
-  { title: '💳 Payments & Commission', keys: ['cod_enabled','default_commission_percent','payment_gateway_fee_percent','tcs_percent','gst_on_commission_percent'] },
+  { title: '💳 Payments & Commission', keys: ['cod_enabled','default_commission_percent','payment_gateway_fee_percent','tcs_percent','tds_percent','gst_on_commission_percent','fulfillment_handling_charge','return_rto_charge_amount','vendor_cancellation_penalty_percent'] },
   { title: '⚙️ System', keys: ['maintenance_mode'] }
 ];
 
@@ -3467,14 +3529,23 @@ if (pending.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; 
 empty.style.display = 'none';
 list.innerHTML = pending.map(function(r) {
 const order = allOrders.find(function(o) { return o.id === r.order_id; });
-return '<div class="item-card"><div class="ic-info"><div class="ic-title">Order #' + r.order_id.slice(0,8) + (order ? ' — ' + order.customer_name : '') + '</div><div class="ic-sub"><b>' + r.reason + '</b>' + (r.description ? ' — ' + r.description : '') + '</div></div>' +
+return '<div class="item-card" style="flex-direction:column; align-items:stretch;"><div class="ic-info"><div class="ic-title">Order #' + r.order_id.slice(0,8) + (order ? ' — ' + order.customer_name : '') + '</div><div class="ic-sub"><b>' + r.reason + '</b>' + (r.description ? ' — ' + r.description : '') + '</div></div>' +
+'<label style="font-size:9.5px; color:#6b7280; margin-top:6px; display:block;">Whose fault is this return? (decides commission-reverse + who bears RTO charge)</label>' +
+'<select class="form-input" id="faultType-' + r.id + '" style="font-size:11px; margin:4px 0 8px;">' +
+'<option value="customer">Customer (changed mind / ordered wrong size etc.)</option>' +
+'<option value="seller_defective">Seller — Defective item</option>' +
+'<option value="seller_wrong_item">Seller — Wrong item sent</option>' +
+'<option value="seller_damaged">Seller — Damaged in transit (packaging fault)</option>' +
+'</select>' +
 '<div class="item-actions"><button class="icon-btn on-btn" data-retapprove="' + r.id + '">✓ Approve</button><button class="icon-btn off-btn" data-retreject="' + r.id + '">✕ Reject</button></div></div>';
 }).join('');
 document.querySelectorAll('[data-retapprove]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 const id = btn.getAttribute('data-retapprove');
 const ret = allReturns.find(function(r) { return r.id === id; });
-await fetch(SUPABASE_URL + '/rest/v1/order_returns?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ approval_status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: currentAdmin.name || 'admin' }) });
+const faultSelect = document.getElementById('faultType-' + id);
+const faultType = faultSelect ? faultSelect.value : 'customer';
+await fetch(SUPABASE_URL + '/rest/v1/order_returns?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ approval_status: 'approved', fault_type: faultType, reviewed_at: new Date().toISOString(), reviewed_by: currentAdmin.id }) });
 if (ret) {
 const order = allOrders.find(function(o) { return o.id === ret.order_id; });
 if (order) {
@@ -3488,7 +3559,7 @@ document.querySelectorAll('[data-retreject]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 if (!confirm('Reject this return request?')) return;
 const id = btn.getAttribute('data-retreject');
-await fetch(SUPABASE_URL + '/rest/v1/order_returns?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ approval_status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: currentAdmin.name || 'admin' }) });
+await fetch(SUPABASE_URL + '/rest/v1/order_returns?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ approval_status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: currentAdmin.id }) });
 loadAllData();
 });
 });
