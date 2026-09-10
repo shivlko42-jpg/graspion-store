@@ -231,6 +231,7 @@ Continue with Google
 <div class="side-item" data-page="delivery">🚴 Delivery Partners</div>
 <div class="side-item" data-page="customers">👥 Customers</div>
 <div class="side-item" data-page="payments">💰 Payments</div>
+<div class="side-item" data-page="reports">📈 Reports</div>
 <div class="side-item" data-page="warehouses">🏬 Dark Stores</div>
 <div class="side-item" data-page="products">📦 Products</div>
 <div class="side-item" data-page="categories">📁 Categories</div>
@@ -437,6 +438,17 @@ Continue with Google
 <h3>💰 Vendor Payouts</h3>
 <div id="payoutList"></div>
 <div class="empty-state" id="payoutEmpty" style="display:none;">No payout data yet</div>
+</div>
+
+<div class="panel" data-section="reports">
+<h3>📈 Business Reports <span style="font-size:10px;color:#9ca3af;font-weight:400;">(Super Admin only)</span></h3>
+<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">GMV, commission earned, orders, and new vendors — grouped by quarter or year.</p>
+<div style="display:flex; gap:8px; margin-bottom:14px;">
+<button id="reportTabQuarterly" data-reporttab="quarterly" style="flex:1; background:#7c3aed; color:#fff; border:none; padding:9px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer;">Quarterly</button>
+<button id="reportTabYearly" data-reporttab="yearly" style="flex:1; background:#f3f1f8; color:#6b7280; border:none; padding:9px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer;">Yearly</button>
+</div>
+<div id="reportTable"></div>
+<div class="empty-state" id="reportEmpty" style="display:none;">No settlement data yet to report on</div>
 </div>
 
 <div class="panel" data-section="delivery">
@@ -1064,6 +1076,41 @@ const thisWeek = events.filter(function(e) { return new Date(e.installed_at).get
 document.getElementById('weekInstallsCount').textContent = thisWeek;
 } catch (err) { /* stats are a nice-to-have, fail silently */ }
 }
+let currentReportPeriod = 'quarterly';
+async function loadBusinessReport(period) {
+currentReportPeriod = period || currentReportPeriod;
+document.getElementById('reportTabQuarterly').style.background = currentReportPeriod === 'quarterly' ? '#7c3aed' : '#f3f1f8';
+document.getElementById('reportTabQuarterly').style.color = currentReportPeriod === 'quarterly' ? '#fff' : '#6b7280';
+document.getElementById('reportTabYearly').style.background = currentReportPeriod === 'yearly' ? '#7c3aed' : '#f3f1f8';
+document.getElementById('reportTabYearly').style.color = currentReportPeriod === 'yearly' ? '#fff' : '#6b7280';
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_business_report', {
+method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ p_period: currentReportPeriod })
+});
+const rows = res.ok ? await res.json() : [];
+const table = document.getElementById('reportTable');
+const empty = document.getElementById('reportEmpty');
+if (!res.ok || rows.length === 0) { empty.style.display = 'block'; table.innerHTML = ''; return; }
+empty.style.display = 'none';
+table.innerHTML = '<table style="width:100%; border-collapse:collapse; font-size:11.5px;">' +
+'<tr style="background:#faf9fd; text-align:left;"><th style="padding:8px;">Period</th><th style="padding:8px;">GMV</th><th style="padding:8px;">Commission</th><th style="padding:8px;">Orders</th><th style="padding:8px;">New Vendors</th><th style="padding:8px;">Payable to Vendors</th></tr>' +
+rows.map(function(r) {
+return '<tr style="border-top:1px solid #f0eef7;"><td style="padding:8px; font-weight:700;">' + r.period_label + '</td>' +
+'<td style="padding:8px;">₹' + Number(r.total_gmv).toLocaleString('en-IN') + '</td>' +
+'<td style="padding:8px; color:#7c3aed;">₹' + Number(r.total_commission).toLocaleString('en-IN') + '</td>' +
+'<td style="padding:8px;">' + r.total_orders + '</td>' +
+'<td style="padding:8px;">' + r.new_vendors + '</td>' +
+'<td style="padding:8px; color:#15803d;">₹' + Number(r.total_payable_to_vendors).toLocaleString('en-IN') + '</td></tr>';
+}).join('') + '</table>';
+} catch (err) {
+document.getElementById('reportEmpty').style.display = 'block';
+document.getElementById('reportEmpty').textContent = 'Could not load report (Super Admin access required)';
+}
+}
+document.getElementById('reportTabQuarterly').addEventListener('click', function() { loadBusinessReport('quarterly'); });
+document.getElementById('reportTabYearly').addEventListener('click', function() { loadBusinessReport('yearly'); });
+
 async function loadCategoryRecommendations() {
 try {
 const res = await fetch(SUPABASE_URL + '/rest/v1/category_action_recommendations?status=eq.pending&select=*,admins!category_action_recommendations_recommended_by_fkey(name),categories(name)&order=created_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
@@ -1507,6 +1554,7 @@ loadErpUpdates();
 loadPrebookingRequests();
 loadSponsoredBannerRequests();
 loadCategoryRecommendations();
+loadBusinessReport('quarterly');
 renderHomepageSections();
 populateAdminProductDropdowns();
 renderProfitability();
