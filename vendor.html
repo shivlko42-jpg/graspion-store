@@ -253,6 +253,14 @@ window.addEventListener('load', function() {
         <div class="form-group"><label>GSTIN</label><input class="form-input" id="sGstin" placeholder="e.g. 09ABCDE1234F1Z5"></div>
         <div class="form-group"><label>Store Address</label><input class="form-input" id="sAddress" placeholder="Store / warehouse address"></div>
       </div>
+      <div class="form-row" style="background:#fef9c3; padding:10px; border-radius:10px; margin:0 0 12px;">
+        <div class="form-group"><label>FSSAI License Number <span style="font-weight:400; color:#92400e;">(required to sell Grocery or Sweets & Bakery)</span></label><input class="form-input" id="sFssaiNumber" placeholder="e.g. 12345678901234"></div>
+        <div class="form-group"><label>FSSAI Expiry Date</label><input class="form-input" id="sFssaiExpiry" type="date"></div>
+      </div>
+      <div class="form-row" style="background:#e0f2fe; padding:10px; border-radius:10px; margin:0 0 12px;">
+        <div class="form-group"><label>Drug License Number <span style="font-weight:400; color:#075985;">(required to sell Health & Wellness)</span></label><input class="form-input" id="sDrugNumber" placeholder="Drug license number"></div>
+        <div class="form-group"><label>Drug License Expiry Date</label><input class="form-input" id="sDrugExpiry" type="date"></div>
+      </div>
       <div class="form-row">
         <div class="form-group"><label>Bank Account Number</label><input class="form-input" id="sBankAccount" placeholder="Account number"></div>
         <div class="form-group"><label>IFSC Code</label><input class="form-input" id="sBankIfsc" placeholder="e.g. HDFC0001234"></div>
@@ -730,6 +738,10 @@ function populateSettingsForm() {
   loadPrebookingStatus();
   document.getElementById('sCommission').value = currentVendor.commission_percent != null ? (currentVendor.commission_percent + '% (special rate)') : 'Standard category rates apply';
   document.getElementById('sGstin').value = currentVendor.gstin || '';
+  document.getElementById('sFssaiNumber').value = currentVendor.fssai_license_number || '';
+  document.getElementById('sFssaiExpiry').value = currentVendor.fssai_license_expiry || '';
+  document.getElementById('sDrugNumber').value = currentVendor.drug_license_number || '';
+  document.getElementById('sDrugExpiry').value = currentVendor.drug_license_expiry || '';
   document.getElementById('sAddress').value = currentVendor.address || '';
   document.getElementById('sBankAccount').value = currentVendor.bank_account_no || '';
   document.getElementById('sBankIfsc').value = currentVendor.bank_ifsc || '';
@@ -857,6 +869,10 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async funct
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         gstin: document.getElementById('sGstin').value.trim(),
+        fssai_license_number: document.getElementById('sFssaiNumber').value.trim() || null,
+        fssai_license_expiry: document.getElementById('sFssaiExpiry').value || null,
+        drug_license_number: document.getElementById('sDrugNumber').value.trim() || null,
+        drug_license_expiry: document.getElementById('sDrugExpiry').value || null,
         address: document.getElementById('sAddress').value.trim(),
         bank_account_no: document.getElementById('sBankAccount').value.trim(),
         bank_ifsc: document.getElementById('sBankIfsc').value.trim(),
@@ -865,6 +881,8 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async funct
       })
     });
     currentVendor.gstin = document.getElementById('sGstin').value.trim();
+    currentVendor.fssai_license_number = document.getElementById('sFssaiNumber').value.trim();
+    currentVendor.drug_license_number = document.getElementById('sDrugNumber').value.trim();
     currentVendor.is_open = selectedStoreOpen;
     currentVendor.local_delivery_enabled = document.getElementById('localDeliveryEnabled').checked;
     btn.textContent = '✓ Saved';
@@ -1880,6 +1898,20 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
       body: JSON.stringify(productPayload)
     });
     const insertedData = await insertRes.json();
+    if (!insertRes.ok) {
+      const errMsg = (insertedData && insertedData.message) || '';
+      const friendlyErrors = {
+        FSSAI_LICENSE_REQUIRED: 'This category requires an FSSAI License. Please add your FSSAI number in Settings first, then try adding this product again.',
+        FSSAI_LICENSE_EXPIRED: 'Your FSSAI License has expired. Please update it in Settings before adding products in this category.',
+        DRUG_LICENSE_REQUIRED: 'This category requires a Drug License. Please add your Drug License number in Settings first, then try adding this product again.',
+        DRUG_LICENSE_EXPIRED: 'Your Drug License has expired. Please update it in Settings before adding products in this category.'
+      };
+      const friendly = Object.keys(friendlyErrors).find(function(key) { return errMsg.indexOf(key) !== -1; });
+      alert(friendly ? '⚠️ ' + friendlyErrors[friendly] : 'Could not save product — please check your details and try again.');
+      btn.textContent = editingProductId ? '💾 Save Changes' : '+ Add Product';
+      btn.disabled = false;
+      return;
+    }
     const newProductId = editingProductId || (insertedData[0] ? insertedData[0].id : null);
 
     // Dark-store vendors: save the rack/shelf/bin location right here, no separate admin step needed

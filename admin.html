@@ -654,6 +654,7 @@ Continue with Google
 <input class="form-input" id="banMobileImg" placeholder="Mobile image URL">
 <input class="form-input" id="banVideoUrl" placeholder="Video URL (optional — plays instead of image if set)" style="grid-column:1/-1;">
 <div style="grid-column:1/-1;"><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Relevant Category (optional — lets this banner get priority for customers interested in this category)</label><select class="form-input" id="banCategory"><option value="">— No specific category —</option></select></div>
+<label style="grid-column:1/-1; display:flex; align-items:center; gap:8px; font-size:11px; color:#6b7280;"><input type="checkbox" id="banHideOverlay"> This image/video already has its message baked in — don't show title/subtitle text on top of it</label>
 <input class="form-input" id="banButtonText" placeholder="Button text e.g. Shop Now">
 <input class="form-input" id="banLink" placeholder="Link URL">
 <div><label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Priority (lower number = shown first)</label><input class="form-input" id="banPriority" placeholder="e.g. 0, 1, 2..." type="number"></div>
@@ -1978,6 +1979,12 @@ return '<div style="display:flex; gap:8px; flex-wrap:wrap; margin:6px 0;">' +
 '<input type="text" id="vaddr-' + v.id + '" value="' + (v.address || '').replace(/"/g,'&quot;') + '" placeholder="Store address" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11px; box-sizing:border-box;">' +
 '<label style="font-size:10px; color:#6b7280; display:block; margin-top:6px;">GSTIN</label>' +
 '<input type="text" id="vgstin-' + v.id + '" value="' + (v.gstin || '').replace(/"/g,'&quot;') + '" placeholder="GSTIN" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11px; box-sizing:border-box;">' +
+(function() {
+  const today = new Date().toISOString().slice(0,10);
+  const fssaiStatus = !v.fssai_license_number ? '<span style="color:#dc2626;">❌ Not on file</span>' : (v.fssai_license_expiry && v.fssai_license_expiry < today ? '<span style="color:#dc2626;">⚠️ ' + v.fssai_license_number + ' (EXPIRED)</span>' : '<span style="color:#15803d;">✅ ' + v.fssai_license_number + '</span>');
+  const drugStatus = !v.drug_license_number ? '<span style="color:#9ca3af;">Not on file</span>' : (v.drug_license_expiry && v.drug_license_expiry < today ? '<span style="color:#dc2626;">⚠️ ' + v.drug_license_number + ' (EXPIRED)</span>' : '<span style="color:#15803d;">✅ ' + v.drug_license_number + '</span>');
+  return '<div style="font-size:10.5px; margin-top:6px; padding:6px 8px; background:#faf9fd; border-radius:6px;"><b>FSSAI:</b> ' + fssaiStatus + ' &nbsp; <b>Drug License:</b> ' + drugStatus + '</div>';
+})() +
 '<div style="display:flex; gap:6px; margin-top:6px;">' +
 '<div style="flex:1;"><label style="font-size:10px; color:#6b7280; display:block;">Bank Account No.</label><input type="text" id="vbank-' + v.id + '" value="' + (v.bank_account_no || '').replace(/"/g,'&quot;') + '" placeholder="Account number" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11px; box-sizing:border-box;"></div>' +
 '<div style="flex:1;"><label style="font-size:10px; color:#6b7280; display:block;">IFSC</label><input type="text" id="vifsc-' + v.id + '" value="' + (v.bank_ifsc || '').replace(/"/g,'&quot;') + '" placeholder="IFSC code" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11px; box-sizing:border-box;"></div>' +
@@ -2464,9 +2471,10 @@ btn.textContent = '⏳ Adding...';
 await fetch(SUPABASE_URL + '/rest/v1/banners', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-body: JSON.stringify({ title: title, subtitle: document.getElementById('banSubtitle').value.trim(), desktop_image: document.getElementById('banDesktopImg').value.trim(), mobile_image: document.getElementById('banMobileImg').value.trim(), video_url: document.getElementById('banVideoUrl').value.trim() || null, category_id: document.getElementById('banCategory').value || null, button_text: document.getElementById('banButtonText').value.trim(), link_url: document.getElementById('banLink').value.trim(), priority: parseInt(document.getElementById('banPriority').value) || 0, status: 'active' })
+body: JSON.stringify({ title: title, subtitle: document.getElementById('banSubtitle').value.trim(), desktop_image: document.getElementById('banDesktopImg').value.trim(), mobile_image: document.getElementById('banMobileImg').value.trim(), video_url: document.getElementById('banVideoUrl').value.trim() || null, category_id: document.getElementById('banCategory').value || null, hide_text_overlay: document.getElementById('banHideOverlay').checked, button_text: document.getElementById('banButtonText').value.trim(), link_url: document.getElementById('banLink').value.trim(), priority: parseInt(document.getElementById('banPriority').value) || 0, status: 'active' })
 });
 ['banTitle','banSubtitle','banDesktopImg','banMobileImg','banVideoUrl','banCategory','banButtonText','banLink'].forEach(function(id){ document.getElementById(id).value = ''; });
+document.getElementById('banHideOverlay').checked = false;
 document.getElementById('banPriority').value = '';
 btn.textContent = '+ Add Banner';
 loadAllData();
