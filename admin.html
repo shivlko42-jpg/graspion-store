@@ -708,12 +708,17 @@ Continue with Google
 <option value="finance_manager">Finance Manager</option>
 <option value="support_staff">Support Staff</option>
 <option value="category_manager">Category Manager</option>
+<option value="category_executive">Category Executive</option>
 <option value="super_admin">Super Admin</option>
 </select>
 </div>
 <div id="staffCategoryPicker" style="display:none; margin-top:10px; padding:10px; background:#fdf4ff; border-radius:10px;">
 <label style="font-size:10.5px; font-weight:700; color:#a21caf; display:block; margin-bottom:6px;">Which categories will this manager handle? (select one or more)</label>
 <select class="form-input" id="staffCategories" multiple style="height:100px;"></select>
+</div>
+<div id="staffManagerPicker" style="display:none; margin-top:10px; padding:10px; background:#eff6ff; border-radius:10px;">
+<label style="font-size:10.5px; font-weight:700; color:#1d4ed8; display:block; margin-bottom:6px;">Reports to which Category Manager? (Executive automatically inherits that manager's categories — recommend-only access, can't directly approve/edit)</label>
+<select class="form-input" id="staffReportingManager"><option value="">— Select Manager —</option></select>
 </div>
 <button class="login-btn" id="staffAddBtn" style="margin-top:10px;">+ Add Staff Member</button>
 <div id="staffList" style="margin-top:16px;"></div>
@@ -738,6 +743,13 @@ Continue with Google
 <p style="font-size:11px; color:#9ca3af; margin:8px 0 12px;">Vendors requesting to sell bulk/custom items with advance-booking (like FPOs taking festival gift orders).</p>
 <div id="pbRequestsList"></div>
 <div class="empty-state" id="pbRequestsEmpty" style="display:none;">No pending pre-booking requests</div>
+</details>
+
+<details class="panel" data-section="applications">
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">📋 Category Executive Recommendations <span id="carRequestCount" style="font-size:11px;color:#9ca3af;"></span> ▾</h3></summary>
+<p style="font-size:11px; color:#9ca3af; margin:8px 0 12px;">If you're a Category Manager, recommendations from your reporting Executives (vendor approvals, price changes, flags, etc.) show up here for your approval.</p>
+<div id="carRequestsList"></div>
+<div class="empty-state" id="carRequestsEmpty" style="display:none;">No pending recommendations</div>
 </details>
 
 <details class="panel" data-section="applications">
@@ -1051,6 +1063,49 @@ const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 const thisWeek = events.filter(function(e) { return new Date(e.installed_at).getTime() > weekAgo; }).length;
 document.getElementById('weekInstallsCount').textContent = thisWeek;
 } catch (err) { /* stats are a nice-to-have, fail silently */ }
+}
+async function loadCategoryRecommendations() {
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/category_action_recommendations?status=eq.pending&select=*,admins!category_action_recommendations_recommended_by_fkey(name),categories(name)&order=created_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const recs = res.ok ? await res.json() : [];
+document.getElementById('carRequestCount').textContent = recs.length ? '(' + recs.length + ')' : '';
+const list = document.getElementById('carRequestsList');
+const empty = document.getElementById('carRequestsEmpty');
+if (recs.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+const typeLabels = { vendor_approval: '🏪 Vendor Approval', product_flag: '🚩 Product Flag', price_change: '💰 Price Change', vendor_performance_note: '📊 Performance Note', offer_suggestion: '🎉 Offer Suggestion' };
+list.innerHTML = recs.map(function(r) {
+const recName = r.admins ? r.admins.name : 'Executive';
+const catName = r.categories ? r.categories.name : '';
+return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:12px; margin-bottom:10px;">' +
+'<div style="font-size:11px; font-weight:700; color:#7c3aed;">' + (typeLabels[r.target_type] || r.target_type) + ' · ' + catName + '</div>' +
+'<div style="font-size:12.5px; font-weight:700; margin-top:4px;">' + r.action + '</div>' +
+(r.reason ? '<div style="font-size:11px; color:#6b7280; margin-top:2px;">' + r.reason + '</div>' : '') +
+'<div style="font-size:10px; color:#9ca3af; margin-top:4px;">Recommended by ' + recName + '</div>' +
+'<div style="margin-top:10px; display:flex; gap:8px;">' +
+'<button data-carapprove="' + r.id + '" style="flex:1; background:#dcfce7; color:#15803d; border:none; padding:8px; border-radius:8px; font-size:11px; font-weight:700;">✓ Approve</button>' +
+'<button data-carreject="' + r.id + '" style="flex:1; background:#fee2e2; color:#dc2626; border:none; padding:8px; border-radius:8px; font-size:11px; font-weight:700;">✕ Reject</button>' +
+'</div></div>';
+}).join('');
+document.querySelectorAll('[data-carapprove]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+await fetch(SUPABASE_URL + '/rest/v1/category_action_recommendations?id=eq.' + btn.getAttribute('data-carapprove'), {
+method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ status: 'approved', reviewed_by: currentAdmin.id, reviewed_at: new Date().toISOString() })
+});
+loadCategoryRecommendations();
+});
+});
+document.querySelectorAll('[data-carreject]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+await fetch(SUPABASE_URL + '/rest/v1/category_action_recommendations?id=eq.' + btn.getAttribute('data-carreject'), {
+method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify({ status: 'rejected', reviewed_by: currentAdmin.id, reviewed_at: new Date().toISOString() })
+});
+loadCategoryRecommendations();
+});
+});
+} catch (err) {}
 }
 async function loadSponsoredBannerRequests() {
 try {
@@ -1451,6 +1506,7 @@ loadInstallStats();
 loadErpUpdates();
 loadPrebookingRequests();
 loadSponsoredBannerRequests();
+loadCategoryRecommendations();
 renderHomepageSections();
 populateAdminProductDropdowns();
 renderProfitability();
@@ -2811,7 +2867,7 @@ loadAllData();
 });
 }
 // ===================== STAFF MANAGEMENT (super_admin only) =====================
-const roleLabels = { super_admin: 'Super Admin', orders_manager: 'Orders Manager', inventory_manager: 'Inventory Manager', marketing_manager: 'Marketing Manager', finance_manager: 'Finance Manager', support_staff: 'Support Staff', category_manager: 'Category Manager' };
+const roleLabels = { super_admin: 'Super Admin', orders_manager: 'Orders Manager', inventory_manager: 'Inventory Manager', marketing_manager: 'Marketing Manager', finance_manager: 'Finance Manager', support_staff: 'Support Staff', category_manager: 'Category Manager', category_executive: 'Category Executive' };
 let allAdminCategoryAssignments = [];
 async function loadAndRenderStaff() {
 try {
@@ -2833,7 +2889,8 @@ list.innerHTML = allStaff.map(function(s) {
 const isMe = currentAdmin && s.id === currentAdmin.id;
 const myCats = allAdminCategoryAssignments.filter(function(a) { return a.admin_id === s.id; }).map(function(a) { const c = allCategories.find(function(cc) { return cc.id === a.category_id; }); return c ? c.name : null; }).filter(Boolean);
 const catLine = s.role === 'category_manager' ? '<div class="ic-sub" style="color:#a21caf;">📁 ' + (myCats.length ? myCats.join(', ') : 'No categories assigned yet') + '</div>' : '';
-return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + s.name + (isMe ? ' (You)' : '') + '</div><div class="ic-sub">' + (roleLabels[s.role] || s.role) + ' · ' + (s.status || 'active') + '</div>' + catLine + '</div>' +
+const reportsToLine = s.role === 'category_executive' ? ('<div class="ic-sub" style="color:#1d4ed8;">↳ Reports to: ' + ((allStaff.find(function(m) { return m.id === s.reporting_manager_id; }) || {}).name || 'Not set') + '</div>') : '';
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + s.name + (isMe ? ' (You)' : '') + '</div><div class="ic-sub">' + (roleLabels[s.role] || s.role) + ' · ' + (s.status || 'active') + '</div>' + catLine + reportsToLine + '</div>' +
 (isMe ? '' : '<div class="item-actions"><button class="icon-btn del-btn" data-staffdel="' + s.id + '">Remove</button></div>') + '</div>';
 }).join('');
 document.querySelectorAll('[data-staffdel]').forEach(function(btn) {
@@ -2855,7 +2912,7 @@ btn.textContent = '⏳ Adding...';
 const res = await fetch(SUPABASE_URL + '/rest/v1/admins', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-body: JSON.stringify({ auth_user_id: uid, name: name, role: role, status: 'active' })
+body: JSON.stringify({ auth_user_id: uid, name: name, role: role, status: 'active', reporting_manager_id: role === 'category_executive' ? (document.getElementById('staffReportingManager').value || null) : null })
 });
 if (!res.ok) {
 const errText = await res.text();
@@ -2880,11 +2937,16 @@ loadAndRenderStaff();
 });
 document.getElementById('staffRole').addEventListener('change', function() {
 document.getElementById('staffCategoryPicker').style.display = this.value === 'category_manager' ? 'block' : 'none';
+document.getElementById('staffManagerPicker').style.display = this.value === 'category_executive' ? 'block' : 'none';
 if (this.value === 'category_manager') {
 const sel = document.getElementById('staffCategories');
 if (sel.options.length === 0) {
 sel.innerHTML = allCategories.filter(function(c) { return !c.parent_id; }).map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
 }
+} else if (this.value === 'category_executive') {
+const mgrSel = document.getElementById('staffReportingManager');
+const managers = allStaff.filter(function(s) { return s.role === 'category_manager'; });
+mgrSel.innerHTML = '<option value="">— Select Manager —</option>' + managers.map(function(m) { return '<option value="' + m.id + '">' + m.name + '</option>'; }).join('');
 }
 });
 
