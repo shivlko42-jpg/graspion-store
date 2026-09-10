@@ -707,8 +707,13 @@ Continue with Google
 <option value="marketing_manager">Marketing Manager</option>
 <option value="finance_manager">Finance Manager</option>
 <option value="support_staff">Support Staff</option>
+<option value="category_manager">Category Manager</option>
 <option value="super_admin">Super Admin</option>
 </select>
+</div>
+<div id="staffCategoryPicker" style="display:none; margin-top:10px; padding:10px; background:#fdf4ff; border-radius:10px;">
+<label style="font-size:10.5px; font-weight:700; color:#a21caf; display:block; margin-bottom:6px;">Which categories will this manager handle? (select one or more)</label>
+<select class="form-input" id="staffCategories" multiple style="height:100px;"></select>
 </div>
 <button class="login-btn" id="staffAddBtn" style="margin-top:10px;">+ Add Staff Member</button>
 <div id="staffList" style="margin-top:16px;"></div>
@@ -2806,11 +2811,16 @@ loadAllData();
 });
 }
 // ===================== STAFF MANAGEMENT (super_admin only) =====================
-const roleLabels = { super_admin: 'Super Admin', orders_manager: 'Orders Manager', inventory_manager: 'Inventory Manager', marketing_manager: 'Marketing Manager', finance_manager: 'Finance Manager', support_staff: 'Support Staff' };
+const roleLabels = { super_admin: 'Super Admin', orders_manager: 'Orders Manager', inventory_manager: 'Inventory Manager', marketing_manager: 'Marketing Manager', finance_manager: 'Finance Manager', support_staff: 'Support Staff', category_manager: 'Category Manager' };
+let allAdminCategoryAssignments = [];
 async function loadAndRenderStaff() {
 try {
-const res = await fetch(SUPABASE_URL + '/rest/v1/admins?select=*&order=created_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-allStaff = res.ok ? await res.json() : [];
+const [staffRes, assignRes] = await Promise.all([
+fetch(SUPABASE_URL + '/rest/v1/admins?select=*&order=created_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/admin_category_assignments?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } })
+]);
+allStaff = staffRes.ok ? await staffRes.json() : [];
+allAdminCategoryAssignments = assignRes.ok ? await assignRes.json() : [];
 renderStaff();
 } catch (err) { allStaff = []; }
 }
@@ -2821,7 +2831,9 @@ if (allStaff.length === 0) { empty.style.display = 'block'; list.innerHTML = '';
 empty.style.display = 'none';
 list.innerHTML = allStaff.map(function(s) {
 const isMe = currentAdmin && s.id === currentAdmin.id;
-return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + s.name + (isMe ? ' (You)' : '') + '</div><div class="ic-sub">' + (roleLabels[s.role] || s.role) + ' · ' + (s.status || 'active') + '</div></div>' +
+const myCats = allAdminCategoryAssignments.filter(function(a) { return a.admin_id === s.id; }).map(function(a) { const c = allCategories.find(function(cc) { return cc.id === a.category_id; }); return c ? c.name : null; }).filter(Boolean);
+const catLine = s.role === 'category_manager' ? '<div class="ic-sub" style="color:#a21caf;">📁 ' + (myCats.length ? myCats.join(', ') : 'No categories assigned yet') + '</div>' : '';
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + s.name + (isMe ? ' (You)' : '') + '</div><div class="ic-sub">' + (roleLabels[s.role] || s.role) + ' · ' + (s.status || 'active') + '</div>' + catLine + '</div>' +
 (isMe ? '' : '<div class="item-actions"><button class="icon-btn del-btn" data-staffdel="' + s.id + '">Remove</button></div>') + '</div>';
 }).join('');
 document.querySelectorAll('[data-staffdel]').forEach(function(btn) {
@@ -2842,18 +2854,38 @@ const btn = document.getElementById('staffAddBtn');
 btn.textContent = '⏳ Adding...';
 const res = await fetch(SUPABASE_URL + '/rest/v1/admins', {
 method: 'POST',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
 body: JSON.stringify({ auth_user_id: uid, name: name, role: role, status: 'active' })
 });
 if (!res.ok) {
 const errText = await res.text();
 alert('Could not add staff member:\n' + errText);
 } else {
+const newAdmin = (await res.json())[0];
+if (role === 'category_manager' && newAdmin) {
+const selectedCats = Array.from(document.getElementById('staffCategories').selectedOptions).map(function(o) { return o.value; });
+if (selectedCats.length > 0) {
+await fetch(SUPABASE_URL + '/rest/v1/admin_category_assignments', {
+method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+body: JSON.stringify(selectedCats.map(function(catId) { return { admin_id: newAdmin.id, category_id: catId }; }))
+});
+}
+}
 document.getElementById('staffAuthUserId').value = '';
 document.getElementById('staffName').value = '';
+document.getElementById('staffCategories').selectedIndex = -1;
 }
 btn.textContent = '+ Add Staff Member';
 loadAndRenderStaff();
+});
+document.getElementById('staffRole').addEventListener('change', function() {
+document.getElementById('staffCategoryPicker').style.display = this.value === 'category_manager' ? 'block' : 'none';
+if (this.value === 'category_manager') {
+const sel = document.getElementById('staffCategories');
+if (sel.options.length === 0) {
+sel.innerHTML = allCategories.filter(function(c) { return !c.parent_id; }).map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('');
+}
+}
 });
 
 if ('serviceWorker' in navigator) {
