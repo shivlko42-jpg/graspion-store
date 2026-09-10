@@ -508,7 +508,7 @@ Continue with Google
 </div>
 
 <div class="modal-overlay" id="myOrdersModal" style="display:none;">
-<div class="modal-box" style="max-width:460px; width:100%; background:#fff; border-radius:20px; padding:22px; max-height:80vh; overflow-y:auto;">
+<div class="modal-box" style="max-width:460px; width:100%; background:#fff; border-radius:20px; padding:22px; max-height:80vh; min-height:380px; overflow-y:auto; display:flex; flex-direction:column;">
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
 <h3>📦 My Orders</h3>
 <div>
@@ -2498,7 +2498,7 @@ let myOrdersTab = 'recent';
 async function loadMyOrders(){
 const list = document.getElementById('myOrdersList');
 const empty = document.getElementById('myOrdersEmpty');
-list.innerHTML = '<div style="text-align:center; padding:20px; color:#9ca3af; font-size:12px;">Loading...</div>';
+list.innerHTML = '<div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:260px; color:#9ca3af; font-size:12px;">⏳ Loading your orders...</div>';
 try {
 const res = await fetch(SUPABASE_URL + '/rest/v1/orders?customer_id=eq.' + currentCustomer.id + '&select=*&order=created_at.desc', {
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
