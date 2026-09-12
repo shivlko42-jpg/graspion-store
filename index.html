@@ -3130,6 +3130,13 @@ setTimeout(maybeShowInstallNudge, 1200); // slight delay so it doesn't fight wit
 // product is open, so search engines that execute JS can pick up rich
 // snippet info (price, availability). Reverted when the modal closes.
 document.title = p.name + ' - Buy Online at Best Price | Graspion';
+// Update the address bar so this exact product becomes shareable/bookmarkable
+// and the browser's own back-button can close it naturally — this also
+// gives each product a real, distinct URL state for SEO purposes, not just
+// a JS-only modal indistinguishable from the homepage.
+if (new URLSearchParams(window.location.search).get('product') !== productId) {
+history.pushState({ graspionProduct: productId }, '', '?product=' + encodeURIComponent(productId));
+}
 let productSchemaTag = document.getElementById('productSchema');
 if (!productSchemaTag) {
   productSchemaTag = document.createElement('script');
@@ -3399,8 +3406,21 @@ function closeProductDetailModal() {
   document.title = 'Graspion - Every Need, Fast Delivery';
   const productSchemaTag = document.getElementById('productSchema');
   if (productSchemaTag) productSchemaTag.remove();
+  if (new URLSearchParams(window.location.search).get('product')) {
+    history.pushState(null, '', window.location.pathname);
+  }
 }
 document.getElementById('closeProductDetailBtn').addEventListener('click', closeProductDetailModal);
+// Browser back-button while a product is open should close it (matching
+// user expectation) rather than navigating away from the site entirely.
+window.addEventListener('popstate', function() {
+  if (!new URLSearchParams(window.location.search).get('product') && document.getElementById('productDetailModal').style.display !== 'none') {
+    document.getElementById('productDetailModal').style.display = 'none';
+    document.title = 'Graspion - Every Need, Fast Delivery';
+    const productSchemaTag = document.getElementById('productSchema');
+    if (productSchemaTag) productSchemaTag.remove();
+  }
+});
 
 // ===================== RETURN REQUEST (Phase 4) =====================
 let returnOrderId = null;

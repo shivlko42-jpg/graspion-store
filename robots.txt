@@ -4,4 +4,4 @@ Disallow: /admin.html
 Disallow: /vendor.html
 Disallow: /rider.html
 
-Sitemap: https://shivlko42-jpg.github.io/graspion-store/sitemap.xml
+Sitemap: https://fghhbmdgelnpirysbusl.supabase.co/functions/v1/dynamic-sitemap
