@@ -3161,13 +3161,13 @@ return '<button type="button" class="pd-attr-btn" data-attrname="' + attrName + 
 
 content.innerHTML =
 mainImgHtml + thumbsHtml +
-'<div style="margin-top:14px;"><div style="font-size:11px; color:#9ca3af;">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div>' +
+'<div style="margin-top:14px;"><button id="pdVendorToggle" style="background:none; border:none; padding:0; cursor:pointer; font-size:11px; color:#7c3aed; font-weight:700; display:flex; align-items:center; gap:4px;">' + (vendor ? vendor.icon + ' Sold by ' + vendor.name : '') + ' <span style="font-size:9px;">▾ tap for details</span></button>' +
+'<div id="pdVendorDetails" style="display:none; margin-top:6px; background:#faf9fd; border-radius:10px; padding:10px; font-size:11px; color:#4b5563; line-height:1.7;"><b>' + (vendor ? vendor.name : 'Graspion Seller') + '</b>' + (vendor && vendor.gstin ? '<br>GSTIN: ' + vendor.gstin : '') + (vendor && vendor.address ? '<br>📍 ' + vendor.address : '') + (vendor && vendor.email ? '<br>✉️ ' + vendor.email : '') + (vendor && vendor.phone ? '<br>📞 ' + vendor.phone : '') + '</div>' +
 '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;"><h2 style="font-size:18px; margin-top:2px;">' + p.name + '</h2><button id="pdWishlistBtn" data-pdwishlist="' + p.id + '" style="flex:0 0 auto; background:#f3f1f8; border:none; width:34px; height:34px; border-radius:50%; font-size:16px; cursor:pointer; color:' + (wishlistIds.has(p.id) ? '#ec4899' : '#9ca3af') + ';">' + (wishlistIds.has(p.id) ? '♥' : '♡') + '</button></div>' +
 '<div id="pdPriceRow" style="display:flex; align-items:center; gap:8px; margin-top:6px;"><span id="pdPrice" style="font-size:20px; font-weight:900; color:#7c3aed;">₹' + p.price + '</span>' + (p.old > p.price ? '<span style="text-decoration:line-through; color:#9ca3af; font-size:13px;">₹' + p.old + '</span><span style="color:#15803d; font-size:11px; font-weight:700;">' + p.off + '</span>' : '') + '</div>' +
 variantSelectorHtml +
 (avgRating ? '<div style="margin-top:6px; font-size:12px;">⭐ ' + avgRating + ' (' + reviews.length + ' review' + (reviews.length !== 1 ? 's' : '') + ')</div>' : '<div style="margin-top:6px; font-size:11px; color:#9ca3af;">No reviews yet</div>') +
 (p.feature ? '<p style="font-size:12.5px; color:#4b5563; margin-top:10px; line-height:1.5;">' + p.feature + '</p>' : '') +
-'<div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; font-size:10.5px;">' + (p.returnable ? '<span class="prod-tag">✅ Returnable</span>' : '<span class="prod-tag">🚫 Non-Returnable</span>') + (p.codAllowed === false ? '<span class="prod-tag">💳 Prepaid Only</span>' : '<span class="prod-tag">💵 COD Available</span>') + '</div>' +
 docsHtml +
 (p.fullFeatures && p.fullFeatures.split('\n').filter(function(l){return l.trim();}).length > 0 ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:6px;">✨ Key Features</div><ul style="font-size:12.5px; color:#4b5563; line-height:1.7; padding-left:18px; margin:0;">' + p.fullFeatures.split('\n').filter(function(l){return l.trim();}).map(function(l){ return '<li>' + l.trim() + '</li>'; }).join('') + '</ul></div>' : '') +
 (p.longDescription ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:4px;">📝 Description</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line;">' + p.longDescription + '</p></div>' : (p.shortDescription ? '<div style="margin-top:14px;"><p style="font-size:12.5px; color:#4b5563; line-height:1.6;">' + p.shortDescription + '</p></div>' : '')) +
@@ -3176,8 +3176,19 @@ docsHtml +
 (p.installationInfo ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:4px;">🔧 Installation</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line;">' + p.installationInfo + '</p></div>' : '') +
 (p.careInstructions ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:4px;">🧴 Care Instructions</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line;">' + p.careInstructions + '</p></div>' : '') +
 (p.safetyInfo ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:4px;">⚠️ Safety Information</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line;">' + p.safetyInfo + '</p></div>' : '') +
-'<div style="margin-top:16px; background:#faf9fd; border-radius:12px; padding:12px;"><div style="font-size:12px; font-weight:800; margin-bottom:6px;">🏪 Seller Information</div><div style="font-size:11.5px; color:#4b5563; line-height:1.7;"><b>' + (vendor ? vendor.name : 'Graspion Seller') + '</b>' + (vendor && vendor.gstin ? '<br>GSTIN: ' + vendor.gstin : '') + (vendor && vendor.address ? '<br>' + vendor.address : '') + '</div></div>' +
-'<div id="pdReturnPolicyBlock" style="margin-top:10px; background:#f0fdf4; border-radius:12px; padding:12px;"><div style="font-size:12px; font-weight:800; margin-bottom:6px; color:#15803d;">↩️ Return &amp; Refund Policy</div><div style="font-size:11.5px; color:#4b5563; line-height:1.6;">Loading...</div></div>' +
+((p.brand || p.model_number || p.manufacturer || p.shipping_weight || p.hsn_code || p.gtin) ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:6px;">📋 Product Details</div><table style="width:100%; font-size:11.5px; color:#4b5563; border-collapse:collapse;">' +
+(p.brand ? '<tr><td style="padding:4px 0; color:#9ca3af; width:40%;">Brand</td><td style="padding:4px 0; font-weight:600;">' + p.brand + '</td></tr>' : '') +
+(p.model_number ? '<tr><td style="padding:4px 0; color:#9ca3af;">Model Number</td><td style="padding:4px 0; font-weight:600;">' + p.model_number + '</td></tr>' : '') +
+(p.manufacturer ? '<tr><td style="padding:4px 0; color:#9ca3af;">Manufacturer</td><td style="padding:4px 0; font-weight:600;">' + p.manufacturer + '</td></tr>' : '') +
+(p.shipping_weight ? '<tr><td style="padding:4px 0; color:#9ca3af;">Weight</td><td style="padding:4px 0; font-weight:600;">' + p.shipping_weight + '</td></tr>' : '') +
+(p.hsn_code ? '<tr><td style="padding:4px 0; color:#9ca3af;">HSN Code</td><td style="padding:4px 0; font-weight:600;">' + p.hsn_code + '</td></tr>' : '') +
+(p.gtin ? '<tr><td style="padding:4px 0; color:#9ca3af;">GTIN/Barcode</td><td style="padding:4px 0; font-weight:600;">' + p.gtin + '</td></tr>' : '') +
+'</table></div>' : '') +
+'<div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; font-size:10.5px;">' +
+(p.returnable ? '<button id="pdReturnableTag" class="prod-tag" style="border:none; background:none; padding:0; font:inherit; color:inherit; cursor:pointer;">✅ Returnable <span style="font-size:8px; color:#7c3aed;">▾ tap for policy</span></button>' : '<span class="prod-tag">🚫 Non-Returnable</span>') +
+(p.codAllowed === false ? '<span class="prod-tag">💳 Prepaid Only</span>' : '<span class="prod-tag">💵 COD Available</span>') +
+'</div>' +
+'<div id="pdReturnPolicyBlock" style="display:none; margin-top:10px; background:#f0fdf4; border-radius:12px; padding:12px;"><div style="font-size:12px; font-weight:800; margin-bottom:6px; color:#15803d;">↩️ Return &amp; Refund Policy</div><div style="font-size:11.5px; color:#4b5563; line-height:1.6;">Loading...</div></div>' +
 (p.isPreorder ?
 '<div style="margin-top:16px; background:#faf9fd; border:1.5px solid #e9d5ff; border-radius:14px; padding:14px;">' +
 '<div style="font-size:12.5px; font-weight:800; color:#7c3aed;">📦 Bulk / Pre-Order Item</div>' +
@@ -3197,8 +3208,9 @@ relatedHtml +
 '<div id="pdReviewsList">' + (reviews.length === 0 ? '<p style="font-size:12px; color:#9ca3af;">Be the first to review this product!</p>' : reviews.map(function(r) {
 return '<div style="border-bottom:1px solid #f7f6fb; padding:10px 0;"><div style="font-size:12px; font-weight:700;">' + '⭐'.repeat(Number(r.rating || 0)) + ' <span style="color:#9ca3af; font-weight:400;">' + (r.customer_name || 'Customer') + '</span>' + (r.is_verified ? ' <span style="font-size:9px; background:#dcfce7; color:#15803d; padding:2px 6px; border-radius:6px; font-weight:700;">✓ Verified Purchase</span>' : '') + '</div>' + (r.comment ? '<p style="font-size:12px; color:#4b5563; margin-top:4px;">' + r.comment + '</p>' : '') + (r.admin_reply ? '<div style="margin-top:6px; background:#f7f6fb; border-left:3px solid #7c3aed; padding:6px 10px; border-radius:6px; font-size:11.5px;"><b>Graspion team:</b> ' + r.admin_reply + '</div>' : '') + '</div>';
 }).join('')) + '</div>' +
-'<div style="margin-top:14px; background:#F1F8ED; border-radius:12px; padding:12px;">' +
-'<div style="font-size:11.5px; font-weight:700; margin-bottom:8px;">Write a review</div>' +
+'<button id="pdReviewToggle" style="width:100%; margin-top:14px; background:#F1F8ED; border:none; padding:12px; border-radius:12px; font-weight:700; font-size:12.5px; color:#3d7a1f; cursor:pointer; text-align:left;">✍️ Write a Review <span style="font-size:9px; font-weight:400;">▾ tap to rate &amp; review</span></button>' +
+'<div id="pdReviewForm" style="display:none; margin-top:8px; background:#F1F8ED; border-radius:12px; padding:12px;">' +
+'<div style="font-size:11.5px; font-weight:700; margin-bottom:8px;">Your Rating</div>' +
 '<div id="pdStarPicker" style="font-size:22px; margin-bottom:8px; cursor:pointer;">☆☆☆☆☆</div>' +
 '<textarea id="pdReviewComment" placeholder="Share your experience (optional)" style="width:100%; padding:10px; border:1.5px solid #e5e7eb; border-radius:10px; min-height:50px; font-family:inherit; font-size:12px;"></textarea>' +
 '<div id="pdReviewError" style="color:#dc2626; font-size:11px; margin-top:4px;"></div>' +
@@ -3214,6 +3226,21 @@ const policy = (rows[0] && rows[0].value) ? rows[0].value : 'Most items can be r
 block.querySelector('div:last-child').textContent = p.returnable === false ? 'This item is non-returnable.' : policy;
 }
 }).catch(function(){});
+
+const vendorToggle = document.getElementById('pdVendorToggle');
+if (vendorToggle) vendorToggle.addEventListener('click', function() {
+const details = document.getElementById('pdVendorDetails');
+details.style.display = details.style.display === 'none' ? 'block' : 'none';
+});
+const returnableTag = document.getElementById('pdReturnableTag');
+if (returnableTag) returnableTag.addEventListener('click', function() {
+const block = document.getElementById('pdReturnPolicyBlock');
+block.style.display = block.style.display === 'none' ? 'block' : 'none';
+});
+document.getElementById('pdReviewToggle').addEventListener('click', function() {
+const form = document.getElementById('pdReviewForm');
+form.style.display = form.style.display === 'none' ? 'block' : 'none';
+});
 
 let selectedStars = 0;
 document.getElementById('pdStarPicker').addEventListener('click', function(e) {
