@@ -127,7 +127,7 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .deal-strip { max-width:1200px; margin:0 auto; padding:26px 20px 6px; display:flex; justify-content:space-between; align-items:center; }
 .deal-strip h2 { font-size:18px; font-weight:800; }
 .deal-strip .sub { font-size:11px; color:#9ca3af; font-weight:600; margin-top:2px; }
-.grid { max-width:1200px; margin:0 auto; padding:10px 20px 20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(165px,1fr)); gap:14px; }
+.grid { max-width:1200px; margin:0 auto; padding:10px 14px 20px; display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
 @media(min-width:900px){
 .hero-banner { padding:56px 60px; min-height:340px; }
 .hero-banner h1 { font-size:46px; }
@@ -158,16 +158,16 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .return-tag { font-size:9px; font-weight:700; padding:2px 7px; border-radius:6px; margin-top:5px; display:inline-block; margin-left:4px; }
 .return-yes { background:#dcfce7; color:#15803d; }
 .return-no { background:#fee2e2; color:#dc2626; }
-.card-body { padding:11px 13px 13px; }
+.card-body { padding:9px 10px 11px; }
 .vendor-tag { font-size:9.5px; color:#7c3aed; font-weight:800; margin-bottom:5px; }
-.card-body h3 { font-size:12.5px; font-weight:700; margin-bottom:7px; line-height:1.35; height:34px; overflow:hidden; color:#1e1b3a; }
+.card-body h3 { font-size:11.5px; font-weight:700; margin-bottom:6px; line-height:1.35; height:31px; overflow:hidden; color:#1e1b3a; }
 .price-row { display:flex; align-items:baseline; gap:6px; }
 .price-new { font-size:16px; font-weight:900; color:#1e1b3a; }
 .price-old { font-size:11px; color:#9ca3af; text-decoration:line-through; }
 .off { font-size:11px; color:#16a34a; font-weight:800; }
 .rating-pill { display:inline-flex; align-items:center; gap:3px; background:linear-gradient(90deg,#16a34a,#22c55e); color:#fff; font-size:10px; font-weight:800; padding:3px 8px; border-radius:7px; margin-top:7px; }
 .free-del { font-size:10px; color:#6b7280; font-weight:700; margin-top:6px; }
-.add-btn { width:100%; margin-top:10px; background:#1e1b3a; color:#fff; border:none; padding:10px; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer; }
+.add-btn { width:100%; margin-top:8px; background:#1e1b3a; color:#fff; border:none; padding:9px; border-radius:10px; font-weight:700; font-size:11.5px; cursor:pointer; }
 .qty-row { display:flex; align-items:center; justify-content:space-between; margin-top:10px; background:#f3f1f8; border-radius:10px; padding:7px 12px; }
 .qty-btn { background:linear-gradient(135deg,#7c3aed,#ec4899); color:#fff; border:none; width:24px; height:24px; border-radius:7px; font-weight:800; cursor:pointer; font-size:14px; }
 .qty-val { font-weight:800; font-size:13px; }
@@ -507,6 +507,35 @@ Continue with Google
 </div>
 </div>
 
+<div class="modal-overlay" id="grievanceModal" style="display:none;">
+<div class="modal-box" style="max-width:460px; width:100%; background:#fff; border-radius:20px; padding:22px; max-height:85vh; overflow-y:auto;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+<h3 style="font-size:16px; font-weight:900;">⚖️ Grievance Officer</h3>
+<button id="closeGrievanceBtn" style="background:#f3f1f8; border:none; width:28px; height:28px; border-radius:50%; font-size:14px; cursor:pointer;">✕</button>
+</div>
+<div id="grievanceOfficerInfo" style="background:#faf9fd; border-radius:12px; padding:12px; font-size:12px; margin-bottom:16px; line-height:1.7;"></div>
+<div id="grievanceTabs" style="display:flex; gap:8px; margin-bottom:14px;">
+<button id="gTabFile" style="flex:1; background:#7c3aed; color:#fff; border:none; padding:9px; border-radius:10px; font-size:12px; font-weight:700;">File a Complaint</button>
+<button id="gTabTrack" style="flex:1; background:#f3f1f8; color:#6b7280; border:none; padding:9px; border-radius:10px; font-size:12px; font-weight:700;">Track My Complaints</button>
+</div>
+<div id="gFileForm">
+<select class="form-input" id="gCategory" style="width:100%; padding:10px; border-radius:10px; border:1.5px solid #e5e7eb; font-size:12.5px; margin-bottom:8px;">
+<option value="order_issue">Order Issue</option>
+<option value="product_quality">Product Quality</option>
+<option value="delivery">Delivery Problem</option>
+<option value="refund">Refund Not Received</option>
+<option value="vendor_behavior">Vendor Behavior</option>
+<option value="pricing">Pricing Issue</option>
+<option value="other">Other</option>
+</select>
+<input class="form-input" id="gSubject" placeholder="Subject" style="width:100%; padding:10px; border-radius:10px; border:1.5px solid #e5e7eb; font-size:12.5px; margin-bottom:8px; box-sizing:border-box;">
+<textarea id="gDescription" placeholder="Describe your issue..." style="width:100%; padding:10px; border-radius:10px; border:1.5px solid #e5e7eb; font-size:12.5px; margin-bottom:10px; min-height:80px; box-sizing:border-box; font-family:inherit;"></textarea>
+<button id="gSubmitBtn" style="width:100%; background:#7c3aed; color:#fff; border:none; padding:11px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer;">Submit Complaint</button>
+</div>
+<div id="gTrackList" style="display:none;"></div>
+</div>
+</div>
+
 <div class="modal-overlay" id="myOrdersModal" style="display:none;">
 <div class="modal-box" style="max-width:460px; width:100%; background:#fff; border-radius:20px; padding:22px; max-height:80vh; min-height:380px; overflow-y:auto; display:flex; flex-direction:column;">
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
@@ -601,7 +630,7 @@ Continue with Google
 
 <footer>
 © 2026 Grasp Infotech — Graspion<br>
-<a href="policies.html#about">About Us</a> · <a href="policies.html#contact">Contact</a> · <a href="policies.html#terms">Terms</a> · <a href="policies.html#privacy">Privacy</a> · <a href="policies.html#shipping">Shipping</a> · <a href="policies.html#refund">Refunds</a>
+<a href="policies.html#about">About Us</a> · <a href="policies.html#contact">Contact</a> · <a href="policies.html#terms">Terms</a> · <a href="policies.html#privacy">Privacy</a> · <a href="policies.html#shipping">Shipping</a> · <a href="policies.html#refund">Refunds</a> · <a href="#" id="grievanceFooterLink">Grievance Officer</a>
 </footer>
 
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -1846,6 +1875,78 @@ orderRows.forEach(function(o) { (o.order_items || []).forEach(function(oi) { if 
 return cats;
 } catch (e) { return new Set(); }
 }
+// ===================== GRIEVANCE OFFICER / COMPLAINTS =====================
+document.getElementById('grievanceFooterLink').addEventListener('click', async function(e) {
+e.preventDefault();
+document.getElementById('grievanceModal').style.display = 'flex';
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/settings?key=in.(grievance_officer_name,grievance_officer_email,grievance_officer_phone,grievance_officer_address)&select=key,value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const rows = res.ok ? await res.json() : [];
+const map = {};
+rows.forEach(function(r) { map[r.key] = r.value; });
+const infoDiv = document.getElementById('grievanceOfficerInfo');
+if (map.grievance_officer_name) {
+infoDiv.innerHTML = '<b>' + map.grievance_officer_name + '</b><br>' +
+(map.grievance_officer_email ? '📧 ' + map.grievance_officer_email + '<br>' : '') +
+(map.grievance_officer_phone ? '📞 ' + map.grievance_officer_phone + '<br>' : '') +
+(map.grievance_officer_address ? '📍 ' + map.grievance_officer_address : '');
+} else {
+infoDiv.innerHTML = 'Grievance Officer details will be published here shortly. You can still file a complaint below.';
+}
+} catch (e) {}
+});
+document.getElementById('closeGrievanceBtn').addEventListener('click', function() { document.getElementById('grievanceModal').style.display = 'none'; });
+document.getElementById('gTabFile').addEventListener('click', function() {
+this.style.background = '#7c3aed'; this.style.color = '#fff';
+document.getElementById('gTabTrack').style.background = '#f3f1f8'; document.getElementById('gTabTrack').style.color = '#6b7280';
+document.getElementById('gFileForm').style.display = 'block';
+document.getElementById('gTrackList').style.display = 'none';
+});
+document.getElementById('gTabTrack').addEventListener('click', async function() {
+this.style.background = '#7c3aed'; this.style.color = '#fff';
+document.getElementById('gTabFile').style.background = '#f3f1f8'; document.getElementById('gTabFile').style.color = '#6b7280';
+document.getElementById('gFileForm').style.display = 'none';
+const trackList = document.getElementById('gTrackList');
+trackList.style.display = 'block';
+if (!currentCustomer) { trackList.innerHTML = '<div style="text-align:center; padding:20px; color:#9ca3af; font-size:12px;">Please log in to track your complaints.</div>'; return; }
+trackList.innerHTML = '<div style="text-align:center; padding:20px; color:#9ca3af; font-size:12px;">Loading...</div>';
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/complaints?customer_id=eq.' + currentCustomer.id + '&select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const rows = res.ok ? await res.json() : [];
+if (rows.length === 0) { trackList.innerHTML = '<div style="text-align:center; padding:20px; color:#9ca3af; font-size:12px;">No complaints filed yet.</div>'; return; }
+const statusColor = { received: '#b45309', in_review: '#1d4ed8', resolved: '#15803d', rejected: '#dc2626' };
+trackList.innerHTML = rows.map(function(c) {
+return '<div style="border:1px solid #f0eef7; border-radius:10px; padding:10px; margin-bottom:8px;">' +
+'<div style="font-size:11px; color:#9ca3af;">' + c.ticket_number + '</div>' +
+'<div style="font-size:12.5px; font-weight:700; margin-top:2px;">' + c.subject + '</div>' +
+'<span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px; background:#f3f1f8; color:' + (statusColor[c.status] || '#6b7280') + ';">' + c.status.replace('_',' ').toUpperCase() + '</span>' +
+(c.resolution_notes ? '<div style="font-size:11px; color:#6b7280; margin-top:6px;">' + c.resolution_notes + '</div>' : '') + '</div>';
+}).join('');
+} catch (e) { trackList.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626; font-size:12px;">Could not load complaints.</div>'; }
+});
+document.getElementById('gSubmitBtn').addEventListener('click', async function() {
+if (!currentCustomer) { alert('Please log in first to file a complaint.'); return; }
+const subject = document.getElementById('gSubject').value.trim();
+if (!subject) { alert('Please enter a subject.'); return; }
+const btn = this;
+btn.disabled = true; btn.textContent = 'Submitting...';
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/complaints', {
+method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+body: JSON.stringify({ customer_id: currentCustomer.id, category: document.getElementById('gCategory').value, subject: subject, description: document.getElementById('gDescription').value.trim() })
+});
+const data = await res.json();
+if (res.ok && data[0]) {
+alert('Complaint submitted! Your ticket number is ' + data[0].ticket_number + '. You can track it under "Track My Complaints".');
+document.getElementById('gSubject').value = '';
+document.getElementById('gDescription').value = '';
+} else {
+alert('Could not submit complaint — please try again.');
+}
+} catch (e) { alert('Could not submit complaint — please try again.'); }
+btn.disabled = false; btn.textContent = 'Submit Complaint';
+});
+
 async function loadSponsoredBanners() {
 try {
 const res = await fetch(SUPABASE_URL + '/rest/v1/sponsored_banners?select=*,products(category_id)&status=eq.active&start_date=lte.' + new Date().toISOString().slice(0,10) + '&end_date=gte.' + new Date().toISOString().slice(0,10), {
@@ -3059,6 +3160,8 @@ docsHtml +
 (p.installationInfo ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:4px;">🔧 Installation</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line;">' + p.installationInfo + '</p></div>' : '') +
 (p.careInstructions ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:4px;">🧴 Care Instructions</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line;">' + p.careInstructions + '</p></div>' : '') +
 (p.safetyInfo ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:4px;">⚠️ Safety Information</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line;">' + p.safetyInfo + '</p></div>' : '') +
+'<div style="margin-top:16px; background:#faf9fd; border-radius:12px; padding:12px;"><div style="font-size:12px; font-weight:800; margin-bottom:6px;">🏪 Seller Information</div><div style="font-size:11.5px; color:#4b5563; line-height:1.7;"><b>' + (vendor ? vendor.name : 'Graspion Seller') + '</b>' + (vendor && vendor.gstin ? '<br>GSTIN: ' + vendor.gstin : '') + (vendor && vendor.address ? '<br>' + vendor.address : '') + '</div></div>' +
+'<div id="pdReturnPolicyBlock" style="margin-top:10px; background:#f0fdf4; border-radius:12px; padding:12px;"><div style="font-size:12px; font-weight:800; margin-bottom:6px; color:#15803d;">↩️ Return &amp; Refund Policy</div><div style="font-size:11.5px; color:#4b5563; line-height:1.6;">Loading...</div></div>' +
 (p.isPreorder ?
 '<div style="margin-top:16px; background:#faf9fd; border:1.5px solid #e9d5ff; border-radius:14px; padding:14px;">' +
 '<div style="font-size:12.5px; font-weight:800; color:#7c3aed;">📦 Bulk / Pre-Order Item</div>' +
@@ -3085,6 +3188,16 @@ return '<div style="border-bottom:1px solid #f7f6fb; padding:10px 0;"><div style
 '<div id="pdReviewError" style="color:#dc2626; font-size:11px; margin-top:4px;"></div>' +
 '<button id="pdSubmitReview" style="width:100%; margin-top:8px; background:#7c3aed; color:#fff; border:none; padding:10px; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer;">Submit Review</button>' +
 '</div></div>';
+
+fetch(SUPABASE_URL + '/rest/v1/settings?key=eq.return_policy_text&select=value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
+.then(function(r) { return r.ok ? r.json() : []; })
+.then(function(rows) {
+const block = document.getElementById('pdReturnPolicyBlock');
+if (block) {
+const policy = (rows[0] && rows[0].value) ? rows[0].value : 'Most items can be returned within 7 days of delivery if unused and in original packaging.';
+block.querySelector('div:last-child').textContent = p.returnable === false ? 'This item is non-returnable.' : policy;
+}
+}).catch(function(){});
 
 let selectedStars = 0;
 document.getElementById('pdStarPicker').addEventListener('click', function(e) {
