@@ -809,6 +809,7 @@ let appliedCoupon = null; // { code, discount } — set by applyCoupon(), verifi
 let couponMessage = '';
 let selectedPayMethod = 'upi';
 let customerInfo = { name:'', phone:'', address:'', city:'', pincode:'' };
+let deliveryEstimates = {}; // { vendorId: { serviceable, estimated_delivery_days, courier_name } } — from real Shiprocket check at checkout
 
 renderLanguageSwitcher('modalLangSwitcher');
 loadDataFromDatabase(); // load proactively so the location modal can show real dark-store pincode suggestions right away
@@ -1222,7 +1223,7 @@ const heartBtn = '<button data-wishlisttoggle="' + p.id + '" style="position:abs
 return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') + (p.isSponsored ? '<div class="badge sponsored">Sponsored</div>' : '') +
 '<div class="img-wrap" style="position:relative;">' + (allPhotos.length > 0 ? '<img data-mainimg="' + p.id + '" src="' + allPhotos[0] + '" alt="' + (p.imageAlt || p.name).replace(/"/g,'&quot;') + '" loading="lazy" decoding="async">' : p.icon) + heartBtn + '</div>' + thumbStripHtml + '<div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
 '<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
-'<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span>' + (p.fulfillmentType === 'instant' ? '<div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div>' : '<div class="free-del">📅 2-7 days delivery</div>') + '<div class="feature-tag" style="margin-left:0;">' + deliveryBadge + '</div>' +
+'<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span>' + (p.fulfillmentType === 'instant' ? '<div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div>' : '') + '<div class="feature-tag" style="margin-left:0;">' + deliveryBadge + '</div>' +
 (p.feature ? '<div class="feature-tag">✓ ' + p.feature + '</div>' : '') +
 '<div><span class="return-tag ' + (p.returnable ? 'return-yes' : 'return-no') + '">' + (p.returnable ? '↩️ Returnable' : '🚫 No Return') + '</span></div>' +
 (isStoreClosed ? '<div style="text-align:center; margin-top:10px; background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">🚫 Store Currently Closed</div>' :
@@ -1647,13 +1648,29 @@ wrap.innerHTML = '<div class="co-section"><h4>📍 ' + graspionT('deliveryAddres
 '</div><div class="co-section"><h4>🧾 ' + graspionT('orderSummary') + ' (' + items.length + ')</h4>' + items.map(function(i) { return '<div class="co-item-row"><span>' + i.name + ' × ' + i.qty + '</span><b>₹' + (i.price*i.qty).toLocaleString('en-IN') + '</b></div>'; }).join('') + '<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?graspionT('free'):'₹'+t.delivery) + '</b></div>' + (t.discount > 0 ? '<div class="co-item-row" style="color:#15803d;"><span>Coupon discount</span><b>-₹' + t.discount.toLocaleString('en-IN') + '</b></div>' : '') + '<div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
 if (document.getElementById('applyCouponBtn')) { document.getElementById('applyCouponBtn').addEventListener('click', function(){ applyCoupon(document.getElementById('coCouponInput').value); }); }
 if (document.getElementById('removeCouponBtn')) { document.getElementById('removeCouponBtn').addEventListener('click', removeCoupon); }
-document.getElementById('toPaymentBtn').addEventListener('click', function() {
+document.getElementById('toPaymentBtn').addEventListener('click', async function() {
 customerInfo.name = document.getElementById('coName').value.trim();
 customerInfo.phone = document.getElementById('coPhone').value.trim();
 customerInfo.address = document.getElementById('coAddr').value.trim();
 customerInfo.city = document.getElementById('coCity').value.trim();
 customerInfo.pincode = document.getElementById('coPincode').value.trim();
 if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) { alert(graspionT('requiredFields')); return; }
+const btn = this;
+btn.disabled = true; btn.textContent = 'Checking delivery...';
+// Real Shiprocket-based estimate — checked ONLY here (once, at checkout,
+// with a real pincode), never on the product-listing page where it would
+// mean many API calls for an estimate the customer isn't committing to yet.
+deliveryEstimates = {};
+const standardVendorIds = Array.from(new Set(items.filter(function(i) { return i.fulfillmentType !== 'instant'; }).map(function(i) { return i.vendorId; })));
+try {
+await Promise.all(standardVendorIds.map(async function(vId) {
+const res = await fetch(SUPABASE_URL + '/functions/v1/check-delivery-estimate', {
+method: 'POST', headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ vendor_id: vId, customer_pincode: customerInfo.pincode })
+});
+deliveryEstimates[vId] = res.ok ? await res.json() : { serviceable: null };
+}));
+} catch (e) {}
 checkoutStep = 'payment';
 renderCheckout();
 });
@@ -1663,7 +1680,17 @@ const cartHasCodBlockedItem = items.some(function(i){ return i.codAllowed === fa
 if (cartHasCodBlockedItem && selectedPayMethod === 'cod') { selectedPayMethod = 'upi'; }
 const codOptionHtml = cartHasCodBlockedItem ? '' : '<div class="pay-option ' + (selectedPayMethod==='cod'?'selected':'') + '" data-pay="cod">💵 ' + graspionT('cod') + '<span class="pay-sub" style="color:#9ca3af;">Pay at doorstep</span></div>';
 const codNoticeHtml = cartHasCodBlockedItem ? '<p style="font-size:10.5px; color:#9ca3af; margin:-6px 0 10px;">💳 One or more items in your cart are prepaid-only — COD isn\'t available for this order.</p>' : '';
-wrap.innerHTML = '<div class="co-section"><h4>💳 ' + graspionT('selectPayment') + '</h4>' +
+const hasInstant = items.some(function(i) { return i.fulfillmentType === 'instant'; });
+const estimateEntries = Object.keys(deliveryEstimates);
+let deliveryEstimateHtml = '';
+if (hasInstant) deliveryEstimateHtml += '<div class="co-item-row"><span>⚡ Instant items</span><b>10-20 minutes</b></div>';
+estimateEntries.forEach(function(vId) {
+const est = deliveryEstimates[vId];
+if (est.serviceable === false) deliveryEstimateHtml += '<div class="co-item-row" style="color:#dc2626;"><span>📦 Standard item</span><b>⚠️ Not deliverable to this pincode</b></div>';
+else if (est.estimated_delivery_days) deliveryEstimateHtml += '<div class="co-item-row"><span>📦 Standard item (' + (est.courier_name || 'Courier') + ')</span><b>' + est.estimated_delivery_days + '</b></div>';
+});
+wrap.innerHTML = (deliveryEstimateHtml ? '<div class="co-section"><h4>🚚 Delivery Estimate</h4>' + deliveryEstimateHtml + '<p style="font-size:10px; color:#9ca3af; margin-top:6px;">Based on real courier data for your pincode.</p></div>' : '') +
+'<div class="co-section"><h4>💳 ' + graspionT('selectPayment') + '</h4>' +
 '<div class="pay-option pay-recommended ' + (selectedPayMethod==='upi'?'selected':'') + '" data-pay="upi"><span class="pay-badge-tag">FASTEST</span>📱 ' + graspionT('upi') + '<span class="pay-sub">Instant confirmation</span></div>' +
 '<div class="pay-option ' + (selectedPayMethod==='card'?'selected':'') + '" data-pay="card">💳 ' + graspionT('card') + '</div>' +
 codOptionHtml + codNoticeHtml +
@@ -2989,6 +3016,25 @@ function openPrebookingModal(productId, type) {
 }
 document.getElementById('closePbModalBtn').addEventListener('click', function() { document.getElementById('prebookingModal').style.display = 'none'; });
 
+// Straight-line (haversine) distance in km between two lat/lng points —
+// used for a rough but REAL ETA estimate, not a fixed "20 min" guess.
+function haversineDistanceKm(lat1, lng1, lat2, lng2) {
+const R = 6371;
+const dLat = (lat2 - lat1) * Math.PI / 180;
+const dLng = (lng2 - lng1) * Math.PI / 180;
+const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLng/2) * Math.sin(dLng/2);
+return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function estimateRiderEtaText(riderLat, riderLng, customerLat, customerLng) {
+if (!customerLat || !customerLng) return null;
+const distanceKm = haversineDistanceKm(riderLat, riderLng, customerLat, customerLng);
+// ~18 km/h average accounts for city traffic/stops, not highway speed —
+// a straight-line distance also slightly underestimates real road
+// distance, so this stays a rough "about X min" estimate, not a promise.
+const etaMinutes = Math.max(1, Math.round((distanceKm / 18) * 60));
+if (distanceKm < 0.3) return 'Arriving any moment now!';
+return '~' + etaMinutes + ' min away (' + distanceKm.toFixed(1) + ' km)';
+}
 async function openTrackLiveModal(orderId) {
 document.getElementById('trackLiveModal').style.display = 'flex';
 document.getElementById('trackLiveStatus').textContent = 'Locating rider...';
@@ -2997,6 +3043,12 @@ if (!loc) {
 document.getElementById('trackLiveStatus').textContent = 'Rider location isn\'t available right now — they may not have location sharing on, or haven\'t moved recently. Try again in a moment.';
 return;
 }
+let customerCoords = null;
+try {
+const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId + '&select=customer_lat,customer_lng', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const orderRows = orderRes.ok ? await orderRes.json() : [];
+if (orderRows[0] && orderRows[0].customer_lat) customerCoords = orderRows[0];
+} catch (e) {}
 if (!trackLiveMapInstance) {
 trackLiveMapInstance = L.map('trackLiveMap').setView([loc.current_lat, loc.current_lng], 15);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(trackLiveMapInstance);
@@ -3006,14 +3058,16 @@ trackLiveMapInstance.setView([loc.current_lat, loc.current_lng], 15);
 trackLiveMarker.setLatLng([loc.current_lat, loc.current_lng]);
 setTimeout(function() { trackLiveMapInstance.invalidateSize(); }, 100);
 }
-document.getElementById('trackLiveStatus').textContent = '📍 Updated ' + new Date(loc.location_updated_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+const etaText = customerCoords ? estimateRiderEtaText(loc.current_lat, loc.current_lng, customerCoords.customer_lat, customerCoords.customer_lng) : null;
+document.getElementById('trackLiveStatus').innerHTML = (etaText ? '<b style="color:#7c3aed; font-size:13px;">⏱ ' + etaText + '</b><br>' : '') + '<span style="font-size:10.5px; color:#9ca3af;">📍 Updated ' + new Date(loc.location_updated_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) + '</span>';
 if (trackLivePollInterval) clearInterval(trackLivePollInterval);
 trackLivePollInterval = setInterval(async function() {
 const updated = await fetchRiderLocationForOrder(orderId);
 if (updated && trackLiveMarker) {
 trackLiveMarker.setLatLng([updated.current_lat, updated.current_lng]);
 trackLiveMapInstance.panTo([updated.current_lat, updated.current_lng]);
-document.getElementById('trackLiveStatus').textContent = '📍 Updated ' + new Date(updated.location_updated_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+const updatedEtaText = customerCoords ? estimateRiderEtaText(updated.current_lat, updated.current_lng, customerCoords.customer_lat, customerCoords.customer_lng) : null;
+document.getElementById('trackLiveStatus').innerHTML = (updatedEtaText ? '<b style="color:#7c3aed; font-size:13px;">⏱ ' + updatedEtaText + '</b><br>' : '') + '<span style="font-size:10.5px; color:#9ca3af;">📍 Updated ' + new Date(updated.location_updated_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) + '</span>';
 } else if (!updated) {
 document.getElementById('trackLiveStatus').textContent = 'Rider location no longer available (may have completed delivery).';
 }
