@@ -614,6 +614,14 @@ Continue with Google
 <input class="form-input" id="catPromoEnd" type="date" placeholder="End date">
 </div>
 </div>
+<div style="grid-column:1/-1; padding:10px; background:#f0fdf4; border-radius:10px; margin-top:4px;">
+<label style="font-size:10.5px; font-weight:700; color:#15803d; display:block; margin-bottom:6px;">↩️ Return Policy for this Category (leave blank to use the 7-day platform default)</label>
+<div class="form-row">
+<input class="form-input" id="catReturnDays" type="number" placeholder="Return window in days (e.g. 7, 15, or 0)">
+<label style="display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700;"><input type="checkbox" id="catReturnable" checked> Returnable</label>
+</div>
+<textarea class="form-input" id="catReturnNote" placeholder="Optional note shown to customers (e.g. why it's non-returnable, or special conditions)" rows="2" style="margin-top:8px;"></textarea>
+</div>
 </div>
 <div style="display:flex; gap:16px; margin-top:10px; flex-wrap:wrap;">
 <label style="font-size:11px; display:flex; align-items:center; gap:5px;"><input type="checkbox" id="catMenuVisible" checked> Menu Visible</label>
@@ -2181,7 +2189,7 @@ return '<div style="display:flex; gap:8px; flex-wrap:wrap; margin:6px 0;">' +
   const today = new Date().toISOString().slice(0,10);
   const fssaiStatus = !v.fssai_license_number ? '<span style="color:#dc2626;">❌ Not on file</span>' : (v.fssai_license_expiry && v.fssai_license_expiry < today ? '<span style="color:#dc2626;">⚠️ ' + v.fssai_license_number + ' (EXPIRED)</span>' : '<span style="color:#15803d;">✅ ' + v.fssai_license_number + '</span>');
   const drugStatus = !v.drug_license_number ? '<span style="color:#9ca3af;">Not on file</span>' : (v.drug_license_expiry && v.drug_license_expiry < today ? '<span style="color:#dc2626;">⚠️ ' + v.drug_license_number + ' (EXPIRED)</span>' : '<span style="color:#15803d;">✅ ' + v.drug_license_number + '</span>');
-  return '<div style="font-size:10.5px; margin-top:6px; padding:6px 8px; background:#faf9fd; border-radius:6px;"><b>FSSAI:</b> ' + fssaiStatus + ' &nbsp; <b>Drug License:</b> ' + drugStatus + '</div>';
+  return '<div style="font-size:10.5px; margin-top:6px; padding:6px 8px; background:#faf9fd; border-radius:6px;"><b>FSSAI:</b> ' + fssaiStatus + ' &nbsp; <b>Drug License:</b> ' + drugStatus + ' &nbsp; <b>Agreement:</b> ' + (v.agreement_id ? '<span style="color:#15803d;">✅ Signed</span>' : '<span style="color:#dc2626;">⚠️ Not yet signed</span>') + '</div>';
 })() +
 '<div style="display:flex; gap:6px; margin-top:6px;">' +
 '<div style="flex:1;"><label style="font-size:10px; color:#6b7280; display:block;">Bank Account No.</label><input type="text" id="vbank-' + v.id + '" value="' + (v.bank_account_no || '').replace(/"/g,'&quot;') + '" placeholder="Account number" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11px; box-sizing:border-box;"></div>' +
@@ -2468,6 +2476,9 @@ document.getElementById('catMinCommission').value = c.minimum_commission_percent
 document.getElementById('catPromoCommission').value = c.promotional_commission_percent || '';
 document.getElementById('catPromoStart').value = c.promotional_commission_start || '';
 document.getElementById('catPromoEnd').value = c.promotional_commission_end || '';
+document.getElementById('catReturnDays').value = c.return_window_days != null ? c.return_window_days : '';
+document.getElementById('catReturnable').checked = c.default_returnable !== false;
+document.getElementById('catReturnNote').value = c.return_policy_note || '';
 document.getElementById('catMenuVisible').checked = c.menu_visible !== false;
 document.getElementById('catMobileVisible').checked = c.mobile_visible !== false;
 document.getElementById('catFeatured').checked = !!c.featured;
@@ -2498,7 +2509,8 @@ loadAllData();
 document.getElementById('catSearch').addEventListener('input', renderCategories);
 function resetCategoryForm() {
 editingCategoryId = null;
-['catName','catCode','catOrder','catImage','catIcon','catBanner','catShortDesc','catSeoTitle','catCanonical','catSeoDesc','catSeoKeywords','catCommission','catMinCommission','catPromoCommission','catPromoStart','catPromoEnd'].forEach(function(id){ document.getElementById(id).value = ''; });
+['catName','catCode','catOrder','catImage','catIcon','catBanner','catShortDesc','catSeoTitle','catCanonical','catSeoDesc','catSeoKeywords','catCommission','catMinCommission','catPromoCommission','catPromoStart','catPromoEnd','catReturnDays','catReturnNote'].forEach(function(id){ document.getElementById(id).value = ''; });
+document.getElementById('catReturnable').checked = true;
 document.getElementById('catParent').value = '';
 document.getElementById('catMenuVisible').checked = true;
 document.getElementById('catMobileVisible').checked = true;
@@ -2532,6 +2544,9 @@ const payload = {
   promotional_commission_percent: document.getElementById('catPromoCommission').value ? Number(document.getElementById('catPromoCommission').value) : null,
   promotional_commission_start: document.getElementById('catPromoStart').value || null,
   promotional_commission_end: document.getElementById('catPromoEnd').value || null,
+  return_window_days: document.getElementById('catReturnDays').value ? Number(document.getElementById('catReturnDays').value) : null,
+  default_returnable: document.getElementById('catReturnable').checked,
+  return_policy_note: document.getElementById('catReturnNote').value.trim() || null,
   menu_visible: document.getElementById('catMenuVisible').checked,
   mobile_visible: document.getElementById('catMobileVisible').checked,
   featured: document.getElementById('catFeatured').checked,

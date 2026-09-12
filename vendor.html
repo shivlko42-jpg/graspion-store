@@ -271,7 +271,8 @@ window.addEventListener('load', function() {
 
     <div class="panel">
       <h3>📁 Bulk Import / Export (CSV)</h3>
-      <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Add many products at once from a spreadsheet, or download your current catalog.</p>
+      <p style="font-size:11px; color:#9ca3af; margin-bottom:8px;">Add many products at once from a spreadsheet, or download your current catalog.</p>
+      <p style="font-size:10.5px; color:#b45309; background:#fef9c3; padding:8px 10px; border-radius:8px; margin-bottom:12px;">💡 <b>Pincode tip:</b> if you ship these products pan-India by courier, put <b>ALL</b> in the pincode column (not your own local pincode) — otherwise the product will only be visible to customers in that exact pincode.</p>
       <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
         <button class="mini-btn" id="downloadTemplateBtn" style="background:#dbeafe;color:#1d4ed8;">⬇️ Download Sample Template</button>
         <button class="mini-btn" id="exportProductsBtn" style="background:#dcfce7;color:#15803d;">⬇️ Export My Products</button>
@@ -573,6 +574,66 @@ const supaAuth = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let authToken = SUPABASE_KEY;
 
 let currentVendor = null;
+async function checkAndShowRetroactiveAgreement() {
+// Maybe they already agreed during their original application (agreement
+// recorded by email, before admin approval created their vendors.id) —
+// if so, just link it rather than making them agree twice.
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/vendor_agreements?application_email=eq.' + encodeURIComponent(currentVendor.email || '') + '&select=id&order=agreed_at.desc&limit=1', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const rows = res.ok ? await res.json() : [];
+if (rows[0]) {
+await fetch(SUPABASE_URL + '/rest/v1/vendors?id=eq.' + currentVendor.id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ agreement_id: rows[0].id }) });
+currentVendor.agreement_id = rows[0].id;
+return;
+}
+} catch (e) {}
+// No prior agreement found at all — this is likely an older vendor account
+// from before this feature existed. Show the same declaration, blocking,
+// so every vendor (new or old) has gone through it fairly.
+const keys = ['default_commission_percent','gst_on_commission_percent','tcs_percent','tds_percent','fulfillment_handling_charge','return_rto_charge_amount','vendor_cancellation_penalty_percent','standard_delivery_charge','instant_delivery_charge','payment_gateway_fee_percent'];
+let settingsMap = {};
+try {
+const sRes = await fetch(SUPABASE_URL + '/rest/v1/settings?key=in.(' + keys.join(',') + ')&select=key,value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const sRows = sRes.ok ? await sRes.json() : [];
+sRows.forEach(function(r) { settingsMap[r.key] = r.value; });
+} catch (e) {}
+const s = settingsMap;
+const overlay = document.createElement('div');
+overlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,10,30,0.75); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;';
+overlay.innerHTML = '<div style="background:#fff; border-radius:20px; padding:22px; max-width:440px; width:100%; max-height:88vh; overflow-y:auto;">' +
+'<h3 style="margin-bottom:4px;">📋 Vendor Agreement Update Required</h3>' +
+'<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Please review and accept Graspion\'s current Vendor Agreement to continue using your dashboard.</p>' +
+'<div style="background:#faf9fd; border:1.5px solid #ede9fe; border-radius:12px; padding:12px; margin-bottom:12px; max-height:220px; overflow-y:auto; font-size:10.5px; color:#4b5563; line-height:1.7;">' +
+'<b>Commission:</b> Starting at ' + (s.default_commission_percent || 10) + '% of sale value (varies by category — your dashboard shows the exact rate).<br><br>' +
+'<b>Taxes:</b> GST of ' + (s.gst_on_commission_percent || 18) + '% on commission; TCS ' + (s.tcs_percent || 1) + '% and TDS ' + (s.tds_percent || 1) + '% deducted from payout as per Indian tax law.<br><br>' +
+'<b>Fulfillment & Shipping:</b> ₹' + (s.fulfillment_handling_charge || 10) + ' handling charge per order; delivery charge of ₹' + (s.standard_delivery_charge || 40) + ' standard / ₹' + (s.instant_delivery_charge || 15) + ' instant (or real courier cost if higher).<br><br>' +
+'<b>Payment Gateway:</b> ' + (s.payment_gateway_fee_percent || 2) + '% fee on prepaid orders.<br><br>' +
+'<b>Returns / RTO:</b> Commission refunded to you on customer-fault returns; a ₹' + (s.return_rto_charge_amount || 60) + ' RTO charge applies to you on seller-fault returns.<br><br>' +
+'<b>Cancellation:</b> ' + (s.vendor_cancellation_penalty_percent || 5) + '% penalty for cancelling an already-confirmed order.' +
+'</div>' +
+'<label style="display:flex; align-items:flex-start; gap:8px; font-size:11px; margin-bottom:14px; cursor:pointer;"><input type="checkbox" id="retroAgreeCheckbox" style="margin-top:2px;"><span>I have read and agree to Graspion\'s Vendor Agreement above.</span></label>' +
+'<div id="retroAgreeError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>' +
+'<button id="retroAgreeBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">I Agree & Continue</button>' +
+'</div>';
+document.body.appendChild(overlay);
+document.getElementById('retroAgreeBtn').addEventListener('click', async function() {
+if (!document.getElementById('retroAgreeCheckbox').checked) { document.getElementById('retroAgreeError').textContent = 'Please check the box to confirm you agree.'; return; }
+const btn = this;
+btn.disabled = true; btn.textContent = 'Saving...';
+try {
+const insertRes = await fetch(SUPABASE_URL + '/rest/v1/vendor_agreements', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' }, body: JSON.stringify({ vendor_id: currentVendor.id, application_email: currentVendor.email || null, agreement_snapshot: Object.assign({ snapshot_taken_at: new Date().toISOString() }, s) }) });
+const inserted = await insertRes.json();
+if (inserted[0]) {
+await fetch(SUPABASE_URL + '/rest/v1/vendors?id=eq.' + currentVendor.id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ agreement_id: inserted[0].id }) });
+currentVendor.agreement_id = inserted[0].id;
+}
+overlay.remove();
+} catch (e) {
+document.getElementById('retroAgreeError').textContent = 'Could not save — please check your connection and try again.';
+btn.disabled = false; btn.textContent = 'I Agree & Continue';
+}
+});
+}
 let allVendors = [];
 let vendorProducts = [];
 let vendorOrders = [];
@@ -612,6 +673,7 @@ async function loginAsVendor(session) {
   populateSettingsForm();
   loadVendorData();
   loadCategoriesForVendor();
+  if (!currentVendor.agreement_id) checkAndShowRetroactiveAgreement();
   document.getElementById('advancedToggle').addEventListener('click', function() {
     const fields = document.getElementById('advancedFields');
     const arrow = document.getElementById('advancedArrow');
