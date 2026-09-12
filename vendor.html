@@ -2200,16 +2200,32 @@ document.getElementById('parseCsvBtn').addEventListener('click', function() {
           });
       });
       parsedCsvRows = validRows;
+      const specificPincodeCount = validRows.filter(function(r) { return r.fulfillment_type === 'standard' && r.pincode !== 'ALL'; }).length;
       let html = '<div style="font-size:12px; font-weight:700; margin-bottom:8px;">✅ ' + validRows.length + ' valid row(s) ready to import' + (errorRows.length > 0 ? ' · ⚠️ ' + errorRows.length + ' row(s) with errors (will be skipped)' : '') + '</div>';
       if (errorRows.length > 0) {
         html += '<div style="max-height:180px; overflow-y:auto; border:1px solid #fee2e2; border-radius:8px; padding:8px; margin-bottom:10px; background:#fef2f2;">';
         html += errorRows.map(function(e) { return '<div style="font-size:10.5px; color:#dc2626; margin-bottom:4px;">Row ' + e.rowNum + ' (' + e.name + '): ' + e.errors.join(', ') + '</div>'; }).join('');
         html += '</div>';
       }
+      if (specificPincodeCount > 0) {
+        html += '<div style="background:#fef9c3; border:1.5px solid #fde047; border-radius:10px; padding:12px; margin-bottom:10px;">' +
+          '<div style="font-size:12px; font-weight:800; color:#92400e; margin-bottom:6px;">⚠️ Heads up — ' + specificPincodeCount + ' product(s) have a specific pincode, not "ALL"</div>' +
+          '<div style="font-size:10.5px; color:#92400e; margin-bottom:8px;">These are shipped by courier (pan-India), but right now they will ONLY be visible to customers in that exact pincode — everyone else won\'t see them at all. If that\'s not what you meant, fix it in one tap:</div>' +
+          '<button id="fixPincodeToAllBtn" style="background:#fff; border:1.5px solid #b45309; color:#92400e; padding:8px 14px; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer;">🔧 Set all ' + specificPincodeCount + ' to "ALL" (visible everywhere)</button>' +
+          '</div>';
+      }
       if (validRows.length > 0) {
         html += '<button class="login-btn" id="confirmImportBtn">✓ Import ' + validRows.length + ' Product(s)</button>';
       }
       previewArea.innerHTML = html;
+      if (specificPincodeCount > 0) {
+        document.getElementById('fixPincodeToAllBtn').addEventListener('click', function() {
+          parsedCsvRows.forEach(function(r) { if (r.fulfillment_type === 'standard') r.pincode = 'ALL'; });
+          this.textContent = '✓ Fixed — all set to "ALL"';
+          this.disabled = true;
+          this.style.opacity = '0.6';
+        });
+      }
       if (validRows.length > 0) {
         document.getElementById('confirmImportBtn').addEventListener('click', async function() {
           const btn = document.getElementById('confirmImportBtn');
