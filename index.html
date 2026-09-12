@@ -101,8 +101,12 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
    tint, no heavy new images (subcategories reuse their parent's real photo
    at a small size, so nothing extra needs loading). ===== */
 .shop-layout { display:flex; max-width:1200px; margin:0 auto; align-items:flex-start; }
-.category-rail { width:74px; flex-shrink:0; position:sticky; top:0; max-height:100vh; overflow-y:auto; scrollbar-width:none; padding:10px 4px 40px; background:rgba(124,58,237,0.04); backdrop-filter:blur(6px); border-right:1px solid rgba(124,58,237,0.08); }
+.category-rail { position:fixed; top:0; left:0; width:78px; height:100vh; overflow-y:auto; scrollbar-width:none; padding:56px 4px 40px; background:#fff; backdrop-filter:blur(6px); box-shadow:2px 0 16px rgba(0,0,0,0.12); z-index:95; transform:translateX(-100%); transition:transform .28s ease; }
+.category-rail.open { transform:translateX(0); }
 .category-rail::-webkit-scrollbar { display:none; }
+.category-rail-backdrop { position:fixed; inset:0; background:rgba(15,10,30,0.4); z-index:94; display:none; }
+.category-rail-backdrop.open { display:block; }
+.category-toggle-btn { position:fixed; left:12px; top:100px; z-index:90; background:#7c3aed; color:#fff; border:none; width:44px; height:44px; border-radius:50%; box-shadow:0 4px 14px rgba(124,58,237,0.4); font-size:19px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
 .rail-item { display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 2px; cursor:pointer; border-radius:14px; margin-bottom:2px; transition:background .15s; }
 .rail-item.active { background:rgba(124,58,237,0.1); }
 .rail-thumb { width:46px; height:46px; border-radius:50%; overflow:hidden; background:rgba(255,255,255,0.6); backdrop-filter:blur(4px); border:2px solid transparent; display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
@@ -376,6 +380,9 @@ window.addEventListener('load', function() {
 <div class="db-status">
 <span class="db-status-badge loading" id="dbStatusBadge">⏳ Connecting...</span>
 </div>
+
+<button class="category-toggle-btn" id="categoryToggleBtn">☰</button>
+<div class="category-rail-backdrop" id="categoryRailBackdrop"></div>
 
 <div class="shop-layout">
 <div class="category-rail" id="categoryRail"></div>
@@ -1175,7 +1182,17 @@ setTimeout(function(){ document.getElementById('searchSuggestions').classList.re
 document.getElementById('searchInput').addEventListener('focus', function(){
 if (this.value.trim().length >= 2) renderSearchSuggestions(this.value);
 });
-function filterByCategory(catId){ activeCategoryId = (activeCategoryId === catId) ? null : catId; activeSubcategoryId = null; renderQuickCategories(); renderProducts(selectedPin); }
+function filterByCategory(catId){ activeCategoryId = (activeCategoryId === catId) ? null : catId; activeSubcategoryId = null; renderQuickCategories(); renderProducts(selectedPin); closeCategoryRail(); }
+function openCategoryRail() {
+document.getElementById('categoryRail').classList.add('open');
+document.getElementById('categoryRailBackdrop').classList.add('open');
+}
+function closeCategoryRail() {
+document.getElementById('categoryRail').classList.remove('open');
+document.getElementById('categoryRailBackdrop').classList.remove('open');
+}
+document.getElementById('categoryToggleBtn').addEventListener('click', openCategoryRail);
+document.getElementById('categoryRailBackdrop').addEventListener('click', closeCategoryRail);
 function renderVendors(pin){
 const list = vendors.filter(function(v){ return (v.pincodes.includes(pin) || v.pincodes.includes('ALL')) && v.nearbySubscribed; });
 const row = document.getElementById('vendorRow');
@@ -3024,8 +3041,7 @@ if (selectedPin) renderProducts(selectedPin);
 });
 document.getElementById('bnCategories').addEventListener('click', function(){
 setBottomNavActive('bnCategories');
-const catSection = document.getElementById('categoryRail');
-if (catSection) catSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+openCategoryRail();
 });
 document.getElementById('bnCart').addEventListener('click', function(){
 setBottomNavActive('bnCart');
