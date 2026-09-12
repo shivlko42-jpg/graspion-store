@@ -3241,7 +3241,7 @@ docsHtml +
 (p.gtin ? '<tr><td style="padding:4px 0; color:#9ca3af;">GTIN/Barcode</td><td style="padding:4px 0; font-weight:600;">' + p.gtin + '</td></tr>' : '') +
 '</table></div>' : '') +
 '<div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; font-size:10.5px;">' +
-(p.returnable ? '<button id="pdReturnableTag" class="prod-tag" style="border:none; background:none; padding:0; font:inherit; color:inherit; cursor:pointer;">✅ Returnable <span style="font-size:8px; color:#7c3aed;">▾ tap for policy</span></button>' : '<span class="prod-tag">🚫 Non-Returnable</span>') +
+(p.returnable ? '<button id="pdReturnableTag" class="prod-tag" style="border:none; background:none; padding:0; font:inherit; color:inherit; cursor:pointer;">✅ Returnable <span style="font-size:8px; color:#7c3aed;">▾ tap for policy</span></button>' : '<button id="pdReturnableTag" class="prod-tag" style="border:none; background:none; padding:0; font:inherit; color:inherit; cursor:pointer;">🚫 Non-Returnable <span style="font-size:8px; color:#7c3aed;">▾ tap for details</span></button>') +
 (p.codAllowed === false ? '<span class="prod-tag">💳 Prepaid Only</span>' : '<span class="prod-tag">💵 COD Available</span>') +
 '</div>' +
 '<div id="pdReturnPolicyBlock" style="display:none; margin-top:10px; background:#f0fdf4; border-radius:12px; padding:12px;"><div style="font-size:12px; font-weight:800; margin-bottom:6px; color:#15803d;">↩️ Return &amp; Refund Policy</div><div style="font-size:11.5px; color:#4b5563; line-height:1.6;">Loading...</div></div>' +
@@ -3273,15 +3273,33 @@ return '<div style="border-bottom:1px solid #f7f6fb; padding:10px 0;"><div style
 '<button id="pdSubmitReview" style="width:100%; margin-top:8px; background:#7c3aed; color:#fff; border:none; padding:10px; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer;">Submit Review</button>' +
 '</div></div>';
 
-fetch(SUPABASE_URL + '/rest/v1/settings?key=eq.return_policy_text&select=value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
-.then(function(r) { return r.ok ? r.json() : []; })
-.then(function(rows) {
+(async function() {
 const block = document.getElementById('pdReturnPolicyBlock');
-if (block) {
-const policy = (rows[0] && rows[0].value) ? rows[0].value : 'Most items can be returned within 7 days of delivery if unused and in original packaging.';
-block.querySelector('div:last-child').textContent = p.returnable === false ? 'This item is non-returnable.' : policy;
+if (!block) return;
+const textDiv = block.querySelector('div:last-child');
+if (p.returnable === false) { textDiv.textContent = 'This item is non-returnable.'; return; }
+try {
+const catId = p.subcategoryId || p.categoryId;
+const res = await fetch(SUPABASE_URL + '/rest/v1/categories?id=eq.' + catId + '&select=return_window_days,default_returnable,return_policy_note,parent_id', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+let rows = res.ok ? await res.json() : [];
+let cat = rows[0];
+// A subcategory with no explicit return setting of its own inherits its parent Main Category's rule
+if (cat && cat.return_window_days == null && cat.parent_id) {
+const parentRes = await fetch(SUPABASE_URL + '/rest/v1/categories?id=eq.' + cat.parent_id + '&select=return_window_days,default_returnable,return_policy_note', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const parentRows = parentRes.ok ? await parentRes.json() : [];
+if (parentRows[0]) cat = parentRows[0];
 }
-}).catch(function(){});
+if (cat && cat.default_returnable === false) {
+textDiv.textContent = cat.return_policy_note || 'This category is non-returnable once delivered.';
+} else if (cat && cat.return_window_days != null) {
+textDiv.textContent = (cat.return_policy_note ? cat.return_policy_note + ' ' : '') + 'Returnable within ' + cat.return_window_days + ' day' + (cat.return_window_days === 1 ? '' : 's') + ' of delivery if unused and in original packaging.';
+} else {
+textDiv.textContent = 'Most items can be returned within 7 days of delivery if unused and in original packaging.';
+}
+} catch (e) {
+textDiv.textContent = 'Most items can be returned within 7 days of delivery if unused and in original packaging.';
+}
+})();
 
 const vendorToggle = document.getElementById('pdVendorToggle');
 if (vendorToggle) vendorToggle.addEventListener('click', function() {
