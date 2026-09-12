@@ -1222,7 +1222,7 @@ const heartBtn = '<button data-wishlisttoggle="' + p.id + '" style="position:abs
 return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') + (p.isSponsored ? '<div class="badge sponsored">Sponsored</div>' : '') +
 '<div class="img-wrap" style="position:relative;">' + (allPhotos.length > 0 ? '<img data-mainimg="' + p.id + '" src="' + allPhotos[0] + '" alt="' + (p.imageAlt || p.name).replace(/"/g,'&quot;') + '" loading="lazy" decoding="async">' : p.icon) + heartBtn + '</div>' + thumbStripHtml + '<div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
 '<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
-'<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span><div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div><div class="feature-tag" style="margin-left:0;">' + deliveryBadge + '</div>' +
+'<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span>' + (p.fulfillmentType === 'instant' ? '<div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div>' : '<div class="free-del">📅 2-7 days delivery</div>') + '<div class="feature-tag" style="margin-left:0;">' + deliveryBadge + '</div>' +
 (p.feature ? '<div class="feature-tag">✓ ' + p.feature + '</div>' : '') +
 '<div><span class="return-tag ' + (p.returnable ? 'return-yes' : 'return-no') + '">' + (p.returnable ? '↩️ Returnable' : '🚫 No Return') + '</span></div>' +
 (isStoreClosed ? '<div style="text-align:center; margin-top:10px; background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">🚫 Store Currently Closed</div>' :
@@ -3102,25 +3102,20 @@ const content = document.getElementById('productDetailContent');
 content.innerHTML = '<div style="text-align:center; padding:40px 0; color:#9ca3af;">Loading...</div>';
 document.getElementById('productDetailModal').style.display = 'flex';
 
-let reviews = [];
+let reviews = [], productDocs = [], relatedProducts = [];
 try {
-const res = await fetch(SUPABASE_URL + '/rest/v1/reviews?product_id=eq.' + productId + '&status=eq.approved&select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-reviews = res.ok ? await res.json() : [];
-} catch (err) { reviews = []; }
-
-let productDocs = [];
-try {
-const docRes = await fetch(SUPABASE_URL + '/rest/v1/product_documents?product_id=eq.' + productId + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-productDocs = docRes.ok ? await docRes.json() : [];
-} catch (err) { productDocs = []; }
+const [reviewsRes, docsRes, relRes] = await Promise.all([
+fetch(SUPABASE_URL + '/rest/v1/reviews?product_id=eq.' + productId + '&status=eq.approved&select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/product_documents?product_id=eq.' + productId + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }),
+fetch(SUPABASE_URL + '/rest/v1/product_relations?product_id=eq.' + productId + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } })
+]);
+reviews = reviewsRes.ok ? await reviewsRes.json() : [];
+productDocs = docsRes.ok ? await docsRes.json() : [];
+relatedProducts = relRes.ok ? await relRes.json() : [];
+} catch (err) {}
 const docTypeLabels = { manual: '📘 User Manual', warranty_card: '📜 Warranty Card', spec_sheet: '📋 Spec Sheet', catalogue: '📖 Catalogue', installation_guide: '🔧 Installation Guide', other: '📄 Document' };
 const docsHtml = productDocs.length > 0 ? '<div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">' + productDocs.map(function(d) { return '<a href="' + d.document_data + '" download="' + (d.document_name || 'document.pdf') + '" style="font-size:10.5px; background:#F1F8ED; color:#0E3D63; padding:5px 10px; border-radius:8px; text-decoration:none; font-weight:700;">' + (docTypeLabels[d.document_type] || '📄 Document') + '</a>'; }).join('') + '</div>' : '';
 
-let relatedProducts = [];
-try {
-const relRes = await fetch(SUPABASE_URL + '/rest/v1/product_relations?product_id=eq.' + productId + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
-relatedProducts = relRes.ok ? await relRes.json() : [];
-} catch (err) { relatedProducts = []; }
 const relTypeLabels = { similar: '🔀 Similar Products', alternative: '🔄 Alternatives', cross_sell: '➕ You May Also Need', up_sell: '⬆️ Upgrade Options', recommended: '⭐ Recommended For You' };
 let relatedHtml = '';
 Object.keys(relTypeLabels).forEach(function(type) {
