@@ -3275,6 +3275,18 @@ return '<div data-viewid="' + rp.id + '" style="flex:0 0 100px; cursor:pointer;"
 }).join('');
 relatedHtml += '<div style="margin-top:16px;"><div style="font-size:12.5px; font-weight:700; margin-bottom:8px;">' + relTypeLabels[type] + '</div><div style="display:flex; gap:10px; overflow-x:auto; padding-bottom:4px;">' + cardsHtml + '</div></div>';
 });
+// If no vendor/admin has manually curated related products, automatically
+// suggest a few more from the SAME category — genuinely useful, and every
+// product gets this for free without needing manual setup.
+if (relatedHtml === '') {
+const sameCategoryProducts = productPool.filter(function(pp) { return pp.id !== p.id && (pp.categoryId === p.categoryId || pp.subcategoryId === p.subcategoryId) && pp.categoryId; }).slice(0, 8);
+if (sameCategoryProducts.length > 0) {
+const cardsHtml = sameCategoryProducts.map(function(rp) {
+return '<div data-viewid="' + rp.id + '" style="flex:0 0 100px; cursor:pointer;"><div style="width:100px; height:100px; border-radius:10px; overflow:hidden; background:#f3f1f8; display:flex; align-items:center; justify-content:center; font-size:32px;">' + (rp.image ? '<img src="' + rp.image + '" style="width:100%; height:100%; object-fit:cover;">' : rp.icon) + '</div><div style="font-size:10.5px; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + rp.name + '</div><div style="font-size:11px; font-weight:800; color:#7c3aed;">₹' + rp.price + '</div></div>';
+}).join('');
+relatedHtml = '<div style="margin-top:16px;"><div style="font-size:12.5px; font-weight:700; margin-bottom:8px;">🔎 More from this category</div><div style="display:flex; gap:10px; overflow-x:auto; padding-bottom:4px;">' + cardsHtml + '</div></div>';
+}
+}
 
 const avgRating = reviews.length > 0 ? (reviews.reduce(function(s,r){ return s + Number(r.rating || 0); }, 0) / reviews.length).toFixed(1) : null;
 const allPhotos = [p.image].concat(p.additionalImages || []).filter(Boolean);
@@ -3309,6 +3321,7 @@ mainImgHtml + thumbsHtml +
 '<div id="pdPriceRow" style="display:flex; align-items:center; gap:8px; margin-top:6px;"><span id="pdPrice" style="font-size:20px; font-weight:900; color:#7c3aed;">₹' + p.price + '</span>' + (p.old > p.price ? '<span style="text-decoration:line-through; color:#9ca3af; font-size:13px;">₹' + p.old + '</span><span style="color:#15803d; font-size:11px; font-weight:700;">' + p.off + '</span>' : '') + '</div>' +
 variantSelectorHtml +
 (avgRating ? '<div style="margin-top:6px; font-size:12px;">⭐ ' + avgRating + ' (' + reviews.length + ' review' + (reviews.length !== 1 ? 's' : '') + ')</div>' : '<div style="margin-top:6px; font-size:11px; color:#9ca3af;">No reviews yet</div>') +
+(variants.length === 0 && p.stock != null && p.stock > 0 && p.stock <= 10 ? '<div style="margin-top:6px; background:#fef2f2; color:#dc2626; font-size:11px; font-weight:700; padding:6px 10px; border-radius:8px; display:inline-block;">🔥 Only ' + p.stock + ' left in stock — order soon!</div>' : '') +
 (p.feature ? '<p style="font-size:12.5px; color:#4b5563; margin-top:10px; line-height:1.5;">' + p.feature + '</p>' : '') +
 docsHtml +
 (p.fullFeatures && p.fullFeatures.split('\n').filter(function(l){return l.trim();}).length > 0 ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:6px;">✨ Key Features</div><ul style="font-size:12.5px; color:#4b5563; line-height:1.7; padding-left:18px; margin:0;">' + p.fullFeatures.split('\n').filter(function(l){return l.trim();}).map(function(l){ return '<li>' + l.trim() + '</li>'; }).join('') + '</ul></div>' : '') +
@@ -3341,7 +3354,15 @@ docsHtml +
 '</div>'
 :
 '<div style="display:flex; align-items:center; gap:14px; margin-top:14px;"><span style="font-size:11.5px; font-weight:700; color:#6b7280;">Quantity</span><div style="display:flex; align-items:center; gap:10px; background:#f3f1f8; border-radius:10px; padding:6px 10px;"><button type="button" id="pdQtyDec" style="background:#fff; border:none; width:26px; height:26px; border-radius:6px; font-size:16px; font-weight:700; cursor:pointer;">−</button><span id="pdQtyVal" style="font-size:14px; font-weight:800; min-width:20px; text-align:center;">1</span><button type="button" id="pdQtyInc" style="background:#fff; border:none; width:26px; height:26px; border-radius:6px; font-size:16px; font-weight:700; cursor:pointer;">+</button></div></div>' +
-'<button data-detailadd="' + p.id + '" ' + (variants.length > 0 ? 'disabled' : '') + ' style="width:100%; margin-top:14px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer; opacity:' + (variants.length > 0 ? '0.5' : '1') + ';">' + (variants.length > 0 ? 'Select Options' : 'Add to Cart') + '</button>'
+'<div style="display:flex; gap:8px; margin-top:14px;"><button data-detailadd="' + p.id + '" ' + (variants.length > 0 ? 'disabled' : '') + ' style="flex:1; background:#fff; color:#7c3aed; border:2px solid #7c3aed; padding:13px; border-radius:12px; font-weight:800; cursor:pointer; opacity:' + (variants.length > 0 ? '0.5' : '1') + ';">' + (variants.length > 0 ? 'Select Options' : '🛒 Add to Cart') + '</button>' +
+(variants.length === 0 ? '<button data-buynow="' + p.id + '" style="flex:1; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">⚡ Buy Now</button>' : '') +
+'</div>' +
+'<div style="display:flex; justify-content:space-between; margin-top:12px; padding:10px 4px; border-top:1px solid #f0eef7;">' +
+'<div style="text-align:center; flex:1;"><div style="font-size:18px;">🛡️</div><div style="font-size:9px; color:#6b7280; font-weight:700; margin-top:2px;">100% Genuine</div></div>' +
+'<div style="text-align:center; flex:1;"><div style="font-size:18px;">🔒</div><div style="font-size:9px; color:#6b7280; font-weight:700; margin-top:2px;">Secure Payment</div></div>' +
+'<div style="text-align:center; flex:1;"><div style="font-size:18px;">↩️</div><div style="font-size:9px; color:#6b7280; font-weight:700; margin-top:2px;">Easy Returns</div></div>' +
+'<div style="text-align:center; flex:1;"><div style="font-size:18px;">🎧</div><div style="font-size:9px; color:#6b7280; font-weight:700; margin-top:2px;">24x7 Support</div></div>' +
+'</div>'
 ) +
 '</div>' +
 relatedHtml +
@@ -3499,6 +3520,15 @@ cart[key] = (cart[key] || 0) + pdSelectedQty;
 logProductEvent(productId, 'add_to_cart');
 refreshAll();
 closeProductDetailModal();
+});
+const buyNowBtn = document.querySelector('[data-buynow]');
+if (buyNowBtn) buyNowBtn.addEventListener('click', function() {
+const key = selectedVariant ? makeCartKey(productId, selectedVariant.id) : makeCartKey(productId, null);
+cart[key] = (cart[key] || 0) + pdSelectedQty;
+logProductEvent(productId, 'add_to_cart');
+refreshAll();
+closeProductDetailModal();
+openCheckout();
 });
 const sampleBtn = document.querySelector('[data-requestsample]');
 if (sampleBtn) sampleBtn.addEventListener('click', function() { openPrebookingModal(productId, 'sample'); });
