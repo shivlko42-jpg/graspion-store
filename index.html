@@ -653,8 +653,8 @@ Continue with Google
 </div>
 <div class="drawer-body" id="drawerBody"></div>
 <div class="drawer-foot" id="drawerFoot" style="display:none;">
-<div class="foot-row"><span data-i18n="itemTotal">Item Total</span><span id="fItemTotal">₹0</span></div>
-<div class="foot-row" style="font-size:10.5px; color:#9ca3af;"><span>Inclusive of GST</span><span id="fGstAmount">₹0</span></div>
+<div class="foot-row"><span>Subtotal</span><span id="fSubtotal">₹0</span></div>
+<div id="fTaxRows" style="font-size:10.5px; color:#9ca3af;"></div>
 <div class="foot-row"><span data-i18n="deliveryFee">Delivery Fee</span><span id="fDelivery">₹0</span></div>
 <div class="foot-row total"><span data-i18n="toPay">To Pay</span><span id="fTotal">₹0</span></div>
 <button class="checkout-btn" id="goCheckoutBtn" data-i18n="proceedCheckout">Proceed to Checkout</button>
@@ -1368,12 +1368,40 @@ return Object.assign({}, p, { qty: cart[key], cartKey: key, price: Number(varian
 return Object.assign({}, p, { qty: cart[key], cartKey: key });
 }).filter(Boolean);
 }
+// India's postal-circle pincode-prefix ranges — used to estimate the
+// customer's state from their pincode (they aren't asked to pick a state
+// explicitly, just city+pincode) purely to decide CGST+SGST (same state as
+// the platform) vs IGST (different state) for a clear tax breakup. This is
+// a display estimate, not a legal filing document.
+const PINCODE_PREFIX_STATE = {
+'11':'Delhi','12':'Haryana','13':'Haryana','14':'Punjab','15':'Punjab','16':'Punjab','17':'Himachal Pradesh','18':'Jammu and Kashmir','19':'Jammu and Kashmir',
+'20':'Uttar Pradesh','21':'Uttar Pradesh','22':'Uttar Pradesh','23':'Uttar Pradesh','24':'Uttar Pradesh','25':'Uttar Pradesh','26':'Uttar Pradesh','27':'Uttar Pradesh','28':'Uttar Pradesh',
+'30':'Rajasthan','31':'Rajasthan','32':'Rajasthan','33':'Rajasthan','34':'Rajasthan',
+'36':'Gujarat','37':'Gujarat','38':'Gujarat','39':'Gujarat',
+'40':'Maharashtra','41':'Maharashtra','42':'Maharashtra','43':'Maharashtra','44':'Maharashtra',
+'45':'Madhya Pradesh','46':'Madhya Pradesh','47':'Madhya Pradesh','48':'Madhya Pradesh',
+'49':'Chhattisgarh','50':'Telangana','51':'Telangana','52':'Andhra Pradesh','53':'Andhra Pradesh',
+'56':'Karnataka','57':'Karnataka','58':'Karnataka','59':'Karnataka',
+'60':'Tamil Nadu','61':'Tamil Nadu','62':'Tamil Nadu','63':'Tamil Nadu','64':'Tamil Nadu',
+'67':'Kerala','68':'Kerala','69':'Kerala',
+'70':'West Bengal','71':'West Bengal','72':'West Bengal','73':'West Bengal','74':'West Bengal','75':'Odisha','76':'Odisha','77':'Odisha',
+'78':'Assam','79':'Assam',
+'80':'Bihar','81':'Bihar','82':'Bihar','83':'Jharkhand','84':'Jharkhand','85':'Jharkhand',
+};
+function getStateFromPincode(pincode) {
+if (!pincode || pincode.length < 2) return null;
+return PINCODE_PREFIX_STATE[pincode.slice(0,2)] || null;
+}
 function cartTotals(){ const items = cartItemsList(); const itemTotal = items.reduce(function(s,i){ return s + i.price*i.qty; }, 0);
-// Prices are GST-inclusive (standard MRP-style Indian retail pricing) — this
-// extracts the tax PORTION already embedded in each item's price for
-// transparent display, it does NOT add anything extra to the total charged.
 const gstAmount = items.reduce(function(s,i){ const rate = i.gstPercent || 18; return s + (i.price*i.qty) - (i.price*i.qty)/(1+rate/100); }, 0);
-const delivery = itemTotal > 199 || itemTotal === 0 ? 0 : 29; const gross = itemTotal + delivery; const discount = appliedCoupon ? Math.min(appliedCoupon.discount, gross) : 0; return { itemTotal: itemTotal, gstAmount: gstAmount, delivery: delivery, discount: discount, total: Math.max(gross - discount, 0), count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
+const subtotal = itemTotal - gstAmount;
+const customerState = getStateFromPincode(customerInfo.pincode || selectedPin);
+const platformState = window.PLATFORM_STATE_CACHE || 'Uttar Pradesh';
+const isInterState = customerState && platformState && customerState.toLowerCase() !== platformState.toLowerCase();
+const cgst = isInterState ? 0 : gstAmount / 2;
+const sgst = isInterState ? 0 : gstAmount / 2;
+const igst = isInterState ? gstAmount : 0;
+const delivery = itemTotal > 199 || itemTotal === 0 ? 0 : 29; const gross = itemTotal + delivery; const discount = appliedCoupon ? Math.min(appliedCoupon.discount, gross) : 0; return { itemTotal: itemTotal, subtotal: subtotal, gstAmount: gstAmount, cgst: cgst, sgst: sgst, igst: igst, isInterState: isInterState, delivery: delivery, discount: discount, total: Math.max(gross - discount, 0), count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
 async function applyCoupon(code){
 if (!code) return;
 couponMessage = '⏳ Checking...';
@@ -1422,8 +1450,15 @@ const vendor = vendors.find(function(v){ return v.id === i.vendorId; });
 return '<div class="cart-item"><div class="ci-icon">' + i.icon + '</div><div class="ci-info"><div class="ci-name">' + i.name + '</div><div class="ci-vendor">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><div class="ci-price">₹' + (i.price*i.qty).toLocaleString('en-IN') + '</div><div class="ci-qty"><button class="qty-btn" data-dec2="' + i.cartKey + '">−</button><span class="qty-val">' + i.qty + '</span><button class="qty-btn" data-inc2="' + i.cartKey + '">+</button></div></div></div>';
 }).join('') + renderPairingSuggestions(items);
 foot.style.display = 'block';
-document.getElementById('fItemTotal').textContent = '₹' + t.itemTotal.toLocaleString('en-IN');
-document.getElementById('fGstAmount').textContent = '₹' + Math.round(t.gstAmount).toLocaleString('en-IN');
+document.getElementById('fSubtotal').textContent = '₹' + Math.round(t.subtotal).toLocaleString('en-IN');
+const taxRowsDiv = document.getElementById('fTaxRows');
+if (taxRowsDiv) {
+if (t.isInterState) {
+taxRowsDiv.innerHTML = '<div class="foot-row"><span>IGST</span><span>₹' + Math.round(t.igst).toLocaleString('en-IN') + '</span></div>';
+} else {
+taxRowsDiv.innerHTML = '<div class="foot-row"><span>CGST</span><span>₹' + Math.round(t.cgst).toLocaleString('en-IN') + '</span></div><div class="foot-row"><span>SGST</span><span>₹' + Math.round(t.sgst).toLocaleString('en-IN') + '</span></div>';
+}
+}
 document.getElementById('fDelivery').textContent = t.delivery === 0 ? graspionT('free') : '₹' + t.delivery;
 document.getElementById('fTotal').textContent = '₹' + t.total.toLocaleString('en-IN');
 document.querySelectorAll('[data-inc2]').forEach(function(btn){ btn.addEventListener('click', function(){ const key=btn.getAttribute('data-inc2'); cart[key]=(cart[key]||0)+1; refreshAll(); }); });
@@ -2085,6 +2120,10 @@ openProductDetail(b.product_id);
 renderCtaDots();
 }
 loadSponsoredBanners();
+fetch(SUPABASE_URL + '/rest/v1/settings?key=eq.platform_state&select=value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
+.then(function(r) { return r.ok ? r.json() : []; })
+.then(function(rows) { window.PLATFORM_STATE_CACHE = (rows[0] && rows[0].value) || 'Uttar Pradesh'; })
+.catch(function() { window.PLATFORM_STATE_CACHE = 'Uttar Pradesh'; });
 
 // ===================== SUPPORT CHAT BOT =====================
 function chatBotAddMsg(text, isUser) {
