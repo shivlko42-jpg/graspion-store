@@ -1453,10 +1453,12 @@ foot.style.display = 'block';
 document.getElementById('fSubtotal').textContent = '₹' + Math.round(t.subtotal).toLocaleString('en-IN');
 const taxRowsDiv = document.getElementById('fTaxRows');
 if (taxRowsDiv) {
+const effectiveRate = t.subtotal > 0 ? (t.gstAmount / t.subtotal * 100) : 0;
+const halfRate = (effectiveRate / 2).toFixed(1);
 if (t.isInterState) {
-taxRowsDiv.innerHTML = '<div class="foot-row"><span>IGST</span><span>₹' + Math.round(t.igst).toLocaleString('en-IN') + '</span></div>';
+taxRowsDiv.innerHTML = '<div class="foot-row"><span>IGST (' + effectiveRate.toFixed(1) + '%)</span><span>₹' + Math.round(t.igst).toLocaleString('en-IN') + '</span></div>';
 } else {
-taxRowsDiv.innerHTML = '<div class="foot-row"><span>CGST</span><span>₹' + Math.round(t.cgst).toLocaleString('en-IN') + '</span></div><div class="foot-row"><span>SGST</span><span>₹' + Math.round(t.sgst).toLocaleString('en-IN') + '</span></div>';
+taxRowsDiv.innerHTML = '<div class="foot-row"><span>CGST (' + halfRate + '%)</span><span>₹' + Math.round(t.cgst).toLocaleString('en-IN') + '</span></div><div class="foot-row"><span>SGST (' + halfRate + '%)</span><span>₹' + Math.round(t.sgst).toLocaleString('en-IN') + '</span></div>';
 }
 }
 document.getElementById('fDelivery').textContent = t.delivery === 0 ? graspionT('free') : '₹' + t.delivery;
