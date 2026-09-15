@@ -619,7 +619,7 @@ Continue with Google
 <div id="pdTopBarTitle" style="flex:1; font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Product</div>
 <button id="pdShareBtn" style="flex:0 0 auto; background:#f7f6fb; border:none; width:36px; height:36px; border-radius:50%; font-size:15px; cursor:pointer;">⤴️</button>
 </div>
-<div id="productDetailContent" style="padding:18px; padding-bottom:90px;"></div>
+<div id="productDetailContent" style="padding:18px; padding-bottom:150px;"></div>
 <div id="pdBottomBar" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#fff; box-shadow:0 -4px 16px rgba(0,0,0,0.08); padding:10px 14px; z-index:10;"></div>
 </div>
 </div>
@@ -818,7 +818,7 @@ let checkoutStep = 'address';
 let appliedCoupon = null; // { code, discount } — set by applyCoupon(), verified live against the server
 let couponMessage = '';
 let selectedPayMethod = 'upi';
-let customerInfo = { name:'', phone:'', address:'', city:'', pincode:'' };
+let customerInfo = { name:'', phone:'', address:'', city:'', pincode:'', state:'' };
 let currentVendorAgreementSnapshot = null;
 let deliveryEstimates = {}; // { vendorId: { serviceable, estimated_delivery_days, courier_name } } — from real Shiprocket check at checkout
 
@@ -1399,7 +1399,7 @@ return PINCODE_PREFIX_STATE[pincode.slice(0,2)] || null;
 function cartTotals(){ const items = cartItemsList(); const itemTotal = items.reduce(function(s,i){ return s + i.price*i.qty; }, 0);
 const gstAmount = items.reduce(function(s,i){ const rate = i.gstPercent || 18; return s + (i.price*i.qty) - (i.price*i.qty)/(1+rate/100); }, 0);
 const subtotal = itemTotal - gstAmount;
-const customerState = getStateFromPincode(customerInfo.pincode || selectedPin);
+const customerState = customerInfo.state || getStateFromPincode(customerInfo.pincode || selectedPin);
 const platformState = window.PLATFORM_STATE_CACHE || 'Uttar Pradesh';
 const isInterState = customerState && platformState && customerState.toLowerCase() !== platformState.toLowerCase();
 const cgst = isInterState ? 0 : gstAmount / 2;
@@ -1684,7 +1684,10 @@ const t = cartTotals();
 const items = cartItemsList();
 const wrap = document.getElementById('coWrap');
 if(checkoutStep === 'address'){
-wrap.innerHTML = '<div class="co-section"><h4>📍 ' + graspionT('deliveryAddress') + '</h4><input class="co-input" placeholder="' + graspionT('fullName') + '" id="coName" value="' + customerInfo.name + '"><input class="co-input" placeholder="' + graspionT('phoneNumber') + '" id="coPhone" value="' + customerInfo.phone + '"><input class="co-input" placeholder="' + graspionT('addressPlaceholder') + '" id="coAddr" value="' + customerInfo.address + '"><div class="co-row2"><input class="co-input" placeholder="' + graspionT('city') + '" id="coCity" value="' + (customerInfo.city || (areaData[selectedPin] ? areaData[selectedPin].city : '')) + '"><input class="co-input" placeholder="' + graspionT('pincode') + '" id="coPincode" value="' + (customerInfo.pincode || selectedPin || '') + '"></div></div><div class="co-section"><h4>🏷️ Coupon</h4>' +
+wrap.innerHTML = '<div class="co-section"><h4>📍 ' + graspionT('deliveryAddress') + '</h4><input class="co-input" placeholder="' + graspionT('fullName') + '" id="coName" value="' + customerInfo.name + '"><input class="co-input" placeholder="' + graspionT('phoneNumber') + '" id="coPhone" value="' + customerInfo.phone + '"><input class="co-input" placeholder="' + graspionT('addressPlaceholder') + '" id="coAddr" value="' + customerInfo.address + '"><div class="co-row2"><input class="co-input" placeholder="' + graspionT('city') + '" id="coCity" value="' + (customerInfo.city || (areaData[selectedPin] ? areaData[selectedPin].city : '')) + '"><input class="co-input" placeholder="' + graspionT('pincode') + '" id="coPincode" value="' + (customerInfo.pincode || selectedPin || '') + '"></div>' +
+'<select class="co-input" id="coState">' + ['Select State','Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'].map(function(s) { return '<option value="' + (s === 'Select State' ? '' : s) + '"' + (customerInfo.state === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select>' +
+'<select class="co-input" id="coState">' + ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu and Kashmir','Ladakh','Chandigarh','Puducherry'].map(function(s) { return '<option value="' + s + '" ' + ((customerInfo.state || getStateFromPincode(customerInfo.pincode || selectedPin)) === s ? 'selected' : '') + '>' + s + '</option>'; }).join('') + '</select>' +
+'</div><div class="co-section"><h4>🏷️ Coupon</h4>' +
 (appliedCoupon
   ? '<div class="co-item-row" style="background:#f0fdf4;border-radius:8px;padding:8px 10px;"><span>✅ ' + appliedCoupon.code + ' applied</span><button id="removeCouponBtn" style="background:none;border:none;color:#dc2626;font-weight:700;cursor:pointer;">Remove</button></div>'
   : '<div style="display:flex;gap:8px;"><input class="co-input" placeholder="Enter coupon code" id="coCouponInput" style="flex:1;margin:0;text-transform:uppercase;"><button id="applyCouponBtn" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:0 16px;font-weight:700;cursor:pointer;">Apply</button></div>') +
@@ -1702,6 +1705,8 @@ customerInfo.phone = document.getElementById('coPhone').value.trim();
 customerInfo.address = document.getElementById('coAddr').value.trim();
 customerInfo.city = document.getElementById('coCity').value.trim();
 customerInfo.pincode = document.getElementById('coPincode').value.trim();
+customerInfo.state = document.getElementById('coState').value;
+customerInfo.state = document.getElementById('coState').value;
 if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) { alert(graspionT('requiredFields')); return; }
 const btn = this;
 btn.disabled = true; btn.textContent = 'Checking delivery...';
@@ -3325,15 +3330,18 @@ return '<button type="button" class="pd-attr-btn" data-attrname="' + attrName + 
 }
 
 content.innerHTML =
-'<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:12px;"><h2 style="font-size:19px; line-height:1.3;">' + p.name + '</h2><button id="pdWishlistBtn" data-pdwishlist="' + p.id + '" style="flex:0 0 auto; background:#f3f1f8; border:none; width:34px; height:34px; border-radius:50%; font-size:16px; cursor:pointer; color:' + (wishlistIds.has(p.id) ? '#ec4899' : '#9ca3af') + ';">' + (wishlistIds.has(p.id) ? '♥' : '♡') + '</button></div>' +
+'<div style="display:flex; justify-content:flex-end;"><button id="pdWishlistBtn" data-pdwishlist="' + p.id + '" style="flex:0 0 auto; background:#f3f1f8; border:none; width:34px; height:34px; border-radius:50%; font-size:16px; cursor:pointer; color:' + (wishlistIds.has(p.id) ? '#ec4899' : '#9ca3af') + ';">' + (wishlistIds.has(p.id) ? '♥' : '♡') + '</button></div>' +
 mainImgHtml + thumbsHtml +
-'<div style="margin-top:14px;"><button id="pdVendorToggle" style="background:none; border:none; padding:0; cursor:pointer; font-size:11px; color:#7c3aed; font-weight:700; display:flex; align-items:center; gap:4px;">' + (vendor ? vendor.icon + ' Sold by ' + vendor.name : '') + ' <span style="font-size:9px;">▾ tap for details</span></button>' +
+(p.brand ? '<div style="margin-top:14px; font-size:12px; font-weight:700; color:#7c3aed;">' + p.brand + '</div>' : '') +
+'<h1 style="font-size:18px; font-weight:800; line-height:1.35; margin-top:4px; color:#1e1b3a;">' + p.name + '</h1>' +
+'<div style="margin-top:10px;"><button id="pdVendorToggle" style="background:none; border:none; padding:0; cursor:pointer; font-size:11px; color:#7c3aed; font-weight:700; display:flex; align-items:center; gap:4px;">' + (vendor ? vendor.icon + ' Sold by ' + vendor.name : '') + ' <span style="font-size:9px;">▾ tap for details</span></button>' +
 '<div id="pdVendorDetails" style="display:none; margin-top:6px; background:#faf9fd; border-radius:10px; padding:10px; font-size:11px; color:#4b5563; line-height:1.7;"><b>' + (vendor ? vendor.name : 'Graspion Seller') + '</b>' + (vendor && vendor.gstin ? '<br>GSTIN: ' + vendor.gstin : '') + (vendor && vendor.address ? '<br>📍 ' + vendor.address : '') + (vendor && vendor.email ? '<br>✉️ ' + vendor.email : '') + '</div>' +
 '<div id="pdPriceRow" style="display:flex; align-items:center; gap:8px; margin-top:6px;"><span id="pdPrice" style="font-size:20px; font-weight:900; color:#7c3aed;">₹' + p.price + '</span>' + (p.old > p.price ? '<span style="text-decoration:line-through; color:#9ca3af; font-size:13px;">₹' + p.old + '</span><span style="color:#15803d; font-size:11px; font-weight:700;">' + p.off + '</span>' : '') + '</div>' +
 variantSelectorHtml +
 (avgRating ? '<div style="margin-top:6px; font-size:12px;">⭐ ' + avgRating + ' (' + reviews.length + ' review' + (reviews.length !== 1 ? 's' : '') + ')</div>' : '<div style="margin-top:6px; font-size:11px; color:#9ca3af;">No reviews yet</div>') +
 (variants.length === 0 && p.stock != null && p.stock > 0 && p.stock <= 10 ? '<div style="margin-top:6px; background:#fef2f2; color:#dc2626; font-size:11px; font-weight:700; padding:6px 10px; border-radius:8px; display:inline-block;">🔥 Only ' + p.stock + ' left in stock — order soon!</div>' : '') +
 (p.feature ? '<p style="font-size:12.5px; color:#4b5563; margin-top:10px; line-height:1.5;">' + p.feature + '</p>' : '') +
+(p.fullFeatures && p.fullFeatures.split('\n').filter(function(l){return l.trim();}).length > 0 ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:6px;">✨ Key Features</div><ul style="font-size:12.5px; color:#4b5563; line-height:1.7; padding-left:18px; margin:0;">' + p.fullFeatures.split('\n').filter(function(l){return l.trim();}).map(function(l){ return '<li>' + l.trim() + '</li>'; }).join('') + '</ul></div>' : '') +
 (function() {
   // 3 tap-to-expand blocks — each only appears if there's actually
   // something in it (whatever the vendor filled in when adding the
@@ -3341,9 +3349,6 @@ variantSelectorHtml +
   const descParts = [];
   if (p.longDescription) descParts.push('<p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line;">' + p.longDescription + '</p>');
   else if (p.shortDescription) descParts.push('<p style="font-size:12.5px; color:#4b5563; line-height:1.6;">' + p.shortDescription + '</p>');
-  if (p.fullFeatures && p.fullFeatures.split('\n').filter(function(l){return l.trim();}).length > 0) {
-    descParts.push('<div style="font-size:12px; font-weight:800; margin:10px 0 6px;">✨ Key Features</div><ul style="font-size:12.5px; color:#4b5563; line-height:1.7; padding-left:18px; margin:0;">' + p.fullFeatures.split('\n').filter(function(l){return l.trim();}).map(function(l){ return '<li>' + l.trim() + '</li>'; }).join('') + '</ul>');
-  }
 
   const specRows = [];
   if (p.brand) specRows.push(['Brand', p.brand]);
@@ -3355,6 +3360,13 @@ variantSelectorHtml +
   const specHtml = specRows.length > 0 ? '<table style="width:100%; font-size:11.5px; color:#4b5563; border-collapse:collapse;">' + specRows.map(function(r) { return '<tr><td style="padding:4px 0; color:#9ca3af; width:40%;">' + r[0] + '</td><td style="padding:4px 0; font-weight:600;">' + r[1] + '</td></tr>'; }).join('') + '</table>' : '';
 
   const addlParts = [];
+  // Always-available facts (computed, not dependent on the vendor filling
+  // in optional fields) so this block never has nothing useful to show.
+  const alwaysKnown = [];
+  if (p.sku) alwaysKnown.push(['SKU', p.sku]);
+  alwaysKnown.push(['Delivery Type', p.fulfillmentType === 'instant' ? '⚡ Instant (10-20 min)' : '📦 Standard (Pan-India courier)']);
+  if (p.codAllowed !== false) alwaysKnown.push(['Cash on Delivery', 'Available']);
+  if (alwaysKnown.length > 0) addlParts.push('<table style="width:100%; font-size:11.5px; color:#4b5563; border-collapse:collapse; margin-bottom:10px;">' + alwaysKnown.map(function(r) { return '<tr><td style="padding:4px 0; color:#9ca3af; width:45%;">' + r[0] + '</td><td style="padding:4px 0; font-weight:600;">' + r[1] + '</td></tr>'; }).join('') + '</table>');
   if (p.whatsIncluded) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">📦 What\'s In The Box</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line; margin-bottom:10px;">' + p.whatsIncluded + '</p>');
   if (p.warrantyAvailable) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">🛡️ Warranty</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; margin-bottom:10px;">' + (p.warrantyPeriod || '') + (p.warrantyType ? ' · ' + p.warrantyType : '') + '</p>');
   if (p.installationInfo) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">🔧 Installation</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line; margin-bottom:10px;">' + p.installationInfo + '</p>');
