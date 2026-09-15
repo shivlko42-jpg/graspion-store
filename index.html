@@ -157,7 +157,7 @@ extra friction with a mouse and a wide screen, so it reverts to always-visible. 
 .rail-item { flex-direction:row; justify-content:flex-start; gap:12px; padding:10px 16px; }
 .rail-thumb { width:36px; height:36px; font-size:16px; flex-shrink:0; }
 .rail-item span { font-size:13px; max-width:none; }
-#topCategoriesGrid { grid-template-columns:repeat(10,1fr) !important; gap:16px !important; }
+#topCategoriesGrid { grid-template-rows:none !important; grid-auto-flow:row !important; grid-template-columns:repeat(10,1fr) !important; grid-auto-columns:unset !important; gap:16px !important; overflow-x:visible !important; }
 /* Full-screen slide-in is a mobile-native pattern; on a laptop a centered,
 reasonably-sized dialog with a visible dimmed backdrop feels more at home
 and matches how dialogs normally behave on a desktop OS. */
@@ -426,7 +426,7 @@ window.addEventListener('load', function() {
 
 <div class="vendor-strip" id="topCategoriesStrip" style="display:none;">
 <h2>🗂️ Shop by Category</h2>
-<div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px;" id="topCategoriesGrid"></div>
+<div style="display:grid; grid-template-rows:repeat(2,1fr); grid-auto-flow:column; grid-auto-columns:64px; gap:8px 10px; overflow-x:auto; padding-bottom:6px;" id="topCategoriesGrid"></div>
 </div>
 
 <div id="dynamicHomeSections"></div>
@@ -446,6 +446,7 @@ window.addEventListener('load', function() {
 </select>
 </div>
 <div class="grid" id="dealGrid" style="min-height:280px;"></div>
+<div style="max-width:1200px; margin:14px auto 0; padding:0 20px;" id="dealSeeMoreWrap"></div>
 </div>
 </div>
 </div>
@@ -652,6 +653,13 @@ Continue with Google
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><h3 style="font-size:14px;">🗺️ Live Rider Location</h3><button id="closeTrackLiveBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
 <div id="trackLiveMap" style="width:100%; height:340px; border-radius:14px; background:#f3f1f8;"></div>
 <div id="trackLiveStatus" style="font-size:11px; color:#9ca3af; margin-top:8px; text-align:center;">Locating rider...</div>
+</div>
+</div>
+
+<div class="modal-overlay" id="popupAdModal" style="display:none; z-index:250;">
+<div class="modal-box" style="max-width:340px; width:100%; background:#fff; border-radius:20px; padding:0; overflow:hidden; position:relative;">
+<button id="closePopupAdBtn" style="position:absolute; top:10px; right:10px; z-index:5; background:rgba(0,0,0,0.5); color:#fff; border:none; width:30px; height:30px; border-radius:50%; font-size:15px; cursor:pointer;">✕</button>
+<div id="popupAdContent"></div>
 </div>
 </div>
 
@@ -863,6 +871,7 @@ let couponMessage = '';
 let selectedPayMethod = 'upi';
 let customerInfo = { name:'', phone:'', address:'', city:'', pincode:'', state:'' };
 let selectedSortOption = 'relevance';
+let productsShowAll = false;
 let currentVendorAgreementSnapshot = null;
 let deliveryEstimates = {}; // { vendorId: { serviceable, estimated_delivery_days, courier_name } } — from real Shiprocket check at checkout
 
@@ -1238,7 +1247,7 @@ setTimeout(function(){ document.getElementById('searchSuggestions').classList.re
 document.getElementById('searchInput').addEventListener('focus', function(){
 if (this.value.trim().length >= 2) renderSearchSuggestions(this.value);
 });
-function filterByCategory(catId){ activeCategoryId = (activeCategoryId === catId) ? null : catId; activeSubcategoryId = null; renderQuickCategories(); renderProducts(selectedPin); closeCategoryRail(); }
+function filterByCategory(catId){ activeCategoryId = (activeCategoryId === catId) ? null : catId; activeSubcategoryId = null; productsShowAll = false; renderQuickCategories(); renderProducts(selectedPin); closeCategoryRail(); }
 function openCategoryRail() {
 document.getElementById('categoryRail').classList.add('open');
 document.getElementById('categoryRailBackdrop').classList.add('open');
@@ -1306,7 +1315,6 @@ return '<div data-viewid="' + p.id + '" style="flex:0 0 118px; cursor:pointer;">
 }).join('');
 row.querySelectorAll('[data-viewid]').forEach(function(card){ card.addEventListener('click', function(){ openProductDetail(card.getAttribute('data-viewid')); }); });
 }
-let topCategoriesExpanded = false;
 function renderTopCategories(){
 const strip = document.getElementById('topCategoriesStrip');
 const grid = document.getElementById('topCategoriesGrid');
@@ -1314,23 +1322,17 @@ if (!strip || !grid) return;
 const mainCats = categoryList.filter(function(c){ return !c.parent_id; });
 if (mainCats.length === 0) { strip.style.display = 'none'; return; }
 strip.style.display = 'block';
-const INITIAL_COUNT = 9;
-const visibleCats = topCategoriesExpanded ? mainCats : mainCats.slice(0, INITIAL_COUNT);
-const tileHtml = function(c){
+grid.innerHTML = mainCats.map(function(c){
 const visual = CATEGORY_VISUALS[c.slug];
-const inner = c.image_url ? '<img src="' + c.image_url + '" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">' : '<div style="width:100%; height:100%; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:19px; background:' + (visual ? visual.color : '#f3f1f8') + ';">' + (visual ? visual.icon : '🛍️') + '</div>';
-return '<div data-topcat="' + c.id + '" style="cursor:pointer; text-align:center;"><div style="width:52px; height:52px; margin:0 auto; border-radius:50%; overflow:hidden; box-shadow:0 1px 5px rgba(0,0,0,0.08);">' + inner + '</div><div style="font-size:9.5px; font-weight:700; color:#1e1b3a; margin-top:5px; line-height:1.25;">' + c.name + '</div></div>';
-};
-const seeMoreTile = !topCategoriesExpanded && mainCats.length > INITIAL_COUNT ? '<div data-seemorecat="1" style="cursor:pointer; text-align:center;"><div style="width:52px; height:52px; margin:0 auto; border-radius:50%; background:#f3f1f8; display:flex; align-items:center; justify-content:center; font-size:16px; color:#7c3aed; font-weight:800;">+' + (mainCats.length - INITIAL_COUNT) + '</div><div style="font-size:9.5px; font-weight:700; color:#7c3aed; margin-top:5px;">See More</div></div>' : '';
-grid.innerHTML = visibleCats.map(tileHtml).join('') + seeMoreTile;
+const inner = c.image_url ? '<img src="' + c.image_url + '" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">' : '<div style="width:100%; height:100%; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; background:' + (visual ? visual.color : '#f3f1f8') + ';">' + (visual ? visual.icon : '🛍️') + '</div>';
+return '<div data-topcat="' + c.id + '" style="cursor:pointer; text-align:center;"><div style="width:44px; height:44px; margin:0 auto; border-radius:50%; overflow:hidden; box-shadow:0 1px 5px rgba(0,0,0,0.08);">' + inner + '</div><div style="font-size:9px; font-weight:700; color:#1e1b3a; margin-top:4px; line-height:1.2; white-space:normal;">' + c.name + '</div></div>';
+}).join('');
 grid.querySelectorAll('[data-topcat]').forEach(function(tile){
 tile.addEventListener('click', function(){
 filterByCategory(tile.getAttribute('data-topcat'));
 document.getElementById('mainContent').scrollIntoView({ behavior: 'smooth' });
 });
 });
-const seeMoreBtn = grid.querySelector('[data-seemorecat]');
-if (seeMoreBtn) seeMoreBtn.addEventListener('click', function(){ topCategoriesExpanded = true; renderTopCategories(); });
 }
 function renderDynamicHomeSections(){
 const container = document.getElementById('dynamicHomeSections');
@@ -1417,7 +1419,20 @@ return (Number(vb && vb.rating) || 0) - (Number(va && va.rating) || 0);
 });
 const dealGrid = document.getElementById('dealGrid');
 if(filtered.length === 0){ dealGrid.innerHTML = '<div class="no-vendor" style="grid-column:1/-1;">' + graspionT('noVendorArea') + '</div>'; return; }
-dealGrid.innerHTML = filtered.map(buildProductCardHtml).join('');
+const PRODUCTS_INITIAL_COUNT = 10;
+const visibleProducts = productsShowAll ? filtered : filtered.slice(0, PRODUCTS_INITIAL_COUNT);
+dealGrid.innerHTML = visibleProducts.map(buildProductCardHtml).join('');
+const seeMoreWrap = document.getElementById('dealSeeMoreWrap');
+if (seeMoreWrap) {
+if (!productsShowAll && filtered.length > PRODUCTS_INITIAL_COUNT) {
+seeMoreWrap.style.display = 'block';
+seeMoreWrap.innerHTML = '<button id="productsSeeMoreBtn" style="width:100%; background:#fff; border:2px solid #7c3aed; color:#7c3aed; padding:13px; border-radius:12px; font-weight:800; cursor:pointer; font-size:13px;">See More Products (' + (filtered.length - PRODUCTS_INITIAL_COUNT) + ' more) ↓</button>';
+document.getElementById('productsSeeMoreBtn').addEventListener('click', function(){ productsShowAll = true; renderProducts(selectedPin); });
+} else {
+seeMoreWrap.style.display = 'none';
+seeMoreWrap.innerHTML = '';
+}
+}
 wireProductCardEvents(dealGrid);
 renderDynamicHomeSections();
 renderRecentlyViewed();
@@ -2232,6 +2247,38 @@ loadSponsoredBanners();
 document.getElementById('sortBySelect').addEventListener('change', function() {
 selectedSortOption = this.value;
 renderProducts(selectedPin);
+});
+// Popup ad: shows an approved vendor-sponsored ad once per browser session,
+// a short delay after the page settles (never immediately, never repeated
+// mid-session) — a real monetization slot, not a dark-pattern nag. If no
+// vendor currently has an approved sponsored ad, this quietly does nothing.
+setTimeout(async function() {
+if (sessionStorage.getItem('graspion_popup_ad_shown')) return;
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/sponsored_banners?status=eq.approved&select=*,products(name,price,image_data)&order=created_at.desc&limit=1', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const rows = res.ok ? await res.json() : [];
+if (rows.length === 0) return;
+const ad = rows[0];
+const product = ad.products;
+const imgSrc = ad.image_url || (product && product.image_data);
+if (!imgSrc) return;
+document.getElementById('popupAdContent').innerHTML =
+'<div data-popupadclick="' + ad.product_id + '" style="cursor:pointer;">' +
+'<img src="' + imgSrc + '" style="width:100%; display:block;">' +
+'<div style="padding:14px;"><div style="font-size:9px; color:#9ca3af; font-weight:700; text-transform:uppercase;">Sponsored</div>' +
+(product ? '<div style="font-size:14px; font-weight:800; margin-top:4px;">' + product.name + '</div><div style="font-size:15px; font-weight:900; color:#7c3aed; margin-top:4px;">₹' + product.price + '</div>' : '') +
+'<button style="width:100%; margin-top:10px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:11px; border-radius:10px; font-weight:800; cursor:pointer;">Shop Now →</button></div></div>';
+document.getElementById('popupAdModal').style.display = 'flex';
+sessionStorage.setItem('graspion_popup_ad_shown', '1');
+fetch(SUPABASE_URL + '/rest/v1/rpc/increment_banner_click', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_banner_id: ad.id }) }).catch(function(){});
+document.querySelector('[data-popupadclick]').addEventListener('click', function() {
+document.getElementById('popupAdModal').style.display = 'none';
+openProductDetail(this.getAttribute('data-popupadclick'));
+});
+} catch (e) {}
+}, 4000);
+document.getElementById('closePopupAdBtn').addEventListener('click', function() {
+document.getElementById('popupAdModal').style.display = 'none';
 });
 fetch(SUPABASE_URL + '/rest/v1/settings?key=eq.platform_state&select=value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
 .then(function(r) { return r.ok ? r.json() : []; })
