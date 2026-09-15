@@ -612,10 +612,15 @@ Continue with Google
 </div>
 </div>
 
-<div class="modal-overlay" id="productDetailModal" style="display:none;">
-<div class="modal-box" style="max-width:480px; width:100%; background:#fff; border-radius:20px; padding:0; max-height:88vh; overflow-y:auto; position:relative;">
-<button id="closeProductDetailBtn" style="position:absolute; top:12px; right:12px; z-index:5; background:#fff; border:none; width:32px; height:32px; border-radius:50%; box-shadow:0 2px 8px rgba(0,0,0,0.15); font-size:14px; cursor:pointer;">✕</button>
-<div id="productDetailContent" style="padding:18px;"></div>
+<div class="modal-overlay" id="productDetailModal" style="display:none; background:#fff; align-items:stretch; justify-content:stretch; padding:0; z-index:200; transform:translateX(100%); transition:transform .3s ease;">
+<div class="modal-box" style="max-width:none; width:100%; background:#fff; border-radius:0; padding:0; max-height:none; height:100vh; overflow-y:auto; position:relative;">
+<div style="position:sticky; top:0; z-index:5; background:#fff; display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid #f0eef7;">
+<button id="closeProductDetailBtn" style="flex:0 0 auto; background:#f7f6fb; border:none; width:36px; height:36px; border-radius:50%; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;">←</button>
+<div id="pdTopBarTitle" style="flex:1; font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Product</div>
+<button id="pdShareBtn" style="flex:0 0 auto; background:#f7f6fb; border:none; width:36px; height:36px; border-radius:50%; font-size:15px; cursor:pointer;">⤴️</button>
+</div>
+<div id="productDetailContent" style="padding:18px; padding-bottom:90px;"></div>
+<div id="pdBottomBar" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#fff; box-shadow:0 -4px 16px rgba(0,0,0,0.08); padding:10px 14px; z-index:10;"></div>
 </div>
 </div>
 
@@ -3218,6 +3223,8 @@ setTimeout(maybeShowInstallNudge, 1200); // slight delay so it doesn't fight wit
 // product is open, so search engines that execute JS can pick up rich
 // snippet info (price, availability). Reverted when the modal closes.
 document.title = p.name + ' - Buy Online at Best Price | Graspion';
+const topBarTitleEl = document.getElementById('pdTopBarTitle');
+if (topBarTitleEl) topBarTitleEl.textContent = p.name;
 // Update the address bar so this exact product becomes shareable/bookmarkable
 // and the browser's own back-button can close it naturally — this also
 // gives each product a real, distinct URL state for SEO purposes, not just
@@ -3250,6 +3257,8 @@ const vendor = vendors.find(function(v) { return v.id === p.vendorId; });
 const content = document.getElementById('productDetailContent');
 content.innerHTML = '<div style="text-align:center; padding:40px 0; color:#9ca3af;">Loading...</div>';
 document.getElementById('productDetailModal').style.display = 'flex';
+document.body.style.overflow = 'hidden';
+requestAnimationFrame(function() { document.getElementById('productDetailModal').style.transform = 'translateX(0)'; });
 
 let reviews = [], productDocs = [], relatedProducts = [];
 try {
@@ -3370,8 +3379,10 @@ variantSelectorHtml +
 (p.codAllowed === false ? '<span class="prod-tag">💳 Prepaid Only</span>' : '<span class="prod-tag">💵 COD Available</span>') +
 '</div>' +
 '<div id="pdReturnPolicyBlock" style="display:none; margin-top:10px; background:#f0fdf4; border-radius:12px; padding:12px;"><div style="font-size:12px; font-weight:800; margin-bottom:6px; color:#15803d;">↩️ Return &amp; Refund Policy</div><div style="font-size:11.5px; color:#4b5563; line-height:1.6;">Loading...</div></div>' +
-(p.isPreorder ?
-'<div style="margin-top:16px; background:#faf9fd; border:1.5px solid #e9d5ff; border-radius:14px; padding:14px;">' +
+'</div>';
+
+const bottomBarHtml = p.isPreorder ?
+'<div style="background:#faf9fd; border:1.5px solid #e9d5ff; border-radius:14px; padding:14px;">' +
 '<div style="font-size:12.5px; font-weight:800; color:#7c3aed;">📦 Bulk / Pre-Order Item</div>' +
 '<div style="font-size:11px; color:#6b7280; margin-top:6px; line-height:1.6;">Minimum order: <b>' + p.preorderMinQty + '</b>' + (p.preorderLeadTimeDays ? ' · Ready in ~' + p.preorderLeadTimeDays + ' days' : '') + '</div>' +
 '<div style="font-size:11px; color:#6b7280; margin-top:4px;">Book now with a token advance of <b>₹' + p.preorderAdvanceAmount + '</b> — pay the rest when it\'s ready.</div>' +
@@ -3379,18 +3390,23 @@ variantSelectorHtml +
 '<button data-bookadvance="' + p.id + '" style="width:100%; margin-top:10px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">📦 Book Now — Pay ₹' + p.preorderAdvanceAmount + ' Advance</button>' +
 '</div>'
 :
-'<div style="display:flex; align-items:center; gap:14px; margin-top:14px;"><span style="font-size:11.5px; font-weight:700; color:#6b7280;">Quantity</span><div style="display:flex; align-items:center; gap:10px; background:#f3f1f8; border-radius:10px; padding:6px 10px;"><button type="button" id="pdQtyDec" style="background:#fff; border:none; width:26px; height:26px; border-radius:6px; font-size:16px; font-weight:700; cursor:pointer;">−</button><span id="pdQtyVal" style="font-size:14px; font-weight:800; min-width:20px; text-align:center;">1</span><button type="button" id="pdQtyInc" style="background:#fff; border:none; width:26px; height:26px; border-radius:6px; font-size:16px; font-weight:700; cursor:pointer;">+</button></div></div>' +
-'<div style="display:flex; gap:8px; margin-top:14px;"><button data-detailadd="' + p.id + '" ' + (variants.length > 0 ? 'disabled' : '') + ' style="flex:1; background:#fff; color:#7c3aed; border:2px solid #7c3aed; padding:13px; border-radius:12px; font-weight:800; cursor:pointer; opacity:' + (variants.length > 0 ? '0.5' : '1') + ';">' + (variants.length > 0 ? 'Select Options' : '🛒 Add to Cart') + '</button>' +
+'<div style="display:flex; align-items:center; gap:14px;"><span style="font-size:11.5px; font-weight:700; color:#6b7280;">Quantity</span><div style="display:flex; align-items:center; gap:10px; background:#f3f1f8; border-radius:10px; padding:6px 10px;"><button type="button" id="pdQtyDec" style="background:#fff; border:none; width:26px; height:26px; border-radius:6px; font-size:16px; font-weight:700; cursor:pointer;">−</button><span id="pdQtyVal" style="font-size:14px; font-weight:800; min-width:20px; text-align:center;">1</span><button type="button" id="pdQtyInc" style="background:#fff; border:none; width:26px; height:26px; border-radius:6px; font-size:16px; font-weight:700; cursor:pointer;">+</button></div></div>' +
+'<div style="display:flex; gap:8px; margin-top:10px;"><button data-detailadd="' + p.id + '" ' + (variants.length > 0 ? 'disabled' : '') + ' style="flex:1; background:#fff; color:#7c3aed; border:2px solid #7c3aed; padding:13px; border-radius:12px; font-weight:800; cursor:pointer; opacity:' + (variants.length > 0 ? '0.5' : '1') + ';">' + (variants.length > 0 ? 'Select Options' : '🛒 Add to Cart') + '</button>' +
 (variants.length === 0 ? '<button data-buynow="' + p.id + '" style="flex:1; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">⚡ Buy Now</button>' : '') +
-'</div>' +
-'<div style="display:flex; justify-content:space-between; margin-top:12px; padding:10px 4px; border-top:1px solid #f0eef7;">' +
+'</div>';
+
+document.getElementById('pdBottomBar').innerHTML = bottomBarHtml;
+document.getElementById('pdBottomBar').style.display = 'block';
+
+content.innerHTML += (p.isPreorder ? '' :
+'<div style="display:flex; justify-content:space-between; margin-top:16px; padding:10px 4px; border-top:1px solid #f0eef7;">' +
 '<div style="text-align:center; flex:1;"><div style="font-size:18px;">🛡️</div><div style="font-size:9px; color:#6b7280; font-weight:700; margin-top:2px;">100% Genuine</div></div>' +
 '<div style="text-align:center; flex:1;"><div style="font-size:18px;">🔒</div><div style="font-size:9px; color:#6b7280; font-weight:700; margin-top:2px;">Secure Payment</div></div>' +
 '<div style="text-align:center; flex:1;"><div style="font-size:18px;">↩️</div><div style="font-size:9px; color:#6b7280; font-weight:700; margin-top:2px;">Easy Returns</div></div>' +
 '<div style="text-align:center; flex:1;"><div style="font-size:18px;">🎧</div><div style="font-size:9px; color:#6b7280; font-weight:700; margin-top:2px;">24x7 Support</div></div>' +
-'</div>'
-) +
-'</div>' +
+'</div>');
+
+content.innerHTML +=
 relatedHtml +
 '<div style="margin-top:22px; border-top:1px solid #f0eef7; padding-top:16px;">' +
 '<h3 style="font-size:14px; margin-bottom:10px;">⭐ Reviews</h3>' +
@@ -3572,7 +3588,10 @@ const bookAdvanceBtn = document.querySelector('[data-bookadvance]');
 if (bookAdvanceBtn) bookAdvanceBtn.addEventListener('click', function() { openPrebookingModal(productId, 'preorder'); });
 }
 function closeProductDetailModal() {
-  document.getElementById('productDetailModal').style.display = 'none';
+  const modal = document.getElementById('productDetailModal');
+  modal.style.transform = 'translateX(100%)';
+  document.body.style.overflow = '';
+  setTimeout(function() { modal.style.display = 'none'; }, 300);
   document.title = 'Graspion - Every Need, Fast Delivery';
   const productSchemaTag = document.getElementById('productSchema');
   if (productSchemaTag) productSchemaTag.remove();
@@ -3581,11 +3600,22 @@ function closeProductDetailModal() {
   }
 }
 document.getElementById('closeProductDetailBtn').addEventListener('click', closeProductDetailModal);
+document.getElementById('pdShareBtn').addEventListener('click', async function() {
+  const url = window.location.href;
+  if (navigator.share) {
+    try { await navigator.share({ title: document.title, url: url }); } catch (e) {}
+  } else {
+    try { await navigator.clipboard.writeText(url); alert('Link copied! Share it with anyone.'); } catch (e) {}
+  }
+});
 // Browser back-button while a product is open should close it (matching
 // user expectation) rather than navigating away from the site entirely.
 window.addEventListener('popstate', function() {
   if (!new URLSearchParams(window.location.search).get('product') && document.getElementById('productDetailModal').style.display !== 'none') {
-    document.getElementById('productDetailModal').style.display = 'none';
+    const modal = document.getElementById('productDetailModal');
+    modal.style.transform = 'translateX(100%)';
+    document.body.style.overflow = '';
+    setTimeout(function() { modal.style.display = 'none'; }, 300);
     document.title = 'Graspion - Every Need, Fast Delivery';
     const productSchemaTag = document.getElementById('productSchema');
     if (productSchemaTag) productSchemaTag.remove();
