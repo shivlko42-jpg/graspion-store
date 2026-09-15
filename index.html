@@ -1685,7 +1685,6 @@ const items = cartItemsList();
 const wrap = document.getElementById('coWrap');
 if(checkoutStep === 'address'){
 wrap.innerHTML = '<div class="co-section"><h4>📍 ' + graspionT('deliveryAddress') + '</h4><input class="co-input" placeholder="' + graspionT('fullName') + '" id="coName" value="' + customerInfo.name + '"><input class="co-input" placeholder="' + graspionT('phoneNumber') + '" id="coPhone" value="' + customerInfo.phone + '"><input class="co-input" placeholder="' + graspionT('addressPlaceholder') + '" id="coAddr" value="' + customerInfo.address + '"><div class="co-row2"><input class="co-input" placeholder="' + graspionT('city') + '" id="coCity" value="' + (customerInfo.city || (areaData[selectedPin] ? areaData[selectedPin].city : '')) + '"><input class="co-input" placeholder="' + graspionT('pincode') + '" id="coPincode" value="' + (customerInfo.pincode || selectedPin || '') + '"></div>' +
-'<select class="co-input" id="coState">' + ['Select State','Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'].map(function(s) { return '<option value="' + (s === 'Select State' ? '' : s) + '"' + (customerInfo.state === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select>' +
 '<select class="co-input" id="coState">' + ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu and Kashmir','Ladakh','Chandigarh','Puducherry'].map(function(s) { return '<option value="' + s + '" ' + ((customerInfo.state || getStateFromPincode(customerInfo.pincode || selectedPin)) === s ? 'selected' : '') + '>' + s + '</option>'; }).join('') + '</select>' +
 '</div><div class="co-section"><h4>🏷️ Coupon</h4>' +
 (appliedCoupon
@@ -1705,7 +1704,6 @@ customerInfo.phone = document.getElementById('coPhone').value.trim();
 customerInfo.address = document.getElementById('coAddr').value.trim();
 customerInfo.city = document.getElementById('coCity').value.trim();
 customerInfo.pincode = document.getElementById('coPincode').value.trim();
-customerInfo.state = document.getElementById('coState').value;
 customerInfo.state = document.getElementById('coState').value;
 if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) { alert(graspionT('requiredFields')); return; }
 const btn = this;
