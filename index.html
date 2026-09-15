@@ -143,6 +143,7 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .vendor-card { width:180px; padding:18px; }
 .grid { grid-template-columns:repeat(5,1fr); gap:20px; }
 .card:hover { transform:translateY(-6px); box-shadow:0 16px 36px rgba(76,29,149,0.14); transition:.25s; }
+.card:hover .img-wrap img { transform:scale(1.06); }
 .card { transition:.25s; }
 .cta-banner { padding:26px 40px; min-height:220px; }
 .cta-banner h2 { font-size:28px; }
@@ -165,14 +166,17 @@ and matches how dialogs normally behave on a desktop OS. */
 }
 @media(min-width:1300px){ .grid { grid-template-columns:repeat(6,1fr); } }
 .card { background:#fff; border-radius:16px; overflow:hidden; position:relative; border:1px solid #f0eef7; }
+@keyframes skeletonShimmer { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
+.skeleton { background:linear-gradient(90deg,#f0eef7 25%,#e5e1f5 37%,#f0eef7 63%); background-size:400% 100%; animation:skeletonShimmer 1.4s ease infinite; border-radius:8px; }
 .badge { position:absolute; top:9px; left:9px; background:#ec4899; color:#fff; font-size:10px; font-weight:800; padding:4px 9px; border-radius:8px; z-index:2; }
 .badge.new { background:linear-gradient(90deg,#22c55e,#16a34a); }
 .badge.sponsored { left:auto; right:9px; top:9px; background:rgba(30,27,58,0.72); color:#e5e3f5; font-weight:600; font-size:9px; letter-spacing:0.2px; padding:3px 8px; }
 .img-wrap { height:158px; background:linear-gradient(135deg,#f3f1f8,#fde9ee); display:flex; align-items:center; justify-content:center; font-size:62px; overflow:hidden; }
-.img-wrap img { width:100%; height:100%; object-fit:cover; }
+.img-wrap img { width:100%; height:100%; object-fit:cover; transition:transform .3s ease; }
 .thumb-strip { display:flex; gap:4px; padding:6px 8px 0; overflow-x:auto; }
 .thumb-img { width:28px; height:28px; object-fit:cover; border-radius:6px; opacity:0.55; cursor:pointer; flex:0 0 auto; border:1.5px solid transparent; }
 .thumb-img.active { opacity:1; border-color:#ec4899; }
+.card:active { transform:scale(0.98); transition:transform .12s ease; }
 .img-wrap img { width:100%; height:100%; object-fit:cover; }
 .feature-tag { font-size:9px; color:#6b7280; background:#f3f1f8; padding:2px 7px; border-radius:6px; margin-top:5px; display:inline-block; }
 .return-tag { font-size:9px; font-weight:700; padding:2px 7px; border-radius:6px; margin-top:5px; display:inline-block; margin-left:4px; }
@@ -419,6 +423,11 @@ window.addEventListener('load', function() {
 <div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:6px;" id="recentlyViewedRow"></div>
 </div>
 
+<div class="vendor-strip" id="topCategoriesStrip" style="display:none;">
+<h2>🗂️ Shop by Category</h2>
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px;" id="topCategoriesGrid"></div>
+</div>
+
 <div id="dynamicHomeSections"></div>
 <div id="mainContent">
 <div class="deal-strip">
@@ -426,6 +435,14 @@ window.addEventListener('load', function() {
 <h2 data-i18n="products">🔥 Products</h2>
 <div class="sub" data-i18n="liveFromDb">Live Catalog</div>
 </div>
+<select id="sortBySelect" style="border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 10px; font-size:11.5px; font-weight:700; color:#4b5563; background:#fff;">
+<option value="relevance">Sort: Relevance</option>
+<option value="price_low_high">Price: Low to High</option>
+<option value="price_high_low">Price: High to Low</option>
+<option value="newest">Newest First</option>
+<option value="brand_az">Brand: A-Z</option>
+<option value="rating">Rating: High to Low</option>
+</select>
 </div>
 <div class="grid" id="dealGrid" style="min-height:280px;"></div>
 </div>
@@ -844,6 +861,7 @@ let appliedCoupon = null; // { code, discount } — set by applyCoupon(), verifi
 let couponMessage = '';
 let selectedPayMethod = 'upi';
 let customerInfo = { name:'', phone:'', address:'', city:'', pincode:'', state:'' };
+let selectedSortOption = 'relevance';
 let currentVendorAgreementSnapshot = null;
 let deliveryEstimates = {}; // { vendorId: { serviceable, estimated_delivery_days, courier_name } } — from real Shiprocket check at checkout
 
@@ -1287,6 +1305,25 @@ return '<div data-viewid="' + p.id + '" style="flex:0 0 118px; cursor:pointer;">
 }).join('');
 row.querySelectorAll('[data-viewid]').forEach(function(card){ card.addEventListener('click', function(){ openProductDetail(card.getAttribute('data-viewid')); }); });
 }
+function renderTopCategories(){
+const strip = document.getElementById('topCategoriesStrip');
+const grid = document.getElementById('topCategoriesGrid');
+if (!strip || !grid) return;
+const mainCats = categoryList.filter(function(c){ return !c.parent_id; });
+if (mainCats.length === 0) { strip.style.display = 'none'; return; }
+strip.style.display = 'block';
+grid.innerHTML = mainCats.map(function(c){
+const visual = CATEGORY_VISUALS[c.slug];
+const inner = c.image_url ? '<img src="' + c.image_url + '" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:16px;">' : '<div style="width:100%; height:100%; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:26px; background:' + (visual ? visual.color : '#f3f1f8') + ';">' + (visual ? visual.icon : '🛍️') + '</div>';
+return '<div data-topcat="' + c.id + '" style="cursor:pointer; text-align:center;"><div style="width:100%; aspect-ratio:1; border-radius:16px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06);">' + inner + '</div><div style="font-size:10.5px; font-weight:700; color:#1e1b3a; margin-top:6px; line-height:1.3;">' + c.name + '</div></div>';
+}).join('');
+grid.querySelectorAll('[data-topcat]').forEach(function(tile){
+tile.addEventListener('click', function(){
+filterByCategory(tile.getAttribute('data-topcat'));
+document.getElementById('mainContent').scrollIntoView({ behavior: 'smooth' });
+});
+});
+}
 function renderDynamicHomeSections(){
 const container = document.getElementById('dynamicHomeSections');
 if (!container || !selectedPin) { if (container) container.innerHTML = ''; return; }
@@ -1359,12 +1396,24 @@ filtered = filtered.slice().sort(function(a,b){ return (a.fulfillmentType==='ins
 }
 // sponsored listings get a boost within their group (stable sort preserves relevance/fulfillment ordering otherwise)
 filtered = filtered.slice().sort(function(a,b){ if (b.isSponsored !== a.isSponsored) return (b.isSponsored?1:0) - (a.isSponsored?1:0); return (b.isSponsored ? b.adBid - a.adBid : 0); });
+// An explicit sort choice from the customer takes priority over the default
+// relevance/sponsored ordering above — that's what they asked for.
+if (selectedSortOption === 'price_low_high') filtered = filtered.slice().sort(function(a,b){ return a.price - b.price; });
+else if (selectedSortOption === 'price_high_low') filtered = filtered.slice().sort(function(a,b){ return b.price - a.price; });
+else if (selectedSortOption === 'newest') filtered = filtered.slice().sort(function(a,b){ return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
+else if (selectedSortOption === 'brand_az') filtered = filtered.slice().sort(function(a,b){ return (a.brand || 'zzz').localeCompare(b.brand || 'zzz'); });
+else if (selectedSortOption === 'rating') filtered = filtered.slice().sort(function(a,b){
+const va = vendors.find(function(v){ return v.id === a.vendorId; });
+const vb = vendors.find(function(v){ return v.id === b.vendorId; });
+return (Number(vb && vb.rating) || 0) - (Number(va && va.rating) || 0);
+});
 const dealGrid = document.getElementById('dealGrid');
 if(filtered.length === 0){ dealGrid.innerHTML = '<div class="no-vendor" style="grid-column:1/-1;">' + graspionT('noVendorArea') + '</div>'; return; }
 dealGrid.innerHTML = filtered.map(buildProductCardHtml).join('');
 wireProductCardEvents(dealGrid);
 renderDynamicHomeSections();
 renderRecentlyViewed();
+renderTopCategories();
 document.querySelectorAll('[data-viewid]').forEach(function(card){ card.addEventListener('click', function(){ openProductDetail(card.getAttribute('data-viewid')); }); });
 document.querySelectorAll('[data-thumbswap]').forEach(function(thumb){ thumb.addEventListener('click', function(e){ e.stopPropagation(); const id = thumb.getAttribute('data-thumbswap'); const src = thumb.getAttribute('data-src'); const mainImg = document.querySelector('[data-mainimg="' + id + '"]'); if (mainImg) mainImg.src = src; thumb.parentElement.querySelectorAll('.thumb-img').forEach(function(t){ t.classList.remove('active'); }); thumb.classList.add('active'); }); });
 }
@@ -2172,6 +2221,10 @@ openProductDetail(b.product_id);
 renderCtaDots();
 }
 loadSponsoredBanners();
+document.getElementById('sortBySelect').addEventListener('change', function() {
+selectedSortOption = this.value;
+renderProducts(selectedPin);
+});
 fetch(SUPABASE_URL + '/rest/v1/settings?key=eq.platform_state&select=value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
 .then(function(r) { return r.ok ? r.json() : []; })
 .then(function(rows) { window.PLATFORM_STATE_CACHE = (rows[0] && rows[0].value) || 'Uttar Pradesh'; })
@@ -3307,7 +3360,12 @@ productSchemaTag.textContent = JSON.stringify({
 
 const vendor = vendors.find(function(v) { return v.id === p.vendorId; });
 const content = document.getElementById('productDetailContent');
-content.innerHTML = '<div style="text-align:center; padding:40px 0; color:#9ca3af;">Loading...</div>';
+content.innerHTML = '<div class="skeleton" style="width:100%; height:280px; border-radius:14px;"></div>' +
+'<div class="skeleton" style="width:60%; height:14px; margin-top:16px;"></div>' +
+'<div class="skeleton" style="width:90%; height:22px; margin-top:10px;"></div>' +
+'<div class="skeleton" style="width:75%; height:22px; margin-top:6px;"></div>' +
+'<div class="skeleton" style="width:40%; height:26px; margin-top:14px;"></div>' +
+'<div class="skeleton" style="width:100%; height:48px; margin-top:20px; border-radius:12px;"></div>';
 document.getElementById('productDetailModal').style.display = 'flex';
 document.body.style.overflow = 'hidden';
 requestAnimationFrame(function() { document.getElementById('productDetailModal').style.transform = 'translateX(0)'; });
