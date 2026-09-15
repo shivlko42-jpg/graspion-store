@@ -1450,7 +1450,7 @@ return '<div class="cart-item"><div class="ci-icon">' + (i.image ? '<img src="' 
 }).join('') + renderPairingSuggestions(items);
 foot.style.display = 'block';
 document.getElementById('fItemTotal').textContent = '₹' + t.itemTotal.toLocaleString('en-IN');
-document.getElementById('fDelivery').textContent = t.delivery === 0 ? graspionT('free') : '₹' + t.delivery;
+document.getElementById('fDelivery').textContent = t.delivery === 0 ? '₹0' : '₹' + t.delivery;
 document.getElementById('fTotal').textContent = '₹' + t.total.toLocaleString('en-IN');
 document.querySelectorAll('[data-inc2]').forEach(function(btn){ btn.addEventListener('click', function(){ const key=btn.getAttribute('data-inc2'); cart[key]=(cart[key]||0)+1; refreshAll(); }); });
 document.querySelectorAll('[data-dec2]').forEach(function(btn){ btn.addEventListener('click', function(){ const key=btn.getAttribute('data-dec2'); cart[key]=(cart[key]||0)-1; if(cart[key]<=0) delete cart[key]; refreshAll(); }); });
@@ -1684,7 +1684,7 @@ wrap.innerHTML = '<div class="co-section"><h4>📍 ' + graspionT('deliveryAddres
   ? '<div class="co-item-row" style="background:#f0fdf4;border-radius:8px;padding:8px 10px;"><span>✅ ' + appliedCoupon.code + ' applied</span><button id="removeCouponBtn" style="background:none;border:none;color:#dc2626;font-weight:700;cursor:pointer;">Remove</button></div>'
   : '<div style="display:flex;gap:8px;"><input class="co-input" placeholder="Enter coupon code" id="coCouponInput" style="flex:1;margin:0;text-transform:uppercase;"><button id="applyCouponBtn" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:0 16px;font-weight:700;cursor:pointer;">Apply</button></div>') +
 (couponMessage ? '<p style="font-size:11px;margin-top:6px;">' + couponMessage + '</p>' : '') +
-'</div><div class="co-section"><h4>🧾 ' + graspionT('orderSummary') + ' (' + items.length + ')</h4>' + items.map(function(i) { return '<div class="co-item-row"><span>' + i.name + ' × ' + i.qty + '</span><b>₹' + (i.price*i.qty).toLocaleString('en-IN') + '</b></div>'; }).join('') + '<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?graspionT('free'):'₹'+t.delivery) + '</b></div>' + (t.discount > 0 ? '<div class="co-item-row" style="color:#15803d;"><span>Coupon discount</span><b>-₹' + t.discount.toLocaleString('en-IN') + '</b></div>' : '') + '<div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
+'</div><div class="co-section"><h4>🧾 ' + graspionT('orderSummary') + ' (' + items.length + ')</h4>' + items.map(function(i) { return '<div class="co-item-row"><span>' + i.name + ' × ' + i.qty + '</span><b>₹' + (i.price*i.qty).toLocaleString('en-IN') + '</b></div>'; }).join('') + '<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?'₹0':'₹'+t.delivery) + '</b></div>' + (t.discount > 0 ? '<div class="co-item-row" style="color:#15803d;"><span>Coupon discount</span><b>-₹' + t.discount.toLocaleString('en-IN') + '</b></div>' : '') + '<div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
 if (document.getElementById('applyCouponBtn')) { document.getElementById('applyCouponBtn').addEventListener('click', function(){ applyCoupon(document.getElementById('coCouponInput').value); }); }
 if (document.getElementById('removeCouponBtn')) { document.getElementById('removeCouponBtn').addEventListener('click', removeCoupon); }
 document.getElementById('toPaymentBtn').addEventListener('click', async function() {
@@ -1735,7 +1735,7 @@ const taxBreakupHtml = '<div class="co-section"><h4>🧾 Price Details</h4>' +
 '<div class="co-item-row"><span>Subtotal</span><span>₹' + Math.round(t.subtotal).toLocaleString('en-IN') + '</span></div>' +
 (t.isInterState ? '<div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>IGST (' + effectiveRate.toFixed(1) + '%)</span><span>₹' + Math.round(t.igst).toLocaleString('en-IN') + '</span></div>' :
 '<div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>CGST (' + halfRate + '%)</span><span>₹' + Math.round(t.cgst).toLocaleString('en-IN') + '</span></div><div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>SGST (' + halfRate + '%)</span><span>₹' + Math.round(t.sgst).toLocaleString('en-IN') + '</span></div>') +
-'<div class="co-item-row"><span>Delivery Fee</span><span>' + (t.delivery > 0 ? '₹' + t.delivery : 'FREE') + '</span></div>' +
+'<div class="co-item-row"><span>Delivery Fee</span><span>₹' + t.delivery + '</span></div>' +
 '</div>';
 wrap.innerHTML = taxBreakupHtml + (deliveryEstimateHtml ? '<div class="co-section"><h4>🚚 Delivery Estimate</h4>' + deliveryEstimateHtml + '<p style="font-size:10px; color:#9ca3af; margin-top:6px;">Based on real courier data for your pincode.</p></div>' : '') +
 '<div class="co-section"><h4>💳 ' + graspionT('selectPayment') + '</h4>' +
