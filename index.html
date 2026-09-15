@@ -146,6 +146,22 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .card { transition:.25s; }
 .cta-banner { padding:26px 40px; min-height:220px; }
 .cta-banner h2 { font-size:28px; }
+/* On a laptop/desktop screen there's room for a permanent sidebar — the
+mobile "tap to open" overlay pattern makes sense on a phone but feels like
+extra friction with a mouse and a wide screen, so it reverts to always-visible. */
+.category-rail { position:sticky; transform:none !important; width:220px; box-shadow:none; border-right:1px solid rgba(124,58,237,0.08); padding-top:16px; background:rgba(124,58,237,0.03); backdrop-filter:none; }
+.category-toggle-btn { display:none; }
+.category-rail-backdrop { display:none !important; }
+.shop-main { min-width:0; }
+.rail-item { flex-direction:row; justify-content:flex-start; gap:12px; padding:10px 16px; }
+.rail-thumb { width:36px; height:36px; font-size:16px; flex-shrink:0; }
+.rail-item span { font-size:13px; max-width:none; }
+/* Full-screen slide-in is a mobile-native pattern; on a laptop a centered,
+reasonably-sized dialog with a visible dimmed backdrop feels more at home
+and matches how dialogs normally behave on a desktop OS. */
+#productDetailModal { background:rgba(15,10,30,0.6) !important; align-items:center !important; justify-content:center !important; padding:30px !important; }
+#productDetailModal .modal-box { max-width:720px !important; width:100% !important; border-radius:20px !important; height:auto !important; max-height:88vh !important; }
+#pdBottomBar { max-width:720px; left:50%; right:auto; transform:translateX(-50%); border-radius:0 0 20px 20px; }
 }
 @media(min-width:1300px){ .grid { grid-template-columns:repeat(6,1fr); } }
 .card { background:#fff; border-radius:16px; overflow:hidden; position:relative; border:1px solid #f0eef7; }
