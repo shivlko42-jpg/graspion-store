@@ -1077,7 +1077,7 @@ const inner = c.image_url ? '<img src="' + c.image_url + '" loading="lazy">' : (
 const isActive = activeCategoryId === c.id;
 return '<div class="rail-item' + (isActive ? ' active' : '') + '" data-cat="' + c.id + '"><div class="rail-thumb" style="' + (!c.image_url && visual ? 'background:' + visual.color + ';' : '') + '">' + inner + '</div><span>' + c.name + '</span></div>';
 }).join('');
-wrap.querySelectorAll('[data-cat]').forEach(function(el){ el.addEventListener('click', function(){ filterByCategory(el.getAttribute('data-cat') || null); }); });
+wrap.querySelectorAll('[data-cat]').forEach(function(el){ el.addEventListener('click', function(){ filterByCategory(el.getAttribute('data-cat') || null); const subcatWrap = document.getElementById('subcatRailWrap'); if (subcatWrap) setTimeout(function(){ subcatWrap.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); }); });
 renderSubcategoryChips();
 }
 function renderSubcategoryChips() {
@@ -1288,11 +1288,9 @@ const isStoreClosed = p.fulfillmentType === 'instant' && vendor && vendor.is_ope
 const isWishlisted = wishlistIds.has(p.id);
 const heartBtn = '<button data-wishlisttoggle="' + p.id + '" style="position:absolute; bottom:6px; right:6px; z-index:2; background:rgba(255,255,255,0.92); border:none; width:26px; height:26px; border-radius:50%; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:' + (isWishlisted ? '#ec4899' : '#9ca3af') + ';">' + (isWishlisted ? '♥' : '♡') + '</button>';
 return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') + (p.isSponsored ? '<div class="badge sponsored">Sponsored</div>' : '') +
-'<div class="img-wrap" style="position:relative;">' + (allPhotos.length > 0 ? '<img data-mainimg="' + p.id + '" src="' + allPhotos[0] + '" alt="' + (p.imageAlt || p.name).replace(/"/g,'&quot;') + '" loading="lazy" decoding="async">' : p.icon) + heartBtn + '</div>' + thumbStripHtml + '<div class="card-body"><div class="vendor-tag">' + (vendor ? vendor.icon + ' ' + vendor.name : '') + '</div><h3>' + p.name + '</h3>' +
+'<div class="img-wrap" style="position:relative;">' + (allPhotos.length > 0 ? '<img data-mainimg="' + p.id + '" src="' + allPhotos[0] + '" alt="' + (p.imageAlt || p.name).replace(/"/g,'&quot;') + '" loading="lazy" decoding="async">' : p.icon) + heartBtn + '</div>' + thumbStripHtml + '<div class="card-body"><h3>' + p.name + '</h3>' +
 '<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
 '<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span>' + (p.fulfillmentType === 'instant' ? '<div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div>' : '') + '<div class="feature-tag" style="margin-left:0;">' + deliveryBadge + '</div>' +
-(p.feature ? '<div class="feature-tag">✓ ' + p.feature + '</div>' : '') +
-'<div><span class="return-tag ' + (p.returnable ? 'return-yes' : 'return-no') + '">' + (p.returnable ? '↩️ Returnable' : '🚫 No Return') + '</span></div>' +
 (isStoreClosed ? '<div style="text-align:center; margin-top:10px; background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">🚫 Store Currently Closed</div>' :
 (p.stock <= 0 ? '<div style="text-align:center; margin-top:10px; background:#fee2e2; color:#dc2626; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">Out of Stock</div>' :
 ((productVariantsMap[p.id] && productVariantsMap[p.id].length > 0) ? '<button class="add-btn" data-viewid="' + p.id + '" style="background:#f3f1f8; color:#7c3aed;">Select Options</button>' : (qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '" ' + (qty >= p.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>')))) +
@@ -1333,7 +1331,7 @@ return '<div data-topcat="' + c.id + '" style="cursor:pointer; text-align:center
 grid.querySelectorAll('[data-topcat]').forEach(function(tile){
 tile.addEventListener('click', function(){
 filterByCategory(tile.getAttribute('data-topcat'));
-document.getElementById('mainContent').scrollIntoView({ behavior: 'smooth' });
+document.getElementById('subcatRailWrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 });
 }
