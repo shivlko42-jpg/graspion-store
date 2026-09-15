@@ -157,12 +157,13 @@ extra friction with a mouse and a wide screen, so it reverts to always-visible. 
 .rail-item { flex-direction:row; justify-content:flex-start; gap:12px; padding:10px 16px; }
 .rail-thumb { width:36px; height:36px; font-size:16px; flex-shrink:0; }
 .rail-item span { font-size:13px; max-width:none; }
+#topCategoriesGrid { grid-template-columns:repeat(10,1fr) !important; gap:16px !important; }
 /* Full-screen slide-in is a mobile-native pattern; on a laptop a centered,
 reasonably-sized dialog with a visible dimmed backdrop feels more at home
 and matches how dialogs normally behave on a desktop OS. */
 #productDetailModal { background:rgba(15,10,30,0.6) !important; align-items:center !important; justify-content:center !important; padding:30px !important; }
-#productDetailModal .modal-box { max-width:720px !important; width:100% !important; border-radius:20px !important; height:auto !important; max-height:88vh !important; }
-#pdBottomBar { max-width:720px; left:50%; right:auto; transform:translateX(-50%); border-radius:0 0 20px 20px; }
+#productDetailModal .modal-box { max-width:820px !important; width:100% !important; border-radius:20px !important; height:auto !important; max-height:88vh !important; }
+#pdBottomBar { max-width:820px; left:50%; right:auto; transform:translateX(-50%); border-radius:0 0 20px 20px; }
 }
 @media(min-width:1300px){ .grid { grid-template-columns:repeat(6,1fr); } }
 .card { background:#fff; border-radius:16px; overflow:hidden; position:relative; border:1px solid #f0eef7; }
@@ -425,7 +426,7 @@ window.addEventListener('load', function() {
 
 <div class="vendor-strip" id="topCategoriesStrip" style="display:none;">
 <h2>🗂️ Shop by Category</h2>
-<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px;" id="topCategoriesGrid"></div>
+<div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px;" id="topCategoriesGrid"></div>
 </div>
 
 <div id="dynamicHomeSections"></div>
@@ -1305,6 +1306,7 @@ return '<div data-viewid="' + p.id + '" style="flex:0 0 118px; cursor:pointer;">
 }).join('');
 row.querySelectorAll('[data-viewid]').forEach(function(card){ card.addEventListener('click', function(){ openProductDetail(card.getAttribute('data-viewid')); }); });
 }
+let topCategoriesExpanded = false;
 function renderTopCategories(){
 const strip = document.getElementById('topCategoriesStrip');
 const grid = document.getElementById('topCategoriesGrid');
@@ -1312,17 +1314,23 @@ if (!strip || !grid) return;
 const mainCats = categoryList.filter(function(c){ return !c.parent_id; });
 if (mainCats.length === 0) { strip.style.display = 'none'; return; }
 strip.style.display = 'block';
-grid.innerHTML = mainCats.map(function(c){
+const INITIAL_COUNT = 9;
+const visibleCats = topCategoriesExpanded ? mainCats : mainCats.slice(0, INITIAL_COUNT);
+const tileHtml = function(c){
 const visual = CATEGORY_VISUALS[c.slug];
-const inner = c.image_url ? '<img src="' + c.image_url + '" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:16px;">' : '<div style="width:100%; height:100%; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:26px; background:' + (visual ? visual.color : '#f3f1f8') + ';">' + (visual ? visual.icon : '🛍️') + '</div>';
-return '<div data-topcat="' + c.id + '" style="cursor:pointer; text-align:center;"><div style="width:100%; aspect-ratio:1; border-radius:16px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06);">' + inner + '</div><div style="font-size:10.5px; font-weight:700; color:#1e1b3a; margin-top:6px; line-height:1.3;">' + c.name + '</div></div>';
-}).join('');
+const inner = c.image_url ? '<img src="' + c.image_url + '" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">' : '<div style="width:100%; height:100%; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:19px; background:' + (visual ? visual.color : '#f3f1f8') + ';">' + (visual ? visual.icon : '🛍️') + '</div>';
+return '<div data-topcat="' + c.id + '" style="cursor:pointer; text-align:center;"><div style="width:52px; height:52px; margin:0 auto; border-radius:50%; overflow:hidden; box-shadow:0 1px 5px rgba(0,0,0,0.08);">' + inner + '</div><div style="font-size:9.5px; font-weight:700; color:#1e1b3a; margin-top:5px; line-height:1.25;">' + c.name + '</div></div>';
+};
+const seeMoreTile = !topCategoriesExpanded && mainCats.length > INITIAL_COUNT ? '<div data-seemorecat="1" style="cursor:pointer; text-align:center;"><div style="width:52px; height:52px; margin:0 auto; border-radius:50%; background:#f3f1f8; display:flex; align-items:center; justify-content:center; font-size:16px; color:#7c3aed; font-weight:800;">+' + (mainCats.length - INITIAL_COUNT) + '</div><div style="font-size:9.5px; font-weight:700; color:#7c3aed; margin-top:5px;">See More</div></div>' : '';
+grid.innerHTML = visibleCats.map(tileHtml).join('') + seeMoreTile;
 grid.querySelectorAll('[data-topcat]').forEach(function(tile){
 tile.addEventListener('click', function(){
 filterByCategory(tile.getAttribute('data-topcat'));
 document.getElementById('mainContent').scrollIntoView({ behavior: 'smooth' });
 });
 });
+const seeMoreBtn = grid.querySelector('[data-seemorecat]');
+if (seeMoreBtn) seeMoreBtn.addEventListener('click', function(){ topCategoriesExpanded = true; renderTopCategories(); });
 }
 function renderDynamicHomeSections(){
 const container = document.getElementById('dynamicHomeSections');
