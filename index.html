@@ -112,7 +112,7 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .category-rail-backdrop.open { display:block; }
 .category-toggle-btn { position:fixed; left:12px; top:100px; z-index:90; background:#7c3aed; color:#fff; border:none; width:44px; height:44px; border-radius:50%; box-shadow:0 4px 14px rgba(124,58,237,0.4); font-size:19px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
 .rail-item { display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 2px; cursor:pointer; border-radius:14px; margin-bottom:2px; transition:background .15s; }
-.rail-item.active { background:rgba(124,58,237,0.1); }
+.rail-item.active { background:linear-gradient(90deg,rgba(124,58,237,0.12),rgba(236,72,153,0.08)); }
 .rail-thumb { width:46px; height:46px; border-radius:50%; overflow:hidden; background:rgba(255,255,255,0.6); backdrop-filter:blur(4px); border:2px solid transparent; display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
 .rail-item.active .rail-thumb { border-color:#7c3aed; box-shadow:0 4px 12px rgba(124,58,237,0.25); }
 .rail-thumb img { width:100%; height:100%; object-fit:cover; }
@@ -177,7 +177,7 @@ reasonably-sized dialog with a visible dimmed backdrop feels more at home
 and matches how dialogs normally behave on a desktop OS. */
 #productDetailModal { background:rgba(15,10,30,0.6) !important; align-items:center !important; justify-content:center !important; padding:30px !important; }
 #productDetailModal .modal-box { max-width:980px !important; width:100% !important; border-radius:20px !important; height:auto !important; max-height:88vh !important; }
-#pdBottomBar { width:calc(100% - 60px); max-width:980px; left:50%; right:auto; transform:translateX(-50%); border-radius:0 0 20px 20px; display:flex !important; align-items:center; gap:20px; box-sizing:border-box; }
+#pdBottomBar { border-radius:0 0 20px 20px; display:flex !important; align-items:center; gap:20px; }
 #pdBottomBar > div:first-child { margin-right:auto; }
 #pdBottomBar > div:last-child { margin-top:0 !important; flex:0 0 auto; }
 #pdBottomBar button[data-detailadd], #pdBottomBar button[data-buynow] { min-width:150px; }
@@ -380,7 +380,7 @@ window.addEventListener('load', function() {
 
 <header>
 <div class="nav">
-<a href="index.html" style="text-decoration:none; flex:0 0 auto;"><div data-graspion-logo="text" data-size="19"></div></a>
+<a href="index.html" style="text-decoration:none; flex:0 0 auto;"><div data-graspion-logo="text" data-size="24"></div></a>
 <div class="nav-right">
 <button id="accountBtn" style="background:#f3f1f8; color:#1e1b3a; border:none; padding:11px 14px; border-radius:12px; font-weight:700; cursor:pointer; font-size:12.5px;">👤 <span id="accountBtnLabel">Login</span></button>
 <button class="cart-btn" id="cartOpenBtn">🛒 <span data-i18n="cart">Cart</span> <span class="cart-count" id="cartCount">0</span></button>
@@ -444,6 +444,8 @@ window.addEventListener('load', function() {
 <h2>🗂️ Shop by Category</h2>
 <div style="display:grid; grid-template-rows:repeat(2,1fr); grid-auto-flow:column; grid-auto-columns:64px; gap:8px 10px; overflow-x:auto; padding-bottom:6px;" id="topCategoriesGrid"></div>
 </div>
+<div id="midpageBannerWrap" style="display:none; max-width:1200px; margin:0 auto; padding:14px 20px;"></div>
+
 <div id="subcatRailWrap"></div>
 
 <div id="dynamicHomeSections"></div>
@@ -706,8 +708,8 @@ Continue with Google
 <div id="pdTopBarTitle" style="flex:1; font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Product</div>
 <button id="pdShareBtn" style="flex:0 0 auto; background:#f7f6fb; border:none; width:36px; height:36px; border-radius:50%; font-size:15px; cursor:pointer;">⤴️</button>
 </div>
-<div id="productDetailContent" style="padding:18px; padding-bottom:150px;"></div>
-<div id="pdBottomBar" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#fff; box-shadow:0 -4px 16px rgba(0,0,0,0.08); padding:10px 14px; z-index:10;"></div>
+<div id="productDetailContent" style="padding:18px;"></div>
+<div id="pdBottomBar" style="display:none; position:sticky; bottom:0; background:#fff; box-shadow:0 -4px 16px rgba(0,0,0,0.08); padding:10px 14px; z-index:10;"></div>
 </div>
 </div>
 
@@ -2134,6 +2136,21 @@ document.getElementById('ctaSlideContent').innerHTML = PARTNER_CTA_HTML;
 const btn = document.getElementById('occasionBannerCtaBtn');
 if (btn && s.occasion_banner_cta_link) btn.addEventListener('click', function() { window.location.href = s.occasion_banner_cta_link; });
 }
+}
+} catch (e) {}
+})();
+(async function checkMidpageBanner() {
+try {
+const keys = ['midpage_banner_active','midpage_banner_image','midpage_banner_link'];
+const res = await fetch(SUPABASE_URL + '/rest/v1/settings?key=in.(' + keys.join(',') + ')&select=key,value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const rows = res.ok ? await res.json() : [];
+const s = {};
+rows.forEach(function(r) { s[r.key] = r.value; });
+const wrap = document.getElementById('midpageBannerWrap');
+if (wrap && s.midpage_banner_active === true && s.midpage_banner_image) {
+wrap.style.display = 'block';
+wrap.innerHTML = '<img src="' + s.midpage_banner_image + '" style="width:100%; border-radius:16px; display:block; ' + (s.midpage_banner_link ? 'cursor:pointer;' : '') + '" id="midpageBannerImg">';
+if (s.midpage_banner_link) document.getElementById('midpageBannerImg').addEventListener('click', function() { window.location.href = s.midpage_banner_link; });
 }
 } catch (e) {}
 })();
