@@ -66,6 +66,10 @@ gtag('config', 'G-DTK5XRHFL6');
 body { background:#f6f5fb; color:#1e1b3a; }
 .modal-overlay { position:fixed; inset:0; background:rgba(15,10,30,0.8); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
 .modal-box { background:#fff; border-radius:24px; padding:36px 28px; max-width:380px; width:100%; text-align:center; }
+.modal-box { scrollbar-width:thin; scrollbar-color:#d4c9f0 transparent; }
+.modal-box::-webkit-scrollbar { width:6px; }
+.modal-box::-webkit-scrollbar-track { background:transparent; }
+.modal-box::-webkit-scrollbar-thumb { background:#d4c9f0; border-radius:10px; }
 .modal-box .emoji { font-size:44px; margin-bottom:8px; }
 .modal-box h2 { font-size:19px; font-weight:800; margin-bottom:6px; }
 .modal-box p { font-size:12.5px; color:#6b7280; margin-bottom:20px; }
@@ -173,7 +177,10 @@ reasonably-sized dialog with a visible dimmed backdrop feels more at home
 and matches how dialogs normally behave on a desktop OS. */
 #productDetailModal { background:rgba(15,10,30,0.6) !important; align-items:center !important; justify-content:center !important; padding:30px !important; }
 #productDetailModal .modal-box { max-width:980px !important; width:100% !important; border-radius:20px !important; height:auto !important; max-height:88vh !important; }
-#pdBottomBar { max-width:980px; left:50%; right:auto; transform:translateX(-50%); border-radius:0 0 20px 20px; }
+#pdBottomBar { max-width:980px; left:50%; right:auto; transform:translateX(-50%); border-radius:0 0 20px 20px; display:flex !important; align-items:center; gap:20px; }
+#pdBottomBar > div:first-child { margin-right:auto; }
+#pdBottomBar > div:last-child { margin-top:0 !important; flex:0 0 auto; }
+#pdBottomBar button[data-detailadd], #pdBottomBar button[data-buynow] { min-width:150px; }
 }
 @media(min-width:1300px){ .grid { grid-template-columns:repeat(6,1fr); } }
 .card { background:#fff; border-radius:16px; overflow:hidden; position:relative; border:1px solid #f0eef7; }
