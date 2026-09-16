@@ -177,7 +177,7 @@ reasonably-sized dialog with a visible dimmed backdrop feels more at home
 and matches how dialogs normally behave on a desktop OS. */
 #productDetailModal { background:rgba(15,10,30,0.6) !important; align-items:center !important; justify-content:center !important; padding:30px !important; }
 #productDetailModal .modal-box { max-width:980px !important; width:100% !important; border-radius:20px !important; height:auto !important; max-height:88vh !important; }
-#pdBottomBar { max-width:980px; left:50%; right:auto; transform:translateX(-50%); border-radius:0 0 20px 20px; display:flex !important; align-items:center; gap:20px; }
+#pdBottomBar { width:calc(100% - 60px); max-width:980px; left:50%; right:auto; transform:translateX(-50%); border-radius:0 0 20px 20px; display:flex !important; align-items:center; gap:20px; box-sizing:border-box; }
 #pdBottomBar > div:first-child { margin-right:auto; }
 #pdBottomBar > div:last-child { margin-top:0 !important; flex:0 0 auto; }
 #pdBottomBar button[data-detailadd], #pdBottomBar button[data-buynow] { min-width:150px; }
