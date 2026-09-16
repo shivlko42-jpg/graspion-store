@@ -1458,7 +1458,7 @@ return (Number(vb && vb.rating) || 0) - (Number(va && va.rating) || 0);
 });
 const dealGrid = document.getElementById('dealGrid');
 if(filtered.length === 0){ dealGrid.innerHTML = '<div class="no-vendor" style="grid-column:1/-1;">' + graspionT('noVendorArea') + '</div>'; return; }
-const PRODUCTS_INITIAL_COUNT = 10;
+const PRODUCTS_INITIAL_COUNT = window.innerWidth >= 900 ? 12 : 10;
 const visibleProducts = productsShowAll ? filtered : filtered.slice(0, PRODUCTS_INITIAL_COUNT);
 dealGrid.innerHTML = visibleProducts.map(buildProductCardHtml).join('');
 const seeMoreWrap = document.getElementById('dealSeeMoreWrap');
@@ -2111,10 +2111,32 @@ document.getElementById('startSellingBtn').addEventListener('click', function(){
 // admin-approved, date-valid sponsored banners a vendor has paid for join
 // the rotation alongside it. Clicking a sponsored slide opens that exact
 // product and records a click (for the vendor's own reporting later).
-const PARTNER_CTA_HTML = document.getElementById('ctaSlideContent').innerHTML;
+let PARTNER_CTA_HTML = document.getElementById('ctaSlideContent').innerHTML;
 let ctaSlides = [{ type: 'partner' }];
 let ctaIndex = 0;
 let ctaTimer = null;
+// Admin can temporarily replace the default "Become a Partner" slide with a
+// custom occasion banner (festival sales etc.) — falls back to Become a
+// Partner automatically whenever no occasion banner is turned on.
+(async function checkOccasionBanner() {
+try {
+const keys = ['occasion_banner_active','occasion_banner_title','occasion_banner_desc','occasion_banner_cta_text','occasion_banner_cta_link'];
+const res = await fetch(SUPABASE_URL + '/rest/v1/settings?key=in.(' + keys.join(',') + ')&select=key,value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+const rows = res.ok ? await res.json() : [];
+const s = {};
+rows.forEach(function(r) { s[r.key] = r.value; });
+if (s.occasion_banner_active === true && s.occasion_banner_title) {
+PARTNER_CTA_HTML = '<h2>' + s.occasion_banner_title + '</h2>' +
+(s.occasion_banner_desc ? '<p>' + s.occasion_banner_desc + '</p>' : '') +
+'<div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;"><button id="occasionBannerCtaBtn" style="background:#fff; color:#7c3aed; border:none; padding:10px 22px; border-radius:10px; font-weight:800; cursor:pointer;">' + (s.occasion_banner_cta_text || 'Shop Now') + '</button></div>';
+if (ctaIndex === 0) {
+document.getElementById('ctaSlideContent').innerHTML = PARTNER_CTA_HTML;
+const btn = document.getElementById('occasionBannerCtaBtn');
+if (btn && s.occasion_banner_cta_link) btn.addEventListener('click', function() { window.location.href = s.occasion_banner_cta_link; });
+}
+}
+} catch (e) {}
+})();
 async function getCustomerInterestCategories() {
 if (!currentCustomer) return new Set();
 try {
