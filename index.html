@@ -439,6 +439,8 @@ window.addEventListener('load', function() {
 <h2 data-i18n="products">🔥 Products</h2>
 <div class="sub" data-i18n="liveFromDb">Live Catalog</div>
 </div>
+<div style="display:flex; gap:8px;">
+<button id="filterToggleBtn" style="border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 12px; font-size:11.5px; font-weight:700; color:#4b5563; background:#fff; cursor:pointer; display:flex; align-items:center; gap:5px;">🔧 Filter<span id="filterActiveCount" style="display:none; background:#7c3aed; color:#fff; font-size:9px; padding:1px 5px; border-radius:8px;"></span></button>
 <select id="sortBySelect" style="border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 10px; font-size:11.5px; font-weight:700; color:#4b5563; background:#fff;">
 <option value="relevance">Sort: Relevance</option>
 <option value="price_low_high">Price: Low to High</option>
@@ -447,6 +449,23 @@ window.addEventListener('load', function() {
 <option value="brand_az">Brand: A-Z</option>
 <option value="rating">Rating: High to Low</option>
 </select>
+</div>
+</div>
+<div id="filterPanel" style="display:none; max-width:1200px; margin:0 auto; padding:0 20px 14px;">
+<div style="background:#faf9fd; border-radius:14px; padding:14px;">
+<div style="font-size:11.5px; font-weight:800; margin-bottom:8px;">💰 Price Range</div>
+<div style="display:flex; gap:8px; align-items:center; margin-bottom:14px;">
+<input type="number" id="filterPriceMin" placeholder="Min ₹" style="flex:1; padding:8px 10px; border:1.5px solid #e5e7eb; border-radius:8px; font-size:12px;">
+<span style="color:#9ca3af;">—</span>
+<input type="number" id="filterPriceMax" placeholder="Max ₹" style="flex:1; padding:8px 10px; border:1.5px solid #e5e7eb; border-radius:8px; font-size:12px;">
+</div>
+<div style="font-size:11.5px; font-weight:800; margin-bottom:8px;">🏷️ Brand</div>
+<div id="filterBrandList" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;"></div>
+<div style="display:flex; gap:8px;">
+<button id="applyFiltersBtn" style="flex:1; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:10px; border-radius:10px; font-weight:800; cursor:pointer; font-size:12.5px;">Apply Filters</button>
+<button id="clearFiltersBtn" style="background:#fff; border:1.5px solid #e5e7eb; color:#6b7280; padding:10px 16px; border-radius:10px; font-weight:700; cursor:pointer; font-size:12.5px;">Clear</button>
+</div>
+</div>
 </div>
 <div class="grid" id="dealGrid" style="min-height:280px;"></div>
 <div style="max-width:1200px; margin:14px auto 0; padding:0 20px;" id="dealSeeMoreWrap"></div>
@@ -875,6 +894,7 @@ let selectedPayMethod = 'upi';
 let customerInfo = { name:'', phone:'', address:'', city:'', pincode:'', state:'' };
 let selectedSortOption = 'relevance';
 let productsShowAll = false;
+let activeFilters = { priceMin: null, priceMax: null, brands: [] };
 let currentVendorAgreementSnapshot = null;
 let deliveryEstimates = {}; // { vendorId: { serviceable, estimated_delivery_days, courier_name } } — from real Shiprocket check at checkout
 
@@ -1405,6 +1425,11 @@ if(searchQuery) {
 if (isInstantZone) {
 filtered = filtered.slice().sort(function(a,b){ return (a.fulfillmentType==='instant'?0:1) - (b.fulfillmentType==='instant'?0:1); });
 }
+// Customer-selected filters (price range, brand) apply on top of the
+// category/search/pincode filtering already done above.
+if (activeFilters.priceMin != null) filtered = filtered.filter(function(p){ return p.price >= activeFilters.priceMin; });
+if (activeFilters.priceMax != null) filtered = filtered.filter(function(p){ return p.price <= activeFilters.priceMax; });
+if (activeFilters.brands.length > 0) filtered = filtered.filter(function(p){ return activeFilters.brands.indexOf(p.brand) !== -1; });
 // sponsored listings get a boost within their group (stable sort preserves relevance/fulfillment ordering otherwise)
 filtered = filtered.slice().sort(function(a,b){ if (b.isSponsored !== a.isSponsored) return (b.isSponsored?1:0) - (a.isSponsored?1:0); return (b.isSponsored ? b.adBid - a.adBid : 0); });
 // An explicit sort choice from the customer takes priority over the default
@@ -2247,6 +2272,38 @@ renderCtaDots();
 loadSponsoredBanners();
 document.getElementById('sortBySelect').addEventListener('change', function() {
 selectedSortOption = this.value;
+renderProducts(selectedPin);
+});
+document.getElementById('filterToggleBtn').addEventListener('click', function() {
+const panel = document.getElementById('filterPanel');
+const isOpening = panel.style.display === 'none';
+panel.style.display = isOpening ? 'block' : 'none';
+if (isOpening) {
+const brands = Array.from(new Set(productPool.map(function(p){ return p.brand; }).filter(Boolean))).sort();
+const brandList = document.getElementById('filterBrandList');
+brandList.innerHTML = brands.map(function(b) {
+const checked = activeFilters.brands.indexOf(b) !== -1;
+return '<label style="display:flex; align-items:center; gap:5px; background:#fff; border:1.5px solid ' + (checked ? '#7c3aed' : '#e5e7eb') + '; border-radius:8px; padding:6px 10px; font-size:11.5px; cursor:pointer;"><input type="checkbox" data-filterbrand="' + b + '" ' + (checked ? 'checked' : '') + ' style="margin:0;">' + b + '</label>';
+}).join('');
+document.getElementById('filterPriceMin').value = activeFilters.priceMin || '';
+document.getElementById('filterPriceMax').value = activeFilters.priceMax || '';
+}
+});
+document.getElementById('applyFiltersBtn').addEventListener('click', function() {
+activeFilters.priceMin = document.getElementById('filterPriceMin').value ? Number(document.getElementById('filterPriceMin').value) : null;
+activeFilters.priceMax = document.getElementById('filterPriceMax').value ? Number(document.getElementById('filterPriceMax').value) : null;
+activeFilters.brands = Array.from(document.querySelectorAll('[data-filterbrand]:checked')).map(function(el){ return el.getAttribute('data-filterbrand'); });
+const activeCount = (activeFilters.priceMin != null ? 1 : 0) + (activeFilters.priceMax != null ? 1 : 0) + (activeFilters.brands.length > 0 ? 1 : 0);
+const countBadge = document.getElementById('filterActiveCount');
+if (activeCount > 0) { countBadge.style.display = 'inline-block'; countBadge.textContent = activeCount; } else { countBadge.style.display = 'none'; }
+productsShowAll = false;
+document.getElementById('filterPanel').style.display = 'none';
+renderProducts(selectedPin);
+});
+document.getElementById('clearFiltersBtn').addEventListener('click', function() {
+activeFilters = { priceMin: null, priceMax: null, brands: [] };
+document.getElementById('filterActiveCount').style.display = 'none';
+document.getElementById('filterPanel').style.display = 'none';
 renderProducts(selectedPin);
 });
 // Popup ad: shows an approved vendor-sponsored ad once per browser session,
