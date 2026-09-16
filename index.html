@@ -1104,7 +1104,7 @@ const inner = c.image_url ? '<img src="' + c.image_url + '" loading="lazy">' : (
 const isActive = activeCategoryId === c.id;
 return '<div class="rail-item' + (isActive ? ' active' : '') + '" data-cat="' + c.id + '"><div class="rail-thumb" style="' + (!c.image_url && visual ? 'background:' + visual.color + ';' : '') + '">' + inner + '</div><span>' + c.name + '</span></div>';
 }).join('');
-wrap.querySelectorAll('[data-cat]').forEach(function(el){ el.addEventListener('click', function(){ filterByCategory(el.getAttribute('data-cat') || null); const subcatWrap = document.getElementById('subcatRailWrap'); if (subcatWrap) setTimeout(function(){ subcatWrap.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); }); });
+wrap.querySelectorAll('[data-cat]').forEach(function(el){ el.addEventListener('click', function(){ filterByCategory(el.getAttribute('data-cat') || null); }); });
 renderSubcategoryChips();
 }
 function renderSubcategoryChips() {
@@ -1358,7 +1358,6 @@ return '<div data-topcat="' + c.id + '" style="cursor:pointer; text-align:center
 grid.querySelectorAll('[data-topcat]').forEach(function(tile){
 tile.addEventListener('click', function(){
 filterByCategory(tile.getAttribute('data-topcat'));
-document.getElementById('subcatRailWrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 });
 }
