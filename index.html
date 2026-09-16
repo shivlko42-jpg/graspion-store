@@ -158,6 +158,13 @@ extra friction with a mouse and a wide screen, so it reverts to always-visible. 
 .rail-thumb { width:36px; height:36px; font-size:16px; flex-shrink:0; }
 .rail-item span { font-size:13px; max-width:none; }
 #topCategoriesGrid { grid-template-rows:none !important; grid-auto-flow:row !important; grid-template-columns:repeat(10,1fr) !important; grid-auto-columns:unset !important; gap:16px !important; overflow-x:visible !important; }
+/* The always-visible sidebar already does main-category navigation on
+desktop — repeating the same 19 categories again as a homepage grid is
+redundant there (it's a mobile-only convenience, since mobile's sidebar is
+hidden behind a tap). */
+#topCategoriesStrip { display:none !important; }
+.subcat-rail { flex-wrap:wrap; overflow-x:visible; padding:16px 20px; justify-content:center; }
+.subcat-chip { padding:10px 20px; font-size:13px; }
 .pd-two-col { display:flex; gap:26px; align-items:flex-start; }
 .pd-left-col { flex:0 0 44%; position:sticky; top:0; }
 .pd-right-col { flex:1; min-width:0; }
@@ -2274,6 +2281,20 @@ document.getElementById('sortBySelect').addEventListener('change', function() {
 selectedSortOption = this.value;
 renderProducts(selectedPin);
 });
+// Keeps the sticky desktop sidebar positioned just below the real header
+// height (measured live, not guessed) — the header's own height can shift
+// slightly with content, and a hardcoded top-offset caused the sidebar to
+// slide up and visually overlap the header text when scrolling.
+function positionCategoryRailBelowHeader() {
+const header = document.querySelector('header');
+const rail = document.getElementById('categoryRail');
+if (header && rail && window.innerWidth >= 900) {
+rail.style.top = header.offsetHeight + 'px';
+rail.style.maxHeight = 'calc(100vh - ' + header.offsetHeight + 'px)';
+}
+}
+positionCategoryRailBelowHeader();
+window.addEventListener('resize', positionCategoryRailBelowHeader);
 document.getElementById('filterToggleBtn').addEventListener('click', function() {
 const panel = document.getElementById('filterPanel');
 const isOpening = panel.style.display === 'none';
