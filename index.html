@@ -150,7 +150,7 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 /* On a laptop/desktop screen there's room for a permanent sidebar — the
 mobile "tap to open" overlay pattern makes sense on a phone but feels like
 extra friction with a mouse and a wide screen, so it reverts to always-visible. */
-.category-rail { position:sticky; transform:none !important; width:220px; box-shadow:none; border-right:1px solid rgba(124,58,237,0.08); padding-top:16px; background:rgba(124,58,237,0.03); backdrop-filter:none; }
+.category-rail { position:sticky; transform:none !important; width:220px; flex:0 0 220px; box-shadow:none; border-right:1px solid rgba(124,58,237,0.08); padding-top:16px; background:rgba(124,58,237,0.03); backdrop-filter:none; }
 .category-toggle-btn { display:none; }
 .category-rail-backdrop { display:none !important; }
 .shop-main { min-width:0; }
@@ -2294,6 +2294,12 @@ rail.style.maxHeight = 'calc(100vh - ' + header.offsetHeight + 'px)';
 }
 positionCategoryRailBelowHeader();
 window.addEventListener('resize', positionCategoryRailBelowHeader);
+// Header height can grow slightly once async content (area-detection text,
+// banners) finishes loading after the very first measurement — re-check a
+// moment later so the sidebar doesn't end up positioned too high and
+// overlap content that rendered in afterward.
+setTimeout(positionCategoryRailBelowHeader, 800);
+setTimeout(positionCategoryRailBelowHeader, 2000);
 document.getElementById('filterToggleBtn').addEventListener('click', function() {
 const panel = document.getElementById('filterPanel');
 const isOpening = panel.style.display === 'none';
