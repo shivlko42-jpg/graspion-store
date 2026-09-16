@@ -3580,7 +3580,6 @@ mainImgHtml + thumbsHtml +
 variantSelectorHtml +
 (avgRating ? '<div style="margin-top:6px; font-size:12px;">⭐ ' + avgRating + ' (' + reviews.length + ' review' + (reviews.length !== 1 ? 's' : '') + ')</div>' : '<div style="margin-top:6px; font-size:11px; color:#9ca3af;">No reviews yet</div>') +
 (variants.length === 0 && p.stock != null && p.stock > 0 && p.stock <= 10 ? '<div style="margin-top:6px; background:#fef2f2; color:#dc2626; font-size:11px; font-weight:700; padding:6px 10px; border-radius:8px; display:inline-block;">🔥 Only ' + p.stock + ' left in stock — order soon!</div>' : '') +
-(p.feature ? '<p style="font-size:12.5px; color:#4b5563; margin-top:10px; line-height:1.5;">' + p.feature + '</p>' : '') +
 (p.fullFeatures && p.fullFeatures.split('\n').filter(function(l){return l.trim();}).length > 0 ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:6px;">✨ Key Features</div><ul style="font-size:12.5px; color:#4b5563; line-height:1.7; padding-left:18px; margin:0;">' + p.fullFeatures.split('\n').filter(function(l){return l.trim();}).map(function(l){ return '<li>' + l.trim() + '</li>'; }).join('') + '</ul></div>' : '') +
 (function() {
   // 3 tap-to-expand blocks — each only appears if there's actually
