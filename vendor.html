@@ -273,6 +273,7 @@ window.addEventListener('load', function() {
       <h3>📁 Bulk Import / Export (CSV)</h3>
       <p style="font-size:11px; color:#9ca3af; margin-bottom:8px;">Add many products at once from a spreadsheet, or download your current catalog.</p>
       <p style="font-size:10.5px; color:#b45309; background:#fef9c3; padding:8px 10px; border-radius:8px; margin-bottom:12px;">💡 <b>Pincode tip:</b> if you ship these products pan-India by courier, put <b>ALL</b> in the pincode column (not your own local pincode) — otherwise the product will only be visible to customers in that exact pincode.</p>
+      <p style="font-size:10.5px; color:#1d4ed8; background:#eff6ff; padding:8px 10px; border-radius:8px; margin-bottom:12px;">💡 <b>Delivery type tip:</b> the new <b>delivery_type</b> column can be set per-product to <b>instant</b> (you deliver locally yourself via a Graspion rider — use your own specific pincode(s), not ALL) or <b>standard</b> (shipped Pan-India by courier). Leave blank to use your account's default.</p>
       <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
         <button class="mini-btn" id="downloadTemplateBtn" style="background:#dbeafe;color:#1d4ed8;">⬇️ Download Sample Template</button>
         <button class="mini-btn" id="exportProductsBtn" style="background:#dcfce7;color:#15803d;">⬇️ Export My Products</button>
@@ -314,6 +315,9 @@ window.addEventListener('load', function() {
         <div class="form-group"><label>Subcategory</label><select class="form-input" id="pSubcategory"><option value="">— Select Subcategory —</option></select></div>
         <div class="form-group"><label>Product Type (optional)</label><select class="form-input" id="pProductType"><option value="">— Select Product Type —</option></select></div>
         <div class="form-group"><label>SKU (optional, auto-generated if blank)</label><input class="form-input" id="pSku" placeholder="e.g. GRS-SPK-001"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Delivery Type</label><select class="form-input" id="pFulfillmentType"><option value="standard">📦 Standard (Pan-India courier)</option><option value="instant">⚡ Instant (local Graspion rider — only where rider coverage exists in your pincode)</option></select></div>
       </div>
       <div style="margin-bottom:12px;">
         <div id="advancedToggle" style="cursor:pointer; font-size:11.5px; font-weight:700; color:#7c3aed; display:flex; align-items:center; gap:4px;">📋 Advanced Details (Item Code, Warranty, Cost Price, etc.) <span id="advancedArrow">▾</span></div>
@@ -1187,6 +1191,7 @@ function renderProducts() {
       document.getElementById('pWeight').value = p.shipping_weight || '';
       document.getElementById('pCondition').value = p.condition || 'new';
       document.getElementById('pCategory').value = p.category_id || '';
+      document.getElementById('pFulfillmentType').value = p.fulfillment_type || 'standard';
       updateSubcategoryDropdown(p.subcategory_id || null);
       updateProductTypeDropdown(p.product_type_id || null);
       document.getElementById('pSku').value = p.sku || '';
@@ -1876,7 +1881,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   const subcategoryId = document.getElementById('pSubcategory').value || null;
   const productTypeId = document.getElementById('pProductType').value || null;
   const sku = document.getElementById('pSku').value.trim() || ('GRS-' + Date.now().toString().slice(-8));
-  const fulfillmentType = currentVendor.vendor_type === 'dark_store' ? 'instant' : 'standard';
+  const fulfillmentType = document.getElementById('pFulfillmentType').value || 'standard';
   const isPreorder = currentVendor.prebooking_enabled && document.getElementById('pIsPreorder').checked;
   const advanceAmount = isPreorder ? (Number(document.getElementById('pAdvanceAmount').value) || 0) : null;
   const minQty = isPreorder ? (Number(document.getElementById('pMinQty').value) || 1) : 1;
@@ -2137,10 +2142,10 @@ document.getElementById('pName').addEventListener('input', function() {
 // vendor list dropdown no longer needed — login is via real email/password now
 
 // ===================== BULK CSV IMPORT / EXPORT =====================
-const CSV_COLUMNS = ['name','icon','price','old_price','stock','pincode','hsn_code','gst_percent','features','brand','gtin','shipping_weight','condition','category_name','sku'];
+const CSV_COLUMNS = ['name','icon','price','old_price','stock','pincode','hsn_code','gst_percent','features','brand','gtin','shipping_weight','condition','category_name','sku','image_url','delivery_type'];
 
 document.getElementById('downloadTemplateBtn').addEventListener('click', function() {
-  const sampleRow = ['Bluetooth Speaker','🔊','999','1499','25','226016','85182100','18','Wireless|10hr battery|Waterproof','SoundMax','','450g','New','Electronics','GRS-SPK-001'];
+  const sampleRow = ['Bluetooth Speaker','🔊','999','1499','25','ALL','85182100','18','Wireless|10hr battery|Waterproof','SoundMax','','450g','New','Electronics','GRS-SPK-001','https://example.com/photo.jpg','standard'];
   const csv = Papa.unparse({ fields: CSV_COLUMNS, data: [sampleRow] });
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
@@ -2153,7 +2158,7 @@ document.getElementById('exportProductsBtn').addEventListener('click', function(
   if (vendorProducts.length === 0) { alert('You have no products to export yet.'); return; }
   const rows = vendorProducts.map(function(p) {
     const cat = allCategories.find(function(c) { return c.id === p.category_id; });
-    return [p.name, p.icon || '', p.price, p.old_price || '', p.stock, p.pincode || '', p.hsn_code || '', p.gst_percent || '', p.features || '', p.brand || '', p.gtin || '', p.shipping_weight || '', p.condition || '', cat ? cat.name : '', p.sku || ''];
+    return [p.name, p.icon || '', p.price, p.old_price || '', p.stock, p.pincode || '', p.hsn_code || '', p.gst_percent || '', p.features || '', p.brand || '', p.gtin || '', p.shipping_weight || '', p.condition || '', cat ? cat.name : '', p.sku || '', p.image_data || '', p.fulfillment_type || 'standard'];
   });
   const csv = Papa.unparse({ fields: CSV_COLUMNS, data: rows });
   const blob = new Blob([csv], { type: 'text/csv' });
@@ -2195,7 +2200,8 @@ document.getElementById('parseCsvBtn').addEventListener('click', function() {
             shipping_weight: row.shipping_weight || null, condition: row.condition || 'New',
             category_id: cat ? cat.id : null, sku: row.sku || ('GRS-' + Date.now().toString().slice(-8) + '-' + rowNum),
             mrp: row.old_price ? Number(row.old_price) : price, selling_price: price,
-            fulfillment_type: currentVendor.vendor_type === 'dark_store' ? 'instant' : 'standard',
+            image_data: (row.image_url || '').trim() || null,
+            fulfillment_type: (row.delivery_type || '').trim().toLowerCase() === 'instant' ? 'instant' : ((row.delivery_type || '').trim().toLowerCase() === 'standard' ? 'standard' : (currentVendor.vendor_type === 'dark_store' ? 'instant' : 'standard')),
             vendor_id: currentVendor.id, is_returnable: true
           });
       });
