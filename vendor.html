@@ -537,11 +537,11 @@ window.addEventListener('load', function() {
       <h3 id="ordersSection">🧾 Your Orders — Delivery Pipeline <span id="orderCount" style="font-size:11px;color:#9ca3af;"></span></h3>
       <div style="display:flex; gap:6px; overflow-x:auto; margin-bottom:12px; padding-bottom:4px;">
         <button class="mini-btn order-tab-btn active" data-ordertab="all" style="flex:0 0 auto; background:#7c3aed; color:#fff;">All</button>
-        <button class="mini-btn order-tab-btn" data-ordertab="pending" style="flex:0 0 auto; background:#f3f1f8; color:#4b5563;">Pending</button>
-        <button class="mini-btn order-tab-btn" data-ordertab="preparing" style="flex:0 0 auto; background:#f3f1f8; color:#4b5563;">Ready to Ship</button>
-        <button class="mini-btn order-tab-btn" data-ordertab="shipped" style="flex:0 0 auto; background:#f3f1f8; color:#4b5563;">Shipped</button>
-        <button class="mini-btn order-tab-btn" data-ordertab="delivered" style="flex:0 0 auto; background:#f3f1f8; color:#4b5563;">Delivered</button>
-        <button class="mini-btn order-tab-btn" data-ordertab="cancelled" style="flex:0 0 auto; background:#f3f1f8; color:#4b5563;">Cancelled</button>
+        <button class="mini-btn order-tab-btn" data-ordertab="pending" style="flex:0 0 auto; background:#fef3c7; color:#b45309;">Pending</button>
+        <button class="mini-btn order-tab-btn" data-ordertab="preparing" style="flex:0 0 auto; background:#dbeafe; color:#1d4ed8;">Ready to Ship</button>
+        <button class="mini-btn order-tab-btn" data-ordertab="shipped" style="flex:0 0 auto; background:#e0e7ff; color:#4338ca;">Shipped</button>
+        <button class="mini-btn order-tab-btn" data-ordertab="delivered" style="flex:0 0 auto; background:#dcfce7; color:#15803d;">Delivered</button>
+        <button class="mini-btn order-tab-btn" data-ordertab="cancelled" style="flex:0 0 auto; background:#fee2e2; color:#dc2626;">Cancelled</button>
       </div>
       <button class="add-product-btn" id="exportOrdersBtn" style="margin-bottom:14px; background:#1e1b3a;">⬇ Download Labels / Orders CSV</button>
       <div id="orderList"></div>
@@ -1339,11 +1339,23 @@ function renderProducts() {
   });
 }
 
+const ORDER_TAB_COLORS = {
+  all:       { active: '#7c3aed', activeText: '#fff', idle: '#f3f1f8', idleText: '#4b5563' },
+  pending:   { active: '#f59e0b', activeText: '#fff', idle: '#fef3c7', idleText: '#b45309' },
+  preparing: { active: '#3b82f6', activeText: '#fff', idle: '#dbeafe', idleText: '#1d4ed8' },
+  shipped:   { active: '#6366f1', activeText: '#fff', idle: '#e0e7ff', idleText: '#4338ca' },
+  delivered: { active: '#16a34a', activeText: '#fff', idle: '#dcfce7', idleText: '#15803d' },
+  cancelled: { active: '#dc2626', activeText: '#fff', idle: '#fee2e2', idleText: '#dc2626' }
+};
 document.querySelectorAll('.order-tab-btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
     currentOrderTab = btn.getAttribute('data-ordertab');
-    document.querySelectorAll('.order-tab-btn').forEach(function(b) { b.style.background = '#f3f1f8'; b.style.color = '#4b5563'; });
-    btn.style.background = '#7c3aed'; btn.style.color = '#fff';
+    document.querySelectorAll('.order-tab-btn').forEach(function(b) {
+      const c = ORDER_TAB_COLORS[b.getAttribute('data-ordertab')];
+      b.style.background = c.idle; b.style.color = c.idleText;
+    });
+    const active = ORDER_TAB_COLORS[currentOrderTab];
+    btn.style.background = active.active; btn.style.color = active.activeText;
     renderOrders();
   });
 });
