@@ -20,6 +20,7 @@
 <script src="graspion-logo.js?v=2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Noto Sans Devanagari',system-ui,sans-serif; }
   body { background:#f4f3f9; color:#1e1b3a; }
@@ -137,6 +138,18 @@ window.addEventListener('load', function() {
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="font-size:15px;">🕐 History — <span id="historyProductName"></span></h3><button id="closeHistoryBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
 <div id="historyTimeline"></div>
 <div class="empty-state" id="historyEmpty" style="display:none;">No changes recorded yet</div>
+</div>
+</div>
+
+<div class="modal-overlay" id="nearbySubModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300; align-items:center; justify-content:center; padding:16px;">
+<div style="max-width:380px; width:100%; background:#fff; border-radius:20px; padding:24px; text-align:center;">
+<div style="font-size:44px; margin-bottom:8px;">🏪</div>
+<h3 style="font-size:16px; margin-bottom:8px;">Your free "Vendors Near You" period has ended</h3>
+<p style="font-size:12.5px; color:#6b7280; margin-bottom:16px;">For your first 3 months, your store was automatically featured in the "Vendors Near You" section on the homepage — free of cost. That trial has now ended.</p>
+<p style="font-size:12.5px; color:#6b7280; margin-bottom:18px;">Subscribe for just <b>₹99/month</b> to keep showing up there and get more walk-in customers. Your products will keep selling normally either way — this only affects the featured homepage strip.</p>
+<div id="nearbySubError" style="display:none; font-size:11.5px; color:#dc2626; background:#fef2f2; padding:8px 10px; border-radius:8px; margin-bottom:12px;"></div>
+<button type="button" id="nearbySubPayBtn" style="width:100%; background:#7c3aed; color:#fff; border:none; padding:12px; border-radius:12px; font-weight:700; font-size:13px; cursor:pointer; margin-bottom:8px;">💳 Subscribe Now — ₹99/month</button>
+<button type="button" id="nearbySubRemindBtn" style="width:100%; background:#f3f1f8; color:#4b5563; border:none; padding:12px; border-radius:12px; font-weight:700; font-size:13px; cursor:pointer;">Remind me later</button>
 </div>
 </div>
 
@@ -708,8 +721,102 @@ async function loginAsVendor(session) {
   });
   loadCatalogData();
   configureSellingModeUI();
+  checkNearbySubscriptionPrompt();
   return true;
 }
+
+function checkNearbySubscriptionPrompt() {
+  if (!currentVendor || !currentVendor.created_at) return;
+  const isPaidActive = !!currentVendor.nearby_subscription_active &&
+    (!currentVendor.nearby_subscription_expires_at || new Date(currentVendor.nearby_subscription_expires_at) >= new Date());
+  if (isPaidActive) return; // already subscribed, nothing to nudge about
+  const createdAt = new Date(currentVendor.created_at);
+  const trialEndsAt = new Date(createdAt.getTime() + 90 * 24 * 60 * 60 * 1000); // 3-month free trial
+  if (new Date() < trialEndsAt) return; // still inside the free 3 months
+  const snoozeKey = 'nearbySubSnoozeUntil_' + currentVendor.id;
+  const snoozeUntil = localStorage.getItem(snoozeKey);
+  if (snoozeUntil && new Date() < new Date(snoozeUntil)) return; // recently dismissed
+  document.getElementById('nearbySubModal').style.display = 'flex';
+}
+document.getElementById('nearbySubRemindBtn').addEventListener('click', function() {
+  const snoozeKey = 'nearbySubSnoozeUntil_' + currentVendor.id;
+  localStorage.setItem(snoozeKey, new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()); // remind again tomorrow
+  document.getElementById('nearbySubModal').style.display = 'none';
+});
+document.getElementById('nearbySubPayBtn').addEventListener('click', async function() {
+  const btn = this;
+  const errBox = document.getElementById('nearbySubError');
+  errBox.style.display = 'none';
+  const originalLabel = btn.textContent;
+  btn.textContent = '⏳ Starting payment...';
+  btn.disabled = true;
+  try {
+    const createRes = await fetch(SUPABASE_URL + '/functions/v1/create-vendor-subscription-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken, 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ vendor_id: currentVendor.id })
+    });
+    const createData = await createRes.json();
+    if (!createRes.ok || !createData.orderId) {
+      throw new Error(createData.error || 'Could not start payment');
+    }
+    const rzp = new Razorpay({
+      key: createData.keyId,
+      amount: createData.amount,
+      currency: createData.currency,
+      order_id: createData.orderId,
+      name: 'Graspion',
+      description: 'Vendors Near You — 1 month subscription',
+      prefill: { name: currentVendor.owner_name || currentVendor.name, contact: currentVendor.phone || '' },
+      theme: { color: '#7c3aed' },
+      handler: async function(response) {
+        try {
+          const verifyRes = await fetch(SUPABASE_URL + '/functions/v1/verify-vendor-subscription-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken, 'apikey': SUPABASE_KEY },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              vendor_id: currentVendor.id
+            })
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyData.verified) {
+            currentVendor.nearby_subscription_active = true;
+            currentVendor.nearby_subscription_expires_at = verifyData.expires_at;
+            document.getElementById('nearbySubModal').style.display = 'none';
+            alert('✅ Subscribed! Your store will show in "Vendors Near You" until ' + verifyData.expires_at + '.');
+          } else {
+            errBox.textContent = verifyData.error || 'Payment could not be verified. If money was deducted, contact support.';
+            errBox.style.display = 'block';
+          }
+        } catch (e) {
+          errBox.textContent = 'Payment made, but verification failed. Contact support if money was deducted.';
+          errBox.style.display = 'block';
+        } finally {
+          btn.textContent = originalLabel;
+          btn.disabled = false;
+        }
+      },
+      modal: {
+        ondismiss: function() { btn.textContent = originalLabel; btn.disabled = false; }
+      }
+    });
+    rzp.on('payment.failed', function() {
+      errBox.textContent = 'Payment failed. Please try again.';
+      errBox.style.display = 'block';
+      btn.textContent = originalLabel;
+      btn.disabled = false;
+    });
+    rzp.open();
+  } catch (err) {
+    errBox.textContent = err.message || 'Could not start payment. Please try again.';
+    errBox.style.display = 'block';
+    btn.textContent = originalLabel;
+    btn.disabled = false;
+  }
+});
 
 function isInviteLink() {
 const hash = window.location.hash.substring(1);

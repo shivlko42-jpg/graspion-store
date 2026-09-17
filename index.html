@@ -162,6 +162,11 @@ extra friction with a mouse and a wide screen, so it reverts to always-visible. 
 .rail-thumb { width:36px; height:36px; font-size:16px; flex-shrink:0; }
 .rail-item span { font-size:13px; max-width:none; }
 #topCategoriesGrid { grid-template-rows:none !important; grid-auto-flow:row !important; grid-template-columns:repeat(10,1fr) !important; grid-auto-columns:unset !important; gap:16px !important; overflow-x:visible !important; }
+/* On desktop the sidebar sits permanently alongside content (unlike
+mobile's full-drawer-overlay use), so the header must always win any
+stacking conflict — this guarantees it never gets visually covered while
+scrolling, regardless of any sticky-positioning timing quirks. */
+header { z-index:150; }
 /* The always-visible sidebar already does main-category navigation on
 desktop — repeating the same 19 categories again as a homepage grid is
 redundant there (it's a mobile-only convenience, since mobile's sidebar is
@@ -954,7 +959,11 @@ settingsRows.forEach(function(s){ siteSettings[s.key] = s.value; });
 }
 pairings = pairingsRes.ok ? await pairingsRes.json() : [];
 homepageSections = homeSectionsRes.ok ? await homeSectionsRes.json() : [];
-vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){ return { id: v.id, name: v.name, icon: v.icon, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode], vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, nearbySubscribed: !!v.nearby_subscription_active && (!v.nearby_subscription_expires_at || new Date(v.nearby_subscription_expires_at) >= new Date()) }; });
+vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){
+  const isPaidActive = !!v.nearby_subscription_active && (!v.nearby_subscription_expires_at || new Date(v.nearby_subscription_expires_at) >= new Date());
+  const isInFreeTrial = v.created_at ? (new Date() - new Date(v.created_at)) < (90 * 24 * 60 * 60 * 1000) : false; // first 3 months free
+  return { id: v.id, name: v.name, icon: v.icon, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode], vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, nearbySubscribed: isPaidActive || isInFreeTrial };
+});
 productPool = visibleProducts.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
 const firstFeature = p.features ? p.features.split('\n')[0].trim() : '';
