@@ -373,12 +373,12 @@ async function loadOrders() {
       return '<div class="order-card">' +
         '<div class="order-top"><span class="order-id">#' + (o.order_number || o.id.slice(0,8)) + ' · ' + deliveryBadge + '</span><span class="order-amt">₹' + o.total_amount + '</span></div>' +
         '<span class="pay-tag ' + (isCOD ? 'pay-cod' : 'pay-online') + '">' + (isCOD ? '💵 Collect COD' : '✅ Already Paid Online') + '</span>' +
-        '<div class="order-addr">' + (o.customer_name || 'Customer') + ' · ' + (o.customer_phone || '') + '<br>' + (o.address || '') + '</div>' +
+        '<div class="order-addr">' + (isAssigned ? ((o.customer_name || 'Customer') + ' · ' + (o.customer_phone || '') + '<br>' + (o.address || '')) : ('📍 Delivery area: ' + (o.pincode || 'nearby') + ' <span style="color:#64748b;">(full address shown after you accept)</span>')) + '</div>' +
         contactRow +
         (isCOD && isAssigned ? '<input type="number" class="cod-input" id="cod-' + o.id + '" placeholder="Enter amount collected (₹' + o.total_amount + ')" style="display:block;">' : '') +
         (isAssigned ? '<input type="text" maxlength="4" class="cod-input" id="otp-' + o.id + '" placeholder="Enter 4-digit OTP from customer" style="display:block; margin-top:6px;">' : '') +
 (isAssigned ? '<label style="display:block; margin-top:6px; font-size:10.5px; color:#6b7280; font-weight:700;">📸 Delivery photo (optional)</label><input type="file" accept="image/*" capture="environment" id="proof-' + o.id + '" style="display:block; margin-top:4px; font-size:10.5px;">' : '') +
-        '<button class="action-btn" data-id="' + o.id + '" data-assigned="' + isAssigned + '" data-cod="' + isCOD + '">' +
+        '<button class="action-btn" data-id="' + o.id + '" data-assigned="' + isAssigned + '" data-cod="' + isCOD + '" data-amount="' + o.total_amount + '">' +
           (isAssigned ? 'Mark Delivered' : 'Accept & Pick Up') +
         '</button>' +
         (isAssigned ? '<button class="action-btn" data-failid="' + o.id + '" style="background:#fef2f2; color:#dc2626; margin-top:6px;">⚠️ Couldn\'t Deliver</button>' : '') +
@@ -390,14 +390,26 @@ async function loadOrders() {
         const id = btn.getAttribute('data-id');
         const isAssigned = btn.getAttribute('data-assigned') === 'true';
         const isCOD = btn.getAttribute('data-cod') === 'true';
+        const orderAmount = Number(btn.getAttribute('data-amount')) || 0;
 
         if (!isAssigned) {
           btn.textContent = '⏳';
-          await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id, {
+          const acceptRes = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id + '&rider_id=is.null', {
             method: 'PATCH',
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
             body: JSON.stringify({ status: 'shipped', rider_id: currentRider.id })
           });
+          if (!acceptRes.ok) {
+            alert('Could not accept this order: ' + await acceptRes.text());
+            btn.textContent = 'Accept & Pick Up';
+            return;
+          }
+          const acceptedRows = await acceptRes.json();
+          if (!acceptedRows || acceptedRows.length === 0) {
+            alert('Sorry — another rider already picked up this order.');
+            loadOrders();
+            return;
+          }
           loadOrders();
         } else {
           const codInput = document.getElementById('cod-' + id);
@@ -407,6 +419,10 @@ async function loadOrders() {
           if (isCOD && codAmount === 0) {
             alert('Please enter the cash amount collected before marking as delivered');
             return;
+          }
+          if (isCOD && codAmount !== orderAmount) {
+            const proceedAnyway = confirm('You entered ₹' + codAmount + ', but this order\'s total is ₹' + orderAmount + '. Continue anyway?');
+            if (!proceedAnyway) return;
           }
           if (!otp || otp.length !== 4) {
             alert('Ask the customer for their 4-digit delivery OTP and enter it before marking as delivered');
@@ -472,6 +488,15 @@ async function loadOrders() {
     list.innerHTML = '<div class="empty">Error loading orders</div>';
   }
 }
+
+// Auto-refresh so new orders show up without the rider needing to manually
+// reload the page. Skipped while an OTP/COD form is open so we never wipe
+// out something the rider is in the middle of typing.
+setInterval(function() {
+  if (!currentRider) return;
+  if (document.querySelector('[id^="otp-"]')) return;
+  loadOrders();
+}, 25000);
 
 // rider list dropdown no longer needed — login is via real email/password now
 document.getElementById('openRiderApplyBtn').addEventListener('click', function(){ document.getElementById('riderApplyModal').style.display = 'flex'; });
