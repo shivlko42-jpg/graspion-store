@@ -2157,8 +2157,8 @@ return '<div class="vendor-row-item" style="display:block;">' +
 '<select data-kycid="' + v.id + '" style="margin-top:4px; font-size:10px; padding:2px 6px; border-radius:6px; border:none; font-weight:700; ' + (kycColors[kycStatus] || kycColors.pending) + '"><option value="pending"' + (kycStatus === 'pending' ? ' selected' : '') + '>KYC: Pending</option><option value="approved"' + (kycStatus === 'approved' ? ' selected' : '') + '>KYC: Approved</option><option value="rejected"' + (kycStatus === 'rejected' ? ' selected' : '') + '>KYC: Rejected</option></select>' +
 '</div>' +
 '</div>' +
-'<div style="display:flex; gap:8px; margin-top:10px; padding-left:2px;"><button class="block-btn ' + (isBlocked ? 'blocked-store' : 'active-store') + '" data-vendorid="' + v.id + '" data-blocked="' + isBlocked + '" style="flex:1;">' + (isBlocked ? 'Unblock' : 'Block') + '</button>' +
-'<button class="mini-btn" data-detailid="' + v.id + '" style="background:#dbeafe; color:#1d4ed8; flex:1;">Details</button></div>' +
+'<div style="display:flex; gap:8px; margin-top:10px; padding-left:2px;"><button class="mini-btn" data-detailid="' + v.id + '" style="background:#dbeafe; color:#1d4ed8; flex:1;">Details</button>' +
+'<button class="block-btn ' + (isBlocked ? 'blocked-store' : 'active-store') + '" data-vendorid="' + v.id + '" data-blocked="' + isBlocked + '" style="flex:1;">' + (isBlocked ? 'Unblock' : 'Block') + '</button></div>' +
 '<div id="vdetail-' + v.id + '" style="display:none; margin-top:10px; padding:10px; background:#f9fafb; border-radius:10px; font-size:11.5px; line-height:1.9;">' +
 '<b>Owner:</b> ' + (v.owner_name || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
 '<b>Phone:</b> ' + (v.phone || '<span style="color:#9ca3af;">not provided</span>') + '<br>' +
