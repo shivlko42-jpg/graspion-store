@@ -354,7 +354,7 @@ window.addEventListener('load', function() {
             <div class="form-group"><label>Short Name</label><input class="form-input" id="pShortName" placeholder="Short display name"></div>
           </div>
           <div class="form-row">
-            <div class="form-group"><label>Product Type</label><select class="form-input" id="pProductType"><option value="Simple">Simple</option><option value="Variant">Has Variants</option><option value="Bundle">Bundle/Combo</option></select></div>
+            <div class="form-group"><label>Product Type</label><select class="form-input" id="pItemType"><option value="Simple">Simple</option><option value="Variant">Has Variants</option><option value="Bundle">Bundle/Combo</option></select></div>
             <div class="form-group"><label>Manufacturer</label><input class="form-input" id="pManufacturer" placeholder="Manufacturer name"></div>
           </div>
           <div class="form-row">
@@ -498,7 +498,7 @@ window.addEventListener('load', function() {
             <div class="form-group"><label>Advance / Token Amount (₹)</label><input class="form-input" id="pAdvanceAmount" type="number" placeholder="e.g. 500"></div>
             <div class="form-group"><label>Minimum Order Quantity</label><input class="form-input" id="pMinQty" type="number" placeholder="e.g. 10"></div>
           </div>
-          <div class="form-group"><label>Lead Time (days to prepare)</label><input class="form-input" id="pLeadTime" type="number" placeholder="e.g. 5"></div>
+          <div class="form-group"><label>Lead Time (days to prepare)</label><input class="form-input" id="pPreorderLeadTime" type="number" placeholder="e.g. 5"></div>
           <label style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:#6b7280; margin-top:6px;"><input type="checkbox" id="pSampleAvailable"> Offer a sample before bulk booking</label>
           <div class="form-group" id="pSamplePriceRow" style="display:none; margin-top:6px;"><label>Sample Price (₹, 0 = free)</label><input class="form-input" id="pSamplePrice" type="number" placeholder="0"></div>
         </div>
@@ -1342,7 +1342,7 @@ function renderProducts() {
       document.getElementById('preorderFields').style.display = p.is_preorder ? 'block' : 'none';
       document.getElementById('pAdvanceAmount').value = p.preorder_advance_amount || '';
       document.getElementById('pMinQty').value = p.preorder_min_qty || '';
-      document.getElementById('pLeadTime').value = p.preorder_lead_time_days || '';
+      document.getElementById('pPreorderLeadTime').value = p.preorder_lead_time_days || '';
       document.getElementById('pSampleAvailable').checked = !!p.sample_available;
       document.getElementById('pSamplePriceRow').style.display = p.sample_available ? 'block' : 'none';
       document.getElementById('pSamplePrice').value = p.sample_price || '';
@@ -1359,7 +1359,7 @@ function renderProducts() {
       document.getElementById('pSku').value = p.sku || '';
       document.getElementById('pItemCode').value = p.item_code || '';
       document.getElementById('pShortName').value = p.short_name || '';
-      document.getElementById('pProductType').value = p.product_type || 'Simple';
+      document.getElementById('pItemType').value = p.product_type || 'Simple';
       document.getElementById('pManufacturer').value = p.manufacturer || '';
       document.getElementById('pModelNumber').value = p.model_number || '';
       document.getElementById('pPartNumber').value = p.part_number || '';
@@ -2059,7 +2059,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   const isPreorder = currentVendor.prebooking_enabled && document.getElementById('pIsPreorder').checked;
   const advanceAmount = isPreorder ? (Number(document.getElementById('pAdvanceAmount').value) || 0) : null;
   const minQty = isPreorder ? (Number(document.getElementById('pMinQty').value) || 1) : 1;
-  const leadTime = isPreorder ? (Number(document.getElementById('pLeadTime').value) || null) : null;
+  const leadTime = isPreorder ? (Number(document.getElementById('pPreorderLeadTime').value) || null) : null;
   const sampleAvailable = isPreorder && document.getElementById('pSampleAvailable').checked;
   const samplePrice = sampleAvailable ? (Number(document.getElementById('pSamplePrice').value) || 0) : 0;
 
@@ -2088,7 +2088,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
         catalog_item_id: selectedCatalogItemId || null,
         item_code: document.getElementById('pItemCode').value.trim() || null,
         short_name: document.getElementById('pShortName').value.trim() || null,
-        product_type: document.getElementById('pProductType').value,
+        product_type: document.getElementById('pItemType').value,
         manufacturer: document.getElementById('pManufacturer').value.trim() || null,
         model_number: document.getElementById('pModelNumber').value.trim() || null,
         part_number: document.getElementById('pPartNumber').value.trim() || null,
@@ -2203,7 +2203,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
       }
     }
 
-    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt','pPurchasePrice','pLeadTime','pRack','pShelf','pBin'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt','pPurchasePrice','pLeadTime','pPreorderLeadTime','pRack','pShelf','pBin'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('pStatus').value = 'active';
     document.getElementById('pPublishAtGroup').style.display = 'none';
     document.getElementById('pChannelWebsite').checked = true;
@@ -2212,7 +2212,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
     document.getElementById('pChannelWholesale').checked = false;
     document.getElementById('pWarrantyAvailable').checked = false;
     document.getElementById('pWarrantyType').value = '';
-    document.getElementById('pProductType').value = 'Simple';
+    document.getElementById('pItemType').value = 'Simple';
     document.getElementById('pDiscountType').value = 'percent';
     document.getElementById('pTaxInclusive').checked = true;
     document.getElementById('pMinStockLevel').value = 5;
@@ -2503,6 +2503,9 @@ document.getElementById('autoDescBtn').addEventListener('click', async function(
     document.getElementById('pLongDescription').value = result.long;
     if (!document.getElementById('pFeatures').value.trim() && Array.isArray(result.features)) {
       document.getElementById('pFeatures').value = result.features.join('\n');
+    }
+    if (!brand && result.brand) {
+      document.getElementById('pBrand').value = result.brand;
     }
   } catch (err) {
     // AI generator failed (not configured yet, network issue, etc.) — fall back
