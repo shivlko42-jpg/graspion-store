@@ -291,6 +291,13 @@ Continue with Google
 </div>
 
 <div class="panel" data-section="dashboard">
+<h3>📲 App Downloads <span style="font-size:10px; font-weight:400; color:#9ca3af;">(who installed the app)</span></h3>
+<p style="font-size:10.5px; color:#9ca3af; margin-bottom:10px;">Only shows name/phone/area for people who were logged into their account at the moment they installed. Installs by someone browsing without an account show as "Guest" — there's no way to identify an anonymous visitor, by design of how apps work.</p>
+<div id="installsList" style="display:flex; flex-direction:column; gap:8px; max-height:400px; overflow-y:auto;"></div>
+<div class="empty-state" id="installsEmpty" style="display:none;">No installs recorded yet</div>
+</div>
+
+<div class="panel" data-section="dashboard">
 <h3>🏢 Company Updates <span style="font-size:10px; font-weight:400; color:#9ca3af;">(from Grasp Infotech ERP)</span></h3>
 <div id="erpOnLeaveList" style="margin:10px 0;"></div>
 <div id="erpNoticesList"></div>
@@ -1103,6 +1110,57 @@ const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 const thisWeek = events.filter(function(e) { return new Date(e.installed_at).getTime() > weekAgo; }).length;
 document.getElementById('weekInstallsCount').textContent = thisWeek;
 } catch (err) { /* stats are a nice-to-have, fail silently */ }
+loadInstallsDetailList();
+}
+const pincodeLocationCache = {};
+async function resolvePincodeLocation(pincode) {
+if (!pincode) return null;
+if (pincodeLocationCache[pincode]) return pincodeLocationCache[pincode];
+try {
+const res = await fetch('https://api.postalpincode.in/pincode/' + encodeURIComponent(pincode));
+const data = await res.json();
+const po = (Array.isArray(data) && data[0] && data[0].Status === 'Success' && data[0].PostOffice && data[0].PostOffice[0]) ? data[0].PostOffice[0] : null;
+const result = po ? { district: po.District, state: po.State } : null;
+pincodeLocationCache[pincode] = result;
+return result;
+} catch (err) { return null; }
+}
+async function loadInstallsDetailList() {
+const list = document.getElementById('installsList');
+const empty = document.getElementById('installsEmpty');
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/app_install_events?select=id,platform,installed_at,customer_id,customer:customers(name,phone,default_address,default_pincode)&order=installed_at.desc&limit=200', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const rows = res.ok ? await res.json() : [];
+if (rows.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+const platformIcon = { android: '🤖 Android', ios: '🍎 iOS', desktop: '💻 Desktop' };
+list.innerHTML = rows.map(function(r) {
+const c = r.customer;
+const identity = c
+? ('<b>' + (c.name || 'Unnamed') + '</b>' + (c.phone ? ' · ' + c.phone : ''))
+: '<span style="color:#9ca3af;">Guest (not logged in at install time)</span>';
+const areaLine = c && (c.default_address || c.default_pincode)
+? '<div style="font-size:10.5px; color:#6b7280; margin-top:2px;" data-pincode-line="' + r.id + '">' + (c.default_address || '') + (c.default_pincode ? ' — ' + c.default_pincode : '') + '</div>'
+: '';
+return '<div style="border:1px solid #f0eef7; border-radius:10px; padding:10px;">' +
+'<div style="display:flex; justify-content:space-between; align-items:center;"><div style="font-size:12px;">' + identity + '</div><div style="font-size:10px; color:#9ca3af;">' + (platformIcon[r.platform] || r.platform || '') + '</div></div>' +
+areaLine +
+'<div style="font-size:9.5px; color:#9ca3af; margin-top:3px;">' + new Date(r.installed_at).toLocaleString('en-IN') + '</div>' +
+'</div>';
+}).join('');
+// Resolve district/state per unique pincode in the background, then fill in once known
+const uniquePincodes = Array.from(new Set(rows.filter(function(r){ return r.customer && r.customer.default_pincode; }).map(function(r){ return r.customer.default_pincode; })));
+for (const pin of uniquePincodes) {
+const loc = await resolvePincodeLocation(pin);
+if (!loc) continue;
+rows.forEach(function(r) {
+if (r.customer && r.customer.default_pincode === pin) {
+const el = list.querySelector('[data-pincode-line="' + r.id + '"]');
+if (el) el.textContent += ' · ' + loc.district + ', ' + loc.state;
+}
+});
+}
+} catch (err) { empty.style.display = 'block'; empty.textContent = 'Could not load install details'; }
 }
 let currentReportPeriod = 'quarterly';
 async function loadBusinessReport(period) {
