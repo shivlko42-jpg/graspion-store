@@ -425,7 +425,7 @@ window.addEventListener('load', function() {
 </div>
 
 <div class="db-status">
-<span class="db-status-badge loading" id="dbStatusBadge">⏳ Connecting...</span>
+<span class="db-status-badge loading" id="dbStatusBadge" style="display:none;">⏳ Connecting...</span>
 </div>
 
 <button class="category-toggle-btn" id="categoryToggleBtn">☰</button>
@@ -973,8 +973,13 @@ renderQuickCategories();
 renderPinSuggestions();
 loadProductVariants();
 dataLoaded = true;
-badge.className = 'db-status-badge live';
-badge.textContent = '✅ Live · ' + vendors.length + ' vendors, ' + productPool.length + ' products';
+if (siteSettings.show_live_stats_badge === 'true') {
+  badge.style.display = '';
+  badge.className = 'db-status-badge live';
+  badge.textContent = '✅ Live · ' + vendors.length + ' vendors, ' + productPool.length + ' products';
+} else {
+  badge.style.display = 'none';
+}
 checkAbandonedCartReminder();
 const deepLinkProductId = new URLSearchParams(window.location.search).get('product');
 if (deepLinkProductId && productPool.some(function(p){ return p.id === deepLinkProductId; })) {
@@ -983,6 +988,7 @@ openProductDetail(deepLinkProductId);
 handleProductDeepLink();
 } catch (err) {
 dataLoaded = false;
+badge.style.display = '';
 badge.className = 'db-status-badge error';
 badge.textContent = '❌ Connection error';
 }
