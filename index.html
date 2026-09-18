@@ -96,7 +96,7 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .hero-banner h1 { font-size:clamp(24px,4vw,38px); font-weight:900; color:#fff; line-height:1.2; }
 .hero-banner p { font-size:13.5px; color:rgba(255,255,255,0.8); margin-top:10px; max-width:340px; }
 .hero-emoji { font-size:64px; }
-.trust-row { max-width:1200px; margin:16px auto 0; padding:0 20px; display:flex; gap:10px; overflow-x:auto; }
+.trust-row { max-width:1200px; margin:22px auto 0; padding:0 20px; display:flex; gap:10px; overflow-x:auto; }
 .trust-item { flex:0 0 auto; display:flex; align-items:center; gap:8px; background:#fff; padding:10px 16px; border-radius:14px; font-size:11.5px; font-weight:700; color:#4b4b63; }
 
 /* ===== Swiggy/Zepto-style category rail + product area — a lighter,
@@ -123,7 +123,7 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .subcat-rail::-webkit-scrollbar { display:none; }
 .subcat-chip { flex:0 0 auto; padding:8px 16px; border-radius:20px; cursor:pointer; background:rgba(255,255,255,0.7); font-size:11.5px; font-weight:700; color:#6b5b8f; white-space:nowrap; border:1.5px solid transparent; }
 .subcat-chip.active { background:#7c3aed; color:#fff; }
-.vendor-strip { max-width:1200px; margin:0 auto; padding:24px 20px 4px; }
+.vendor-strip { max-width:1200px; margin:0 auto; padding:32px 20px 4px; }
 .vendor-strip h2 { font-size:17px; font-weight:800; margin-bottom:12px; }
 .vendor-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
 .vendor-card { flex:0 0 auto; width:145px; background:#fff; border-radius:16px; padding:14px; text-align:center; border:1.5px solid transparent; cursor:pointer; }
@@ -132,7 +132,7 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .vendor-card .v-name { font-size:12px; font-weight:700; }
 .vendor-card .v-eta { font-size:10px; color:#16a34a; font-weight:800; margin-top:4px; }
 .vendor-card .v-rating { font-size:9.5px; color:#9ca3af; margin-top:2px; }
-.deal-strip { max-width:1200px; margin:0 auto; padding:26px 20px 6px; display:flex; justify-content:space-between; align-items:center; }
+.deal-strip { max-width:1200px; margin:14px auto 0; padding:26px 20px 6px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid #ece7f5; }
 .deal-strip h2 { font-size:18px; font-weight:800; }
 .deal-strip .sub { font-size:11px; color:#9ca3af; font-weight:600; margin-top:2px; }
 .grid { max-width:1200px; margin:0 auto; padding:10px 14px 20px; display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
@@ -1310,7 +1310,7 @@ function renderVendors(pin){
 const list = vendors.filter(function(v){ return (v.pincodes.includes(pin) || v.pincodes.includes('ALL')) && v.nearbySubscribed; });
 const row = document.getElementById('vendorRow');
 document.getElementById('vendorHeading').textContent = '🏪 ' + list.length + ' ' + graspionT('vendorsNearYou').replace('🏪 ','');
-if(list.length === 0){ row.innerHTML = '<div style="font-size:12px;color:#9ca3af;">No featured stores in your area yet.</div>'; return; }
+if(list.length === 0){ row.innerHTML = '<div style="display:flex; align-items:center; gap:12px; background:#fff; border:1.5px dashed #e5e0f5; border-radius:16px; padding:16px 18px; width:100%;"><div style="font-size:26px;">🏪</div><div><div style="font-size:12.5px; font-weight:800; color:#1e1b3a;">No featured stores here yet</div><div style="font-size:11px; color:#9ca3af; margin-top:2px;">Local sellers are joining Graspion in your area soon — check back shortly.</div></div></div>'; return; }
 row.innerHTML = '<div class="vendor-card ' + (selectedVendorId==='all'?'active':'') + '" data-v="all"><div class="v-icon">🏬</div><div class="v-name">' + graspionT('allVendors') + '</div><div class="v-eta">' + list.length + ' stores</div></div>' +
 list.map(function(v){ return '<div class="vendor-card ' + (selectedVendorId===v.id?'active':'') + '" data-v="' + v.id + '"><div class="v-icon">' + v.icon + '</div><div class="v-name">' + v.name + '</div><div class="v-eta">⏱ ' + v.eta + '</div><div class="v-rating">★ ' + v.rating + '</div></div>'; }).join('');
 row.querySelectorAll('.vendor-card').forEach(function(el){ el.addEventListener('click', function(){ selectedVendorId = el.getAttribute('data-v'); renderVendors(pin); renderProducts(pin); }); });
