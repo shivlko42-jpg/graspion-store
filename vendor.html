@@ -1277,9 +1277,10 @@ function renderKPIs() {
   document.getElementById('kpiProducts').textContent = vendorProducts.length;
   const nonCancelledOrders = vendorOrders.filter(function(o) { return o.status !== 'cancelled'; });
   document.getElementById('kpiOrders').textContent = nonCancelledOrders.length;
-  const revenue = nonCancelledOrders.reduce(function(s, o) { return s + Number(o.total_amount || 0); }, 0);
+  const revenueOrders = nonCancelledOrders.filter(function(o) { return o.payment_status === 'paid' || o.status === 'delivered'; });
+  const revenue = revenueOrders.reduce(function(s, o) { return s + Number(o.total_amount || 0); }, 0);
   document.getElementById('kpiRevenue').textContent = '₹' + revenue.toLocaleString('en-IN');
-  const pendingPayout = nonCancelledOrders.filter(function(o) { return o.payout_status !== 'paid'; }).reduce(function(s, o) { return s + Number(o.total_amount || 0); }, 0);
+  const pendingPayout = revenueOrders.filter(function(o) { return o.payout_status !== 'paid'; }).reduce(function(s, o) { return s + Number(o.total_amount || 0); }, 0);
   document.getElementById('kpiPayout').textContent = '₹' + pendingPayout.toLocaleString('en-IN');
   const pendingOrdersCount = vendorOrders.filter(function(o) { return ['pending','confirmed','preparing'].indexOf(o.status) !== -1; }).length;
   document.getElementById('todoPendingOrders').textContent = pendingOrdersCount;
