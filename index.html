@@ -177,6 +177,11 @@ hidden behind a tap). */
 .pd-two-col { display:flex; gap:26px; align-items:flex-start; }
 .pd-left-col { flex:0 0 44%; position:sticky; top:0; }
 .pd-right-col { flex:1; min-width:0; }
+@media(max-width:760px){
+  .pd-two-col { flex-direction:column; gap:14px; }
+  .pd-left-col { flex:0 0 auto; width:100%; position:static; }
+  .pd-right-col { width:100%; }
+}
 /* Full-screen slide-in is a mobile-native pattern; on a laptop a centered,
 reasonably-sized dialog with a visible dimmed backdrop feels more at home
 and matches how dialogs normally behave on a desktop OS. */
@@ -3680,15 +3685,15 @@ variantSelectorHtml +
   if (p.safetyInfo) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">⚠️ Safety Information</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line; margin-bottom:10px;">' + p.safetyInfo + '</p>');
   if (docsHtml) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:6px;">📄 Documents</div>' + docsHtml);
 
-  function accordionBlock(id, icon, label, innerHtml) {
+  function accordionBlock(id, icon, label, innerHtml, openByDefault) {
     if (!innerHtml) return '';
     return '<div style="margin-top:10px; border:1px solid #f0eef7; border-radius:12px; overflow:hidden;">' +
-      '<button data-pdaccordion="' + id + '" style="width:100%; text-align:left; background:#faf9fd; border:none; padding:12px 14px; font-size:13px; font-weight:800; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">' + icon + ' ' + label + '<span id="' + id + 'Arrow" style="font-size:11px; color:#9ca3af;">▾</span></button>' +
-      '<div id="' + id + 'Content" style="display:none; padding:14px;">' + innerHtml + '</div>' +
+      '<button data-pdaccordion="' + id + '" style="width:100%; text-align:left; background:#faf9fd; border:none; padding:12px 14px; font-size:13px; font-weight:800; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">' + icon + ' ' + label + '<span id="' + id + 'Arrow" style="font-size:11px; color:#9ca3af;">' + (openByDefault ? '▴' : '▾') + '</span></button>' +
+      '<div id="' + id + 'Content" style="display:' + (openByDefault ? 'block' : 'none') + '; padding:14px;">' + innerHtml + '</div>' +
       '</div>';
   }
 
-  return accordionBlock('pdDescBlock', '📝', 'Description', descParts.join('')) +
+  return accordionBlock('pdDescBlock', '📝', 'Description', descParts.join(''), true) +
     accordionBlock('pdSpecBlock', '📋', 'Specification', specHtml) +
     accordionBlock('pdAddlBlock', 'ℹ️', 'Additional Information', addlParts.join(''));
 })() +
