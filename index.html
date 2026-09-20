@@ -1486,7 +1486,7 @@ return (Number(vb && vb.rating) || 0) - (Number(va && va.rating) || 0);
 });
 const dealGrid = document.getElementById('dealGrid');
 if(filtered.length === 0){ dealGrid.innerHTML = '<div class="no-vendor" style="grid-column:1/-1;">' + graspionT('noVendorArea') + '</div>'; return; }
-const PRODUCTS_INITIAL_COUNT = window.innerWidth >= 900 ? 12 : 10;
+const PRODUCTS_INITIAL_COUNT = window.innerWidth >= 900 ? 18 : 10;
 const visibleProducts = productsShowAll ? filtered : filtered.slice(0, PRODUCTS_INITIAL_COUNT);
 dealGrid.innerHTML = visibleProducts.map(buildProductCardHtml).join('');
 const seeMoreWrap = document.getElementById('dealSeeMoreWrap');
