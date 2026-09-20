@@ -917,7 +917,7 @@ let checkoutStep = 'address';
 let appliedCoupon = null; // { code, discount } — set by applyCoupon(), verified live against the server
 let couponMessage = '';
 let selectedPayMethod = 'upi';
-let customerInfo = { name:'', phone:'', address:'', city:'', pincode:'', state:'' };
+let customerInfo = { name:'', phone:'', email:'', address:'', city:'', pincode:'', state:'' };
 let selectedSortOption = 'relevance';
 let productsShowAll = false;
 let activeFilters = { priceMin: null, priceMax: null, brands: [] };
@@ -1763,7 +1763,7 @@ const orderId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xx
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: vendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: (vi === 0 && appliedCoupon) ? appliedCoupon.code : null, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null, order_group_id: groupId, suborder_index: vi + 1, suborder_count: vendorIds.length })
+body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_email: (currentCustomer && currentCustomer.email) || customerInfo.email || null, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: vendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: (vi === 0 && appliedCoupon) ? appliedCoupon.code : null, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null, order_group_id: groupId, suborder_index: vi + 1, suborder_count: vendorIds.length })
 });
 if (!orderRes.ok) {
 const orderErr = await orderRes.text();
@@ -1857,7 +1857,7 @@ const t = cartTotals();
 const items = cartItemsList();
 const wrap = document.getElementById('coWrap');
 if(checkoutStep === 'address'){
-wrap.innerHTML = '<div class="co-section"><h4>📍 ' + graspionT('deliveryAddress') + '</h4><input class="co-input" placeholder="' + graspionT('fullName') + '" id="coName" value="' + customerInfo.name + '"><input class="co-input" placeholder="' + graspionT('phoneNumber') + '" id="coPhone" value="' + customerInfo.phone + '"><input class="co-input" placeholder="' + graspionT('addressPlaceholder') + '" id="coAddr" value="' + customerInfo.address + '"><div class="co-row2"><input class="co-input" placeholder="' + graspionT('city') + '" id="coCity" value="' + (customerInfo.city || (areaData[selectedPin] ? areaData[selectedPin].city : '')) + '"><input class="co-input" placeholder="' + graspionT('pincode') + '" id="coPincode" value="' + (customerInfo.pincode || selectedPin || '') + '"></div>' +
+wrap.innerHTML = '<div class="co-section"><h4>📍 ' + graspionT('deliveryAddress') + '</h4><input class="co-input" placeholder="' + graspionT('fullName') + '" id="coName" value="' + customerInfo.name + '"><input class="co-input" placeholder="' + graspionT('phoneNumber') + '" id="coPhone" value="' + customerInfo.phone + '">' + ((currentCustomer && currentCustomer.email) ? '' : '<input class="co-input" type="email" placeholder="Email (optional — for order updates)" id="coEmail" value="' + (customerInfo.email || '') + '">') + '<input class="co-input" placeholder="' + graspionT('addressPlaceholder') + '" id="coAddr" value="' + customerInfo.address + '"><div class="co-row2"><input class="co-input" placeholder="' + graspionT('city') + '" id="coCity" value="' + (customerInfo.city || (areaData[selectedPin] ? areaData[selectedPin].city : '')) + '"><input class="co-input" placeholder="' + graspionT('pincode') + '" id="coPincode" value="' + (customerInfo.pincode || selectedPin || '') + '"></div>' +
 '<select class="co-input" id="coState">' + ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu and Kashmir','Ladakh','Chandigarh','Puducherry'].map(function(s) { return '<option value="' + s + '" ' + ((customerInfo.state || getStateFromPincode(customerInfo.pincode || selectedPin)) === s ? 'selected' : '') + '>' + s + '</option>'; }).join('') + '</select>' +
 '</div><div class="co-section"><h4>🏷️ Coupon</h4>' +
 (appliedCoupon
@@ -1874,6 +1874,8 @@ if (document.getElementById('removeCouponBtn')) { document.getElementById('remov
 document.getElementById('toPaymentBtn').addEventListener('click', async function() {
 customerInfo.name = document.getElementById('coName').value.trim();
 customerInfo.phone = document.getElementById('coPhone').value.trim();
+const coEmailEl = document.getElementById('coEmail');
+customerInfo.email = coEmailEl ? coEmailEl.value.trim() : '';
 customerInfo.address = document.getElementById('coAddr').value.trim();
 customerInfo.city = document.getElementById('coCity').value.trim();
 customerInfo.pincode = document.getElementById('coPincode').value.trim();
@@ -1972,7 +1974,7 @@ deliveryEstimate = firstVendor ? firstVendor.eta : '20-30 min';
 wrap.innerHTML = '<div class="success-box"><div class="tick">✅</div><h2>' + graspionT('orderSuccess') + '</h2><p>' + graspionT('orderSuccessDesc') + '</p>' +
 '<div style="background:#faf5ff; border-radius:14px; padding:16px; margin:16px 0; display:inline-block;"><div style="font-size:11px; color:#7c3aed; font-weight:800;">⏱ ' + (isPanIndia ? 'Expected Delivery Date' : 'Expected Delivery Time') + '</div><div style="font-size:18px; font-weight:900; color:#1e1b3a; margin-top:4px;">' + deliveryEstimate + '</div></div><br>' +
 '<button id="closeSuccessBtn">' + graspionT('continueShopping') + '</button></div>';
-document.getElementById('closeSuccessBtn').addEventListener('click', function() { cart = {}; customerInfo = { name:'', phone:'', address:'', city:'', pincode:'' }; appliedCoupon = null; couponMessage = ''; refreshAll(); closeCheckout(); });
+document.getElementById('closeSuccessBtn').addEventListener('click', function() { cart = {}; customerInfo = { name:'', phone:'', email:'', address:'', city:'', pincode:'' }; appliedCoupon = null; couponMessage = ''; refreshAll(); closeCheckout(); });
 }
 else if(checkoutStep === 'error'){
 const showDebug = new URLSearchParams(window.location.search).get('debug') === '1';
