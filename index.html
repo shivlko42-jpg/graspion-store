@@ -138,7 +138,7 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .grid { max-width:1200px; margin:0 auto; padding:10px 14px 20px; display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
 @media(min-width:900px){
 .hero-banner { padding:56px 60px; min-height:340px; }
-.hero-banner h1 { font-size:46px; }
+.hero-banner h1 { font-size:46px; font-weight:800; letter-spacing:-0.015em; }
 .hero-banner p { font-size:15px; max-width:420px; }
 .hero-emoji { font-size:92px; }
 .trust-row { justify-content:center; gap:18px; }
@@ -151,6 +151,13 @@ header { position:-webkit-sticky; position:sticky; top:0; z-index:50; background
 .card { transition:.25s; }
 .cta-banner { padding:26px 40px; min-height:220px; }
 .cta-banner h2 { font-size:28px; }
+/* Desktop gets a lighter, more refined type scale — the heavy 800/900
+weights that work as thumb-stopping shorthand on a small phone screen read
+as shouty at desktop size, where there's room for calmer hierarchy. Price
+and CTA buttons stay bold since those need to scan instantly either way. */
+.vendor-strip h2, .deal-strip h2, .co-header h2, .drawer-head h3, .co-section h4, .cta-banner h2 { font-weight:600; letter-spacing:-0.01em; }
+.card { border-color:#e9e4f5; }
+}
 /* On a laptop/desktop screen there's room for a permanent sidebar — the
 mobile "tap to open" overlay pattern makes sense on a phone but feels like
 extra friction with a mouse and a wide screen, so it reverts to always-visible. */
@@ -216,7 +223,7 @@ and matches how dialogs normally behave on a desktop OS. */
 .price-row { display:flex; align-items:baseline; gap:6px; }
 .price-new { font-size:16px; font-weight:900; color:#1e1b3a; }
 .price-old { font-size:11px; color:#9ca3af; text-decoration:line-through; }
-.off { font-size:11px; color:#16a34a; font-weight:800; }
+.off { font-size:11px; color:#dc2626; font-weight:800; background:#fef2f2; padding:2px 6px; border-radius:6px; }
 .rating-pill { display:inline-flex; align-items:center; gap:3px; background:linear-gradient(90deg,#16a34a,#22c55e); color:#fff; font-size:10px; font-weight:800; padding:3px 8px; border-radius:7px; margin-top:7px; }
 .free-del { font-size:10px; color:#6b7280; font-weight:700; margin-top:6px; }
 .add-btn { width:100%; margin-top:8px; background:#1e1b3a; color:#fff; border:none; padding:9px; border-radius:10px; font-weight:700; font-size:11.5px; cursor:pointer; }
@@ -3650,7 +3657,7 @@ mainImgHtml + thumbsHtml +
 '<h1 style="font-size:18px; font-weight:800; line-height:1.35; margin-top:4px; color:#1e1b3a;">' + p.name + '</h1>' +
 '<div style="margin-top:10px;"><button id="pdVendorToggle" style="background:none; border:none; padding:0; cursor:pointer; font-size:11px; color:#7c3aed; font-weight:700; display:flex; align-items:center; gap:4px;">' + (vendor ? vendor.icon + ' Sold by ' + vendor.name : '') + ' <span style="font-size:9px;">▾ tap for details</span></button>' +
 '<div id="pdVendorDetails" style="display:none; margin-top:6px; background:#faf9fd; border-radius:10px; padding:10px; font-size:11px; color:#4b5563; line-height:1.7;"><b>' + (vendor ? vendor.name : 'Graspion Seller') + '</b>' + (vendor && vendor.gstin ? '<br>GSTIN: ' + vendor.gstin : '') + (vendor && vendor.address ? '<br>📍 ' + vendor.address : '') + (vendor && vendor.email ? '<br>✉️ ' + vendor.email : '') + '</div>' +
-'<div id="pdPriceRow" style="display:flex; align-items:center; gap:8px; margin-top:6px;"><span id="pdPrice" style="font-size:20px; font-weight:900; color:#7c3aed;">₹' + p.price + '</span>' + (p.old > p.price ? '<span style="text-decoration:line-through; color:#9ca3af; font-size:13px;">₹' + p.old + '</span><span style="color:#15803d; font-size:11px; font-weight:700;">' + p.off + '</span>' : '') + '</div>' +
+'<div id="pdPriceRow" style="display:flex; align-items:center; gap:8px; margin-top:6px;"><span id="pdPrice" style="font-size:20px; font-weight:900; color:#7c3aed;">₹' + p.price + '</span>' + (p.old > p.price ? '<span style="text-decoration:line-through; color:#9ca3af; font-size:13px;">₹' + p.old + '</span><span style="color:#dc2626; font-size:11px; font-weight:800; background:#fef2f2; padding:2px 6px; border-radius:6px;">' + p.off + '</span>' : '') + '</div>' +
 variantSelectorHtml +
 (avgRating ? '<div style="margin-top:6px; font-size:12px;">⭐ ' + avgRating + ' (' + reviews.length + ' review' + (reviews.length !== 1 ? 's' : '') + ')</div>' : '<div style="margin-top:6px; font-size:11px; color:#9ca3af;">No reviews yet</div>') +
 (variants.length === 0 && p.stock != null && p.stock > 0 && p.stock <= 10 ? '<div style="margin-top:6px; background:#fef2f2; color:#dc2626; font-size:11px; font-weight:700; padding:6px 10px; border-radius:8px; display:inline-block;">🔥 Only ' + p.stock + ' left in stock — order soon!</div>' : '') +
