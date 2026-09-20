@@ -285,10 +285,13 @@ body { padding-bottom:68px; }
 .bn-badge { position:absolute; top:-6px; right:-10px; background:#ec4899; color:#fff; font-size:9px; font-weight:900; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
 @keyframes bnCartBounce { 0%,100% { transform:scale(1); } 30% { transform:scale(1.35) rotate(-8deg); } 55% { transform:scale(0.95) rotate(5deg); } 75% { transform:scale(1.1); } }
 .bn-cart-bounce { animation:bnCartBounce .5s ease; }
-@media(min-width:700px){ .bottom-nav{ display:none; } body{ padding-bottom:0; } }
-/* Tablet range (roughly 700-900px) previously fell into a gap: bottom-nav
-already hidden (assuming desktop-style nav) but the grid stayed at mobile's
-2 columns — wasted space on a wider screen. Bridges it with 3 columns. */
+@media(min-width:900px){ .bottom-nav{ display:none; } body{ padding-bottom:0; } }
+/* Tablet range (roughly 700-900px): still gets the mobile bottom-nav (that
+now only switches off at 900px, matching the desktop sidebar breakpoint —
+previously it switched off at 700px, leaving a gap with no navigation at
+all until 900px, e.g. whenever a phone was rotated to landscape). This rule
+just gives that wider-but-still-mobile-nav range a denser 3-column grid
+instead of staying stuck at mobile's 2 columns. */
 @media(min-width:700px) and (max-width:899px){ .grid { grid-template-columns:repeat(3,1fr); gap:14px; } }
 .search-suggestions { position:absolute; top:100%; left:16px; right:16px; background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.12); z-index:60; max-height:320px; overflow-y:auto; display:none; }
 .search-suggestions.open { display:block; }
