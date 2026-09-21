@@ -3952,9 +3952,17 @@ function renderReturns() {
 const list = document.getElementById('returnsList');
 const empty = document.getElementById('returnsEmpty');
 const pending = allReturns.filter(function(r) { return r.approval_status === 'pending'; });
-const awaitingItem = allReturns.filter(function(r) { return r.approval_status === 'approved' && !r.item_received_at; });
-if (pending.length === 0 && awaitingItem.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+const disputed = allReturns.filter(function(r) { return r.dispute_status === 'raised'; });
+const awaitingAuto = allReturns.filter(function(r) { return r.approval_status === 'approved' && r.dispute_status !== 'raised' && !allRefunds.find(function(rf) { return rf.return_id === r.id; }); });
+if (pending.length === 0 && disputed.length === 0 && awaitingAuto.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
 empty.style.display = 'none';
+
+const disputedHtml = disputed.map(function(r) {
+const order = allOrders.find(function(o) { return o.id === r.order_id; });
+return '<div class="item-card" style="flex-direction:column; align-items:stretch; border:1.5px solid #dc2626;"><div class="ic-info"><div class="ic-title">🚩 Vendor raised a claim — Order #' + r.order_id.slice(0,8) + (order ? ' — ' + order.customer_name : '') + '</div><div class="ic-sub"><b>Vendor says:</b> ' + (r.dispute_reason || '') + '</div></div>' +
+(r.dispute_photo_url ? '<a href="' + r.dispute_photo_url + '" target="_blank" style="font-size:11px; color:#7c3aed; font-weight:700; margin-top:6px;">📷 View vendor\'s photo</a>' : '') +
+'<div class="item-actions"><button class="icon-btn on-btn" data-disputerefund="' + r.id + '">✓ Refund anyway</button><button class="icon-btn off-btn" data-disputenorefund="' + r.id + '">✕ No refund (deny return)</button></div></div>';
+}).join('');
 
 const pendingHtml = pending.map(function(r) {
 const order = allOrders.find(function(o) { return o.id === r.order_id; });
@@ -3966,29 +3974,33 @@ return '<div class="item-card" style="flex-direction:column; align-items:stretch
 '<option value="seller_wrong_item">Seller — Wrong item sent</option>' +
 '<option value="seller_damaged">Seller — Damaged in transit (packaging fault)</option>' +
 '</select>' +
+'<label style="font-size:9.5px; color:#6b7280; margin-top:2px; display:block;">Auto-refund grace period (vendor can raise a claim within this window)</label>' +
+'<select class="form-input" id="graceDays-' + r.id + '" style="font-size:11px; margin:4px 0 8px;">' +
+'<option value="3">3 days</option><option value="5">5 days</option><option value="7">7 days</option>' +
+'</select>' +
 '<div class="item-actions"><button class="icon-btn on-btn" data-retapprove="' + r.id + '">✓ Approve</button><button class="icon-btn off-btn" data-retreject="' + r.id + '">✕ Reject</button></div></div>';
 }).join('');
 
-const awaitingHtml = awaitingItem.map(function(r) {
+const awaitingHtml = awaitingAuto.map(function(r) {
 const order = allOrders.find(function(o) { return o.id === r.order_id; });
-return '<div class="item-card" style="flex-direction:column; align-items:stretch; border:1.5px dashed #f59e0b;"><div class="ic-info"><div class="ic-title">⏳ Awaiting item — Order #' + r.order_id.slice(0,8) + (order ? ' — ' + order.customer_name : '') + '</div><div class="ic-sub">Approved. No refund yet — confirm the item has physically arrived and matches what was sold before refunding, to avoid a swapped/wrong item being returned.</div></div>' +
-'<label style="font-size:9.5px; color:#6b7280; margin-top:8px; display:block;">Photo of the returned item (required before refund)</label>' +
-'<input type="file" accept="image/*" capture="environment" id="returnProof-' + r.id + '" style="display:block; margin:4px 0 8px; font-size:11px;">' +
-'<div class="item-actions"><button class="icon-btn on-btn" data-retconfirm="' + r.id + '">✓ Confirm Item Received &amp; Create Refund</button></div></div>';
+const dateStr = r.auto_refund_at ? new Date(r.auto_refund_at).toLocaleDateString('en-IN', { day:'numeric', month:'short' }) : '—';
+return '<div class="item-card" style="flex-direction:column; align-items:stretch; border:1.5px dashed #9ca3af;"><div class="ic-info"><div class="ic-title">⏳ Auto-refund scheduled — Order #' + r.order_id.slice(0,8) + (order ? ' — ' + order.customer_name : '') + '</div><div class="ic-sub">Approved. Will refund automatically on ' + dateStr + ' unless the vendor raises a claim before then.</div></div></div>';
 }).join('');
 
-list.innerHTML = awaitingHtml + pendingHtml;
+list.innerHTML = disputedHtml + pendingHtml + awaitingHtml;
 
 document.querySelectorAll('[data-retapprove]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
 const id = btn.getAttribute('data-retapprove');
 const faultSelect = document.getElementById('faultType-' + id);
 const faultType = faultSelect ? faultSelect.value : 'customer';
-// Approval only records the decision — no refund is created here. A refund
-// is only created once the physical item is confirmed received (below),
-// so a customer can't get refunded by simply requesting a return and
-// never having to send back the actual (or a swapped) item.
-await fetch(SUPABASE_URL + '/rest/v1/order_returns?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ approval_status: 'approved', fault_type: faultType, reviewed_at: new Date().toISOString(), reviewed_by: currentAdmin.id }) });
+const graceDaysSelect = document.getElementById('graceDays-' + id);
+const graceDays = graceDaysSelect ? Number(graceDaysSelect.value) : 3;
+const autoRefundAt = new Date(Date.now() + graceDays * 24 * 60 * 60 * 1000).toISOString();
+// No refund is created immediately. It's scheduled to auto-create after the
+// grace period (via a daily database job) — unless the vendor raises a
+// claim in the meantime, which pauses it for your review below.
+await fetch(SUPABASE_URL + '/rest/v1/order_returns?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ approval_status: 'approved', fault_type: faultType, auto_refund_at: autoRefundAt, reviewed_at: new Date().toISOString(), reviewed_by: currentAdmin.id }) });
 loadAllData();
 });
 });
@@ -4000,36 +4012,25 @@ await fetch(SUPABASE_URL + '/rest/v1/order_returns?id=eq.' + id, { method: 'PATC
 loadAllData();
 });
 });
-document.querySelectorAll('[data-retconfirm]').forEach(function(btn) {
+document.querySelectorAll('[data-disputerefund]').forEach(function(btn) {
 btn.addEventListener('click', async function() {
-const id = btn.getAttribute('data-retconfirm');
+const id = btn.getAttribute('data-disputerefund');
 const ret = allReturns.find(function(r) { return r.id === id; });
-const fileInput = document.getElementById('returnProof-' + id);
-const file = fileInput && fileInput.files[0];
-if (!file) { alert('Please add a photo of the returned item before confirming — this protects you if the wrong or an old item was sent back instead of the original.'); return; }
-btn.disabled = true;
-btn.textContent = '⏳ Uploading...';
-try {
-const ext = file.name.split('.').pop();
-const path = id + '/' + Date.now() + '.' + ext;
-const uploadRes = await fetch(SUPABASE_URL + '/storage/v1/object/return-proof/' + path, {
-method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': file.type }, body: file
-});
-if (!uploadRes.ok) throw new Error('Photo upload failed');
-const photoUrl = SUPABASE_URL + '/storage/v1/object/public/return-proof/' + path;
-await fetch(SUPABASE_URL + '/rest/v1/order_returns?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ item_received_at: new Date().toISOString(), item_received_photo_url: photoUrl }) });
-if (ret) {
+if (!ret) return;
 const order = allOrders.find(function(o) { return o.id === ret.order_id; });
-if (order) {
+if (!order) return;
+btn.disabled = true;
+await fetch(SUPABASE_URL + '/rest/v1/order_returns?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ dispute_status: 'resolved_refund' }) });
 await fetch(SUPABASE_URL + '/rest/v1/refunds', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: ret.order_id, return_id: ret.id, amount: order.total_amount, status: 'pending' }) });
-}
-}
 loadAllData();
-} catch (err) {
-alert('Could not confirm receipt: ' + err.message);
-btn.disabled = false;
-btn.textContent = '✓ Confirm Item Received & Create Refund';
-}
+});
+});
+document.querySelectorAll('[data-disputenorefund]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+if (!confirm('Deny this return — no refund will be issued. Are you sure?')) return;
+const id = btn.getAttribute('data-disputenorefund');
+await fetch(SUPABASE_URL + '/rest/v1/order_returns?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ dispute_status: 'resolved_no_refund', approval_status: 'rejected' }) });
+loadAllData();
 });
 });
 }

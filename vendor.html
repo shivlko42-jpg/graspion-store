@@ -153,6 +153,19 @@ window.addEventListener('load', function() {
 </div>
 </div>
 
+<div class="modal-overlay" id="claimModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300; align-items:center; justify-content:center; padding:16px;">
+<div style="max-width:380px; width:100%; background:#fff; border-radius:20px; padding:22px;">
+<h3 style="font-size:15px; margin-bottom:6px;">🚩 Raise a Claim</h3>
+<p style="font-size:11.5px; color:#6b7280; margin-bottom:14px;">Tell us what's actually wrong with the item you received back, and attach a photo as evidence. This pauses the automatic refund until Graspion reviews it.</p>
+<label style="font-size:10.5px; font-weight:700; color:#6b7280; display:block; margin-bottom:4px;">What's wrong?</label>
+<textarea id="claimReason" class="form-input" rows="3" placeholder="e.g. Box was empty, different product received, item damaged/tampered" style="margin-bottom:12px; resize:vertical;"></textarea>
+<label style="font-size:10.5px; font-weight:700; color:#6b7280; display:block; margin-bottom:4px;">Photo evidence (required)</label>
+<input type="file" accept="image/*" capture="environment" id="claimPhoto" style="display:block; margin-bottom:16px; font-size:11px;">
+<button type="button" id="claimSubmitBtn" style="width:100%; background:#dc2626; color:#fff; border:none; padding:12px; border-radius:12px; font-weight:700; font-size:13px; cursor:pointer; margin-bottom:8px;">Submit Claim</button>
+<button type="button" id="claimCancelBtn" style="width:100%; background:#f3f1f8; color:#4b5563; border:none; padding:12px; border-radius:12px; font-weight:700; font-size:13px; cursor:pointer;">Cancel</button>
+</div>
+</div>
+
 <div class="modal-overlay" id="variantModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300; align-items:center; justify-content:center; padding:16px;">
 <div style="max-width:460px; width:100%; background:#fff; border-radius:20px; padding:20px; max-height:85vh; overflow-y:auto;">
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="font-size:15px;">🎨 Manage Variants — <span id="variantProductName"></span></h3><button id="closeVariantBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
@@ -562,6 +575,13 @@ window.addEventListener('load', function() {
     </div>
 
     <div class="panel">
+      <h3>↩️ Returns <span id="returnCount" style="font-size:11px;color:#9ca3af;"></span></h3>
+      <p style="font-size:10.5px; color:#9ca3af; margin-bottom:10px;">Approved returns refund automatically after a grace period — no action needed from you. If the item you actually received back is wrong, damaged, or empty, raise a claim before the grace period ends to pause the refund for Graspion's review.</p>
+      <div id="vendorReturnList"></div>
+      <div class="empty-state" id="vendorReturnEmpty" style="display:none;">No returns awaiting confirmation</div>
+    </div>
+
+    <div class="panel">
       <h3 id="prebookingsSection">📦 Pre-Bookings <span id="prebookingCount" style="font-size:11px;color:#9ca3af;"></span></h3>
       <p style="font-size:10.5px; color:#9ca3af; margin-bottom:10px;">Sample requests and advance-paid bulk bookings from customers.</p>
       <div id="prebookingList"></div>
@@ -675,6 +695,7 @@ btn.disabled = false; btn.textContent = 'I Agree & Continue';
 let allVendors = [];
 let vendorProducts = [];
 let vendorOrders = [];
+let vendorReturns = [];
 let vendorOrderItems = [];
 let currentOrderTab = 'all';
 let selectedMode = 'local';
@@ -1267,11 +1288,94 @@ async function loadVendorData() {
     renderOrders();
     renderPromote();
     loadVendorSettlements();
+    loadVendorReturns();
   } catch (err) {
     badge.className = 'db-badge loading';
     badge.textContent = '❌ Error: ' + err.message;
   }
 }
+
+async function loadVendorReturns() {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/order_returns?select=*,orders!inner(customer_name,vendor_id,total_amount)&orders.vendor_id=eq.' + currentVendor.id + '&approval_status=eq.approved&or=(dispute_status.is.null,dispute_status.eq.raised)', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    vendorReturns = res.ok ? await res.json() : [];
+  } catch (err) {
+    vendorReturns = [];
+  }
+  renderVendorReturns();
+}
+
+function renderVendorReturns() {
+  const list = document.getElementById('vendorReturnList');
+  const empty = document.getElementById('vendorReturnEmpty');
+  const countBadge = document.getElementById('returnCount');
+  const claimable = vendorReturns.filter(function(r) { return r.dispute_status !== 'raised'; });
+  if (countBadge) countBadge.textContent = claimable.length ? ('(' + claimable.length + ')') : '';
+  if (!vendorReturns.length) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = vendorReturns.map(function(r) {
+    const order = r.orders || {};
+    if (r.dispute_status === 'raised') {
+      return '<div class="order-card" style="opacity:0.75;"><div class="order-top"><span class="order-id">#' + r.order_id.slice(0,8) + ' — ' + (order.customer_name || 'Customer') + '</span></div>' +
+        '<div class="order-addr">🚩 <b>Claim submitted</b> — Graspion is reviewing this. No action needed from you right now.</div></div>';
+    }
+    const dateStr = r.auto_refund_at ? new Date(r.auto_refund_at).toLocaleDateString('en-IN', { day:'numeric', month:'short' }) : '';
+    return '<div class="order-card"><div class="order-top"><span class="order-id">#' + r.order_id.slice(0,8) + ' — ' + (order.customer_name || 'Customer') + '</span></div>' +
+      '<div class="order-addr"><b>Reason:</b> ' + (r.reason || '') + (r.description ? ' — ' + r.description : '') + '</div>' +
+      '<div class="order-addr" style="color:#6b7280;">This will be refunded automatically on ' + dateStr + '. You don\'t need to do anything unless something is wrong with the item you actually received back.</div>' +
+      '<button class="action-btn" data-vendorclaim="' + r.id + '" style="margin-top:8px; background:#fef2f2; color:#dc2626;">🚩 Raise a Claim (wrong / damaged / empty item received)</button>' +
+      '</div>';
+  }).join('');
+  document.querySelectorAll('[data-vendorclaim]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const id = btn.getAttribute('data-vendorclaim');
+      document.getElementById('claimModal').style.display = 'flex';
+      document.getElementById('claimModal').setAttribute('data-return-id', id);
+    });
+  });
+}
+
+document.getElementById('claimSubmitBtn').addEventListener('click', async function() {
+  const modal = document.getElementById('claimModal');
+  const id = modal.getAttribute('data-return-id');
+  const fileInput = document.getElementById('claimPhoto');
+  const reasonInput = document.getElementById('claimReason');
+  const file = fileInput && fileInput.files[0];
+  const reason = reasonInput ? reasonInput.value.trim() : '';
+  if (!file) { alert('Please add a photo of what you actually received back — this is your evidence for the claim.'); return; }
+  if (!reason) { alert('Please briefly describe what\'s wrong (e.g. wrong item, empty box, damaged).'); return; }
+  const btn = this;
+  btn.disabled = true;
+  btn.textContent = '⏳ Submitting...';
+  try {
+    const ext = file.name.split('.').pop();
+    const path = currentVendor.id + '/' + id + '/' + Date.now() + '.' + ext;
+    const uploadRes = await fetch(SUPABASE_URL + '/storage/v1/object/return-proof/' + path, {
+      method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': file.type }, body: file
+    });
+    if (!uploadRes.ok) throw new Error('Photo upload failed');
+    const photoUrl = SUPABASE_URL + '/storage/v1/object/public/return-proof/' + path;
+    await fetch(SUPABASE_URL + '/rest/v1/order_returns?id=eq.' + id, {
+      method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dispute_status: 'raised', dispute_reason: reason, dispute_photo_url: photoUrl, dispute_raised_at: new Date().toISOString() })
+    });
+    alert('Claim submitted — the automatic refund is on hold until Graspion reviews your photo.');
+    modal.style.display = 'none';
+    fileInput.value = '';
+    reasonInput.value = '';
+    loadVendorReturns();
+  } catch (err) {
+    alert('Could not submit claim: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit Claim';
+  }
+});
+document.getElementById('claimCancelBtn').addEventListener('click', function() {
+  document.getElementById('claimModal').style.display = 'none';
+});
 
 function renderKPIs() {
   document.getElementById('kpiProducts').textContent = vendorProducts.length;
