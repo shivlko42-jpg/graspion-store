@@ -2066,6 +2066,13 @@ if (!dataLoaded) { await loadDataFromDatabase(); }
 renderVendors(pin);
 renderProducts(pin);
 renderCartDrawer();
+const deepLinkVendorId = new URLSearchParams(window.location.search).get('vendor');
+if (deepLinkVendorId && vendors.some(function(v){ return v.id === deepLinkVendorId; })) {
+selectedVendorId = deepLinkVendorId;
+renderVendors(pin);
+renderProducts(pin);
+setTimeout(function(){ const b = document.getElementById('storeHeaderBanner'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300);
+}
 }
 document.getElementById('pinSubmit').addEventListener('click', function(){
 const val = document.getElementById('pinInput').value.trim();
