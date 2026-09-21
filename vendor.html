@@ -645,9 +645,11 @@ currentVendor.agreement_id = rows[0].id;
 return;
 }
 } catch (e) {}
-// No prior agreement found at all — this is likely an older vendor account
-// from before this feature existed. Show the same declaration, blocking,
-// so every vendor (new or old) has gone through it fairly.
+// Acceptance happens once, here on the dashboard (not at the initial
+// application stage) — this way every vendor sees it once, in one place,
+// and it's recorded permanently. If they already agreed once before
+// (e.g. re-applying with the same email), just link that instead of
+// asking again.
 const keys = ['default_commission_percent','gst_on_commission_percent','tcs_percent','tds_percent','fulfillment_handling_charge','return_rto_charge_amount','vendor_cancellation_penalty_percent','standard_delivery_charge','instant_delivery_charge','payment_gateway_fee_percent'];
 let settingsMap = {};
 try {
@@ -658,20 +660,30 @@ sRows.forEach(function(r) { settingsMap[r.key] = r.value; });
 const s = settingsMap;
 const overlay = document.createElement('div');
 overlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,10,30,0.75); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;';
-overlay.innerHTML = '<div style="background:#fff; border-radius:20px; padding:22px; max-width:440px; width:100%; max-height:88vh; overflow-y:auto;">' +
-'<h3 style="margin-bottom:4px;">📋 Vendor Agreement Update Required</h3>' +
-'<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Please review and accept Graspion\'s current Vendor Agreement to continue using your dashboard.</p>' +
-'<div style="background:#faf9fd; border:1.5px solid #ede9fe; border-radius:12px; padding:12px; margin-bottom:12px; max-height:220px; overflow-y:auto; font-size:10.5px; color:#4b5563; line-height:1.7;">' +
-'<b>Commission:</b> Starting at ' + (s.default_commission_percent || 10) + '% of sale value (varies by category — your dashboard shows the exact rate).<br><br>' +
-'<b>Taxes:</b> GST of ' + (s.gst_on_commission_percent || 18) + '% on commission; TCS ' + (s.tcs_percent || 1) + '% and TDS ' + (s.tds_percent || 1) + '% deducted from payout as per Indian tax law.<br><br>' +
-'<b>Fulfillment & Shipping:</b> ₹' + (s.fulfillment_handling_charge || 10) + ' handling charge per order; delivery charge of ₹' + (s.standard_delivery_charge || 40) + ' standard / ₹' + (s.instant_delivery_charge || 15) + ' instant (or real courier cost if higher).<br><br>' +
-'<b>Payment Gateway:</b> ' + (s.payment_gateway_fee_percent || 2) + '% fee on prepaid orders.<br><br>' +
-'<b>Returns / RTO:</b> Commission refunded to you on customer-fault returns; a ₹' + (s.return_rto_charge_amount || 60) + ' RTO charge applies to you on seller-fault returns.<br><br>' +
-'<b>Cancellation:</b> ' + (s.vendor_cancellation_penalty_percent || 5) + '% penalty for cancelling an already-confirmed order.' +
+function chargeRow(icon, label, value) {
+  return '<div style="display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid #f0eef7;">' +
+    '<div style="font-size:18px; flex-shrink:0;">' + icon + '</div>' +
+    '<div style="flex:1;"><div style="font-size:11.5px; font-weight:700; color:#1e1b3a;">' + label + '</div><div style="font-size:11px; color:#6b7280; margin-top:1px;">' + value + '</div></div>' +
+  '</div>';
+}
+overlay.innerHTML = '<div style="background:#fff; border-radius:20px; padding:0; max-width:440px; width:100%; max-height:88vh; overflow:hidden; display:flex; flex-direction:column;">' +
+'<div style="background:linear-gradient(90deg,#7c3aed,#ec4899); padding:20px 22px; color:#fff;">' +
+'<h3 style="font-size:16px; margin-bottom:4px;">📋 Before You Start Selling</h3>' +
+'<p style="font-size:11px; opacity:0.9;">Here\'s exactly what Graspion charges — so you can price your products correctly.</p>' +
 '</div>' +
-'<label style="display:flex; align-items:flex-start; gap:8px; font-size:11px; margin-bottom:14px; cursor:pointer;"><input type="checkbox" id="retroAgreeCheckbox" style="margin-top:2px;"><span>I have read and agree to Graspion\'s Vendor Agreement above.</span></label>' +
+'<div style="padding:16px 22px; overflow-y:auto; flex:1;">' +
+chargeRow('💰', 'Commission', 'Starting at ' + (s.default_commission_percent || 10) + '% of sale value (varies by category — your dashboard shows the exact rate per product)') +
+chargeRow('🧾', 'Taxes', 'GST ' + (s.gst_on_commission_percent || 18) + '% on commission · TCS ' + (s.tcs_percent || 1) + '% · TDS ' + (s.tds_percent || 1) + '% — deducted from payout as per Indian tax law') +
+chargeRow('📦', 'Fulfillment & Delivery', '₹' + (s.fulfillment_handling_charge || 10) + ' handling per order · Delivery ₹' + (s.standard_delivery_charge || 40) + ' standard / ₹' + (s.instant_delivery_charge || 15) + ' instant (or real courier cost if higher)') +
+chargeRow('💳', 'Payment Gateway', (s.payment_gateway_fee_percent || 2) + '% fee on prepaid (online-paid) orders') +
+chargeRow('↩️', 'Returns / RTO', 'Commission refunded to you if it\'s the customer\'s fault · ₹' + (s.return_rto_charge_amount || 60) + ' RTO charge applies to you if it\'s your fault (defect/wrong item/damage)') +
+chargeRow('⚠️', 'Cancellation', (s.vendor_cancellation_penalty_percent || 5) + '% penalty if you cancel an order you already confirmed') +
+'</div>' +
+'<div style="padding:16px 22px; border-top:1px solid #f0eef7;">' +
+'<label style="display:flex; align-items:flex-start; gap:8px; font-size:11.5px; margin-bottom:14px; cursor:pointer;"><input type="checkbox" id="retroAgreeCheckbox" style="margin-top:2px;"><span>I\'ve read this and agree to Graspion\'s Vendor Agreement.</span></label>' +
 '<div id="retroAgreeError" style="color:#dc2626; font-size:11px; margin-bottom:8px;"></div>' +
 '<button id="retroAgreeBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">I Agree & Continue</button>' +
+'</div>' +
 '</div>';
 document.body.appendChild(overlay);
 document.getElementById('retroAgreeBtn').addEventListener('click', async function() {
