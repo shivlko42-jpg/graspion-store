@@ -758,6 +758,7 @@ Continue with Google
 </select>
 <select class="form-input" id="staffDepartment"><option value="">— No department —</option></select>
 <input class="form-input" id="staffDesignation" placeholder="Designation / job title (e.g. Support Executive)">
+<input class="form-input" id="staffEmployeeId" placeholder="Employee ID (from ERP, optional)">
 </div>
 <div id="staffCategoryPicker" style="display:none; margin-top:10px; padding:10px; background:#fdf4ff; border-radius:10px;">
 <label style="font-size:10.5px; font-weight:700; color:#a21caf; display:block; margin-bottom:6px;">Which categories will they handle directly? (select one or more — works for both Manager and Executive, e.g. starting-phase Executives covering 2-3 categories on their own)</label>
@@ -879,6 +880,34 @@ const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
 const supaAuth = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentAdmin = null;
+let deferredInstallPrompt = null;
+const isStandaloneApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const isIOSDevice = /iphone|ipad|ipod/i.test(navigator.userAgent);
+window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); deferredInstallPrompt = e; });
+window.addEventListener('appinstalled', function() { const b = document.getElementById('installNudgeBanner'); if (b) b.remove(); });
+function maybeShowAdminInstallNudge() {
+  if (isStandaloneApp) return;
+  if (!deferredInstallPrompt && !isIOSDevice) return;
+  if (document.getElementById('installNudgeBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'installNudgeBanner';
+  banner.style.cssText = 'position:fixed; bottom:16px; left:16px; right:16px; z-index:600; background:#1e1b3a; color:#fff; padding:14px 16px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.35); display:flex; align-items:center; gap:12px; max-width:420px; margin:0 auto;';
+  banner.innerHTML = '<div style="width:42px; height:42px; border-radius:12px; overflow:hidden; flex-shrink:0;"><img src="icon-admin.png" style="width:100%; height:100%; object-fit:cover;"></div>' +
+    '<div style="flex:1; min-width:0;"><div style="font-size:12.5px; font-weight:800;">Install the Admin App</div><div style="font-size:10.5px; color:#c4c4d4;">' + (isIOSDevice ? 'Tap Share → Add to Home Screen' : 'Faster, one tap to open the dashboard') + '</div></div>' +
+    (isIOSDevice ? '' : '<button id="installNudgeBtn" style="background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:9px 16px; border-radius:10px; font-size:11.5px; font-weight:800; cursor:pointer; flex-shrink:0;">Install</button>') +
+    '<button id="installNudgeCloseBtn" style="background:none; border:none; color:#9ca3af; font-size:16px; cursor:pointer; flex-shrink:0; padding:0 4px;">✕</button>';
+  document.body.appendChild(banner);
+  if (!isIOSDevice) {
+    document.getElementById('installNudgeBtn').addEventListener('click', async function() {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      banner.remove();
+    });
+  }
+  document.getElementById('installNudgeCloseBtn').addEventListener('click', function() { banner.remove(); });
+}
 let authToken = SUPABASE_KEY;
 let allVendors = [], allProducts = [], allOrders = [], allOrderItems = [], allCarts = [];
 // Shared, single source of truth for "does this order count?" across every
@@ -1035,6 +1064,7 @@ currentAdmin = adminRows[0];
 applyRolePermissions(currentAdmin.role);
 document.getElementById('loginOverlay').style.display = 'none';
 document.getElementById('appWrap').classList.add('active');
+setTimeout(maybeShowAdminInstallNudge, 2500);
 loadAllData();
 } else if (adminRows[0] && adminRows[0].status !== 'active') {
 document.getElementById('loginError').textContent = 'This staff account is no longer active. Contact your super admin if this seems wrong.';
@@ -1568,6 +1598,7 @@ currentAdmin = adminRows[0];
 applyRolePermissions(currentAdmin.role);
 document.getElementById('loginOverlay').style.display = 'none';
 document.getElementById('appWrap').classList.add('active');
+setTimeout(maybeShowAdminInstallNudge, 2500);
 loadAllData();
 } catch (err) {
 errEl.textContent = 'Login error: ' + err.message;
@@ -3071,7 +3102,7 @@ const myCats = allAdminCategoryAssignments.filter(function(a) { return a.admin_i
 const catLine = s.role === 'category_manager' ? '<div class="ic-sub" style="color:#a21caf;">📁 ' + (myCats.length ? myCats.join(', ') : 'No categories assigned yet') + '</div>' : '';
 const reportsToLine = s.role === 'category_executive' ? ('<div class="ic-sub" style="color:#1d4ed8;">↳ Reports to: ' + ((allStaff.find(function(m) { return m.id === s.reporting_manager_id; }) || {}).name || 'Not set') + '</div>') : '';
 const dept = allDepartments.find(function(d) { return d.id === s.department_id; });
-const deptLine = (dept || s.designation) ? '<div class="ic-sub" style="color:#0f766e;">🏢 ' + (dept ? dept.name : 'No department') + (s.designation ? ' · ' + s.designation : '') + '</div>' : '';
+const deptLine = (dept || s.designation || s.employee_id) ? '<div class="ic-sub" style="color:#0f766e;">🏢 ' + (dept ? dept.name : 'No department') + (s.designation ? ' · ' + s.designation : '') + (s.employee_id ? ' · ID: ' + s.employee_id : '') + '</div>' : '';
 return '<div class="item-card"><div class="ic-info"><div class="ic-title">' + s.name + (isMe ? ' (You)' : '') + '</div><div class="ic-sub">' + (roleLabels[s.role] || s.role) + ' · ' + (s.status || 'active') + '</div>' + deptLine + catLine + reportsToLine + '</div>' +
 (isMe ? '' : '<div class="item-actions"><button class="icon-btn del-btn" data-staffdel="' + s.id + '">Remove</button></div>') + '</div>';
 }).join('');
@@ -3163,7 +3194,7 @@ btn.textContent = '⏳ Adding...';
 const res = await fetch(SUPABASE_URL + '/rest/v1/admins', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-body: JSON.stringify({ auth_user_id: uid, name: name, role: role, status: 'active', reporting_manager_id: role === 'category_executive' ? (document.getElementById('staffReportingManager').value || null) : null, department_id: document.getElementById('staffDepartment').value || null, designation: document.getElementById('staffDesignation').value.trim() || null })
+body: JSON.stringify({ auth_user_id: uid, name: name, role: role, status: 'active', reporting_manager_id: role === 'category_executive' ? (document.getElementById('staffReportingManager').value || null) : null, department_id: document.getElementById('staffDepartment').value || null, designation: document.getElementById('staffDesignation').value.trim() || null, employee_id: document.getElementById('staffEmployeeId').value.trim() || null })
 });
 if (!res.ok) {
 const errText = await res.text();
@@ -3182,6 +3213,7 @@ body: JSON.stringify(selectedCats.map(function(catId) { return { admin_id: newAd
 document.getElementById('staffAuthUserId').value = '';
 document.getElementById('staffName').value = '';
 document.getElementById('staffDesignation').value = '';
+document.getElementById('staffEmployeeId').value = '';
 document.getElementById('staffDepartment').value = '';
 document.getElementById('staffCategories').selectedIndex = -1;
 }
