@@ -823,6 +823,8 @@ let selectedWarehouseId = null;   // set when customer is inside a dark store's 
 let isInstantZone = false;        // true = dark store instant delivery available here
 let siteSettings = { instant_delivery_minutes: 20, standard_delivery_days_min: 2, standard_delivery_days_max: 7 };
 let pairings = [];
+let productBundles = [];
+let activeBundle = null; // the bundle currently satisfied by the cart's contents, if any
 let homepageSections = [];
 
 // distance in km between two lat/lng points
@@ -953,7 +955,7 @@ document.addEventListener('graspionLanguageChanged', function() {
 async function loadDataFromDatabase(){
 const badge = document.getElementById('dbStatusBadge');
 try {
-const [vendorRes, productRes, warehouseRes, categoryRes, bannerRes, settingsRes, pairingsRes, homeSectionsRes] = await Promise.all([
+const [vendorRes, productRes, warehouseRes, categoryRes, bannerRes, settingsRes, pairingsRes, homeSectionsRes, bundlesRes] = await Promise.all([
 fetch(SUPABASE_URL + '/rest/v1/vendors_public?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
 fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
 fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
@@ -961,7 +963,8 @@ fetch(SUPABASE_URL + '/rest/v1/categories?select=*&status=eq.active&order=displa
 fetch(SUPABASE_URL + '/rest/v1/banners?select=*&status=eq.active&order=priority.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
 fetch(SUPABASE_URL + '/rest/v1/settings?select=key,value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
 fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
-fetch(SUPABASE_URL + '/rest/v1/homepage_sections?select=*&is_enabled=eq.true&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
+fetch(SUPABASE_URL + '/rest/v1/homepage_sections?select=*&is_enabled=eq.true&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
+fetch(SUPABASE_URL + '/rest/v1/product_bundles?select=*,bundle_items(*)&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
 ]);
 const vendorData = await vendorRes.json();
 const productData = await productRes.json();
@@ -983,6 +986,7 @@ settingsRows.forEach(function(s){ siteSettings[s.key] = s.value; });
 }
 pairings = pairingsRes.ok ? await pairingsRes.json() : [];
 homepageSections = homeSectionsRes.ok ? await homeSectionsRes.json() : [];
+productBundles = bundlesRes.ok ? await bundlesRes.json() : [];
 vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){
   const isPaidActive = !!v.nearby_subscription_active && (!v.nearby_subscription_expires_at || new Date(v.nearby_subscription_expires_at) >= new Date());
   const isInFreeTrial = v.created_at ? (new Date() - new Date(v.created_at)) < (90 * 24 * 60 * 60 * 1000) : false; // first 3 months free
@@ -1613,6 +1617,29 @@ function getStateFromPincode(pincode) {
 if (!pincode || pincode.length < 2) return null;
 return PINCODE_PREFIX_STATE[pincode.slice(0,2)] || null;
 }
+// Checks whether the cart currently contains every component of any active
+// bundle at the required quantity — if more than one bundle matches, picks
+// whichever saves the customer the most. Runs fresh each time totals are
+// computed, since the cart can change at any moment.
+function findMatchingBundle(items) {
+  let best = null;
+  productBundles.forEach(function(b) {
+    const bundleItems = b.bundle_items || [];
+    if (bundleItems.length < 2) return;
+    const allPresent = bundleItems.every(function(bi) {
+      const cartItem = items.find(function(i) { return i.id === bi.product_id && !i.variantId; });
+      return cartItem && cartItem.qty >= bi.qty;
+    });
+    if (!allPresent) return;
+    const individualTotal = bundleItems.reduce(function(s, bi) {
+      const cartItem = items.find(function(i) { return i.id === bi.product_id; });
+      return s + (cartItem ? cartItem.price * bi.qty : 0);
+    }, 0);
+    const savings = individualTotal - Number(b.bundle_price);
+    if (savings > 0 && (!best || savings > best.savings)) best = { bundle: b, savings: savings };
+  });
+  return best;
+}
 function cartTotals(){ const items = cartItemsList(); const itemTotal = items.reduce(function(s,i){ return s + i.price*i.qty; }, 0);
 const gstAmount = items.reduce(function(s,i){ const rate = i.gstPercent || 18; return s + (i.price*i.qty) - (i.price*i.qty)/(1+rate/100); }, 0);
 const subtotal = itemTotal - gstAmount;
@@ -1622,7 +1649,10 @@ const isInterState = customerState && platformState && customerState.toLowerCase
 const cgst = isInterState ? 0 : gstAmount / 2;
 const sgst = isInterState ? 0 : gstAmount / 2;
 const igst = isInterState ? gstAmount : 0;
-const delivery = itemTotal > 199 || itemTotal === 0 ? 0 : 29; const giftWrapCharge = (giftWrapSelected && itemTotal > 0) ? Number(siteSettings.gift_wrap_charge || 25) : 0; const gross = itemTotal + delivery + giftWrapCharge; const discount = appliedCoupon ? Math.min(appliedCoupon.discount, gross) : 0; return { itemTotal: itemTotal, subtotal: subtotal, gstAmount: gstAmount, cgst: cgst, sgst: sgst, igst: igst, isInterState: isInterState, delivery: delivery, giftWrapCharge: giftWrapCharge, discount: discount, total: Math.max(gross - discount, 0), count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
+const bundleMatch = findMatchingBundle(items);
+activeBundle = bundleMatch ? bundleMatch.bundle : null;
+const bundleSavings = bundleMatch ? bundleMatch.savings : 0;
+const delivery = itemTotal > 199 || itemTotal === 0 ? 0 : 29; const giftWrapCharge = (giftWrapSelected && itemTotal > 0) ? Number(siteSettings.gift_wrap_charge || 25) : 0; const gross = itemTotal + delivery + giftWrapCharge; const couponDiscount = appliedCoupon ? Math.min(appliedCoupon.discount, gross) : 0; const discount = couponDiscount + bundleSavings; return { itemTotal: itemTotal, subtotal: subtotal, gstAmount: gstAmount, cgst: cgst, sgst: sgst, igst: igst, isInterState: isInterState, delivery: delivery, giftWrapCharge: giftWrapCharge, bundleSavings: bundleSavings, discount: discount, total: Math.max(gross - discount, 0), count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
 async function applyCoupon(code){
 if (!code) return;
 couponMessage = '⏳ Checking...';
@@ -1828,7 +1858,7 @@ const orderId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xx
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_email: (currentCustomer && currentCustomer.email) || customerInfo.email || null, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: vendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: (vi === 0 && appliedCoupon) ? appliedCoupon.code : null, gift_wrap: vi === 0 ? giftWrapSelected : false, gift_wrap_charge: vi === 0 ? t.giftWrapCharge : 0, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null, order_group_id: groupId, suborder_index: vi + 1, suborder_count: vendorIds.length })
+body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_email: (currentCustomer && currentCustomer.email) || customerInfo.email || null, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: vendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: (vi === 0 && appliedCoupon) ? appliedCoupon.code : null, gift_wrap: vi === 0 ? giftWrapSelected : false, gift_wrap_charge: vi === 0 ? t.giftWrapCharge : 0, bundle_id: (vi === 0 && activeBundle) ? activeBundle.id : null, bundle_savings: vi === 0 ? t.bundleSavings : 0, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null, order_group_id: groupId, suborder_index: vi + 1, suborder_count: vendorIds.length })
 });
 if (!orderRes.ok) {
 const orderErr = await orderRes.text();
@@ -1968,7 +1998,7 @@ wrap.innerHTML = addressSectionHtml +
 '<div class="co-item-row" style="color:#9ca3af; font-size:11px; border-top:1px solid #f0eef7; padding-top:8px; margin-top:4px;"><span>Subtotal</span><span>₹' + Math.round(t.subtotal).toLocaleString('en-IN') + '</span></div>' +
 (t.isInterState ? '<div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>IGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*100).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.igst).toLocaleString('en-IN') + '</span></div>' :
 '<div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>CGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*50).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.cgst).toLocaleString('en-IN') + '</span></div><div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>SGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*50).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.sgst).toLocaleString('en-IN') + '</span></div>') +
-'<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?'₹0':'₹'+t.delivery) + '</b></div>' + (t.giftWrapCharge > 0 ? '<div class="co-item-row"><span>🎁 Gift Wrap</span><b>₹' + t.giftWrapCharge + '</b></div>' : '') + (t.discount > 0 ? '<div class="co-item-row" style="color:#15803d;"><span>Coupon discount</span><b>-₹' + t.discount.toLocaleString('en-IN') + '</b></div>' : '') + '<div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
+'<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?'₹0':'₹'+t.delivery) + '</b></div>' + (t.giftWrapCharge > 0 ? '<div class="co-item-row"><span>🎁 Gift Wrap</span><b>₹' + t.giftWrapCharge + '</b></div>' : '') + (t.bundleSavings > 0 ? '<div class="co-item-row" style="color:#a21caf;"><span>🎁 Bundle savings' + (activeBundle ? ' (' + activeBundle.name + ')' : '') + '</span><b>-₹' + t.bundleSavings.toLocaleString('en-IN') + '</b></div>' : '') + (appliedCoupon ? '<div class="co-item-row" style="color:#15803d;"><span>Coupon discount</span><b>-₹' + Math.min(appliedCoupon.discount, t.itemTotal + t.delivery + t.giftWrapCharge).toLocaleString('en-IN') + '</b></div>' : '') + '<div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
 if (document.getElementById('coGiftWrap')) { document.getElementById('coGiftWrap').addEventListener('change', function() { giftWrapSelected = this.checked; renderCheckout(); }); }
 if (document.getElementById('applyCouponBtn')) { document.getElementById('applyCouponBtn').addEventListener('click', function(){ applyCoupon(document.getElementById('coCouponInput').value); }); }
 if (document.getElementById('removeCouponBtn')) { document.getElementById('removeCouponBtn').addEventListener('click', removeCoupon); }
@@ -3774,6 +3804,27 @@ mainImgHtml + thumbsHtml +
 variantSelectorHtml +
 (avgRating ? '<div style="margin-top:6px; font-size:12px;">⭐ ' + avgRating + ' (' + reviews.length + ' review' + (reviews.length !== 1 ? 's' : '') + ')</div>' : '<div style="margin-top:6px; font-size:11px; color:#9ca3af;">No reviews yet</div>') +
 (variants.length === 0 && p.stock != null && p.stock > 0 && p.stock <= 10 ? '<div style="margin-top:6px; background:#fef2f2; color:#dc2626; font-size:11px; font-weight:700; padding:6px 10px; border-radius:8px; display:inline-block;">🔥 Only ' + p.stock + ' left in stock — order soon!</div>' : '') +
+(function() {
+  const matchingBundles = productBundles.filter(function(b) { return (b.bundle_items || []).some(function(bi) { return bi.product_id === p.id; }); });
+  if (matchingBundles.length === 0) return '';
+  return matchingBundles.map(function(b) {
+    const itemNames = (b.bundle_items || []).map(function(bi) {
+      const bp = productPool.find(function(pp) { return pp.id === bi.product_id; });
+      return (bp ? bp.name : 'Item') + (bi.qty > 1 ? ' ×' + bi.qty : '');
+    }).join(' + ');
+    const individualTotal = (b.bundle_items || []).reduce(function(s, bi) {
+      const bp = productPool.find(function(pp) { return pp.id === bi.product_id; });
+      return s + (bp ? bp.price * bi.qty : 0);
+    }, 0);
+    const savings = individualTotal - Number(b.bundle_price);
+    return '<div style="margin-top:12px; background:linear-gradient(90deg,#fdf4ff,#fce7f3); border:1.5px solid #f5d0fe; border-radius:14px; padding:12px 14px;">' +
+      '<div style="font-size:12.5px; font-weight:800; color:#a21caf;">🎁 Bundle Deal: ' + b.name + '</div>' +
+      '<div style="font-size:11px; color:#6b7280; margin-top:3px;">' + itemNames + '</div>' +
+      '<div style="margin-top:6px; font-size:13px;"><b style="color:#a21caf;">₹' + b.bundle_price + '</b> <span style="text-decoration:line-through; color:#9ca3af; font-size:11px;">₹' + individualTotal + '</span> ' + (savings > 0 ? '<span style="color:#15803d; font-size:11px; font-weight:700;">Save ₹' + savings + '</span>' : '') + '</div>' +
+      '<button data-addbundle="' + b.id + '" style="width:100%; margin-top:8px; background:linear-gradient(90deg,#a21caf,#ec4899); color:#fff; border:none; padding:10px; border-radius:10px; font-weight:800; font-size:12px; cursor:pointer;">Add Bundle to Cart</button>' +
+      '</div>';
+  }).join('');
+})() +
 (p.fullFeatures && p.fullFeatures.split('\n').filter(function(l){return l.trim();}).length > 0 ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:6px;">✨ Key Features</div><ul style="font-size:12.5px; color:#4b5563; line-height:1.7; padding-left:18px; margin:0;">' + p.fullFeatures.split('\n').filter(function(l){return l.trim();}).map(function(l){ return '<li>' + l.trim() + '</li>'; }).join('') + '</ul></div>' : '') +
 (function() {
   // 3 tap-to-expand blocks — each only appears if there's actually
@@ -3900,6 +3951,19 @@ const vendorToggle = document.getElementById('pdVendorToggle');
 if (vendorToggle) vendorToggle.addEventListener('click', function() {
 const details = document.getElementById('pdVendorDetails');
 details.style.display = details.style.display === 'none' ? 'block' : 'none';
+});
+document.querySelectorAll('[data-addbundle]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    const bundleId = btn.getAttribute('data-addbundle');
+    const bundle = productBundles.find(function(b) { return b.id === bundleId; });
+    if (!bundle) return;
+    (bundle.bundle_items || []).forEach(function(bi) {
+      cart[bi.product_id] = (cart[bi.product_id] || 0) + bi.qty;
+    });
+    refreshAll();
+    btn.textContent = '✓ Bundle Added';
+    setTimeout(function(){ btn.textContent = 'Add Bundle to Cart'; }, 1500);
+  });
 });
 document.querySelectorAll('[data-pdaccordion]').forEach(function(btn) {
 btn.addEventListener('click', function() {

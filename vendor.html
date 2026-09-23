@@ -619,6 +619,20 @@ window.addEventListener('load', function() {
 
     <div class="tabcontent" data-tabcontent="marketing" style="display:none;">
     <div class="panel">
+      <h3>🎁 Bundle / Combo Offers</h3>
+      <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Pick 2 or more of your own products and offer them together at a special combined price — shown to customers as "Buy as Bundle & Save" on the product page.</p>
+      <div class="form-grid">
+        <input class="form-input" id="bundleName" placeholder="Bundle name (e.g. 'Toner + Drum Combo')">
+        <div id="bundleProductPicker" style="grid-column:1/-1; max-height:180px; overflow-y:auto; border:1.5px solid #f0eef7; border-radius:12px; padding:8px;"></div>
+        <input class="form-input" id="bundlePrice" type="number" placeholder="Bundle price (₹) — the special combined price">
+        <div id="bundleSavingsPreview" style="grid-column:1/-1; font-size:11px; color:#6b7280;"></div>
+        <button class="add-product-btn" id="createBundleBtn" style="grid-column:1/-1;">+ Create Bundle</button>
+      </div>
+      <div id="bundleList" style="margin-top:16px;"></div>
+      <div class="empty-state" id="bundleEmpty" style="display:none;">No bundles yet</div>
+    </div>
+
+    <div class="panel">
       <h3 id="promoteSection">🎯 Promote / Ads</h3>
       <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Sponsor a product to get it shown higher in customer search results. Set your own bid amount — higher bids get more visibility.</p>
       <div id="promoteList"></div>
@@ -1435,6 +1449,7 @@ async function loadVendorData() {
     renderPromote();
     loadVendorSettlements();
     loadVendorReturns();
+    loadVendorBundles();
   } catch (err) {
     badge.className = 'db-badge loading';
     badge.textContent = '❌ Error: ' + err.message;
@@ -2911,6 +2926,99 @@ window.addEventListener('load', function() {
 }
 
 // ===================== PROMOTE / ADS (self-serve, own products) =====================
+let vendorBundles = [];
+async function loadVendorBundles() {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/product_bundles?vendor_id=eq.' + currentVendor.id + '&select=*,bundle_items(*,products(name,selling_price))&order=created_at.desc', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    vendorBundles = res.ok ? await res.json() : [];
+  } catch (e) { vendorBundles = []; }
+  renderBundlePicker();
+  renderBundleList();
+}
+function renderBundlePicker() {
+  const picker = document.getElementById('bundleProductPicker');
+  if (!picker) return;
+  if (!vendorProducts.length) { picker.innerHTML = '<div style="font-size:11px; color:#9ca3af; padding:6px;">Add some products first, then come back here.</div>'; return; }
+  picker.innerHTML = vendorProducts.map(function(p) {
+    return '<label style="display:flex; align-items:center; gap:8px; padding:6px 4px; font-size:11.5px; cursor:pointer;">' +
+      '<input type="checkbox" class="bundleItemCheck" data-pid="' + p.id + '" data-price="' + (p.selling_price || p.price || 0) + '">' +
+      '<span style="flex:1;">' + p.name + ' <span style="color:#9ca3af;">(₹' + (p.selling_price || p.price || 0) + ')</span></span>' +
+      '<input type="number" class="bundleItemQty" data-pid="' + p.id + '" value="1" min="1" style="width:44px; padding:4px; border:1px solid #f0eef7; border-radius:6px; font-size:11px;">' +
+      '</label>';
+  }).join('');
+  document.querySelectorAll('.bundleItemCheck, .bundleItemQty').forEach(function(el) { el.addEventListener('change', updateBundleSavingsPreview); });
+  document.getElementById('bundlePrice').addEventListener('input', updateBundleSavingsPreview);
+}
+function updateBundleSavingsPreview() {
+  const checks = Array.prototype.slice.call(document.querySelectorAll('.bundleItemCheck:checked'));
+  const preview = document.getElementById('bundleSavingsPreview');
+  if (checks.length < 2) { preview.textContent = 'Select at least 2 products to bundle.'; return; }
+  let sum = 0;
+  checks.forEach(function(c) {
+    const qtyEl = document.querySelector('.bundleItemQty[data-pid="' + c.getAttribute('data-pid') + '"]');
+    const qty = qtyEl ? Number(qtyEl.value) || 1 : 1;
+    sum += Number(c.getAttribute('data-price')) * qty;
+  });
+  const bundlePrice = Number(document.getElementById('bundlePrice').value) || 0;
+  const savings = sum - bundlePrice;
+  preview.innerHTML = 'Individual total: ₹' + sum + (bundlePrice > 0 ? ' · Customer saves: <b style="color:' + (savings > 0 ? '#15803d' : '#dc2626') + ';">₹' + savings + '</b>' + (savings <= 0 ? ' (bundle price should be lower than individual total)' : '') : '');
+}
+document.getElementById('createBundleBtn').addEventListener('click', async function() {
+  const name = document.getElementById('bundleName').value.trim();
+  const bundlePrice = Number(document.getElementById('bundlePrice').value);
+  const checks = Array.prototype.slice.call(document.querySelectorAll('.bundleItemCheck:checked'));
+  if (!name) { alert('Please give this bundle a name.'); return; }
+  if (checks.length < 2) { alert('Please select at least 2 products for the bundle.'); return; }
+  if (!bundlePrice || bundlePrice <= 0) { alert('Please enter a bundle price.'); return; }
+  const btn = this;
+  btn.disabled = true;
+  btn.textContent = '⏳ Creating...';
+  try {
+    const bundleRes = await fetch(SUPABASE_URL + '/rest/v1/product_bundles', {
+      method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+      body: JSON.stringify({ vendor_id: currentVendor.id, name: name, bundle_price: bundlePrice, status: 'active' })
+    });
+    const bundleRows = await bundleRes.json();
+    const bundleId = bundleRows[0].id;
+    const items = checks.map(function(c) {
+      const qtyEl = document.querySelector('.bundleItemQty[data-pid="' + c.getAttribute('data-pid') + '"]');
+      return { bundle_id: bundleId, product_id: c.getAttribute('data-pid'), qty: qtyEl ? Number(qtyEl.value) || 1 : 1 };
+    });
+    await fetch(SUPABASE_URL + '/rest/v1/bundle_items', {
+      method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify(items)
+    });
+    document.getElementById('bundleName').value = '';
+    document.getElementById('bundlePrice').value = '';
+    document.getElementById('bundleSavingsPreview').textContent = '';
+    loadVendorBundles();
+  } catch (err) {
+    alert('Could not create bundle: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '+ Create Bundle';
+  }
+});
+function renderBundleList() {
+  const list = document.getElementById('bundleList');
+  const empty = document.getElementById('bundleEmpty');
+  if (!vendorBundles.length) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = vendorBundles.map(function(b) {
+    const itemsHtml = (b.bundle_items || []).map(function(bi) { return (bi.products ? bi.products.name : 'Product') + ' ×' + bi.qty; }).join(', ');
+    return '<div class="item-card"><div class="ic-info"><div class="ic-title">🎁 ' + b.name + ' — ₹' + b.bundle_price + '</div><div class="ic-sub">' + itemsHtml + '</div></div>' +
+      '<div class="item-actions"><button class="icon-btn del-btn" data-delbundle="' + b.id + '">Remove</button></div></div>';
+  }).join('');
+  document.querySelectorAll('[data-delbundle]').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      if (!confirm('Remove this bundle offer?')) return;
+      await fetch(SUPABASE_URL + '/rest/v1/product_bundles?id=eq.' + btn.getAttribute('data-delbundle'), { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+      loadVendorBundles();
+    });
+  });
+}
 function renderPromote() {
 const list = document.getElementById('promoteList');
 const empty = document.getElementById('promoteEmpty');
