@@ -2177,6 +2177,7 @@ document.getElementById('pinModal').style.display = 'flex';
 if (autoLocationEnabled) { detectLocation(true); }
 })();
 document.getElementById('startSellingBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'flex'; });
+if (new URLSearchParams(window.location.search).get('sell') === '1') { document.getElementById('vendorApplyModal').style.display = 'flex'; }
 
 // ===================== SPONSORED BANNER SLOT (rotates with "Become a Partner") =====================
 // "Become a Partner" is always slide 0 and never removed — any active,
