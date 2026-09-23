@@ -936,6 +936,7 @@ let selectedPayMethod = 'upi';
 let customerInfo = { name:'', phone:'', email:'', address:'', city:'', pincode:'', state:'' };
 let savedAddresses = [];
 let selectedAddressId = null; // an address book id, or 'new' to show the manual entry form
+let giftWrapSelected = false;
 let selectedSortOption = 'relevance';
 let productsShowAll = false;
 let activeFilters = { priceMin: null, priceMax: null, brands: [] };
@@ -1621,7 +1622,7 @@ const isInterState = customerState && platformState && customerState.toLowerCase
 const cgst = isInterState ? 0 : gstAmount / 2;
 const sgst = isInterState ? 0 : gstAmount / 2;
 const igst = isInterState ? gstAmount : 0;
-const delivery = itemTotal > 199 || itemTotal === 0 ? 0 : 29; const gross = itemTotal + delivery; const discount = appliedCoupon ? Math.min(appliedCoupon.discount, gross) : 0; return { itemTotal: itemTotal, subtotal: subtotal, gstAmount: gstAmount, cgst: cgst, sgst: sgst, igst: igst, isInterState: isInterState, delivery: delivery, discount: discount, total: Math.max(gross - discount, 0), count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
+const delivery = itemTotal > 199 || itemTotal === 0 ? 0 : 29; const giftWrapCharge = (giftWrapSelected && itemTotal > 0) ? Number(siteSettings.gift_wrap_charge || 25) : 0; const gross = itemTotal + delivery + giftWrapCharge; const discount = appliedCoupon ? Math.min(appliedCoupon.discount, gross) : 0; return { itemTotal: itemTotal, subtotal: subtotal, gstAmount: gstAmount, cgst: cgst, sgst: sgst, igst: igst, isInterState: isInterState, delivery: delivery, giftWrapCharge: giftWrapCharge, discount: discount, total: Math.max(gross - discount, 0), count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
 async function applyCoupon(code){
 if (!code) return;
 couponMessage = '⏳ Checking...';
@@ -1827,7 +1828,7 @@ const orderId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xx
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_email: (currentCustomer && currentCustomer.email) || customerInfo.email || null, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: vendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: (vi === 0 && appliedCoupon) ? appliedCoupon.code : null, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null, order_group_id: groupId, suborder_index: vi + 1, suborder_count: vendorIds.length })
+body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_email: (currentCustomer && currentCustomer.email) || customerInfo.email || null, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: vendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: (vi === 0 && appliedCoupon) ? appliedCoupon.code : null, gift_wrap: vi === 0 ? giftWrapSelected : false, gift_wrap_charge: vi === 0 ? t.giftWrapCharge : 0, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null, order_group_id: groupId, suborder_index: vi + 1, suborder_count: vendorIds.length })
 });
 if (!orderRes.ok) {
 const orderErr = await orderRes.text();
@@ -1955,6 +1956,9 @@ if (showPicker) {
     '</div>';
 }
 wrap.innerHTML = addressSectionHtml +
+'<div class="co-section"><h4>🎁 Gift Wrap</h4>' +
+'<label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="checkbox" id="coGiftWrap" ' + (giftWrapSelected ? 'checked' : '') + '><span style="font-size:12.5px;">Wrap this order as a gift (+₹' + Number(siteSettings.gift_wrap_charge || 25) + ')</span></label>' +
+'</div>' +
 '<div class="co-section"><h4>🏷️ Coupon</h4>' +
 (appliedCoupon
   ? '<div class="co-item-row" style="background:#f0fdf4;border-radius:8px;padding:8px 10px;"><span>✅ ' + appliedCoupon.code + ' applied</span><button id="removeCouponBtn" style="background:none;border:none;color:#dc2626;font-weight:700;cursor:pointer;">Remove</button></div>'
@@ -1964,7 +1968,8 @@ wrap.innerHTML = addressSectionHtml +
 '<div class="co-item-row" style="color:#9ca3af; font-size:11px; border-top:1px solid #f0eef7; padding-top:8px; margin-top:4px;"><span>Subtotal</span><span>₹' + Math.round(t.subtotal).toLocaleString('en-IN') + '</span></div>' +
 (t.isInterState ? '<div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>IGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*100).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.igst).toLocaleString('en-IN') + '</span></div>' :
 '<div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>CGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*50).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.cgst).toLocaleString('en-IN') + '</span></div><div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>SGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*50).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.sgst).toLocaleString('en-IN') + '</span></div>') +
-'<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?'₹0':'₹'+t.delivery) + '</b></div>' + (t.discount > 0 ? '<div class="co-item-row" style="color:#15803d;"><span>Coupon discount</span><b>-₹' + t.discount.toLocaleString('en-IN') + '</b></div>' : '') + '<div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
+'<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?'₹0':'₹'+t.delivery) + '</b></div>' + (t.giftWrapCharge > 0 ? '<div class="co-item-row"><span>🎁 Gift Wrap</span><b>₹' + t.giftWrapCharge + '</b></div>' : '') + (t.discount > 0 ? '<div class="co-item-row" style="color:#15803d;"><span>Coupon discount</span><b>-₹' + t.discount.toLocaleString('en-IN') + '</b></div>' : '') + '<div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
+if (document.getElementById('coGiftWrap')) { document.getElementById('coGiftWrap').addEventListener('change', function() { giftWrapSelected = this.checked; renderCheckout(); }); }
 if (document.getElementById('applyCouponBtn')) { document.getElementById('applyCouponBtn').addEventListener('click', function(){ applyCoupon(document.getElementById('coCouponInput').value); }); }
 if (document.getElementById('removeCouponBtn')) { document.getElementById('removeCouponBtn').addEventListener('click', removeCoupon); }
 if (showPicker) {
@@ -2110,7 +2115,7 @@ deliveryEstimate = firstVendor ? firstVendor.eta : '20-30 min';
 wrap.innerHTML = '<div class="success-box"><div class="tick">✅</div><h2>' + graspionT('orderSuccess') + '</h2><p>' + graspionT('orderSuccessDesc') + '</p>' +
 '<div style="background:#faf5ff; border-radius:14px; padding:16px; margin:16px 0; display:inline-block;"><div style="font-size:11px; color:#7c3aed; font-weight:800;">⏱ ' + (isPanIndia ? 'Expected Delivery Date' : 'Expected Delivery Time') + '</div><div style="font-size:18px; font-weight:900; color:#1e1b3a; margin-top:4px;">' + deliveryEstimate + '</div></div><br>' +
 '<button id="closeSuccessBtn">' + graspionT('continueShopping') + '</button></div>';
-document.getElementById('closeSuccessBtn').addEventListener('click', function() { cart = {}; customerInfo = { name:'', phone:'', email:'', address:'', city:'', pincode:'' }; appliedCoupon = null; couponMessage = ''; refreshAll(); closeCheckout(); });
+document.getElementById('closeSuccessBtn').addEventListener('click', function() { cart = {}; customerInfo = { name:'', phone:'', email:'', address:'', city:'', pincode:'' }; appliedCoupon = null; couponMessage = ''; giftWrapSelected = false; refreshAll(); closeCheckout(); });
 }
 else if(checkoutStep === 'error'){
 const showDebug = new URLSearchParams(window.location.search).get('debug') === '1';
