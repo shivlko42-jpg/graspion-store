@@ -845,6 +845,27 @@ function findNearestWarehouse(lat, lng) {
   });
   return nearest;
 }
+// A vendor's real "supply nature" — Pan-India courier, city-wide Local Area,
+// or a tight-radius Dark Store — is never asked as a manual label (labels
+// drift from reality). Instead it's read straight off what's actually
+// configured: their linked warehouse's service radius, and whether their
+// products ship pan-India or to one fixed pincode. Below ~5km reads as a
+// Dark Store; anything wider on a warehouse reads as Local Area.
+const LOCAL_AREA_RADIUS_CUTOFF_KM = 5;
+function getVendorSupplyType(v) {
+  const warehouse = v.warehouseId ? warehouses.find(function(w) { return w.id === v.warehouseId; }) : null;
+  if (warehouse) {
+    return (warehouse.service_radius_km || 3) <= LOCAL_AREA_RADIUS_CUTOFF_KM
+      ? { type: 'dark_store', label: '⚡ Dark Store', detail: warehouse.service_radius_km + ' km radius' }
+      : { type: 'local_area', label: '🏘️ Local Area', detail: warehouse.service_radius_km + ' km — ' + (warehouse.name || 'city-wide') };
+  }
+  const vendorProducts = productPool.filter(function(p) { return p.vendorId === v.id; });
+  if (vendorProducts.length === 0) return { type: 'pan_india', label: '📦 Pan-India', detail: 'Ships nationwide' };
+  const allPanIndia = vendorProducts.every(function(p) { return p.pincode === 'ALL'; });
+  return allPanIndia
+    ? { type: 'pan_india', label: '📦 Pan-India', detail: 'Ships nationwide' }
+    : { type: 'local_area', label: '🏘️ Local Area', detail: 'Serves select pincodes' };
+}
 // ===================== APP INSTALL PROMPT + TRACKING =====================
 // Chrome/Android fires this before showing its own install UI — we capture
 // it so we can trigger the SAME native install prompt ourselves, at a
@@ -955,7 +976,7 @@ document.addEventListener('graspionLanguageChanged', function() {
 async function loadDataFromDatabase(){
 const badge = document.getElementById('dbStatusBadge');
 try {
-const [vendorRes, productRes, warehouseRes, categoryRes, bannerRes, settingsRes, pairingsRes, homeSectionsRes, bundlesRes] = await Promise.all([
+const [vendorRes, productRes, warehouseRes, categoryRes, bannerRes, settingsRes, pairingsRes, homeSectionsRes, bundlesRes, serviceAreasRes] = await Promise.all([
 fetch(SUPABASE_URL + '/rest/v1/vendors_public?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
 fetch(SUPABASE_URL + '/rest/v1/products?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
 fetch(SUPABASE_URL + '/rest/v1/warehouses?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
@@ -964,7 +985,8 @@ fetch(SUPABASE_URL + '/rest/v1/banners?select=*&status=eq.active&order=priority.
 fetch(SUPABASE_URL + '/rest/v1/settings?select=key,value', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
 fetch(SUPABASE_URL + '/rest/v1/product_pairings?select=*&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
 fetch(SUPABASE_URL + '/rest/v1/homepage_sections?select=*&is_enabled=eq.true&order=display_order.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
-fetch(SUPABASE_URL + '/rest/v1/product_bundles?select=*,bundle_items(*)&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
+fetch(SUPABASE_URL + '/rest/v1/product_bundles?select=*,bundle_items(*)&status=eq.active', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }),
+fetch(SUPABASE_URL + '/rest/v1/vendor_service_areas?select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
 ]);
 const vendorData = await vendorRes.json();
 const productData = await productRes.json();
@@ -987,10 +1009,13 @@ settingsRows.forEach(function(s){ siteSettings[s.key] = s.value; });
 pairings = pairingsRes.ok ? await pairingsRes.json() : [];
 homepageSections = homeSectionsRes.ok ? await homeSectionsRes.json() : [];
 productBundles = bundlesRes.ok ? await bundlesRes.json() : [];
+const serviceAreaRows = serviceAreasRes.ok ? await serviceAreasRes.json() : [];
+const serviceAreasByVendor = {};
+serviceAreaRows.forEach(function(a) { (serviceAreasByVendor[a.vendor_id] = serviceAreasByVendor[a.vendor_id] || []).push(a.pincode); });
 vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){
   const isPaidActive = !!v.nearby_subscription_active && (!v.nearby_subscription_expires_at || new Date(v.nearby_subscription_expires_at) >= new Date());
   const isInFreeTrial = v.created_at ? (new Date() - new Date(v.created_at)) < (90 * 24 * 60 * 60 * 1000) : false; // first 3 months free
-  return { id: v.id, name: v.name, icon: v.icon, logo_url: v.logo_url || null, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode], vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, nearbySubscribed: isPaidActive || isInFreeTrial };
+  return { id: v.id, name: v.name, icon: v.icon, logo_url: v.logo_url || null, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode].concat(serviceAreasByVendor[v.id] || []), vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, nearbySubscribed: isPaidActive || isInFreeTrial };
 });
 productPool = visibleProducts.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
@@ -1257,6 +1282,15 @@ function vendorBadgeHtml(v, sizePx) {
   if (v.logo_url) return '<img src="' + v.logo_url + '" style="width:' + size + 'px; height:' + size + 'px; object-fit:cover; border-radius:' + Math.round(size*0.28) + 'px; vertical-align:middle;">';
   return '<span style="font-size:' + size + 'px; vertical-align:middle;">' + v.icon + '</span>';
 }
+// Same 3-way classification as vendor.html's Store Settings badge — always
+// derived from real data (vendor_type, or how many pincodes they cover),
+// never a manually-picked label, so it can't drift from reality.
+function vendorCoverageLabel(v) {
+  if (!v) return '';
+  if (v.vendorType === 'dark_store') return '⚡ Dark Store';
+  if (v.pincodes && v.pincodes.length > 1) return '🏘️ Local Area';
+  return '📦 Pan-India';
+}
 function scoreProductMatch(p, query) {
   const q = query.toLowerCase().trim();
   if (!q) return 0;
@@ -1354,16 +1388,21 @@ const row = document.getElementById('vendorRow');
 document.getElementById('vendorHeading').textContent = '🏪 ' + list.length + ' ' + graspionT('vendorsNearYou').replace('🏪 ','');
 if(list.length === 0){ row.innerHTML = '<div style="display:flex; align-items:center; gap:12px; background:#fff; border:1.5px dashed #e5e0f5; border-radius:16px; padding:16px 18px; width:100%;"><div style="font-size:26px;">🏪</div><div><div style="font-size:12.5px; font-weight:800; color:#1e1b3a;">No featured stores here yet</div><div style="font-size:11px; color:#9ca3af; margin-top:2px;">Local sellers are joining Graspion in your area soon — check back shortly.</div></div></div>'; return; }
 row.innerHTML = '<div class="vendor-card ' + (selectedVendorId==='all'?'active':'') + '" data-v="all"><div class="v-icon">🏬</div><div class="v-name">' + graspionT('allVendors') + '</div><div class="v-eta">' + list.length + ' stores</div></div>' +
-list.map(function(v){ return '<div class="vendor-card ' + (selectedVendorId===v.id?'active':'') + '" data-v="' + v.id + '"><div class="v-icon">' + vendorBadgeHtml(v, 32) + '</div><div class="v-name">' + v.name + '</div><div class="v-eta">⏱ ' + v.eta + '</div><div class="v-rating">★ ' + v.rating + '</div></div>'; }).join('');
+list.map(function(v){ const supplyType = getVendorSupplyType(v); return '<div class="vendor-card ' + (selectedVendorId===v.id?'active':'') + '" data-v="' + v.id + '"><div class="v-icon">' + vendorBadgeHtml(v, 32) + '</div><div class="v-name">' + v.name + '</div>' + (v.id !== 'all' ? '<div style="font-size:9px; font-weight:700; color:#7c3aed; margin-top:2px;">' + supplyType.label + '</div>' : '') + '<div class="v-eta">⏱ ' + v.eta + '</div><div class="v-rating">★ ' + v.rating + '</div></div>'; }).join('');
 row.querySelectorAll('.vendor-card').forEach(function(el){ el.addEventListener('click', function(){ selectedVendorId = el.getAttribute('data-v'); renderVendors(pin); renderProducts(pin); if (selectedVendorId !== 'all') { setTimeout(function(){ const b = document.getElementById('storeHeaderBanner'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); } }); });
 }
-// A product's pincode field can be 'ALL' (pan-India), a single pincode, or a
-// comma-separated list of pincodes (e.g. a vendor selling across all of
-// Lucknow lists several pincodes for one product).
+// A product's own pincode field can be 'ALL' (pan-India), a single pincode,
+// or a comma-separated list. If none of those match, we also fall back to
+// checking the vendor's own declared service-area pincodes (Store Settings
+// → Delivery Coverage) — this lets a "Local Area" vendor (e.g. delivering
+// across a whole city) set their coverage once, rather than having to
+// retype the same long pincode list on every product they list.
 function productMatchesPincode(p, pin){
 if (!p.pincode || !pin) return false;
 if (p.pincode === 'ALL') return true;
-return p.pincode.split(',').map(function(s){ return s.trim(); }).indexOf(pin) !== -1;
+if (p.pincode.split(',').map(function(s){ return s.trim(); }).indexOf(pin) !== -1) return true;
+const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
+return !!(vendor && vendor.pincodes && vendor.pincodes.indexOf(pin) !== -1);
 }
 function buildProductCardHtml(p){
 const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
@@ -1483,9 +1522,10 @@ if (selectedVendorId !== 'all') {
   const v = vendors.find(function(x){ return x.id === selectedVendorId; });
   if (v && storeBanner) {
     storeBanner.style.display = 'block';
+    const supplyType = getVendorSupplyType(v);
     storeBanner.innerHTML = '<div style="background:linear-gradient(90deg,#7c3aed,#ec4899); border-radius:16px; padding:18px 20px; display:flex; align-items:center; gap:14px; color:#fff;">' +
       '<div style="font-size:34px; background:rgba(255,255,255,0.18); width:56px; height:56px; border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden;">' + (v.logo_url ? '<img src="' + v.logo_url + '" style="width:100%; height:100%; object-fit:cover;">' : v.icon) + '</div>' +
-      '<div style="flex:1; min-width:0;"><div style="font-size:17px; font-weight:800;">' + v.name + '</div><div style="font-size:11.5px; opacity:0.9; margin-top:2px;">⭐ ' + v.rating + ' · ⏱ ' + v.eta + ' · ' + filtered.length + ' products</div></div>' +
+      '<div style="flex:1; min-width:0;"><div style="font-size:17px; font-weight:800;">' + v.name + ' <span style="font-size:10px; font-weight:700; background:rgba(255,255,255,0.22); padding:2px 8px; border-radius:20px; vertical-align:middle;">' + supplyType.label + '</span></div><div style="font-size:11.5px; opacity:0.9; margin-top:2px;">⭐ ' + v.rating + ' · ⏱ ' + v.eta + ' · ' + filtered.length + ' products</div></div>' +
       '<button id="storeBackBtn" style="background:rgba(255,255,255,0.18); border:none; color:#fff; font-size:11px; font-weight:700; padding:8px 14px; border-radius:10px; cursor:pointer; flex-shrink:0;">← All Vendors</button>' +
       '</div>';
     const backBtn = document.getElementById('storeBackBtn');
