@@ -886,7 +886,7 @@ async function loginAsVendor(session) {
   }
   if (shareBtn) {
     shareBtn.addEventListener('click', async function() {
-      const storeUrl = 'https://graspion.in/?vendor=' + currentVendor.id;
+      const storeUrl = 'https://fghhbmdgelnpirysbusl.supabase.co/functions/v1/vendor-share-preview?vendor=' + currentVendor.id;
       const shareText = 'Shop from ' + currentVendor.name + ' on Graspion — genuine products, fast delivery!';
       if (navigator.share) {
         try { await navigator.share({ title: currentVendor.name + ' — Graspion', text: shareText, url: storeUrl }); return; } catch (e) { /* user cancelled or share failed — fall through to copy */ }
