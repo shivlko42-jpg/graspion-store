@@ -697,10 +697,10 @@ Continue with Google
 </div>
 </div>
 
-<div class="modal-overlay" id="prebookingModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:450; align-items:center; justify-content:center; padding:16px;">
-<div style="max-width:420px; width:100%; background:#fff; border-radius:20px; padding:20px; max-height:88vh; overflow-y:auto;">
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;"><h3 id="pbModalTitle" style="font-size:15px;">📦 Book Now</h3><button id="closePbModalBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
-<div id="pbModalBody"></div>
+<div class="modal-overlay" id="prebookingModal" style="display:none; position:fixed; inset:0; background:rgba(15,10,30,0.65); z-index:450; align-items:center; justify-content:center; padding:16px;">
+<div style="max-width:400px; width:100%; background:#fff; border-radius:20px; padding:0; max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+<div style="display:flex; justify-content:space-between; align-items:center; padding:18px 20px; border-bottom:1px solid #f3f1f8;"><h3 id="pbModalTitle" style="font-size:14.5px; font-weight:800; color:#1e1b3a;">📦 Book Now</h3><button id="closePbModalBtn" style="background:#f3f1f8; border:none; width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:13px; color:#6b7280;">✕</button></div>
+<div id="pbModalBody" style="padding:18px 20px;"></div>
 </div>
 </div>
 
@@ -3518,17 +3518,24 @@ function openPrebookingModal(productId, type) {
   }
   const amount = computeAdvance(p.preorderMinQty);
   const body = document.getElementById('pbModalBody');
+  const fieldLabel = 'font-size:10.5px; font-weight:700; color:#8b87a8; margin-bottom:5px; display:block;';
+  const fieldInput = 'width:100%; box-sizing:border-box; border:1.5px solid #f0eef7; border-radius:10px; padding:10px 12px; font-size:12.5px; background:#faf9fd;';
   body.innerHTML =
-    '<div style="font-size:12px; font-weight:700; margin-bottom:10px;">' + p.name + '</div>' +
-    (type === 'preorder' ? '<div class="form-group" style="margin-bottom:10px;"><label style="font-size:11px; color:#6b7280;">Quantity (min ' + p.preorderMinQty + ' ' + p.preorderUnit + ')</label><input type="number" id="pbQty" class="form-input" value="' + p.preorderMinQty + '" min="' + p.preorderMinQty + '"></div>' : '') +
-    (type === 'preorder' ? '<div id="pbAdvanceNote" style="font-size:10.5px; color:#6b7280; margin:-4px 0 10px;">Advance: ' + p.preorderAdvancePercent + '% of order value</div>' : '') +
-    '<div class="form-group" style="margin-bottom:10px;"><label style="font-size:11px; color:#6b7280;">Your Name</label><input class="form-input" id="pbName" value="' + (customerInfo.name || '') + '"></div>' +
-    '<div class="form-group" style="margin-bottom:10px;"><label style="font-size:11px; color:#6b7280;">Phone</label><input class="form-input" id="pbPhone" value="' + (customerInfo.phone || '') + '"></div>' +
-    '<div class="form-group" style="margin-bottom:10px;"><label style="font-size:11px; color:#6b7280;">Delivery Address</label><textarea class="form-input" id="pbAddress" rows="2">' + (customerInfo.address || '') + '</textarea></div>' +
-    '<div class="form-group" style="margin-bottom:10px;"><label style="font-size:11px; color:#6b7280;">Pincode</label><input class="form-input" id="pbPincode" value="' + (customerInfo.pincode || '') + '"></div>' +
-    (type === 'preorder' ? '<div class="form-group" style="margin-bottom:10px;"><label style="font-size:11px; color:#6b7280;">Customization notes (optional)</label><textarea class="form-input" id="pbNotes" rows="2" placeholder="e.g. message on the box, packaging preference"></textarea></div>' : '') +
-    '<button id="pbSubmitBtn" style="width:100%; margin-top:6px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">' + (amount > 0 ? 'Pay ₹' + amount + ' & Confirm' : 'Confirm — Free') + '</button>' +
-    '<div id="pbModalError" style="color:#dc2626; font-size:11px; margin-top:8px;"></div>';
+    '<div style="display:flex; align-items:center; gap:10px; background:#faf9fd; border-radius:12px; padding:10px 12px; margin-bottom:16px;">' +
+      '<div style="width:38px; height:38px; border-radius:10px; overflow:hidden; flex-shrink:0; background:#fff; display:flex; align-items:center; justify-content:center; font-size:18px;">' + (p.image ? '<img src="' + p.image + '" style="width:100%; height:100%; object-fit:cover;">' : '📦') + '</div>' +
+      '<div style="flex:1; min-width:0;"><div style="font-size:12px; font-weight:700; color:#1e1b3a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + p.name + '</div>' +
+      (type === 'sample' ? '<div style="font-size:11px; color:#7c3aed; font-weight:700; margin-top:2px;">' + (amount > 0 ? '₹' + amount + ' sample fee' : 'Free sample') + '</div>' : '<div style="font-size:11px; color:#7c3aed; font-weight:700; margin-top:2px;">₹' + p.price + ' / ' + p.preorderUnit.replace(/s$/, '') + '</div>') +
+      '</div></div>' +
+    (type === 'sample' ? '<p style="font-size:10.5px; color:#9ca3af; margin:-8px 0 14px; line-height:1.5;">We\'ll send one sample to the address below before you commit to a bulk order.</p>' : '') +
+    (type === 'preorder' ? '<div style="display:flex; gap:10px; margin-bottom:12px;"><div style="flex:1;"><label style="' + fieldLabel + '">Quantity (min ' + p.preorderMinQty + ' ' + p.preorderUnit + ')</label><input type="number" id="pbQty" style="' + fieldInput + '" value="' + p.preorderMinQty + '" min="' + p.preorderMinQty + '"></div></div>' +
+    '<div style="background:#faf5ff; border:1px solid #ede9fe; border-radius:10px; padding:9px 12px; font-size:10.5px; color:#6b21a8; margin-bottom:14px;">💳 Advance: <b>' + p.preorderAdvancePercent + '%</b> of order value — pay the rest when ready</div>' : '') +
+    '<div style="margin-bottom:12px;"><label style="' + fieldLabel + '">👤 Your Name</label><input style="' + fieldInput + '" id="pbName" value="' + (customerInfo.name || '') + '"></div>' +
+    '<div style="margin-bottom:12px;"><label style="' + fieldLabel + '">📱 Phone Number</label><input style="' + fieldInput + '" id="pbPhone" value="' + (customerInfo.phone || '') + '"></div>' +
+    '<div style="margin-bottom:12px;"><label style="' + fieldLabel + '">📍 Delivery Address</label><textarea style="' + fieldInput + ' resize:none;" id="pbAddress" rows="2">' + (customerInfo.address || '') + '</textarea></div>' +
+    '<div style="margin-bottom:' + (type === 'preorder' ? '12px' : '16px') + ';"><label style="' + fieldLabel + '">Pincode</label><input style="' + fieldInput + '" id="pbPincode" value="' + (customerInfo.pincode || '') + '"></div>' +
+    (type === 'preorder' ? '<div style="margin-bottom:16px;"><label style="' + fieldLabel + '">Customization notes (optional)</label><textarea style="' + fieldInput + ' resize:none;" id="pbNotes" rows="2" placeholder="e.g. message on the box, packaging preference"></textarea></div>' : '') +
+    '<button id="pbSubmitBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer;">' + (amount > 0 ? 'Pay ₹' + amount + ' & Confirm' : 'Confirm — Free') + '</button>' +
+    '<div id="pbModalError" style="color:#dc2626; font-size:11px; margin-top:8px; text-align:center;"></div>';
 
   const pbQtyEl = document.getElementById('pbQty');
   if (pbQtyEl) {
