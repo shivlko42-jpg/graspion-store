@@ -501,7 +501,14 @@ window.addEventListener('load', function() {
       </div>
       <div class="form-row">
         <div class="form-group"><label>Stock Quantity</label><input class="form-input" id="pStock" type="number" placeholder="20"></div>
-        <div class="form-group" id="pincodeGroup"><label>Pincode(s) (delivery area)</label><input class="form-input" id="pPincode" placeholder="e.g. 226001, 226002, 226010"><p style="font-size:10px; color:#9ca3af; margin-top:3px;">Selling in more than one area? Separate multiple pincodes with commas — e.g. list all of Lucknow's pincodes to sell across the whole city.</p></div>
+        <div class="form-group" id="pincodeGroup"><label>Pincode(s) (delivery area)</label>
+          <select class="form-input" id="pSavedAreaPicker" style="margin-bottom:6px;"><option value="">— Quick-fill from a saved area —</option></select>
+          <input class="form-input" id="pPincode" placeholder="e.g. 226001, 226002, 226010">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+            <p style="font-size:10px; color:#9ca3af; margin:0;">Separate multiple pincodes with commas to cover a whole city.</p>
+            <button type="button" id="pSaveAreaBtn" style="background:none; border:none; color:#7c3aed; font-size:10px; font-weight:700; cursor:pointer; white-space:nowrap; padding:0 0 0 8px;">💾 Save as area</button>
+          </div>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>HSN Code</label><input class="form-input" id="pHsn" placeholder="e.g. 8517"><p style="font-size:9.5px; color:#9ca3af; margin-top:3px;">Tip: "AI-fill Description" below can also suggest this — please double-check it before publishing.</p></div>
@@ -1600,7 +1607,10 @@ function renderProducts() {
   if (vendorProducts.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
   list.innerHTML = vendorProducts.map(function(p) {
-    const modeTag = p.pincode === 'ALL' ? '<span class="prod-tag">🇮🇳 Pan India</span>' : '<span class="prod-tag">📍 ' + p.pincode + '</span>';
+    const pincodeList = p.pincode ? p.pincode.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : [];
+    const modeTag = p.pincode === 'ALL' ? '<span class="prod-tag">🇮🇳 Pan India</span>' :
+      pincodeList.length > 1 ? '<span class="prod-tag" title="' + pincodeList.join(', ') + '">📍 ' + pincodeList.length + ' pincodes</span>' :
+      '<span class="prod-tag">📍 ' + p.pincode + '</span>';
     const statusLabels = { draft: '📝 Draft', scheduled: '⏰ Scheduled', hidden: '🙈 Hidden' };
     const statusTag = statusLabels[p.status] ? '<span class="prod-tag" style="background:#fef3c7; color:#b45309;">' + statusLabels[p.status] + '</span>' : '';
     const hsnTag = p.hsn_code ? '<span class="prod-tag">HSN: ' + p.hsn_code + '</span>' : '';
@@ -3094,6 +3104,7 @@ async function loadServiceAreas() {
     vendorServiceAreas = res.ok ? await res.json() : [];
   } catch (e) { vendorServiceAreas = []; }
   renderCoverageBadge();
+  refreshSavedAreaPicker();
 }
 // Never asked as a manual dropdown — always derived from real, checkable
 // data, so the badge can never drift from what the vendor actually does:
@@ -3154,6 +3165,46 @@ if (addAreaBtnEl) addAreaBtnEl.addEventListener('click', async function() {
     pinInput.value = ''; labelInput.value = '';
     renderCoverageBadge();
   } catch (err) { alert('Could not add pincode: ' + err.message); }
+});
+// Reuses the vendor's existing saved service areas (managed in the Local
+// Area Manager under Store Settings) — no separate fetch needed, and any
+// area added/removed there is instantly available here too.
+function refreshSavedAreaPicker() {
+  const picker = document.getElementById('pSavedAreaPicker');
+  if (!picker) return;
+  const grouped = {};
+  (vendorServiceAreas || []).forEach(function(a) {
+    const label = a.area_label || 'Unnamed area';
+    (grouped[label] = grouped[label] || []).push(a.pincode);
+  });
+  picker.innerHTML = '<option value="">— Quick-fill from a saved area —</option>' +
+    Object.keys(grouped).map(function(label) { return '<option value="' + label + '">🏘️ ' + label + ' (' + grouped[label].length + ' pincodes)</option>'; }).join('');
+  picker.dataset.grouped = JSON.stringify(grouped);
+}
+document.getElementById('pSavedAreaPicker').addEventListener('change', function() {
+  if (!this.value) return;
+  const grouped = JSON.parse(this.dataset.grouped || '{}');
+  document.getElementById('pPincode').value = (grouped[this.value] || []).join(',');
+  this.value = '';
+});
+document.getElementById('pSaveAreaBtn').addEventListener('click', async function() {
+  const raw = document.getElementById('pPincode').value.trim();
+  const pincodes = raw.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+  if (pincodes.length === 0) { alert('Enter at least one pincode first.'); return; }
+  const label = prompt('Name this area (e.g. "Lucknow", "South Delhi") so you can reuse it for future products:');
+  if (!label) return;
+  try {
+    const rows = pincodes.map(function(pc) { return { vendor_id: currentVendor.id, pincode: pc, area_label: label }; });
+    await fetch(SUPABASE_URL + '/rest/v1/vendor_service_areas', {
+      method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'resolution=ignore-duplicates' },
+      body: JSON.stringify(rows)
+    });
+    await loadServiceAreas();
+    refreshSavedAreaPicker();
+    alert('Saved "' + label + '" — you can quick-fill it for any future product.');
+  } catch (err) {
+    alert('Could not save area: ' + err.message);
+  }
 });
 function renderPromote() {
 const list = document.getElementById('promoteList');
