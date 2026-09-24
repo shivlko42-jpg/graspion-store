@@ -279,6 +279,19 @@ window.addEventListener('load', function() {
           <input type="file" accept="image/*" id="storeLogoInput" style="font-size:10.5px;">
         </div>
       </div>
+      <div style="margin-bottom:16px; padding:14px; background:#faf9fd; border-radius:14px;">
+        <label style="font-size:11px; font-weight:700; color:#6b7280; display:block; margin-bottom:6px;">🚚 Delivery Coverage</label>
+        <div id="coverageBadge" style="font-size:12px; font-weight:800; margin-bottom:8px;"></div>
+        <p id="coverageExplain" style="font-size:10px; color:#9ca3af; margin-bottom:10px;"></p>
+        <div id="localAreaManager" style="display:none;">
+          <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <input class="form-input" id="newAreaPincode" placeholder="Add pincode (e.g. 226001)" style="margin:0; flex:1;" maxlength="6">
+            <input class="form-input" id="newAreaLabel" placeholder="Area name (optional)" style="margin:0; flex:1;">
+            <button type="button" id="addAreaBtn" style="background:#7c3aed; color:#fff; border:none; border-radius:10px; padding:0 16px; font-weight:700; cursor:pointer;">+ Add</button>
+          </div>
+          <div id="serviceAreaList" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+      </div>
       <div id="storeOpenRow" style="display:none; margin-bottom:14px;">
         <label style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:8px; display:block;">🏪 Store Status</label>
         <div class="radio-row">
@@ -527,12 +540,32 @@ window.addEventListener('load', function() {
         <p style="font-size:10px; color:#9ca3af; margin:4px 0 10px 24px;">Customers will book this in advance with a token payment instead of instant checkout.</p>
         <div id="preorderFields" style="display:none;">
           <div class="form-row">
-            <div class="form-group"><label>Advance / Token Amount (₹)</label><input class="form-input" id="pAdvanceAmount" type="number" placeholder="e.g. 500"></div>
+            <div class="form-group"><label>Advance / Token (%)</label><input class="form-input" id="pAdvancePercent" type="number" placeholder="e.g. 20" value="20"></div>
             <div class="form-group"><label>Minimum Order Quantity</label><input class="form-input" id="pMinQty" type="number" placeholder="e.g. 10"></div>
           </div>
+          <div class="form-group"><label>Quantity Unit</label>
+            <select class="form-input" id="pPreorderUnit">
+              <option value="pieces" selected>Pieces</option>
+              <option value="kg">Kilograms (kg)</option>
+              <option value="dozen">Dozen</option>
+              <option value="box">Box/Carton</option>
+            </select>
+          </div>
+          <div id="advancePreview" style="font-size:10.5px; color:#6b7280; margin:6px 0;"></div>
           <div class="form-group"><label>Lead Time (days to prepare)</label><input class="form-input" id="pPreorderLeadTime" type="number" placeholder="e.g. 5"></div>
           <label style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:#6b7280; margin-top:6px;"><input type="checkbox" id="pSampleAvailable"> Offer a sample before bulk booking</label>
           <div class="form-group" id="pSamplePriceRow" style="display:none; margin-top:6px;"><label>Sample Price (₹, 0 = free)</label><input class="form-input" id="pSamplePrice" type="number" placeholder="0"></div>
+        </div>
+      </div>
+      <div style="background:#fefce8; border:1px solid #fde68a; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+        <div style="font-size:10.5px; font-weight:800; color:#92400e; margin-bottom:10px;">📦 Shipping Details (needed to calculate courier cost accurately)</div>
+        <div class="form-row">
+          <div class="form-group"><label>Weight (grams)</label><input class="form-input" id="pWeightGrams" type="number" placeholder="e.g. 250"></div>
+          <div class="form-group"><label>Length (cm)</label><input class="form-input" id="pLengthCm" type="number" placeholder="e.g. 15"></div>
+        </div>
+        <div class="form-row" style="margin-bottom:0;">
+          <div class="form-group"><label>Width (cm)</label><input class="form-input" id="pWidthCm" type="number" placeholder="e.g. 10"></div>
+          <div class="form-group"><label>Height (cm)</label><input class="form-input" id="pHeightCm" type="number" placeholder="e.g. 8"></div>
         </div>
       </div>
       <label style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:8px; display:block;">Is this item returnable?</label>
@@ -552,7 +585,6 @@ window.addEventListener('load', function() {
           <div class="form-group"><label>GTIN / Barcode</label><input class="form-input" id="pGtin" placeholder="e.g. 8901234567890"></div>
         </div>
         <div class="form-row" style="margin-bottom:0;">
-          <div class="form-group"><label>Weight (for shipping)</label><input class="form-input" id="pWeight" placeholder="e.g. 250g"></div>
           <div class="form-group"><label>Condition</label>
             <select class="form-input" id="pCondition">
               <option value="new" selected>New</option>
@@ -1450,6 +1482,7 @@ async function loadVendorData() {
     loadVendorSettlements();
     loadVendorReturns();
     loadVendorBundles();
+    loadServiceAreas();
   } catch (err) {
     badge.className = 'db-badge loading';
     badge.textContent = '❌ Error: ' + err.message;
@@ -1606,8 +1639,9 @@ function renderProducts() {
       document.getElementById('preorderProductSection').style.display = currentVendor.prebooking_enabled ? 'block' : 'none';
       document.getElementById('pIsPreorder').checked = !!p.is_preorder;
       document.getElementById('preorderFields').style.display = p.is_preorder ? 'block' : 'none';
-      document.getElementById('pAdvanceAmount').value = p.preorder_advance_amount || '';
+      document.getElementById('pAdvancePercent').value = p.preorder_advance_percent != null ? p.preorder_advance_percent : 20;
       document.getElementById('pMinQty').value = p.preorder_min_qty || '';
+      document.getElementById('pPreorderUnit').value = p.preorder_unit || 'pieces';
       document.getElementById('pPreorderLeadTime').value = p.preorder_lead_time_days || '';
       document.getElementById('pSampleAvailable').checked = !!p.sample_available;
       document.getElementById('pSamplePriceRow').style.display = p.sample_available ? 'block' : 'none';
@@ -1616,7 +1650,10 @@ function renderProducts() {
       document.getElementById('pLongDescription').value = p.long_description || '';
       document.getElementById('pBrand').value = p.brand || '';
       document.getElementById('pGtin').value = p.gtin || '';
-      document.getElementById('pWeight').value = p.shipping_weight || '';
+      document.getElementById('pWeightGrams').value = p.weight_grams || '';
+      document.getElementById('pLengthCm').value = p.length_cm || '';
+      document.getElementById('pWidthCm').value = p.width_cm || '';
+      document.getElementById('pHeightCm').value = p.height_cm || '';
       document.getElementById('pCondition').value = p.condition || 'new';
       document.getElementById('pCategory').value = p.category_id || '';
       document.getElementById('pFulfillmentType').value = p.fulfillment_type || 'standard';
@@ -2317,7 +2354,10 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   const features = document.getElementById('pFeatures').value.trim();
   const brand = document.getElementById('pBrand').value.trim();
   const gtin = document.getElementById('pGtin').value.trim();
-  const weight = document.getElementById('pWeight').value.trim();
+  const weightGrams = document.getElementById('pWeightGrams').value ? Number(document.getElementById('pWeightGrams').value) : null;
+  const lengthCm = document.getElementById('pLengthCm').value ? Number(document.getElementById('pLengthCm').value) : null;
+  const widthCm = document.getElementById('pWidthCm').value ? Number(document.getElementById('pWidthCm').value) : null;
+  const heightCm = document.getElementById('pHeightCm').value ? Number(document.getElementById('pHeightCm').value) : null;
   const condition = document.getElementById('pCondition').value;
   const categoryId = document.getElementById('pCategory').value || null;
   const subcategoryId = document.getElementById('pSubcategory').value || null;
@@ -2325,8 +2365,9 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   const sku = document.getElementById('pSku').value.trim() || ('GRS-' + Date.now().toString().slice(-8));
   const fulfillmentType = document.getElementById('pFulfillmentType').value || 'standard';
   const isPreorder = currentVendor.prebooking_enabled && document.getElementById('pIsPreorder').checked;
-  const advanceAmount = isPreorder ? (Number(document.getElementById('pAdvanceAmount').value) || 0) : null;
+  const advancePercent = isPreorder ? (Number(document.getElementById('pAdvancePercent').value) || 20) : null;
   const minQty = isPreorder ? (Number(document.getElementById('pMinQty').value) || 1) : 1;
+  const preorderUnit = isPreorder ? document.getElementById('pPreorderUnit').value : null;
   const leadTime = isPreorder ? (Number(document.getElementById('pPreorderLeadTime').value) || null) : null;
   const sampleAvailable = isPreorder && document.getElementById('pSampleAvailable').checked;
   const samplePrice = sampleAvailable ? (Number(document.getElementById('pSamplePrice').value) || 0) : 0;
@@ -2351,7 +2392,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
         short_description: document.getElementById('pShortDescription').value.trim() || null,
         long_description: document.getElementById('pLongDescription').value.trim() || null,
         cod_allowed: selectedCod, additional_images: extraPhotosBase64.length > 0 ? extraPhotosBase64 : [],
-        brand: brand || null, gtin: gtin || null, shipping_weight: weight || null, condition: condition,
+        brand: brand || null, gtin: gtin || null, weight_grams: weightGrams, length_cm: lengthCm, width_cm: widthCm, height_cm: heightCm, condition: condition,
         category_id: categoryId, subcategory_id: subcategoryId, product_type_id: productTypeId, sku: sku, fulfillment_type: fulfillmentType, mrp: oldPrice ? Number(oldPrice) : Number(price), selling_price: Number(price),
         catalog_item_id: selectedCatalogItemId || null,
         item_code: document.getElementById('pItemCode').value.trim() || null,
@@ -2391,8 +2432,9 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
         reorder_level: document.getElementById('pReorderLevel').value ? Number(document.getElementById('pReorderLevel').value) : 10,
         max_stock_level: document.getElementById('pMaxStockLevel').value ? Number(document.getElementById('pMaxStockLevel').value) : null,
         is_preorder: isPreorder,
-        preorder_advance_amount: advanceAmount,
+        preorder_advance_percent: advancePercent,
         preorder_min_qty: minQty,
+        preorder_unit: preorderUnit,
         preorder_lead_time_days: leadTime,
         sample_available: sampleAvailable,
         sample_price: samplePrice
@@ -2471,7 +2513,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
       }
     }
 
-    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeight','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt','pPurchasePrice','pLeadTime','pPreorderLeadTime','pRack','pShelf','pBin'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeightGrams','pLengthCm','pWidthCm','pHeightCm','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt','pPurchasePrice','pLeadTime','pPreorderLeadTime','pRack','pShelf','pBin'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('pStatus').value = 'active';
     document.getElementById('pPublishAtGroup').style.display = 'none';
     document.getElementById('pChannelWebsite').checked = true;
@@ -2584,7 +2626,7 @@ document.getElementById('pName').addEventListener('input', function() {
 // vendor list dropdown no longer needed — login is via real email/password now
 
 // ===================== BULK CSV IMPORT / EXPORT =====================
-const CSV_COLUMNS = ['name','icon','price','old_price','stock','pincode','hsn_code','gst_percent','features','brand','gtin','shipping_weight','condition','category_name','sku','image_url','delivery_type'];
+const CSV_COLUMNS = ['name','icon','price','old_price','stock','pincode','hsn_code','gst_percent','features','brand','gtin','weight_grams','length_cm','width_cm','height_cm','condition','category_name','sku','image_url','delivery_type'];
 
 document.getElementById('downloadTemplateBtn').addEventListener('click', function() {
   const sampleRow = ['Bluetooth Speaker','🔊','999','1499','25','ALL','85182100','18','Wireless|10hr battery|Waterproof','SoundMax','','450g','New','Electronics','GRS-SPK-001','https://example.com/photo.jpg','standard'];
@@ -2600,7 +2642,7 @@ document.getElementById('exportProductsBtn').addEventListener('click', function(
   if (vendorProducts.length === 0) { alert('You have no products to export yet.'); return; }
   const rows = vendorProducts.map(function(p) {
     const cat = allCategories.find(function(c) { return c.id === p.category_id; });
-    return [p.name, p.icon || '', p.price, p.old_price || '', p.stock, p.pincode || '', p.hsn_code || '', p.gst_percent || '', p.features || '', p.brand || '', p.gtin || '', p.shipping_weight || '', p.condition || '', cat ? cat.name : '', p.sku || '', p.image_data || '', p.fulfillment_type || 'standard'];
+    return [p.name, p.icon || '', p.price, p.old_price || '', p.stock, p.pincode || '', p.hsn_code || '', p.gst_percent || '', p.features || '', p.brand || '', p.gtin || '', p.weight_grams || '', p.length_cm || '', p.width_cm || '', p.height_cm || '', p.condition || '', cat ? cat.name : '', p.sku || '', p.image_data || '', p.fulfillment_type || 'standard'];
   });
   const csv = Papa.unparse({ fields: CSV_COLUMNS, data: rows });
   const blob = new Blob([csv], { type: 'text/csv' });
@@ -2639,7 +2681,7 @@ document.getElementById('parseCsvBtn').addEventListener('click', function() {
             stock: stock, pincode: (row.pincode || '').trim() || (currentVendor.pincode || 'ALL'),
             hsn_code: row.hsn_code || null, gst_percent: row.gst_percent ? Number(row.gst_percent) : 18,
             features: row.features || null, brand: row.brand || null, gtin: row.gtin || null,
-            shipping_weight: row.shipping_weight || null, condition: row.condition || 'New',
+            weight_grams: row.weight_grams ? Number(row.weight_grams) : null, length_cm: row.length_cm ? Number(row.length_cm) : null, width_cm: row.width_cm ? Number(row.width_cm) : null, height_cm: row.height_cm ? Number(row.height_cm) : null, condition: row.condition || 'New',
             category_id: cat ? cat.id : null, sku: row.sku || ('GRS-' + Date.now().toString().slice(-8) + '-' + rowNum),
             mrp: row.old_price ? Number(row.old_price) : price, selling_price: price,
             image_data: (row.image_url || '').trim() || null,
@@ -2725,9 +2767,28 @@ document.getElementById('variantAttrRows').appendChild(row);
 document.getElementById('addAttrRowBtn').addEventListener('click', addAttrRow);
 document.getElementById('pIsPreorder').addEventListener('change', function() {
   document.getElementById('preorderFields').style.display = this.checked ? 'block' : 'none';
+  updateAdvancePreview();
 });
 document.getElementById('pSampleAvailable').addEventListener('change', function() {
   document.getElementById('pSamplePriceRow').style.display = this.checked ? 'block' : 'none';
+});
+function updateAdvancePreview() {
+  const preview = document.getElementById('advancePreview');
+  if (!preview) return;
+  const price = Number(document.getElementById('pPrice').value) || 0;
+  const minQty = Number(document.getElementById('pMinQty').value) || 0;
+  const pct = Number(document.getElementById('pAdvancePercent').value) || 0;
+  const unit = document.getElementById('pPreorderUnit').value;
+  if (price > 0 && minQty > 0 && pct > 0) {
+    const advancePerOrder = Math.round(price * minQty * pct / 100);
+    preview.innerHTML = 'At minimum order (' + minQty + ' ' + unit + ' × ₹' + price + '), customer pays <b style="color:#7c3aed;">₹' + advancePerOrder + '</b> advance (' + pct + '%) — scales automatically if they order more.';
+  } else {
+    preview.textContent = 'Enter price, minimum quantity and % to see the advance amount.';
+  }
+}
+['pPrice', 'pMinQty', 'pAdvancePercent', 'pPreorderUnit'].forEach(function(id) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', updateAdvancePreview);
 });
 
 // "Smart" description generator (no AI/no cost) — uses varied sentence
@@ -3019,6 +3080,76 @@ function renderBundleList() {
     });
   });
 }
+let vendorServiceAreas = [];
+async function loadServiceAreas() {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/vendor_service_areas?vendor_id=eq.' + currentVendor.id + '&select=*&order=created_at.asc', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    vendorServiceAreas = res.ok ? await res.json() : [];
+  } catch (e) { vendorServiceAreas = []; }
+  renderCoverageBadge();
+}
+// Never asked as a manual dropdown — always derived from real, checkable
+// data, so the badge can never drift from what the vendor actually does:
+//   Dark Store  -> vendors.vendor_type (admin-set only, never self-declared)
+//   Local Area  -> vendor has added 1+ pincodes to their service area
+//   Pan-India   -> the default when neither of the above applies
+function renderCoverageBadge() {
+  const badgeEl = document.getElementById('coverageBadge');
+  const explainEl = document.getElementById('coverageExplain');
+  const manager = document.getElementById('localAreaManager');
+  if (!badgeEl) return;
+  const isDarkStore = currentVendor.vendor_type === 'dark_store';
+  if (isDarkStore) {
+    badgeEl.innerHTML = '<span style="background:#fef3c7; color:#b45309; padding:4px 10px; border-radius:20px;">⚡ Dark Store — Instant Delivery (~3km)</span>';
+    explainEl.textContent = 'Set by Graspion admin. You deliver only within a small radius of your store for fast instant delivery — this can\'t be changed here.';
+    manager.style.display = 'none';
+  } else if (vendorServiceAreas.length > 0) {
+    badgeEl.innerHTML = '<span style="background:#ede9fe; color:#6d28d9; padding:4px 10px; border-radius:20px;">🏘️ Local Area — ' + vendorServiceAreas.length + ' pincode' + (vendorServiceAreas.length > 1 ? 's' : '') + '</span>';
+    explainEl.textContent = 'You deliver across the specific pincodes listed below (e.g. a whole city) — not everywhere in India, but more than just your own doorstep.';
+    manager.style.display = 'block';
+  } else {
+    badgeEl.innerHTML = '<span style="background:#dcfce7; color:#15803d; padding:4px 10px; border-radius:20px;">📦 Pan-India — Ships Anywhere</span>';
+    explainEl.textContent = 'Your products ship nationwide via courier. Add pincodes below if you\'d rather deliver locally across a specific area (e.g. your city) instead.';
+    manager.style.display = 'block';
+  }
+  renderServiceAreaChips();
+}
+function renderServiceAreaChips() {
+  const list = document.getElementById('serviceAreaList');
+  if (!list) return;
+  list.innerHTML = vendorServiceAreas.map(function(a) {
+    return '<span style="display:inline-flex; align-items:center; gap:6px; background:#fff; border:1.5px solid #ede9fe; border-radius:20px; padding:5px 10px; font-size:11px;">' +
+      a.pincode + (a.area_label ? ' (' + a.area_label + ')' : '') +
+      ' <button type="button" data-delarea="' + a.id + '" style="background:none; border:none; color:#dc2626; cursor:pointer; font-size:12px; padding:0;">✕</button></span>';
+  }).join('');
+  document.querySelectorAll('[data-delarea]').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      await fetch(SUPABASE_URL + '/rest/v1/vendor_service_areas?id=eq.' + btn.getAttribute('data-delarea'), { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+      vendorServiceAreas = vendorServiceAreas.filter(function(a) { return a.id !== btn.getAttribute('data-delarea'); });
+      renderCoverageBadge();
+    });
+  });
+}
+const addAreaBtnEl = document.getElementById('addAreaBtn');
+if (addAreaBtnEl) addAreaBtnEl.addEventListener('click', async function() {
+  const pinInput = document.getElementById('newAreaPincode');
+  const labelInput = document.getElementById('newAreaLabel');
+  const pincode = pinInput.value.trim();
+  if (!/^\d{6}$/.test(pincode)) { alert('Please enter a valid 6-digit pincode.'); return; }
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/vendor_service_areas', {
+      method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+      body: JSON.stringify({ vendor_id: currentVendor.id, pincode: pincode, area_label: labelInput.value.trim() || null })
+    });
+    if (!res.ok) { const t = await res.text(); alert(t.indexOf('duplicate') !== -1 ? 'This pincode is already added.' : 'Could not add: ' + t); return; }
+    const rows = await res.json();
+    vendorServiceAreas.push(rows[0]);
+    pinInput.value = ''; labelInput.value = '';
+    renderCoverageBadge();
+  } catch (err) { alert('Could not add pincode: ' + err.message); }
+});
 function renderPromote() {
 const list = document.getElementById('promoteList');
 const empty = document.getElementById('promoteEmpty');

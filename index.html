@@ -1020,7 +1020,7 @@ vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(f
 productPool = visibleProducts.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
 const firstFeature = p.features ? p.features.split('\n')[0].trim() : '';
-return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: (function() { if (!p.created_at) return null; const daysSince = (Date.now() - new Date(p.created_at).getTime()) / 86400000; return daysSince <= 14 ? '🆕 New' : null; })(), image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, subcategoryId: p.subcategory_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '', imageAlt: p.image_alt_text || p.name, shortDescription: p.short_description || '', longDescription: p.long_description || '', warrantyAvailable: !!p.warranty_available, warrantyPeriod: p.warranty_period || '', warrantyType: p.warranty_type || '', careInstructions: p.care_instructions || '', safetyInfo: p.safety_info || '', installationInfo: p.installation_info || '', whatsIncluded: p.whats_included || '', isSponsored: !!p.is_sponsored, adBid: Number(p.ad_bid) || 0, createdAt: p.created_at || null, isPreorder: !!p.is_preorder, preorderAdvanceAmount: Number(p.preorder_advance_amount) || 0, preorderMinQty: Number(p.preorder_min_qty) || 1, preorderLeadTimeDays: p.preorder_lead_time_days || null, sampleAvailable: !!p.sample_available, samplePrice: Number(p.sample_price) || 0, gstPercent: Number(p.gst_percent) || 18 };
+return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: (function() { if (!p.created_at) return null; const daysSince = (Date.now() - new Date(p.created_at).getTime()) / 86400000; return daysSince <= 14 ? '🆕 New' : null; })(), image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, subcategoryId: p.subcategory_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '', imageAlt: p.image_alt_text || p.name, shortDescription: p.short_description || '', longDescription: p.long_description || '', warrantyAvailable: !!p.warranty_available, warrantyPeriod: p.warranty_period || '', warrantyType: p.warranty_type || '', careInstructions: p.care_instructions || '', safetyInfo: p.safety_info || '', installationInfo: p.installation_info || '', whatsIncluded: p.whats_included || '', isSponsored: !!p.is_sponsored, adBid: Number(p.ad_bid) || 0, createdAt: p.created_at || null, isPreorder: !!p.is_preorder, preorderAdvancePercent: p.preorder_advance_percent != null ? Number(p.preorder_advance_percent) : 20, preorderUnit: p.preorder_unit || 'pieces', preorderMinQty: Number(p.preorder_min_qty) || 1, preorderLeadTimeDays: p.preorder_lead_time_days || null, sampleAvailable: !!p.sample_available, samplePrice: Number(p.sample_price) || 0, gstPercent: Number(p.gst_percent) || 18 };
 });
 renderQuickCategories();
 renderPinSuggestions();
@@ -3512,11 +3512,16 @@ function openPrebookingModal(productId, type) {
   if (!p) return;
   document.getElementById('prebookingModal').style.display = 'flex';
   document.getElementById('pbModalTitle').textContent = type === 'sample' ? '🧪 Request a Sample' : '📦 Book with Advance';
-  const amount = type === 'sample' ? p.samplePrice : p.preorderAdvanceAmount;
+  function computeAdvance(qty) {
+    if (type === 'sample') return p.samplePrice;
+    return Math.round(p.price * qty * p.preorderAdvancePercent / 100);
+  }
+  const amount = computeAdvance(p.preorderMinQty);
   const body = document.getElementById('pbModalBody');
   body.innerHTML =
     '<div style="font-size:12px; font-weight:700; margin-bottom:10px;">' + p.name + '</div>' +
-    (type === 'preorder' ? '<div class="form-group" style="margin-bottom:10px;"><label style="font-size:11px; color:#6b7280;">Quantity (min ' + p.preorderMinQty + ')</label><input type="number" id="pbQty" class="form-input" value="' + p.preorderMinQty + '" min="' + p.preorderMinQty + '"></div>' : '') +
+    (type === 'preorder' ? '<div class="form-group" style="margin-bottom:10px;"><label style="font-size:11px; color:#6b7280;">Quantity (min ' + p.preorderMinQty + ' ' + p.preorderUnit + ')</label><input type="number" id="pbQty" class="form-input" value="' + p.preorderMinQty + '" min="' + p.preorderMinQty + '"></div>' : '') +
+    (type === 'preorder' ? '<div id="pbAdvanceNote" style="font-size:10.5px; color:#6b7280; margin:-4px 0 10px;">Advance: ' + p.preorderAdvancePercent + '% of order value</div>' : '') +
     '<div class="form-group" style="margin-bottom:10px;"><label style="font-size:11px; color:#6b7280;">Your Name</label><input class="form-input" id="pbName" value="' + (customerInfo.name || '') + '"></div>' +
     '<div class="form-group" style="margin-bottom:10px;"><label style="font-size:11px; color:#6b7280;">Phone</label><input class="form-input" id="pbPhone" value="' + (customerInfo.phone || '') + '"></div>' +
     '<div class="form-group" style="margin-bottom:10px;"><label style="font-size:11px; color:#6b7280;">Delivery Address</label><textarea class="form-input" id="pbAddress" rows="2">' + (customerInfo.address || '') + '</textarea></div>' +
@@ -3524,6 +3529,15 @@ function openPrebookingModal(productId, type) {
     (type === 'preorder' ? '<div class="form-group" style="margin-bottom:10px;"><label style="font-size:11px; color:#6b7280;">Customization notes (optional)</label><textarea class="form-input" id="pbNotes" rows="2" placeholder="e.g. message on the box, packaging preference"></textarea></div>' : '') +
     '<button id="pbSubmitBtn" style="width:100%; margin-top:6px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">' + (amount > 0 ? 'Pay ₹' + amount + ' & Confirm' : 'Confirm — Free') + '</button>' +
     '<div id="pbModalError" style="color:#dc2626; font-size:11px; margin-top:8px;"></div>';
+
+  const pbQtyEl = document.getElementById('pbQty');
+  if (pbQtyEl) {
+    pbQtyEl.addEventListener('input', function() {
+      const qty = Number(pbQtyEl.value) || p.preorderMinQty;
+      const liveAmount = computeAdvance(qty);
+      document.getElementById('pbSubmitBtn').textContent = liveAmount > 0 ? 'Pay ₹' + liveAmount + ' & Confirm' : 'Confirm — Free';
+    });
+  }
 
   document.getElementById('pbSubmitBtn').addEventListener('click', async function() {
     const btn = this;
@@ -3534,8 +3548,9 @@ function openPrebookingModal(productId, type) {
     const address = document.getElementById('pbAddress').value.trim();
     const pincode = document.getElementById('pbPincode').value.trim();
     const qty = type === 'preorder' ? Number(document.getElementById('pbQty').value) : 1;
+    const amount = computeAdvance(qty); // recomputed fresh — never trust a value captured before the customer finished editing quantity
     if (!name || !phone || !address || !pincode) { errEl.textContent = 'Please fill in all fields.'; return; }
-    if (type === 'preorder' && qty < p.preorderMinQty) { errEl.textContent = 'Minimum quantity is ' + p.preorderMinQty + '.'; return; }
+    if (type === 'preorder' && qty < p.preorderMinQty) { errEl.textContent = 'Minimum quantity is ' + p.preorderMinQty + ' ' + p.preorderUnit + '.'; return; }
     if (!currentCustomer) { errEl.textContent = 'Please log in first.'; return; }
 
     btn.disabled = true; btn.textContent = 'Processing...';
@@ -3919,13 +3934,16 @@ variantSelectorHtml +
 '</div></div>';
 
 const bottomBarHtml = p.isPreorder ?
-'<div style="background:#faf9fd; border:1.5px solid #e9d5ff; border-radius:14px; padding:14px;">' +
-'<div style="font-size:12.5px; font-weight:800; color:#7c3aed;">📦 Bulk / Pre-Order Item</div>' +
-'<div style="font-size:11px; color:#6b7280; margin-top:6px; line-height:1.6;">Minimum order: <b>' + p.preorderMinQty + '</b>' + (p.preorderLeadTimeDays ? ' · Ready in ~' + p.preorderLeadTimeDays + ' days' : '') + '</div>' +
-'<div style="font-size:11px; color:#6b7280; margin-top:4px;">Book now with a token advance of <b>₹' + p.preorderAdvanceAmount + '</b> — pay the rest when it\'s ready.</div>' +
-(p.sampleAvailable ? '<button data-requestsample="' + p.id + '" style="width:100%; margin-top:12px; background:#fff; color:#7c3aed; border:1.5px solid #7c3aed; padding:11px; border-radius:10px; font-weight:800; cursor:pointer;">🧪 Request a Sample' + (p.samplePrice > 0 ? ' (₹' + p.samplePrice + ')' : ' (Free)') + '</button>' : '') +
-'<button data-bookadvance="' + p.id + '" style="width:100%; margin-top:10px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">📦 Book Now — Pay ₹' + p.preorderAdvanceAmount + ' Advance</button>' +
-'</div>'
+(function() {
+  const minQtyAdvance = Math.round(p.price * p.preorderMinQty * p.preorderAdvancePercent / 100);
+  return '<div style="background:#faf9fd; border:1.5px solid #e9d5ff; border-radius:14px; padding:14px;">' +
+  '<div style="font-size:12.5px; font-weight:800; color:#7c3aed;">📦 Bulk / Pre-Order Item</div>' +
+  '<div style="font-size:11px; color:#6b7280; margin-top:6px; line-height:1.6;">Minimum order: <b>' + p.preorderMinQty + ' ' + p.preorderUnit + '</b>' + (p.preorderLeadTimeDays ? ' · Ready in ~' + p.preorderLeadTimeDays + ' days' : '') + '</div>' +
+  '<div style="font-size:11px; color:#6b7280; margin-top:4px;">Book now with a token advance of <b>₹' + minQtyAdvance + '</b> (' + p.preorderAdvancePercent + '%) at minimum order — pay the rest when it\'s ready.</div>' +
+  (p.sampleAvailable ? '<button data-requestsample="' + p.id + '" style="width:100%; margin-top:12px; background:#fff; color:#7c3aed; border:1.5px solid #7c3aed; padding:11px; border-radius:10px; font-weight:800; cursor:pointer;">🧪 Request a Sample' + (p.samplePrice > 0 ? ' (₹' + p.samplePrice + ')' : ' (Free)') + '</button>' : '') +
+  '<button data-bookadvance="' + p.id + '" style="width:100%; margin-top:10px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">📦 Book Now — Pay ₹' + minQtyAdvance + ' Advance</button>' +
+  '</div>';
+})()
 :
 '<div style="display:flex; align-items:center; gap:14px;"><span style="font-size:11.5px; font-weight:700; color:#6b7280;">Quantity</span><div style="display:flex; align-items:center; gap:10px; background:#f3f1f8; border-radius:10px; padding:6px 10px;"><button type="button" id="pdQtyDec" style="background:#fff; border:none; width:26px; height:26px; border-radius:6px; font-size:16px; font-weight:700; cursor:pointer;">−</button><span id="pdQtyVal" style="font-size:14px; font-weight:800; min-width:20px; text-align:center;">1</span><button type="button" id="pdQtyInc" style="background:#fff; border:none; width:26px; height:26px; border-radius:6px; font-size:16px; font-weight:700; cursor:pointer;">+</button></div></div>' +
 '<div style="display:flex; gap:8px; margin-top:10px;"><button data-detailadd="' + p.id + '" ' + (variants.length > 0 ? 'disabled' : '') + ' style="flex:1; background:#fff; color:#7c3aed; border:2px solid #7c3aed; padding:13px; border-radius:12px; font-weight:800; cursor:pointer; opacity:' + (variants.length > 0 ? '0.5' : '1') + ';">' + (variants.length > 0 ? 'Select Options' : '🛒 Add to Cart') + '</button>' +
