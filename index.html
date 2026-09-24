@@ -1015,7 +1015,7 @@ serviceAreaRows.forEach(function(a) { (serviceAreasByVendor[a.vendor_id] = servi
 vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){
   const isPaidActive = !!v.nearby_subscription_active && (!v.nearby_subscription_expires_at || new Date(v.nearby_subscription_expires_at) >= new Date());
   const isInFreeTrial = v.created_at ? (new Date() - new Date(v.created_at)) < (90 * 24 * 60 * 60 * 1000) : false; // first 3 months free
-  return { id: v.id, name: v.name, icon: v.icon, logo_url: v.logo_url || null, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode].concat(serviceAreasByVendor[v.id] || []), vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, nearbySubscribed: isPaidActive || isInFreeTrial };
+  return { id: v.id, name: v.name, icon: v.icon, logo_url: v.logo_url || null, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode].concat(serviceAreasByVendor[v.id] || []), vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, giftWrapEnabled: v.gift_wrap_enabled !== false, nearbySubscribed: isPaidActive || isInFreeTrial };
 });
 productPool = visibleProducts.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
@@ -2006,8 +2006,15 @@ rzp.open();
 } catch (err) { window.lastOrderDebug = 'Exception in payment flow: ' + err.message; console.error('[Graspion order debug]', window.lastOrderDebug); return { success: false }; }
 }
 function renderCheckout(){
-const t = cartTotals();
 const items = cartItemsList();
+// Must run before cartTotals() — if any vendor whose products are in the
+// cart has opted out of gift wrap, force it off *before* the total is
+// computed, so the charged amount can never include a gift-wrap fee for an
+// order where the option wasn't even shown to the customer.
+const cartVendorIds = Array.from(new Set(items.map(function(i) { return i.vendorId; })));
+const allSupportGiftWrap = cartVendorIds.every(function(vid) { const v = vendors.find(function(vv) { return vv.id === vid; }); return v ? v.giftWrapEnabled : true; });
+if (!allSupportGiftWrap) giftWrapSelected = false;
+const t = cartTotals();
 const wrap = document.getElementById('coWrap');
 if(checkoutStep === 'address'){
 const showPicker = currentCustomer && savedAddresses.length > 0 && selectedAddressId !== 'new';
@@ -2035,9 +2042,9 @@ if (showPicker) {
     '</div>';
 }
 wrap.innerHTML = addressSectionHtml +
-'<div class="co-section"><h4>🎁 Gift Wrap</h4>' +
-'<label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="checkbox" id="coGiftWrap" ' + (giftWrapSelected ? 'checked' : '') + '><span style="font-size:12.5px;">Wrap this order as a gift (+₹' + Number(siteSettings.gift_wrap_charge || 25) + ')</span></label>' +
-'</div>' +
+(allSupportGiftWrap ? '<div class="co-section"><h4>🎁 Gift Wrap</h4>' +
+  '<label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="checkbox" id="coGiftWrap" ' + (giftWrapSelected ? 'checked' : '') + '><span style="font-size:12.5px;">Wrap this order as a gift (+₹' + Number(siteSettings.gift_wrap_charge || 25) + ')</span></label>' +
+  '</div>' : '') +
 '<div class="co-section"><h4>🏷️ Coupon</h4>' +
 (appliedCoupon
   ? '<div class="co-item-row" style="background:#f0fdf4;border-radius:8px;padding:8px 10px;"><span>✅ ' + appliedCoupon.code + ' applied</span><button id="removeCouponBtn" style="background:none;border:none;color:#dc2626;font-weight:700;cursor:pointer;">Remove</button></div>'
