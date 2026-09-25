@@ -1543,6 +1543,7 @@ async function loadVendorData() {
     loadVendorReturns();
     loadVendorBundles();
     loadServiceAreas();
+    loadVendorPrebookings();
   } catch (err) {
     badge.className = 'db-badge loading';
     badge.textContent = '❌ Error: ' + err.message;
@@ -2249,7 +2250,7 @@ async function loadVendorPrebookings() {
         loadVendorPrebookings();
       });
     });
-  } catch (e) {}
+  } catch (e) { console.error('[Graspion] Pre-bookings load error:', e); }
 }
 
 // ===================== PRE-BOOKING PERMISSION (bulk/custom order selling) =====================

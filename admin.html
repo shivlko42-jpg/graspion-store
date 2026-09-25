@@ -244,6 +244,7 @@ Continue with Google
 <div class="side-item" data-page="applications">📋 New Applications</div>
 <div class="side-item" data-page="returns">↩ Returns & Refunds</div>
 <div class="side-item" data-page="prebookings">📦 Pre-Bookings</div>
+<div class="side-item" data-page="dailysheet">🖨️ Daily Order Sheet</div>
 <div class="side-item" data-page="reviews">⭐ Reviews</div>
 <div class="side-item" data-page="pairings">🔗 Pairings</div>
 <div class="side-item" data-page="catalog">📋 Catalog Requests</div>
@@ -822,6 +823,29 @@ Continue with Google
 <div class="empty-state" id="adminPrebookingEmpty" style="display:none;">No pre-bookings yet</div>
 </details>
 
+<details class="panel" data-section="dailysheet" open>
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">🖨️ Daily Order Sheet ▾</h3></summary>
+<p style="font-size:11px; color:#9ca3af; margin:8px 0 14px;">Pick a date range, then print or download every order and pre-booking in it — a physical/PDF checklist so nothing gets missed. Print it each morning for the day's deliveries, or each evening to confirm everything went out.</p>
+<div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px;">
+  <div><label style="font-size:10.5px; font-weight:700; color:#6b7280; display:block; margin-bottom:4px;">From</label><input type="date" id="dsFromDate" class="form-input" style="margin:0;"></div>
+  <div><label style="font-size:10.5px; font-weight:700; color:#6b7280; display:block; margin-bottom:4px;">To</label><input type="date" id="dsToDate" class="form-input" style="margin:0;"></div>
+  <div><label style="font-size:10.5px; font-weight:700; color:#6b7280; display:block; margin-bottom:4px;">Include</label>
+    <select id="dsIncludeType" class="form-input" style="margin:0;">
+      <option value="both">Orders + Pre-Bookings</option>
+      <option value="orders">Orders only</option>
+      <option value="prebookings">Pre-Bookings only</option>
+    </select>
+  </div>
+  <button id="dsQuickToday" class="icon-btn" type="button">Today</button>
+  <button id="dsQuickWeek" class="icon-btn" type="button">Last 7 Days</button>
+</div>
+<div style="display:flex; gap:10px;">
+  <button id="dsPrintBtn" class="add-product-btn" style="flex:1;">🖨️ Print</button>
+  <button id="dsCsvBtn" class="add-product-btn" style="flex:1; background:linear-gradient(90deg,#0891b2,#06b6d4);">⬇️ Download CSV</button>
+</div>
+<div id="dsPreviewCount" style="font-size:11px; color:#9ca3af; margin-top:10px;"></div>
+</details>
+
 <details class="panel" data-section="returns" open>
 <summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">↩ Return Requests ▾</h3></summary>
 <div id="returnsList"></div>
@@ -1196,6 +1220,91 @@ document.getElementById('reportEmpty').textContent = 'Could not load report (Sup
 }
 document.getElementById('reportTabQuarterly').addEventListener('click', function() { loadBusinessReport('quarterly'); });
 document.getElementById('reportTabYearly').addEventListener('click', function() { loadBusinessReport('yearly'); });
+
+// ===================== DAILY ORDER SHEET (print / CSV, date-range) =====================
+function dsSetRange(days) {
+  const to = new Date();
+  const from = new Date();
+  if (days > 0) from.setDate(from.getDate() - (days - 1));
+  document.getElementById('dsFromDate').value = from.toISOString().split('T')[0];
+  document.getElementById('dsToDate').value = to.toISOString().split('T')[0];
+}
+document.getElementById('dsQuickToday').addEventListener('click', function() { dsSetRange(1); });
+document.getElementById('dsQuickWeek').addEventListener('click', function() { dsSetRange(7); });
+dsSetRange(1); // default to today so the fields are never blank
+
+async function dsFetchData() {
+  const fromDate = document.getElementById('dsFromDate').value;
+  const toDate = document.getElementById('dsToDate').value;
+  const includeType = document.getElementById('dsIncludeType').value;
+  if (!fromDate || !toDate) { alert('Please pick both a From and To date.'); return null; }
+  const fromIso = fromDate + 'T00:00:00';
+  const toIso = toDate + 'T23:59:59';
+  let orders = [], prebookings = [];
+  if (includeType === 'orders' || includeType === 'both') {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/orders?select=*,vendors(name)&created_at=gte.' + fromIso + '&created_at=lte.' + toIso + '&order=created_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+    orders = res.ok ? await res.json() : [];
+  }
+  if (includeType === 'prebookings' || includeType === 'both') {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/prebookings?select=*,vendors(name),products(name)&created_at=gte.' + fromIso + '&created_at=lte.' + toIso + '&order=created_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+    prebookings = res.ok ? await res.json() : [];
+  }
+  document.getElementById('dsPreviewCount').textContent = orders.length + prebookings.length === 0
+    ? 'No orders or pre-bookings found in this range.'
+    : orders.length + ' order(s) and ' + prebookings.length + ' pre-booking(s) found for ' + fromDate + ' to ' + toDate + '.';
+  return { orders: orders, prebookings: prebookings, fromDate: fromDate, toDate: toDate };
+}
+
+document.getElementById('dsPrintBtn').addEventListener('click', async function() {
+  const data = await dsFetchData();
+  if (!data) return;
+  if (data.orders.length + data.prebookings.length === 0) { alert('Nothing to print in this date range.'); return; }
+  const win = window.open('', '_blank');
+  let html = '<html><head><title>Graspion — Order Sheet ' + data.fromDate + ' to ' + data.toDate + '</title>' +
+    '<style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px;} h1{font-size:18px;} h2{font-size:14px;margin-top:26px;border-bottom:2px solid #333;padding-bottom:4px;} table{width:100%;border-collapse:collapse;margin-top:8px;} th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;} th{background:#f3f1f8;} .chk{width:26px;text-align:center;} @media print{ button{display:none;} }</style></head><body>' +
+    '<button onclick="window.print()" style="padding:10px 18px;margin-bottom:14px;">🖨️ Print This Page</button>' +
+    '<h1>Graspion — Order Sheet</h1><div>Date range: <b>' + data.fromDate + '</b> to <b>' + data.toDate + '</b> · Generated: ' + new Date().toLocaleString('en-IN') + '</div>';
+  if (data.orders.length > 0) {
+    html += '<h2>📦 Orders (' + data.orders.length + ')</h2><table><tr><th class="chk">✔</th><th>Order #</th><th>Date</th><th>Customer</th><th>Phone</th><th>Vendor</th><th>Amount</th><th>Payment</th><th>Status</th><th>Address</th></tr>';
+    data.orders.forEach(function(o) {
+      html += '<tr><td class="chk"></td><td>' + (o.order_number || o.id.slice(0,8)) + '</td><td>' + new Date(o.created_at).toLocaleDateString('en-IN') + '</td><td>' + (o.customer_name||'') + '</td><td>' + (o.customer_phone||'') + '</td><td>' + (o.vendors?o.vendors.name:'') + '</td><td>₹' + o.total_amount + '</td><td>' + (o.payment_method||'') + ' (' + (o.payment_status||'') + ')</td><td>' + (o.status||'') + '</td><td>' + (o.customer_address||o.address||'') + '</td></tr>';
+    });
+    html += '</table>';
+  }
+  if (data.prebookings.length > 0) {
+    html += '<h2>📦 Pre-Bookings (' + data.prebookings.length + ')</h2><table><tr><th class="chk">✔</th><th>Date Booked</th><th>Customer</th><th>Phone</th><th>Vendor</th><th>Product</th><th>Qty</th><th>Full Amt</th><th>Advance</th><th>Needed By</th><th>Status</th></tr>';
+    data.prebookings.forEach(function(b) {
+      html += '<tr><td class="chk"></td><td>' + new Date(b.created_at).toLocaleDateString('en-IN') + '</td><td>' + (b.customer_name||'') + '</td><td>' + (b.customer_phone||'') + '</td><td>' + (b.vendors?b.vendors.name:'') + '</td><td>' + (b.products?b.products.name:'') + '</td><td>' + b.quantity + '</td><td>₹' + b.full_amount + '</td><td>₹' + b.advance_amount + ' ' + (b.advance_paid?'(Paid)':'(Pending)') + '</td><td>' + (b.preferred_delivery_date ? new Date(b.preferred_delivery_date+'T00:00:00').toLocaleDateString('en-IN') : '-') + '</td><td>' + (b.status||'') + '</td></tr>';
+    });
+    html += '</table>';
+  }
+  html += '</body></html>';
+  win.document.write(html);
+  win.document.close();
+});
+
+document.getElementById('dsCsvBtn').addEventListener('click', async function() {
+  const data = await dsFetchData();
+  if (!data) return;
+  if (data.orders.length + data.prebookings.length === 0) { alert('Nothing to download in this date range.'); return; }
+  function toCsv(rows, headers) {
+    const esc = function(v) { v = String(v == null ? '' : v); return '"' + v.replace(/"/g,'""') + '"'; };
+    return headers.map(esc).join(',') + '\n' + rows.map(function(r) { return r.map(esc).join(','); }).join('\n');
+  }
+  let csv = 'ORDERS\n' + toCsv(data.orders.map(function(o) {
+    return [o.order_number||o.id, new Date(o.created_at).toLocaleString('en-IN'), o.customer_name, o.customer_phone, o.vendors?o.vendors.name:'', o.total_amount, o.payment_method, o.payment_status, o.status, o.customer_address||o.address];
+  }), ['Order #','Date','Customer','Phone','Vendor','Amount','Payment Method','Payment Status','Status','Address']);
+  csv += '\n\nPRE-BOOKINGS\n' + toCsv(data.prebookings.map(function(b) {
+    return [new Date(b.created_at).toLocaleString('en-IN'), b.customer_name, b.customer_phone, b.vendors?b.vendors.name:'', b.products?b.products.name:'', b.quantity, b.full_amount, b.advance_amount, b.advance_paid?'Paid':'Pending', b.preferred_delivery_date||'', b.status];
+  }), ['Date Booked','Customer','Phone','Vendor','Product','Qty','Full Amount','Advance','Advance Status','Needed By','Status']);
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'graspion-order-sheet-' + data.fromDate + '_to_' + data.toDate + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
 
 async function loadAdminPrebookings() {
 try {
