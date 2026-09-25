@@ -1015,7 +1015,7 @@ serviceAreaRows.forEach(function(a) { (serviceAreasByVendor[a.vendor_id] = servi
 vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){
   const isPaidActive = !!v.nearby_subscription_active && (!v.nearby_subscription_expires_at || new Date(v.nearby_subscription_expires_at) >= new Date());
   const isInFreeTrial = v.created_at ? (new Date() - new Date(v.created_at)) < (90 * 24 * 60 * 60 * 1000) : false; // first 3 months free
-  return { id: v.id, name: v.name, icon: v.icon, logo_url: v.logo_url || null, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode].concat(serviceAreasByVendor[v.id] || []), vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, giftWrapEnabled: v.gift_wrap_enabled !== false, nearbySubscribed: isPaidActive || isInFreeTrial };
+  return { id: v.id, name: v.name, icon: v.icon, logo_url: v.logo_url || null, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode].concat(serviceAreasByVendor[v.id] || []), vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, giftWrapEnabled: v.gift_wrap_enabled !== false, gstin: v.gstin || null, address: v.address || null, email: v.email || null, fssaiLicense: v.fssai_license_number || null, drugLicense: v.drug_license_number || null, nearbySubscribed: isPaidActive || isInFreeTrial };
 });
 productPool = visibleProducts.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
@@ -3916,7 +3916,14 @@ mainImgHtml + thumbsHtml +
 (p.brand ? '<div style="margin-top:14px; text-align:center;"><span style="display:inline-flex; align-items:center; gap:5px; background:#f3f1f8; color:#1e1b3a; font-size:11.5px; font-weight:800; padding:5px 14px; border-radius:20px;">🏷️ ' + p.brand + '</span></div>' : '') +
 '<h1 style="font-size:18px; font-weight:800; line-height:1.35; margin-top:4px; color:#5b21b6;">' + p.name + '</h1>' +
 '<div style="margin-top:10px;"><button id="pdVendorToggle" style="background:none; border:none; padding:0; cursor:pointer; font-size:11px; color:#1e1b3a; font-weight:700; display:flex; align-items:center; gap:4px;">' + (vendor ? vendorBadgeHtml(vendor, 16) + ' Sold by ' + vendor.name : '') + ' <span style="font-size:9px;">▾ tap for details</span></button>' +
-'<div id="pdVendorDetails" style="display:none; margin-top:6px; background:#faf9fd; border-radius:10px; padding:10px; font-size:11px; color:#4b5563; line-height:1.7;"><b>' + (vendor ? vendor.name : 'Graspion Seller') + '</b>' + (vendor && vendor.gstin ? '<br>GSTIN: ' + vendor.gstin : '') + (vendor && vendor.address ? '<br>📍 ' + vendor.address : '') + (vendor && vendor.email ? '<br>✉️ ' + vendor.email : '') + '</div>' +
+'<div id="pdVendorDetails" style="display:none; margin-top:8px; background:#faf9fd; border:1px solid #ede9fe; border-radius:12px; padding:14px; font-size:11.5px; color:#4b5563;">' +
+  '<div style="font-size:13px; font-weight:800; color:#1e1b3a; margin-bottom:8px;">' + (vendor ? vendor.name : 'Graspion Seller') + '</div>' +
+  (vendor && vendor.gstin ? '<div style="display:flex; gap:8px; margin-bottom:6px;"><span style="flex-shrink:0;">🧾</span><span><b>GSTIN:</b> ' + vendor.gstin + '</span></div>' : '') +
+  (vendor && vendor.address ? '<div style="display:flex; gap:8px; margin-bottom:6px;"><span style="flex-shrink:0;">📍</span><span>' + vendor.address + '</span></div>' : '') +
+  (vendor && vendor.email ? '<div style="display:flex; gap:8px; margin-bottom:6px;"><span style="flex-shrink:0;">✉️</span><span>' + vendor.email + '</span></div>' : '') +
+  (vendor && vendor.fssaiLicense ? '<div style="display:flex; gap:8px; margin-bottom:6px;"><span style="flex-shrink:0;">🍽️</span><span><b>FSSAI Lic:</b> ' + vendor.fssaiLicense + '</span></div>' : '') +
+  (vendor && vendor.drugLicense ? '<div style="display:flex; gap:8px;"><span style="flex-shrink:0;">💊</span><span><b>Drug Lic:</b> ' + vendor.drugLicense + '</span></div>' : '') +
+'</div>' +
 '<div id="pdPriceRow" style="display:flex; align-items:center; gap:8px; margin-top:6px;"><span id="pdPrice" style="font-size:20px; font-weight:900; color:#7c3aed;">₹' + p.price + '</span>' + (p.old > p.price ? '<span style="text-decoration:line-through; color:#9ca3af; font-size:13px;">₹' + p.old + '</span><span style="color:#dc2626; font-size:11px; font-weight:700;">' + p.off + '</span>' : '') + '</div>' +
 variantSelectorHtml +
 (avgRating ? '<div style="margin-top:6px; font-size:12px;">⭐ ' + avgRating + ' (' + reviews.length + ' review' + (reviews.length !== 1 ? 's' : '') + ')</div>' : '<div style="margin-top:6px; font-size:11px; color:#9ca3af;">No reviews yet</div>') +
