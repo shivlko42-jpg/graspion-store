@@ -243,6 +243,7 @@ Continue with Google
 <div class="side-item" data-page="staff">👤 Staff Management</div>
 <div class="side-item" data-page="applications">📋 New Applications</div>
 <div class="side-item" data-page="returns">↩ Returns & Refunds</div>
+<div class="side-item" data-page="prebookings">📦 Pre-Bookings</div>
 <div class="side-item" data-page="reviews">⭐ Reviews</div>
 <div class="side-item" data-page="pairings">🔗 Pairings</div>
 <div class="side-item" data-page="catalog">📋 Catalog Requests</div>
@@ -814,6 +815,13 @@ Continue with Google
 <div class="empty-state" id="complaintsEmpty" style="display:none;">No complaints yet</div>
 </details>
 
+<details class="panel" data-section="prebookings" open>
+<summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">📦 Pre-Bookings (all vendors) <span id="adminPrebookingCount" style="font-size:11px;color:#9ca3af;"></span> ▾</h3></summary>
+<p style="font-size:11px; color:#9ca3af; margin:8px 0 12px;">Bulk/occasion bookings across every vendor — advance payment, requested delivery date, and status. Confirming/fulfilling a booking is the vendor's own action in their dashboard; this is an overview for you.</p>
+<div id="adminPrebookingList"></div>
+<div class="empty-state" id="adminPrebookingEmpty" style="display:none;">No pre-bookings yet</div>
+</details>
+
 <details class="panel" data-section="returns" open>
 <summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">↩ Return Requests ▾</h3></summary>
 <div id="returnsList"></div>
@@ -1189,6 +1197,35 @@ document.getElementById('reportEmpty').textContent = 'Could not load report (Sup
 document.getElementById('reportTabQuarterly').addEventListener('click', function() { loadBusinessReport('quarterly'); });
 document.getElementById('reportTabYearly').addEventListener('click', function() { loadBusinessReport('yearly'); });
 
+async function loadAdminPrebookings() {
+try {
+const res = await fetch(SUPABASE_URL + '/rest/v1/prebookings?select=*,vendors(name),products(name)&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+const rows = res.ok ? await res.json() : [];
+document.getElementById('adminPrebookingCount').textContent = rows.length ? '(' + rows.length + ')' : '';
+const list = document.getElementById('adminPrebookingList');
+const empty = document.getElementById('adminPrebookingEmpty');
+if (rows.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
+empty.style.display = 'none';
+const statusColors = { pending: '#d97706', confirmed: '#15803d', fulfilled: '#7c3aed', cancelled: '#dc2626' };
+list.innerHTML = rows.map(function(b) {
+const vendorName = b.vendors ? b.vendors.name : 'Vendor';
+const productName = b.products ? b.products.name : 'Product';
+const deliveryDateTxt = b.preferred_delivery_date ? new Date(b.preferred_delivery_date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not specified';
+return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:12px; margin-bottom:10px;">' +
+'<div style="display:flex; justify-content:space-between; align-items:flex-start;"><div>' +
+'<div style="font-size:12.5px; font-weight:700;">' + productName + ' × ' + b.quantity + '</div>' +
+'<div style="font-size:10.5px; color:#9ca3af; margin-top:2px;">🏪 ' + vendorName + ' · 👤 ' + (b.customer_name || 'Customer') + ' · ' + (b.customer_phone || '') + '</div>' +
+'</div><span style="font-size:9.5px; font-weight:800; padding:3px 9px; border-radius:20px; color:#fff; background:' + (statusColors[b.status] || '#6b7280') + '; flex-shrink:0;">' + (b.status || 'pending').toUpperCase() + '</span></div>' +
+'<div style="font-size:11px; color:#4b5563; margin-top:8px; display:flex; gap:14px; flex-wrap:wrap;">' +
+'<span>💰 Full: ₹' + b.full_amount + '</span>' +
+'<span>💳 Advance: ₹' + b.advance_amount + ' ' + (b.advance_paid ? '✅' : '⏳') + '</span>' +
+'<span>📅 Needed by: <b>' + deliveryDateTxt + '</b></span>' +
+'</div>' +
+(b.customization_notes ? '<div style="font-size:10.5px; color:#6b7280; margin-top:6px; background:#faf9fd; padding:6px 8px; border-radius:6px;">📝 ' + b.customization_notes + '</div>' : '') +
+'</div>';
+}).join('');
+} catch (e) { console.error('Prebookings load error', e); }
+}
 async function loadComplaints() {
 try {
 const res = await fetch(SUPABASE_URL + '/rest/v1/complaints?select=*,customers(name)&status=in.(received,in_review)&order=created_at.asc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
@@ -1701,6 +1738,7 @@ loadAbandonedCarts();
 loadInstallStats();
 loadErpUpdates();
 loadPrebookingRequests();
+loadAdminPrebookings();
 loadSponsoredBannerRequests();
 loadCategoryRecommendations();
 loadComplaints();
