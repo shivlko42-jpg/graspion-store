@@ -3310,6 +3310,7 @@ async function renderMyPrebookings() {
         '<div style="font-size:12.5px; font-weight:700; margin-top:2px;">' + (p ? p.name : 'Product') + ' × ' + b.quantity + '</div>' +
         '<div style="font-size:11px; color:#6b7280; margin-top:6px;">Status: <b>' + (PB_LABELS[b.status] || b.status) + '</b></div>' +
         '<div style="font-size:11px; color:#6b7280; margin-top:2px;">Advance: ₹' + b.advance_amount + ' ' + (b.advance_paid ? '✅ Paid' : '⏳ Pending') + '</div>' +
+        (b.preferred_delivery_date ? '<div style="font-size:11px; color:#6b7280; margin-top:2px;">📅 Needed by: <b>' + new Date(b.preferred_delivery_date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '</b></div>' : '') +
         '</div>';
     }).join('');
   } catch (e) { list.innerHTML = '<p style="font-size:12px; color:#dc2626; text-align:center;">Could not load bookings.</p>'; }
@@ -3563,6 +3564,13 @@ function openPrebookingModal(productId, type) {
       '</div></div>' +
     (type === 'sample' ? '<p style="font-size:10.5px; color:#9ca3af; margin:-8px 0 14px; line-height:1.5;">We\'ll send one sample to the address below before you commit to a bulk order.</p>' : '') +
     (type === 'preorder' ? '<div style="display:flex; gap:10px; margin-bottom:10px;"><div style="flex:1;"><label style="' + fieldLabel + '">Quantity (min ' + p.preorderMinQty + ' ' + p.preorderUnit + ')</label><input type="number" id="pbQty" style="' + fieldInput + '" value="' + p.preorderMinQty + '" min="' + p.preorderMinQty + '"></div></div>' +
+    (function() {
+      const earliest = new Date();
+      earliest.setDate(earliest.getDate() + (p.preorderLeadTimeDays || 1));
+      const earliestStr = earliest.toISOString().split('T')[0];
+      return '<div style="margin-bottom:10px;"><label style="' + fieldLabel + '">When do you need it by?</label><input type="date" id="pbDeliveryDate" style="' + fieldInput + '" min="' + earliestStr + '">' +
+        '<div style="font-size:10px; color:#9ca3af; margin-top:-6px;">Earliest possible: ' + earliest.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + (p.preorderLeadTimeDays ? ' (vendor needs ~' + p.preorderLeadTimeDays + ' days to prepare)' : '') + '</div></div>';
+    })() +
     '<div style="background:#faf5ff; border:1px solid #ede9fe; border-radius:10px; padding:9px 12px; font-size:10.5px; color:#6b21a8; margin-bottom:12px;">💳 Advance: <b>' + p.preorderAdvancePercent + '%</b> of order value — pay the rest when ready</div>' : '') +
     '<div style="display:flex; gap:10px; margin-bottom:10px;"><div style="flex:1;"><label style="' + fieldLabel + '">👤 Name</label><input style="' + fieldInput + '" id="pbName" value="' + (customerInfo.name || '') + '"></div><div style="flex:1;"><label style="' + fieldLabel + '">📱 Phone</label><input style="' + fieldInput + '" id="pbPhone" value="' + (customerInfo.phone || '') + '"></div></div>' +
     '<div style="margin-bottom:10px;"><label style="' + fieldLabel + '">📍 Delivery Address</label><textarea style="' + fieldInput + ' resize:none;" id="pbAddress" rows="2">' + (customerInfo.address || '') + '</textarea></div>' +
@@ -3592,6 +3600,9 @@ function openPrebookingModal(productId, type) {
     const amount = computeAdvance(qty); // recomputed fresh — never trust a value captured before the customer finished editing quantity
     if (!name || !phone || !address || !pincode) { errEl.textContent = 'Please fill in all fields.'; return; }
     if (type === 'preorder' && qty < p.preorderMinQty) { errEl.textContent = 'Minimum quantity is ' + p.preorderMinQty + ' ' + p.preorderUnit + '.'; return; }
+    const deliveryDateEl = document.getElementById('pbDeliveryDate');
+    const preferredDeliveryDate = deliveryDateEl ? deliveryDateEl.value : null;
+    if (type === 'preorder' && !preferredDeliveryDate) { errEl.textContent = 'Please choose when you need this by.'; return; }
     if (!currentCustomer) { errEl.textContent = 'Please log in first.'; return; }
 
     btn.disabled = true; btn.textContent = 'Processing...';
@@ -3601,7 +3612,8 @@ function openPrebookingModal(productId, type) {
       full_amount: type === 'preorder' ? (p.price * qty) : p.samplePrice,
       advance_amount: amount,
       customer_name: name, customer_phone: phone, customer_address: address, pincode: pincode,
-      customization_notes: type === 'preorder' ? document.getElementById('pbNotes').value.trim() : null
+      customization_notes: type === 'preorder' ? document.getElementById('pbNotes').value.trim() : null,
+      preferred_delivery_date: preferredDeliveryDate
     };
 
     try {

@@ -297,6 +297,14 @@ window.addEventListener('load', function() {
         </div>
         <p style="font-size:10px; color:#9ca3af; margin-top:4px;">When closed, your instant-delivery products won't be orderable — use this if you're out of stock, on a break, or done for the day.</p>
       </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:8px; display:block;">🎁 Gift Wrapping</label>
+        <div class="radio-row">
+          <div class="radio-option selected" id="giftWrapYes" data-giftwrap="true"><span class="ro-icon">✅</span>I offer gift wrapping</div>
+          <div class="radio-option" id="giftWrapNo" data-giftwrap="false"><span class="ro-icon">🚫</span>I don't offer this</div>
+        </div>
+        <p style="font-size:10px; color:#9ca3af; margin-top:4px;">If you turn this off, customers won't see a gift-wrap option for your products at checkout.</p>
+      </div>
       <div id="localDeliveryRow" style="display:none; margin-bottom:14px;">
         <label style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:#6b7280;"><input type="checkbox" id="localDeliveryEnabled"> 🚴 Accept local rider delivery for my area (in addition to Shiprocket)</label>
         <p style="font-size:10px; color:#9ca3af; margin-top:4px; margin-left:24px;">If enabled, riders serving your pincode can pick up and hand-deliver your orders locally — often faster and cheaper than courier for nearby customers.</p>
@@ -1204,6 +1212,7 @@ document.querySelectorAll('.vtab-btn').forEach(function(btn) {
 showVendorTab('products');
 
 let selectedStoreOpen = true;
+let selectedGiftWrap = true;
 function populateSettingsForm() {
   const logoPreview = document.getElementById('storeLogoPreview');
   if (logoPreview) {
@@ -1237,7 +1246,20 @@ function populateSettingsForm() {
     document.getElementById('localDeliveryRow').style.display = 'block';
     document.getElementById('localDeliveryEnabled').checked = !!currentVendor.local_delivery_enabled;
   }
+  selectedGiftWrap = currentVendor.gift_wrap_enabled !== false;
+  document.getElementById('giftWrapYes').classList.toggle('selected', selectedGiftWrap);
+  document.getElementById('giftWrapNo').classList.toggle('selected', !selectedGiftWrap);
 }
+document.getElementById('giftWrapYes').addEventListener('click', function() {
+  selectedGiftWrap = true;
+  document.getElementById('giftWrapYes').classList.add('selected');
+  document.getElementById('giftWrapNo').classList.remove('selected');
+});
+document.getElementById('giftWrapNo').addEventListener('click', function() {
+  selectedGiftWrap = false;
+  document.getElementById('giftWrapNo').classList.add('selected');
+  document.getElementById('giftWrapYes').classList.remove('selected');
+});
 document.getElementById('storeOpenYes').addEventListener('click', function() {
   selectedStoreOpen = true;
   document.getElementById('storeOpenYes').classList.add('selected');
@@ -1354,7 +1376,8 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async funct
         bank_account_no: document.getElementById('sBankAccount').value.trim(),
         bank_ifsc: document.getElementById('sBankIfsc').value.trim(),
         is_open: currentVendor.vendor_type === 'dark_store' ? selectedStoreOpen : currentVendor.is_open,
-        local_delivery_enabled: currentVendor.vendor_type !== 'dark_store' ? document.getElementById('localDeliveryEnabled').checked : currentVendor.local_delivery_enabled
+        local_delivery_enabled: currentVendor.vendor_type !== 'dark_store' ? document.getElementById('localDeliveryEnabled').checked : currentVendor.local_delivery_enabled,
+        gift_wrap_enabled: selectedGiftWrap
       })
     });
     currentVendor.gstin = document.getElementById('sGstin').value.trim();
@@ -1362,6 +1385,7 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async funct
     currentVendor.drug_license_number = document.getElementById('sDrugNumber').value.trim();
     currentVendor.is_open = selectedStoreOpen;
     currentVendor.local_delivery_enabled = document.getElementById('localDeliveryEnabled').checked;
+    currentVendor.gift_wrap_enabled = selectedGiftWrap;
     btn.textContent = '✓ Saved';
     setTimeout(function(){ btn.textContent = '💾 Save Store Settings'; }, 1500);
   } catch (err) {
@@ -2201,6 +2225,7 @@ async function loadVendorPrebookings() {
         '<div style="font-size:10.5px; color:#6b7280; margin-top:6px;">👤 ' + (b.customer_name || '-') + ' · 📞 ' + (b.customer_phone || '-') + '</div>' +
         (b.customer_address ? '<div style="font-size:10px; color:#9ca3af; margin-top:2px;">📍 ' + b.customer_address + '</div>' : '') +
         (b.customization_notes ? '<div style="font-size:10.5px; margin-top:6px; background:#faf9fd; padding:6px 8px; border-radius:6px;">📝 ' + b.customization_notes + '</div>' : '') +
+        (b.preferred_delivery_date ? '<div style="font-size:10.5px; font-weight:700; color:#dc2626; margin-top:6px;">📅 Needed by: ' + new Date(b.preferred_delivery_date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '</div>' : '') +
         '<div style="font-size:10.5px; margin-top:8px;">Advance: ₹' + b.advance_amount + ' ' + (b.advance_paid ? '✅ Paid' : '⏳ Pending') + (b.full_amount ? ' · Full: ₹' + b.full_amount : '') + '</div>' +
         (statusButtons ? '<div style="margin-top:10px;">' + statusButtons + '</div>' : '') +
         '</div>';
