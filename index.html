@@ -3942,14 +3942,14 @@ variantSelectorHtml +
       '</div>';
   }).join('');
 })() +
-(p.fullFeatures && p.fullFeatures.split('\n').filter(function(l){return l.trim();}).length > 0 ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:6px;">✨ Key Features</div><ul style="font-size:12.5px; color:#4b5563; line-height:1.7; padding-left:18px; margin:0;">' + p.fullFeatures.split('\n').filter(function(l){return l.trim();}).map(function(l){ return '<li>' + l.trim() + '</li>'; }).join('') + '</ul></div>' : '') +
+(p.fullFeatures && p.fullFeatures.split('\n').filter(function(l){return l.trim();}).length > 0 ? '<div style="margin-top:14px;"><div style="font-size:13px; font-weight:800; margin-bottom:6px;">✨ Product Highlights</div><ul style="font-size:12.5px; color:#4b5563; line-height:1.7; padding-left:18px; margin:0;">' + p.fullFeatures.split('\n').filter(function(l){return l.trim();}).map(function(l){ return '<li>' + l.trim() + '</li>'; }).join('') + '</ul></div>' : '') +
 (function() {
   // 3 tap-to-expand blocks — each only appears if there's actually
   // something in it (whatever the vendor filled in when adding the
   // product), so an empty block never shows as a dead-end for the customer.
   const descParts = [];
-  if (p.longDescription) descParts.push('<p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line;">' + p.longDescription + '</p>');
-  else if (p.shortDescription) descParts.push('<p style="font-size:12.5px; color:#4b5563; line-height:1.6;">' + p.shortDescription + '</p>');
+  if (p.longDescription) descParts.push('<p style="font-size:12.5px; color:#4b5563; line-height:1.6; text-align:justify; white-space:pre-line;">' + p.longDescription + '</p>');
+  else if (p.shortDescription) descParts.push('<p style="font-size:12.5px; color:#4b5563; line-height:1.6; text-align:justify;">' + p.shortDescription + '</p>');
 
   const specRows = [];
   if (p.brand) specRows.push(['Brand', p.brand]);
@@ -3965,14 +3965,19 @@ variantSelectorHtml +
   // in optional fields) so this block never has nothing useful to show.
   const alwaysKnown = [];
   if (p.sku) alwaysKnown.push(['SKU', p.sku]);
-  alwaysKnown.push(['Delivery Type', p.fulfillmentType === 'instant' ? '⚡ Instant (10-20 min)' : '📦 Standard (Pan-India courier)']);
+  if (p.fulfillmentType === 'instant' && vendor) {
+    const supplyType = getVendorSupplyType(vendor);
+    alwaysKnown.push(['Delivery Type', supplyType.type === 'dark_store' ? '⚡ Instant (' + vendor.eta + ')' : '🏘️ Same-day (Local Area)']);
+  } else {
+    alwaysKnown.push(['Delivery Type', '📦 Standard (Pan-India courier)']);
+  }
   if (p.codAllowed !== false) alwaysKnown.push(['Cash on Delivery', 'Available']);
   if (alwaysKnown.length > 0) addlParts.push('<table style="width:100%; font-size:11.5px; color:#4b5563; border-collapse:collapse; margin-bottom:10px;">' + alwaysKnown.map(function(r) { return '<tr><td style="padding:4px 0; color:#9ca3af; width:45%;">' + r[0] + '</td><td style="padding:4px 0; font-weight:600;">' + r[1] + '</td></tr>'; }).join('') + '</table>');
-  if (p.whatsIncluded) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">📦 What\'s In The Box</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line; margin-bottom:10px;">' + p.whatsIncluded + '</p>');
-  if (p.warrantyAvailable) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">🛡️ Warranty</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; margin-bottom:10px;">' + (p.warrantyPeriod || '') + (p.warrantyType ? ' · ' + p.warrantyType : '') + '</p>');
-  if (p.installationInfo) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">🔧 Installation</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line; margin-bottom:10px;">' + p.installationInfo + '</p>');
-  if (p.careInstructions) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">🧴 Care Instructions</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line; margin-bottom:10px;">' + p.careInstructions + '</p>');
-  if (p.safetyInfo) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">⚠️ Safety Information</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; white-space:pre-line; margin-bottom:10px;">' + p.safetyInfo + '</p>');
+  if (p.whatsIncluded) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">📦 What\'s In The Box</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; text-align:justify; white-space:pre-line; margin-bottom:10px;">' + p.whatsIncluded + '</p>');
+  if (p.warrantyAvailable) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">🛡️ Warranty</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; text-align:justify; margin-bottom:10px;">' + (p.warrantyPeriod || '') + (p.warrantyType ? ' · ' + p.warrantyType : '') + '</p>');
+  if (p.installationInfo) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">🔧 Installation</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; text-align:justify; white-space:pre-line; margin-bottom:10px;">' + p.installationInfo + '</p>');
+  if (p.careInstructions) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">🧴 Care Instructions</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; text-align:justify; white-space:pre-line; margin-bottom:10px;">' + p.careInstructions + '</p>');
+  if (p.safetyInfo) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">✨ Quality &amp; Trust</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; text-align:justify; white-space:pre-line; margin-bottom:10px;">' + p.safetyInfo + '</p>');
   if (docsHtml) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:6px;">📄 Documents</div>' + docsHtml);
 
   function accordionBlock(id, icon, label, innerHtml, openByDefault) {
