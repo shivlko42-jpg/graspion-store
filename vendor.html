@@ -2227,7 +2227,7 @@ async function loadVendorPrebookings() {
         (b.customer_address ? '<div style="font-size:10px; color:#9ca3af; margin-top:2px;">📍 ' + b.customer_address + '</div>' : '') +
         (b.customization_notes ? '<div style="font-size:10.5px; margin-top:6px; background:#faf9fd; padding:6px 8px; border-radius:6px;">📝 ' + b.customization_notes + '</div>' : '') +
         (b.preferred_delivery_date ? '<div style="font-size:10.5px; font-weight:700; color:#dc2626; margin-top:6px;">📅 Needed by: ' + new Date(b.preferred_delivery_date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '</div>' : '') +
-        '<div style="font-size:10.5px; margin-top:8px;">Advance: ₹' + b.advance_amount + ' ' + (b.advance_paid ? '✅ Paid' : '⏳ Pending') + (b.full_amount ? ' · Full: ₹' + b.full_amount : '') + '</div>' +
+        '<div style="font-size:10.5px; margin-top:8px;">Advance: ₹' + b.advance_amount + ' ' + (b.advance_paid ? '✅ Paid' : '⏳ Pending') + (b.full_amount ? ' · Full: ₹' + b.full_amount : '') + (b.balance_collected != null ? ' · Balance collected by rider: ₹' + b.balance_collected : '') + '</div>' +
         (statusButtons ? '<div style="margin-top:10px;">' + statusButtons + '</div>' : '') +
         '</div>';
     }).join('');
