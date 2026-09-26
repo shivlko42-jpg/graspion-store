@@ -724,6 +724,13 @@ Continue with Google
 <div class="empty-state" id="cpnEmpty" style="display:none;">No coupons created yet</div>
 </div>
 
+<div class="panel" data-section="settings">
+<h3>🚚 Shiprocket Connection</h3>
+<p style="font-size:12px; color:#4b5563; margin:6px 0 10px;">Tap to check whether Shiprocket is linked: login, wallet balance, vendor pickup addresses, and whether status updates (webhook) are reaching us.</p>
+<button id="srHealthBtn" style="background:#7c3aed; color:#fff; border:none; padding:10px 14px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer;">🔌 Check Shiprocket Connection</button>
+<div id="srHealthResult" style="margin-top:12px; font-size:12.5px; color:#1f2937; line-height:1.7;"></div>
+</div>
+
 <details class="panel" data-section="settings" open>
 <summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">⚙️ General Settings ▾</h3></summary>
 <p style="font-size:11px; color:#9ca3af; margin:8px 0 12px;">Change these values without touching any code — the whole platform reads from here.</p>
@@ -4317,6 +4324,44 @@ const pct = ((counts[ch] / allOrders.length) * 100).toFixed(0);
 return '<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f7f6fb;"><span style="font-size:12px; font-weight:600;">' + (channelLabels[ch] || ch) + '</span><span style="font-size:11px; color:#9ca3af;">' + counts[ch] + ' orders (' + pct + '%)</span></div>';
 }).join('');
 }
+
+// ===== Shiprocket connection check (edge function: shiprocket-health) =====
+document.addEventListener('click', async function(e) {
+  const btn = e.target.closest('#srHealthBtn'); if (!btn) return;
+  const out = document.getElementById('srHealthResult');
+  btn.disabled = true; btn.textContent = '⏳ Checking...'; out.innerHTML = '';
+  const row = function(ok, text) { return '<div>' + (ok === true ? '✅' : ok === false ? '❌' : '⚠️') + ' ' + text + '</div>'; };
+  const esc = function(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+  try {
+    const r = await fetch(SUPABASE_URL + '/functions/v1/shiprocket-health', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: '{}' });
+    const d = await r.json();
+    if (!r.ok || d.error) { out.innerHTML = row(false, esc(d.error || ('Error ' + r.status))); return; }
+    let h = '';
+    h += row(d.secrets.email_set && d.secrets.password_set, 'Login details saved in Supabase secrets' + (d.secrets.email_set && d.secrets.password_set ? '' : ' — <b>SHIPROCKET_EMAIL / SHIPROCKET_PASSWORD missing</b>'));
+    if (d.login && d.login.ok) {
+      h += row(true, '<b>Shiprocket linked</b> — login working' + (d.login.account ? ' (' + esc(d.login.account) + ')' : ''));
+      if (d.wallet_balance != null) h += row(Number(d.wallet_balance) > 0, 'Wallet balance: <b>₹' + esc(d.wallet_balance) + '</b>' + (Number(d.wallet_balance) > 0 ? '' : ' — recharge needed, couriers cannot be booked'));
+      const vs = d.vendors || [];
+      h += '<div style="margin-top:8px; font-weight:700;">Vendor pickup addresses in Shiprocket:</div>';
+      if (!vs.length) h += '<div style="color:#4b5563;">No vendors found.</div>';
+      vs.forEach(function(v) {
+        h += row(v.pickup_ok ? true : false, esc(v.name) + (v.pickup_ok ? '' : (v.near_match ? ' — name differs in Shiprocket ("' + esc(v.near_match) + '"), make it exactly the same' : ' — <b>not added</b> in Shiprocket → Settings → Pickup Addresses (nickname must be exactly this name)')));
+      });
+      if ((d.pickup_locations || []).length) h += '<div style="color:#4b5563; font-size:11.5px; margin-top:4px;">Pickup nicknames in Shiprocket: ' + d.pickup_locations.map(esc).join(', ') + '</div>';
+    } else {
+      h += row(false, '<b>Shiprocket NOT linked</b> — login failed (' + esc(d.login ? d.login.message : '') + (d.login && d.login.http ? ', code ' + d.login.http : '') + '). Use a Shiprocket <b>API User</b> email/password (Settings → API), not the main account.');
+    }
+    h += '<div style="margin-top:8px; font-weight:700;">Status updates (webhook):</div>';
+    h += row(d.secrets.webhook_secret_set ? true : null, d.secrets.webhook_secret_set ? 'Webhook token set' : 'SHIPROCKET_WEBHOOK_SECRET not set (optional but recommended)');
+    h += d.webhook_last_seen ? row(true, 'Last update received from Shiprocket: <b>' + new Date(d.webhook_last_seen).toLocaleString('en-IN') + '</b>') : row(null, 'No update received from Shiprocket yet — add the webhook URL in Shiprocket and press its Test button');
+    h += '<div style="margin-top:6px; font-size:11.5px; color:#4b5563; word-break:break-all;">Webhook URL: <b>' + SUPABASE_URL + '/functions/v1/shiprocket-webhook</b></div>';
+    out.innerHTML = h;
+  } catch (err) {
+    out.innerHTML = row(false, 'Could not run the check: ' + esc(err.message));
+  } finally {
+    btn.disabled = false; btn.textContent = '🔌 Check Shiprocket Connection';
+  }
+});
 </script>
 </body>
 </html>

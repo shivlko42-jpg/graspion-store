@@ -662,8 +662,8 @@ Continue with Google
 <button id="ordersTabHistory" data-orderstab="history" style="flex:1; background:#f3f1f8; color:#6b7280; border:none; padding:9px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer;">History</button>
 <button id="ordersTabPrebookings" data-orderstab="prebookings" style="flex:1; background:#f3f1f8; color:#6b7280; border:none; padding:9px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer;">📦 Bookings</button>
 </div>
-<div id="myOrdersList"></div>
-<div id="myPrebookingsList" style="display:none;"></div>
+<div id="myOrdersList" style="text-align:left;"></div>
+<div id="myPrebookingsList" style="display:none; text-align:left;"></div>
 <div class="empty-state" id="myOrdersEmpty" style="display:none;">No orders yet — go shopping!</div>
 </div>
 </div>
@@ -3329,18 +3329,18 @@ async function renderMyPrebookings() {
           const rows = rr.ok ? await rr.json() : [];
           if (rows[0] && rows[0].rider_name) {
             const r = rows[0];
-            riderHtml = '<div style="margin-top:8px; background:#F1F8ED; padding:8px 10px; border-radius:8px; font-size:11px;">🚴 <b>' + r.rider_name + '</b>' + (r.bike_number ? ' · ' + r.bike_number : '') + (r.rider_phone && outForDelivery ? ' · <a href="tel:' + r.rider_phone + '" style="color:#7c3aed; font-weight:700;">📞 Call</a>' : '') + '</div>';
-            if (outForDelivery) riderHtml += '<button data-tracklive="' + b.id + '" style="margin-top:6px; width:100%; background:#7c3aed; color:#fff; border:none; padding:8px; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer;">🗺️ Track Live Location</button>';
+            riderHtml = '<div style="margin-top:8px; background:#F1F8ED; padding:8px 10px; border-radius:8px; font-size:12.5px;">🚴 <b>' + r.rider_name + '</b>' + (r.bike_number ? ' · ' + r.bike_number : '') + (r.rider_phone && outForDelivery ? ' · <a href="tel:' + r.rider_phone + '" style="color:#7c3aed; font-weight:700;">📞 Call</a>' : '') + '</div>';
+            if (outForDelivery) riderHtml += '<button data-tracklive="' + b.id + '" style="margin-top:6px; width:100%; background:#7c3aed; color:#fff; border:none; padding:8px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">🗺️ Track Live Location</button>';
           }
         } catch (e) { /* rider info is optional */ }
       }
       const statusText = outForDelivery ? '🚴 Out for Delivery' : (PB_LABELS[b.status] || b.status);
       return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:12px; margin-bottom:10px;">' +
-        '<div style="font-size:11px; font-weight:700; color:#7c3aed;">' + (b.booking_type === 'sample' ? '🧪 Sample Request' : '📦 Bulk Pre-Order') + '</div>' +
-        '<div style="font-size:12.5px; font-weight:700; margin-top:2px;">' + (p ? p.name : 'Product') + ' × ' + b.quantity + '</div>' +
-        '<div style="font-size:11px; color:#6b7280; margin-top:6px;">Status: <b>' + statusText + '</b>' + (b.delivered_at && b.status === 'delivered' ? ' · ' + fmtDate(b.delivered_at) : '') + '</div>' +
-        (b.preferred_delivery_date ? '<div style="font-size:11px; color:#6b7280; margin-top:2px;">📅 Needed by: <b>' + fmtDate(b.preferred_delivery_date + 'T00:00:00') + '</b></div>' : '') +
-        (full > 0 ? '<div style="margin-top:8px; background:#faf9fd; border-radius:8px; padding:8px 10px; font-size:11px; color:#4b5563; line-height:1.8;">' +
+        '<div style="font-size:12.5px; font-weight:700; color:#7c3aed;">' + (b.booking_type === 'sample' ? '🧪 Sample Request' : '📦 Bulk Pre-Order') + '</div>' +
+        '<div style="font-size:14px; font-weight:700; margin-top:2px;">' + (p ? p.name : 'Product') + ' × ' + b.quantity + '</div>' +
+        '<div style="font-size:12.5px; color:#374151; margin-top:6px;">Status: <b>' + statusText + '</b>' + (b.delivered_at && b.status === 'delivered' ? ' · ' + fmtDate(b.delivered_at) : '') + '</div>' +
+        (b.preferred_delivery_date ? '<div style="font-size:12.5px; color:#374151; margin-top:2px;">📅 Needed by: <b>' + fmtDate(b.preferred_delivery_date + 'T00:00:00') + '</b></div>' : '') +
+        (full > 0 ? '<div style="margin-top:8px; background:#faf9fd; border-radius:8px; padding:8px 10px; font-size:12.5px; color:#1f2937; line-height:1.8;">' +
           '<div style="display:flex; justify-content:space-between;"><span>Order total</span><b>₹' + full + '</b></div>' +
           '<div style="display:flex; justify-content:space-between;"><span>Advance (online)</span><span>₹' + adv + ' ' + (b.advance_paid ? '✅ Paid' : '⏳ Pending') + '</span></div>' +
           (b.status === 'cancelled' ? '' : (balancePaid > 0
@@ -3382,7 +3382,18 @@ const shipments = myOrdersCache.shipments;
 const statusLabels = { pending: '🕐 Order Confirmed', confirmed: '🕐 Order Confirmed', preparing: '📦 Preparing', shipped: '🚚 Shipped', out_for_delivery: '🚴 Out for Delivery', delivered: '✅ Delivered', cancelled: '✕ Cancelled', returned: '↩️ Returned' };
 const cardsHtml = await Promise.all(orders.map(async function(o) {
 const shipment = shipments.find(function(s) { return s.order_id === o.id; });
-const trackHtml = shipment && shipment.tracking_url ? '<a href="' + shipment.tracking_url + '" target="_blank" style="font-size:11px; color:#7c3aed; font-weight:700;">Track Shipment →</a>' : '';
+let trackHtml = '';
+if (shipment && o.delivery_type !== 'instant' && o.status !== 'cancelled') {
+const awbNo = shipment.awb_number;
+const tUrl = awbNo ? 'https://shiprocket.co/tracking/' + encodeURIComponent(awbNo) : null;
+trackHtml = '<div style="margin-top:8px; background:#f5f3ff; border:1px solid #e4dcfb; border-radius:10px; padding:10px 12px;">' +
+'<div style="font-size:12.5px; font-weight:700; color:#5b21b6;">🚚 Courier shipment</div>' +
+(awbNo
+  ? '<div style="font-size:12.5px; color:#1f2937; margin-top:4px; line-height:1.7;">' + (shipment.courier_name ? 'Courier: <b>' + shipment.courier_name + '</b><br>' : '') + 'Tracking no. (AWB): <b style="letter-spacing:0.5px;">' + awbNo + '</b></div>' +
+    (o.status !== 'delivered' ? '<a href="' + tUrl + '" target="_blank" rel="noopener" style="display:block; text-align:center; margin-top:8px; background:#7c3aed; color:#fff; text-decoration:none; padding:9px; border-radius:8px; font-size:13px; font-weight:700;">📍 Track Shipment</a>' : '')
+  : '<div style="font-size:12.5px; color:#374151; margin-top:4px;">Packed and handed to courier booking. Tracking number will appear here soon.</div>') +
+'</div>';
+}
 const needsRider = o.delivery_type === 'instant' && (o.status === 'shipped' || o.status === 'delivered');
 const [riderResult, historyResult] = await Promise.all([
 needsRider ? fetch(SUPABASE_URL + '/rest/v1/rpc/get_order_rider_info', {
@@ -3395,28 +3406,28 @@ fetch(SUPABASE_URL + '/rest/v1/order_status_history?order_id=eq.' + o.id + '&sel
 let riderHtml = '';
 if (riderResult[0] && riderResult[0].rider_name) {
 const r = riderResult[0];
-riderHtml = '<div style="margin-top:6px; background:#F1F8ED; padding:8px 10px; border-radius:8px; font-size:11px;">🚴 <b>' + r.rider_name + '</b>' + (r.bike_number ? ' · ' + r.bike_number : '') + (r.rider_phone ? ' · <a href="tel:' + r.rider_phone + '" style="color:#7c3aed; font-weight:700;">📞 Call</a>' : '') + '</div>';
+riderHtml = '<div style="margin-top:6px; background:#F1F8ED; padding:8px 10px; border-radius:8px; font-size:12.5px;">🚴 <b>' + r.rider_name + '</b>' + (r.bike_number ? ' · ' + r.bike_number : '') + (r.rider_phone ? ' · <a href="tel:' + r.rider_phone + '" style="color:#7c3aed; font-weight:700;">📞 Call</a>' : '') + '</div>';
 if (o.status === 'shipped') {
-riderHtml += '<button data-tracklive="' + o.id + '" style="margin-top:6px; width:100%; background:#7c3aed; color:#fff; border:none; padding:8px; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer;">🗺️ Track Live Location</button>';
+riderHtml += '<button data-tracklive="' + o.id + '" style="margin-top:6px; width:100%; background:#7c3aed; color:#fff; border:none; padding:8px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">🗺️ Track Live Location</button>';
 }
 }
 let timelineHtml = '';
 const history = historyResult;
 if (history.length > 0) {
-timelineHtml = '<div style="margin-top:10px; padding:8px 10px; background:#faf9fd; border-radius:8px;"><div style="font-size:10.5px; font-weight:700; color:#6b7280; margin-bottom:4px;">Order updates</div>' + history.map(function(h, i) {
+timelineHtml = '<div style="margin-top:10px; padding:8px 10px; background:#faf9fd; border-radius:8px;"><div style="font-size:12px; font-weight:700; color:#374151; margin-bottom:4px;">Order updates</div>' + history.map(function(h, i) {
 const last = i === history.length - 1;
-return '<div style="font-size:11px; color:' + (last ? '#1f2937' : '#6b7280') + '; display:flex; gap:8px; align-items:baseline; padding:2px 0;"><span style="color:' + (last ? '#7c3aed' : '#c4b5fd') + ';">●</span><span>' + (last ? '<b>' : '') + (statusLabels[h.status] || h.status) + (last ? '</b>' : '') + ' <span style="color:#9ca3af;">· ' + new Date(h.changed_at).toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) + '</span></span></div>';
+return '<div style="font-size:12.5px; color:' + (last ? '#1f2937' : '#374151') + '; display:flex; gap:8px; align-items:baseline; padding:2px 0;"><span style="color:' + (last ? '#7c3aed' : '#a78bfa') + ';">●</span><span>' + (last ? '<b>' : '') + (statusLabels[h.status] || h.status) + (last ? '</b>' : '') + ' <span style="color:#4b5563;">· ' + new Date(h.changed_at).toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) + '</span></span></div>';
 }).join('') + '</div>';
 }
 const myItems = allMyOrderItems.filter(function(oi) { return oi.order_id === o.id; });
 const itemsHtml = myItems.length > 0 ? '<div style="margin-top:8px;">' + myItems.map(function(oi) {
 const prod = productPool.find(function(p) { return p.id === oi.product_id; });
 const itemName = (prod ? prod.name : 'Product') + (oi.variant_details ? ' (' + oi.variant_details + ')' : '');
-return '<div style="display:flex; justify-content:space-between; gap:10px; font-size:12.5px; font-weight:700; color:#1f2937; padding:2px 0;"><span>' + itemName + ' × ' + oi.quantity + '</span><span style="white-space:nowrap;">₹' + (oi.price * oi.quantity) + '</span></div>';
+return '<div style="display:flex; justify-content:space-between; gap:10px; font-size:14px; font-weight:700; color:#1f2937; padding:2px 0;"><span>' + itemName + ' × ' + oi.quantity + '</span><span style="white-space:nowrap;">₹' + (oi.price * oi.quantity) + '</span></div>';
 }).join('') + '</div>' : '';
 const isPaidOnline = o.payment_status === 'paid';
 const isCod = !isPaidOnline && String(o.payment_method || 'cod').toLowerCase() === 'cod';
-const moneyHtml = '<div style="margin-top:8px; background:#faf9fd; border-radius:8px; padding:8px 10px; font-size:11.5px; color:#4b5563; line-height:1.8;">' +
+const moneyHtml = '<div style="margin-top:8px; background:#faf9fd; border-radius:8px; padding:8px 10px; font-size:13px; color:#1f2937; line-height:1.8;">' +
 '<div style="display:flex; justify-content:space-between;"><span>Order total</span><b style="color:#1f2937;">₹' + o.total_amount + '</b></div>' +
 '<div style="display:flex; justify-content:space-between;"><span>Payment</span><span>' + (isPaidOnline ? '💳 Online · <b style="color:#15803d;">✅ Paid</b>' : (isCod ? '💵 Cash on Delivery' : (o.payment_method || 'Pending'))) + '</span></div>' +
 (o.status === 'cancelled' ? '' : (isPaidOnline || o.status === 'delivered'
@@ -3429,22 +3440,23 @@ const existingReturn = myReturns.find(function(r) { return r.order_id === o.id; 
 const returnStatusLabels = { pending: '⏳ Return Requested', approved: '✅ Return Approved', rejected: '✕ Return Rejected' };
 let returnHtml = '';
 if (existingReturn) {
-returnHtml = '<div style="margin-top:8px; background:#fef3c7; padding:8px 10px; border-radius:8px; font-size:11px; color:#92400e;">' + (returnStatusLabels[existingReturn.approval_status] || existingReturn.approval_status) + '</div>';
+returnHtml = '<div style="margin-top:8px; background:#fef3c7; padding:8px 10px; border-radius:8px; font-size:12.5px; color:#92400e;">' + (returnStatusLabels[existingReturn.approval_status] || existingReturn.approval_status) + '</div>';
 } else if (o.status === 'delivered' && o.return_deadline && new Date(o.return_deadline) > new Date()) {
-returnHtml = '<button data-requestreturn="' + o.id + '" style="margin-top:8px; background:#fee2e2; color:#dc2626; border:none; padding:8px 12px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">↩ Request Return</button>';
+returnHtml = '<button data-requestreturn="' + o.id + '" style="margin-top:8px; background:#fee2e2; color:#dc2626; border:none; padding:8px 12px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer;">↩ Request Return</button>';
 }
 return '<div style="border:1px solid #ece8f6; border-radius:12px; padding:12px; margin-bottom:10px; text-align:left; background:#fff;">' +
-'<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><span style="font-size:11px; font-weight:700; color:#7c3aed;">' + (o.delivery_type === 'instant' ? '⚡ Instant Delivery' : '📦 Pan-India Delivery') + '</span><span style="font-size:10.5px; color:#6b7280;">' + new Date(o.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) + '</span></div>' +
-'<div style="font-size:10.5px; color:#6b7280; margin-top:2px;">Order #' + (o.order_number || o.id.slice(0,8)) + (o.suborder_count > 1 ? ' (' + o.suborder_count + ' shops)' : '') + '</div>' +
+'<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><span style="font-size:12.5px; font-weight:700; color:#7c3aed;">' + (o.delivery_type === 'instant' ? '⚡ Instant Delivery' : '📦 Pan-India Delivery') + '</span><span style="font-size:12px; color:#374151;">' + new Date(o.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) + '</span></div>' +
+'<div style="font-size:12px; color:#374151; margin-top:2px;">Order #' + (o.order_number || o.id.slice(0,8)) + (o.suborder_count > 1 ? ' (' + o.suborder_count + ' shops)' : '') + '</div>' +
 itemsHtml +
-'<div style="margin-top:6px;"><span style="display:inline-block; background:' + pc[0] + '; color:' + pc[1] + '; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px;">' + (statusLabels[o.status] || o.status) + '</span></div>' +
+'<div style="margin-top:6px;"><span style="display:inline-block; background:' + pc[0] + '; color:' + pc[1] + '; font-size:12.5px; font-weight:700; padding:3px 10px; border-radius:20px;">' + (statusLabels[o.status] || o.status) + '</span></div>' +
 moneyHtml +
+trackHtml +
 (o.status === 'shipped' && o.delivery_otp ? '<div style="margin-top:8px; background:#f5f3ff; border:1px dashed #7c3aed; border-radius:8px; padding:8px 10px; font-size:12px; color:#5b21b6;">🔐 Give this code to the delivery partner: <b style="font-size:16px; letter-spacing:2px;">' + o.delivery_otp + '</b></div>' : '') +
 riderHtml +
 timelineHtml +
 returnHtml +
-((o.status !== 'cancelled' && (o.payment_status === 'paid' || o.status === 'delivered')) ? '<button data-downloadinvoice="' + o.id + '" style="margin-top:8px; width:100%; background:#f3f1f8; color:#4b5563; border:none; padding:8px; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer;">🧾 Download Invoice</button>' : '') +
-(trackHtml ? '<div style="margin-top:6px;">' + trackHtml + '</div>' : '') +
+((o.status !== 'cancelled' && (o.payment_status === 'paid' || o.status === 'delivered')) ? '<button data-downloadinvoice="' + o.id + '" style="margin-top:8px; width:100%; background:#f3f1f8; color:#4b5563; border:none; padding:8px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">🧾 Download Invoice</button>' : '') +
+
 '</div>';
 }));
 list.innerHTML = cardsHtml.join('');
