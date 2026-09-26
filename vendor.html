@@ -566,6 +566,7 @@ window.addEventListener('load', function() {
           <div id="advancePreview" style="font-size:10.5px; color:#6b7280; margin:6px 0;"></div>
           <div class="form-group"><label>Lead Time (days to prepare)</label><input class="form-input" id="pPreorderLeadTime" type="number" placeholder="e.g. 5"></div>
           <div class="form-group"><label>Booking Deadline (optional — for occasion items like festival sweets)</label><input class="form-input" id="pBookingDeadline" type="date"></div>
+          <div class="form-group"><label>Delivery Starts From (optional — e.g. Diwali batch delivers from 1 Nov)</label><input class="form-input" id="pDeliveryStart" type="date"></div>
           <label style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:#6b7280; margin-top:6px;"><input type="checkbox" id="pSampleAvailable"> Offer a sample before bulk booking</label>
           <div class="form-group" id="pSamplePriceRow" style="display:none; margin-top:6px;"><label>Sample Price (₹, 0 = free)</label><input class="form-input" id="pSamplePrice" type="number" placeholder="0"></div>
         </div>
@@ -1708,6 +1709,7 @@ function renderProducts() {
       document.getElementById('pPreorderUnit').value = p.preorder_unit || 'pieces';
       document.getElementById('pPreorderLeadTime').value = p.preorder_lead_time_days || '';
       document.getElementById('pBookingDeadline').value = p.preorder_booking_deadline || '';
+      document.getElementById('pDeliveryStart').value = p.preorder_delivery_start || '';
       document.getElementById('pSampleAvailable').checked = !!p.sample_available;
       document.getElementById('pSamplePriceRow').style.display = p.sample_available ? 'block' : 'none';
       document.getElementById('pSamplePrice').value = p.sample_price || '';
@@ -2436,6 +2438,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   const preorderUnit = isPreorder ? document.getElementById('pPreorderUnit').value : null;
   const leadTime = isPreorder ? (Number(document.getElementById('pPreorderLeadTime').value) || null) : null;
   const bookingDeadline = isPreorder ? (document.getElementById('pBookingDeadline').value || null) : null;
+  const deliveryStart = isPreorder ? (document.getElementById('pDeliveryStart').value || null) : null;
   const sampleAvailable = isPreorder && document.getElementById('pSampleAvailable').checked;
   const samplePrice = sampleAvailable ? (Number(document.getElementById('pSamplePrice').value) || 0) : 0;
 
@@ -2504,6 +2507,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
         preorder_unit: preorderUnit,
         preorder_lead_time_days: leadTime,
         preorder_booking_deadline: bookingDeadline,
+        preorder_delivery_start: deliveryStart,
         sample_available: sampleAvailable,
         sample_price: samplePrice
       };
@@ -2581,7 +2585,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
       }
     }
 
-    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeightGrams','pLengthCm','pWidthCm','pHeightCm','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt','pPurchasePrice','pLeadTime','pPreorderLeadTime','pBookingDeadline','pRack','pShelf','pBin'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeightGrams','pLengthCm','pWidthCm','pHeightCm','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt','pPurchasePrice','pLeadTime','pPreorderLeadTime','pBookingDeadline','pDeliveryStart','pRack','pShelf','pBin'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('pStatus').value = 'active';
     document.getElementById('pPublishAtGroup').style.display = 'none';
     document.getElementById('pChannelWebsite').checked = true;
