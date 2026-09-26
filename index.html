@@ -3350,9 +3350,13 @@ async function renderMyPrebookings() {
         '</div>' : '') +
         (b.status === 'ready' && b.delivery_otp ? '<div style="margin-top:8px; background:#f5f3ff; border:1px dashed #7c3aed; border-radius:8px; padding:8px 10px; font-size:12px; color:#5b21b6;">🔐 Give this code to the delivery partner: <b style="font-size:16px; letter-spacing:2px;">' + b.delivery_otp + '</b></div>' : '') +
         riderHtml +
+        (totalPaid > 0 && b.status !== 'cancelled' ? '<button data-pbinvoice="' + b.id + '" style="margin-top:8px; width:100%; background:#f3f1f8; color:#1f2937; border:none; padding:9px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">🧾 Download Bill</button>' : '') +
         '</div>';
     }));
     list.innerHTML = cards.join('');
+    list.querySelectorAll('[data-pbinvoice]').forEach(function(btn) {
+      btn.addEventListener('click', function() { generatePrebookingInvoice(btn.getAttribute('data-pbinvoice')); });
+    });
     list.querySelectorAll('[data-tracklive]').forEach(function(btn) {
       btn.addEventListener('click', function() { openTrackLiveModal(btn.getAttribute('data-tracklive')); });
     });
@@ -3481,117 +3485,291 @@ return rows[0] || null;
 } catch (err) { return null; }
 }
 // ===================== CUSTOMER TAX INVOICE DOWNLOAD =====================
+// ===================== PREMIUM INVOICE (orders + pre-bookings) =====================
+function pdfSafeText(t) {
+  return String(t == null ? '' : t)
+    .replace(/₹/g, 'Rs.').replace(/[\u2013\u2014]/g, '-').replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2022/g, '-').replace(/\u2026/g, '...').replace(/\u00D7/g, 'x')
+    .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, '');
+}
+async function loadPdfLib() {
+  if (typeof PDFLib === 'undefined') {
+    await new Promise(function(resolve, reject) {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+      s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+    });
+  }
+  if (!PDFLib.__safePatched) {
+    const dt = PDFLib.PDFPage.prototype.drawText;
+    PDFLib.PDFPage.prototype.drawText = function(text, opts) { return dt.call(this, pdfSafeText(text), opts); };
+    const w = PDFLib.PDFFont.prototype.widthOfTextAtSize;
+    PDFLib.PDFFont.prototype.widthOfTextAtSize = function(text, size) { return w.call(this, pdfSafeText(text), size); };
+    PDFLib.__safePatched = true;
+  }
+  return PDFLib;
+}
+function amountInWordsINR(num) {
+  num = Math.round(Number(num || 0) * 100) / 100;
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  function two(n) { return n < 20 ? ones[n] : tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : ''); }
+  function three(n) { return (Math.floor(n / 100) ? ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' : '') : '') + (n % 100 ? two(n % 100) : ''); }
+  let rupees = Math.floor(num), paise = Math.round((num - rupees) * 100), out = [];
+  const crore = Math.floor(rupees / 10000000); rupees %= 10000000;
+  const lakh = Math.floor(rupees / 100000); rupees %= 100000;
+  const thousand = Math.floor(rupees / 1000); rupees %= 1000;
+  if (crore) out.push(three(crore) + ' Crore');
+  if (lakh) out.push(two(lakh) + ' Lakh');
+  if (thousand) out.push(two(thousand) + ' Thousand');
+  if (rupees) out.push(three(rupees));
+  let words = (out.join(' ') || 'Zero') + ' Rupees';
+  if (paise) words += ' and ' + two(paise) + ' Paise';
+  return words + ' Only';
+}
+function invMoney(n) { return 'Rs. ' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function invUnit(u, qty) {
+  const k = String(u || 'pcs').toLowerCase().trim();
+  const map = { pcs: 'Pcs', pc: 'Pcs', piece: 'Pcs', pieces: 'Pcs', kg: 'Kg', g: 'g', gm: 'g', gram: 'g', ltr: 'Ltr', l: 'Ltr', litre: 'Ltr', ml: 'ml', dozen: 'Dozen', box: 'Box', pack: 'Pack', pair: 'Pair', set: 'Set', meter: 'Mtr', m: 'Mtr', bottle: 'Bottle', jar: 'Jar' };
+  return map[k] || (k.charAt(0).toUpperCase() + k.slice(1));
+}
+function invDate(d) { return d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'; }
+
+// m = { title, number, date, stamp:{text,tone}, meta:[[label,value]], seller:{name,legal,address,gstin,fssai}, buyer:{name,phone,address},
+//       items:[{name,sub,hsn,qty,rate,taxable,gstPct,tax,amount}], totals:{taxable,cgst,sgst,igst,grand}, payment:[[label,value,tone]], notes, fileName }
+async function renderPremiumInvoice(m) {
+  const PL = await loadPdfLib();
+  const { PDFDocument, rgb, StandardFonts } = PL;
+  const doc = await PDFDocument.create();
+  doc.setTitle(m.title + ' ' + m.number); doc.setAuthor('Graspion'); doc.setCreator('graspion.in');
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const W = 595, H = 842, L = 40, R = W - 40, CW = R - L;
+  const C = {
+    ink: rgb(0.11, 0.1, 0.2), sub: rgb(0.33, 0.33, 0.4), line: rgb(0.88, 0.86, 0.94), soft: rgb(0.965, 0.955, 0.995),
+    brand: rgb(0.36, 0.13, 0.71), brand2: rgb(0.49, 0.23, 0.93), white: rgb(1, 1, 1), lav: rgb(0.86, 0.82, 0.99),
+    green: rgb(0.08, 0.5, 0.24), greenBg: rgb(0.86, 0.97, 0.9), amber: rgb(0.66, 0.36, 0.02), amberBg: rgb(1, 0.95, 0.82), red: rgb(0.75, 0.1, 0.1), redBg: rgb(1, 0.9, 0.9)
+  };
+  let page = doc.addPage([W, H]);
+  const T = function(s, x, y, o) { o = o || {}; page.drawText(String(s == null ? '' : s), { x: x, y: y, size: o.size || 9, font: o.bold ? bold : font, color: o.color || C.ink }); };
+  const TW = function(s, size, b) { return (b ? bold : font).widthOfTextAtSize(String(s == null ? '' : s), size); };
+  const TR = function(s, xr, y, o) { o = o || {}; T(s, xr - TW(s, o.size || 9, o.bold), y, o); };
+  const wrap = function(s, maxW, size, b, maxLines) {
+    const words = pdfSafeText(s).split(/\s+/).filter(Boolean); const lines = []; let cur = '';
+    words.forEach(function(w) { const t = cur ? cur + ' ' + w : w; if (TW(t, size, b) <= maxW) cur = t; else { if (cur) lines.push(cur); cur = w; } });
+    if (cur) lines.push(cur);
+    if (maxLines && lines.length > maxLines) { lines.length = maxLines; lines[maxLines - 1] = lines[maxLines - 1].replace(/.{3}$/, '...'); }
+    return lines.length ? lines : [''];
+  };
+  const box = function(x, y, w, h, fill, border) { page.drawRectangle({ x: x, y: y, width: w, height: h, color: fill, borderColor: border, borderWidth: border ? 0.8 : 0 }); };
+
+  // ---- header band ----
+  box(0, H - 6, W, 6, C.brand2);
+  T('GRASPION', L, H - 52, { size: 26, bold: true, color: C.brand });
+  T('graspion.in  |  Shop local. Shop Indian.', L, H - 68, { size: 9, color: C.sub });
+  TR(m.title.toUpperCase(), R, H - 46, { size: 16, bold: true, color: C.ink });
+  TR('No. ' + m.number, R, H - 63, { size: 9.5, color: C.sub });
+  TR('Date: ' + m.date, R, H - 76, { size: 9.5, color: C.sub });
+  page.drawLine({ start: { x: L, y: H - 92 }, end: { x: R, y: H - 92 }, thickness: 1.2, color: C.lav });
+  let y = H - 118;
+
+  // ---- status stamp ----
+  if (m.stamp) {
+    const tone = m.stamp.tone === 'green' ? [C.greenBg, C.green] : m.stamp.tone === 'red' ? [C.redBg, C.red] : [C.amberBg, C.amber];
+    const sw = TW(m.stamp.text, 10, true) + 24;
+    box(R - sw, y - 6, sw, 22, tone[0], tone[1]);
+    T(m.stamp.text, R - sw + 12, y + 1, { size: 10, bold: true, color: tone[1] });
+  }
+  // meta chips
+  let mx = L;
+  (m.meta || []).forEach(function(kv) {
+    T(kv[0].toUpperCase(), mx, y + 8, { size: 6.5, bold: true, color: C.sub });
+    T(kv[1], mx, y - 3, { size: 9, bold: true });
+    mx += Math.max(TW(kv[1], 9, true), TW(kv[0].toUpperCase(), 6.5, true)) + 22;
+  });
+  y -= 28;
+
+  // ---- seller / buyer cards ----
+  const cardH = 92, half = (CW - 12) / 2;
+  [[L, 'SOLD BY', m.seller], [L + half + 12, 'BILLED & SHIPPED TO', m.buyer]].forEach(function(c, idx) {
+    const x = c[0]; box(x, y - cardH, half, cardH, C.soft, C.line); box(x, y - cardH, 3, cardH, C.brand2);
+    let yy = y - 16;
+    T(c[1], x + 12, yy, { size: 7, bold: true, color: C.brand }); yy -= 14;
+    wrap(c[2].name || '-', half - 24, 10.5, true, 1).forEach(function(l) { T(l, x + 12, yy, { size: 10.5, bold: true }); yy -= 12; });
+    const lines = [];
+    if (idx === 0) {
+      if (c[2].legal && c[2].legal !== c[2].name) lines.push(c[2].legal);
+      if (c[2].address) lines.push(c[2].address);
+      if (c[2].gstin) lines.push('GSTIN: ' + c[2].gstin);
+      if (c[2].fssai) lines.push('FSSAI Lic.: ' + c[2].fssai);
+    } else {
+      if (c[2].phone) lines.push('Phone: ' + c[2].phone);
+      if (c[2].address) lines.push(c[2].address);
+    }
+    lines.forEach(function(l) { wrap(l, half - 24, 8.5, false, 2).forEach(function(w) { if (yy > y - cardH + 6) { T(w, x + 12, yy, { size: 8.5, color: C.sub }); yy -= 11; } }); });
+  });
+  y -= cardH + 20;
+
+  // ---- items table ----
+  const cols = [
+    { k: '#', x: L + 8, w: 14 }, { k: 'ITEM', x: L + 24, w: 170 }, { k: 'HSN', x: L + 194, w: 40 },
+    { k: 'QTY', xr: L + 272 }, { k: 'RATE', xr: L + 318 }, { k: 'TAXABLE', xr: L + 367 }, { k: 'GST', xr: L + 400 }, { k: 'TAX', xr: L + 445 }, { k: 'AMOUNT', xr: R - 8 }
+  ];
+  box(L, y - 8, CW, 22, C.soft, C.lav);
+  cols.forEach(function(c) { if (c.xr) TR(c.k, c.xr, y, { size: 7.5, bold: true, color: C.brand }); else T(c.k, c.x, y, { size: 7.5, bold: true, color: C.brand }); });
+  y -= 14;
+  (m.items || []).forEach(function(it, i) {
+    const nameLines = wrap(it.name, 164, 8.5, true, 2);
+    const subLines = it.sub ? wrap(it.sub, 164, 7.5, false, 1) : [];
+    const rowH = 10 + nameLines.length * 11 + subLines.length * 10;
+    if (y - rowH < 200) { page = doc.addPage([W, H]); y = H - 60; }
+    if (i % 2 === 1) box(L, y - rowH, CW, rowH, C.soft);
+    let ry = y - 14;
+    T(String(i + 1), L + 8, ry, { size: 8.5, color: C.sub });
+    nameLines.forEach(function(l, j) { T(l, L + 24, ry - j * 11, { size: 8.5, bold: true }); });
+    subLines.forEach(function(l, j) { T(l, L + 24, ry - nameLines.length * 11 - j * 10, { size: 7.5, color: C.sub }); });
+    T(it.hsn || '-', L + 194, ry, { size: 8.5, color: C.sub });
+    TR(String(it.qty) + ' ' + invUnit(it.unit, it.qty), L + 272, ry, { size: 8.5 });
+    TR(Number(it.rate || 0).toFixed(2), L + 318, ry, { size: 8.5 });
+    TR(Number(it.taxable || 0).toFixed(2), L + 367, ry, { size: 8.5 });
+    TR((it.gstPct || 0) + '%', L + 400, ry, { size: 8.5, color: C.sub });
+    TR(Number(it.tax || 0).toFixed(2), L + 445, ry, { size: 8.5 });
+    TR(Number(it.amount || 0).toFixed(2), R - 8, ry, { size: 8.5, bold: true });
+    y -= rowH;
+    page.drawLine({ start: { x: L, y: y }, end: { x: R, y: y }, thickness: 0.5, color: C.line });
+  });
+  y -= 16;
+
+  // ---- totals (right) + payment (left) ----
+  const tx = L + CW * 0.55, tw = R - tx;
+  const tRows = [['Taxable value', invMoney(m.totals.taxable)]];
+  if (m.totals.igst > 0) tRows.push(['IGST', invMoney(m.totals.igst)]);
+  else { tRows.push(['CGST', invMoney(m.totals.cgst)]); tRows.push(['SGST', invMoney(m.totals.sgst)]); }
+  let ty = y;
+  tRows.forEach(function(r) { T(r[0], tx + 10, ty, { size: 9, color: C.sub }); TR(r[1], R - 10, ty, { size: 9 }); ty -= 15; });
+  ty -= 10;
+  box(tx, ty - 12, tw, 28, C.soft, C.brand2);
+  T('GRAND TOTAL', tx + 10, ty - 2, { size: 10, bold: true, color: C.brand });
+  TR(invMoney(m.totals.grand), R - 10, ty - 2, { size: 12, bold: true, color: C.brand });
+  const totalsBottom = ty - 12;
+
+  let py = y;
+  T('PAYMENT DETAILS', L, py, { size: 7.5, bold: true, color: C.brand }); py -= 14;
+  (m.payment || []).forEach(function(r) {
+    const col = r[2] === 'green' ? C.green : r[2] === 'red' ? C.red : r[2] === 'amber' ? C.amber : C.ink;
+    T(r[0], L, py, { size: 9, color: C.sub }); T(r[1], L + 120, py, { size: 9, bold: true, color: col }); py -= 14;
+  });
+  y = Math.min(totalsBottom, py) - 18;
+
+  // amount in words
+  box(L, y - 26, CW, 30, C.soft, C.line);
+  T('AMOUNT IN WORDS', L + 10, y - 4, { size: 6.5, bold: true, color: C.sub });
+  T(wrap(amountInWordsINR(m.totals.grand), CW - 20, 9, true, 1)[0], L + 10, y - 17, { size: 9, bold: true });
+  y -= 44;
+
+  if (m.notes) {
+    T('NOTES', L, y, { size: 7, bold: true, color: C.brand }); y -= 12;
+    wrap(m.notes, CW, 8.5, false, 3).forEach(function(l) { T(l, L, y, { size: 8.5, color: C.sub }); y -= 11; });
+    y -= 6;
+  }
+
+  // ---- footer (every page) ----
+  doc.getPages().forEach(function(pg, i, arr) {
+    page = pg;
+    page.drawLine({ start: { x: L, y: 78 }, end: { x: R, y: 78 }, thickness: 0.8, color: C.line });
+    T('Thank you for shopping with Graspion!', L, 62, { size: 10, bold: true, color: C.brand });
+    T('Marketplace operated by Grasp Infotech  |  graspion.in', L, 48, { size: 8, color: C.sub });
+    T('Goods sold by the seller named above. This is a computer-generated invoice and does not require a signature.', L, 36, { size: 7, color: C.sub });
+    TR('Page ' + (i + 1) + ' of ' + arr.length, R, 62, { size: 8, color: C.sub });
+  });
+
+  const bytes = await doc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = m.fileName; document.body.appendChild(a); a.click();
+  setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
+
 async function generateCustomerInvoice(orderId) {
   const btn = document.querySelector('[data-downloadinvoice="' + orderId + '"]');
   if (btn) btn.textContent = '⏳ Generating...';
   try {
     const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_invoice_data', {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_order_id: orderId })
     });
-    if (!res.ok) { throw new Error(await res.text()); }
-    const data = await res.json();
-    const order = data.order, vendor = data.vendor, items = data.items || [];
-
-    if (typeof PDFLib === 'undefined') {
-      await new Promise(function(resolve, reject) {
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js';
-        s.onload = resolve;
-        s.onerror = reject;
-        document.head.appendChild(s);
-      });
-    }
-    const { PDFDocument, rgb, StandardFonts } = PDFLib;
-    const pdfDoc = await PDFDocument.create();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-    const page = pdfDoc.addPage([595, 842]);
-    const { width, height } = page.getSize();
-    let y = height - 50;
-    const purple = rgb(0.486, 0.227, 0.929);
-    const gray = rgb(0.4, 0.4, 0.4);
-    const black = rgb(0.12, 0.11, 0.23);
-
-    function text(str, x, yy, opts) {
-      opts = opts || {};
-      page.drawText(String(str == null ? '' : str), { x: x, y: yy, size: opts.size || 10, font: opts.bold ? fontBold : font, color: opts.color || black });
-    }
-
-    text('GRASPION', 50, y, { size: 20, bold: true, color: purple });
-    text('Tax Invoice', width - 150, y, { size: 16, bold: true });
-    y -= 20;
-    text('Invoice #: ' + (order.order_number || order.id.slice(0,8)), width - 200, y, { size: 10 });
-    y -= 14;
-    text('Date: ' + new Date(order.created_at || Date.now()).toLocaleDateString('en-IN'), width - 200, y, { size: 10 });
-    y -= 30;
-    page.drawLine({ start: { x: 50, y: y }, end: { x: width - 50, y: y }, thickness: 1, color: rgb(0.9,0.9,0.9) });
-    y -= 20;
-
-    text('Sold By', 50, y, { bold: true, size: 10, color: gray });
-    text('Billed To', width/2 + 10, y, { bold: true, size: 10, color: gray });
-    y -= 16;
-    text(vendor.name, 50, y, { bold: true });
-    text(order.customer_name || 'Customer', width/2 + 10, y, { bold: true });
-    y -= 14;
-    text('GSTIN: ' + vendor.gstin, 50, y, { size: 9 });
-    text(order.customer_phone || '', width/2 + 10, y, { size: 9 });
-    y -= 14;
-    text(vendor.address || '', 50, y, { size: 9 });
-    text(order.customer_address || '', width/2 + 10, y, { size: 9 });
-    y -= 30;
-
-    page.drawRectangle({ x: 50, y: y - 4, width: width - 100, height: 20, color: rgb(0.96,0.95,0.99) });
-    text('Item', 55, y, { size: 8, bold: true });
-    text('HSN', 250, y, { size: 8, bold: true });
-    text('Qty', 300, y, { size: 8, bold: true });
-    text('Taxable', 335, y, { size: 8, bold: true });
-    text('GST', 390, y, { size: 8, bold: true });
-    text('CGST', 430, y, { size: 8, bold: true });
-    text('SGST', 465, y, { size: 8, bold: true });
-    text('IGST', 500, y, { size: 8, bold: true });
-    text('Total', 535, y, { size: 8, bold: true });
-    y -= 24;
-
-    items.forEach(function(it) {
-      const lineTotal = Number(it.price) * Number(it.quantity);
-      text((it.product_name || 'Item').slice(0, 32), 55, y, { size: 8 });
-      text(it.hsn_code || '-', 250, y, { size: 8 });
-      text(String(it.quantity), 303, y, { size: 8 });
-      text(Number(it.taxable_amount || 0).toFixed(2), 335, y, { size: 8 });
-      text((it.gst_percent || 0) + '%', 393, y, { size: 8 });
-      text(Number(it.cgst_amount || 0).toFixed(2), 428, y, { size: 8 });
-      text(Number(it.sgst_amount || 0).toFixed(2), 463, y, { size: 8 });
-      text(Number(it.igst_amount || 0).toFixed(2), 498, y, { size: 8 });
-      text('Rs ' + lineTotal.toFixed(2), 530, y, { size: 8 });
-      y -= 16;
+    if (!res.ok) throw new Error(await res.text());
+    const d = await res.json();
+    const o = d.order, v = d.vendor, items = d.items || [];
+    let tTax = 0, tC = 0, tS = 0, tI = 0;
+    const rows = items.map(function(it) {
+      const amount = Number(it.price) * Number(it.quantity);
+      const c = Number(it.cgst_amount || 0), s = Number(it.sgst_amount || 0), ig = Number(it.igst_amount || 0);
+      const taxable = Number(it.taxable_amount || (amount - c - s - ig));
+      tTax += taxable; tC += c; tS += s; tI += ig;
+      return { name: it.product_name || 'Item', sub: it.variant || '', hsn: it.hsn_code, qty: it.quantity, unit: it.unit, rate: it.price, taxable: taxable, gstPct: it.gst_percent || 0, tax: c + s + ig, amount: amount };
     });
-    y -= 10;
-    page.drawLine({ start: { x: 50, y: y }, end: { x: width - 50, y: y }, thickness: 1, color: rgb(0.9,0.9,0.9) });
-    y -= 20;
-
-    text('Payment Method: ' + (order.payment_method || '-').toUpperCase(), 50, y, { size: 9 });
-    text('Payment Status: ' + (order.payment_status || '-'), 50, y - 14, { size: 9 });
-    text('Grand Total: Rs ' + Number(order.total_amount).toLocaleString('en-IN'), width - 220, y, { size: 13, bold: true, color: purple });
-    if (order.return_status === 'returned' || order.return_status === 'approved') {
-      y -= 30;
-      page.drawRectangle({ x: 50, y: y - 4, width: 200, height: 20, color: rgb(1, 0.9, 0.9) });
-      text('⚠ ' + (order.return_status === 'returned' ? 'ITEM RETURNED' : 'RETURN APPROVED'), 56, y, { size: 10, bold: true, color: rgb(0.7,0,0) });
-    }
-
-    text('This is a system-generated invoice.', 50, 40, { size: 8, color: gray });
-
-    const pdfBytes = await pdfDoc.save();
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'Graspion-Invoice-' + (order.order_number || order.id.slice(0,8)) + '.pdf';
-    link.click();
+    const paid = o.payment_status === 'paid';
+    const isCod = String(o.payment_method || '').toLowerCase() === 'cod';
+    const delivered = o.status === 'delivered';
+    const returned = o.return_status === 'returned' || o.return_status === 'approved';
+    const stamp = returned ? { text: 'RETURNED', tone: 'red' } : (paid || (isCod && delivered)) ? { text: 'PAID', tone: 'green' } : { text: 'PAY ON DELIVERY', tone: 'amber' };
+    const payment = [['Payment mode', isCod ? 'Cash on Delivery' : (paid ? 'Online (prepaid)' : (o.payment_method || '-'))]];
+    payment.push(['Status', (paid || (isCod && delivered)) ? 'Paid' : 'Due on delivery', (paid || (isCod && delivered)) ? 'green' : 'amber']);
+    if (delivered && o.delivered_at) payment.push(['Delivered on', invDate(o.delivered_at)]);
+    await renderPremiumInvoice({
+      title: 'Tax Invoice', number: o.order_number || o.id.slice(0, 8).toUpperCase(), date: invDate(o.created_at),
+      stamp: stamp,
+      meta: [['Order No.', o.order_number || o.id.slice(0, 8)], ['Order Date', invDate(o.created_at)], ['Delivery', o.delivery_type === 'instant' ? 'Instant' : 'Standard']],
+      seller: { name: v.name, legal: v.legal_name, address: v.address, gstin: v.gstin, fssai: v.fssai },
+      buyer: { name: o.customer_name || 'Customer', phone: o.customer_phone, address: [o.customer_address, o.pincode].filter(Boolean).join(' - ') },
+      items: rows, totals: { taxable: tTax, cgst: tC, sgst: tS, igst: tI, grand: Number(o.total_amount || 0) },
+      payment: payment, notes: returned ? 'This order was returned. Refund, if applicable, is processed as per the return policy.' : '',
+      fileName: 'Graspion-Invoice-' + (o.order_number || o.id.slice(0, 8)) + '.pdf'
+    });
     if (btn) btn.textContent = '🧾 Download Invoice';
   } catch (err) {
     alert('Could not generate invoice: ' + err.message);
     if (btn) btn.textContent = '🧾 Download Invoice';
+  }
+}
+
+async function generatePrebookingInvoice(bookingId) {
+  const btn = document.querySelector('[data-pbinvoice="' + bookingId + '"]');
+  if (btn) btn.textContent = '⏳ Generating...';
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_prebooking_invoice_data', {
+      method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_booking_id: bookingId })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const d = await res.json();
+    const b = d.booking, v = d.vendor, it = (d.items || [])[0] || {};
+    const num = 'PB-' + String(b.id).slice(0, 8).toUpperCase();
+    const fullyPaid = Number(b.balance_due) <= 0;
+    const payment = [['Advance (online)', invMoney(b.advance_received) + (b.advance_paid ? '  Paid' : '  Pending'), b.advance_paid ? 'green' : 'amber']];
+    if (Number(b.balance_received) > 0) payment.push(['Balance (cash)', invMoney(b.balance_received) + '  Paid', 'green']);
+    payment.push(['Total received', invMoney(b.total_received), 'green']);
+    if (!fullyPaid) payment.push(['Balance due', invMoney(b.balance_due) + '  on delivery', 'red']);
+    if (b.delivered_at && b.status === 'delivered') payment.push(['Delivered on', invDate(b.delivered_at)]);
+    const meta = [['Booking No.', num], ['Booked On', invDate(b.created_at)]];
+    if (b.preferred_delivery_date) meta.push(['Delivery Date', invDate(b.preferred_delivery_date + 'T00:00:00')]);
+    const tax = Number(it.cgst_amount || 0) + Number(it.sgst_amount || 0) + Number(it.igst_amount || 0);
+    await renderPremiumInvoice({
+      title: b.status === 'delivered' ? 'Tax Invoice' : 'Booking Receipt', number: num, date: invDate(b.status === 'delivered' && b.delivered_at ? b.delivered_at : b.created_at),
+      stamp: fullyPaid ? { text: 'PAID', tone: 'green' } : (b.status === 'cancelled' ? { text: 'CANCELLED', tone: 'red' } : { text: 'ADVANCE PAID', tone: 'amber' }),
+      meta: meta,
+      seller: { name: v.name, legal: v.legal_name, address: v.address, gstin: v.gstin, fssai: v.fssai },
+      buyer: { name: b.customer_name || 'Customer', phone: b.customer_phone, address: [b.customer_address, b.pincode].filter(Boolean).join(' - ') },
+      items: [{ name: it.product_name || 'Item', sub: (b.booking_type === 'sample' ? 'Sample request' : 'Pre-order') + ' - rate per ' + invUnit(it.unit, 1), hsn: it.hsn_code, qty: it.quantity, unit: it.unit, rate: it.price, taxable: it.taxable_amount, gstPct: it.gst_percent, tax: tax, amount: d.total_amount }],
+      totals: { taxable: Number(it.taxable_amount || 0), cgst: Number(it.cgst_amount || 0), sgst: Number(it.sgst_amount || 0), igst: Number(it.igst_amount || 0), grand: Number(d.total_amount || 0) },
+      payment: payment, notes: b.notes ? 'Your instructions: ' + b.notes : '',
+      fileName: 'Graspion-' + (b.status === 'delivered' ? 'Invoice-' : 'Booking-') + num + '.pdf'
+    });
+    if (btn) btn.textContent = '🧾 Download Bill';
+  } catch (err) {
+    alert('Could not generate bill: ' + err.message);
+    if (btn) btn.textContent = '🧾 Download Bill';
   }
 }
 

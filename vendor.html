@@ -509,6 +509,7 @@ window.addEventListener('load', function() {
       </div>
       <div class="form-row">
         <div class="form-group"><label>Stock Quantity</label><input class="form-input" id="pStock" type="number" placeholder="20"></div>
+        <div class="form-group"><label>Sold Per (unit shown on bill)</label><select class="form-input" id="pSaleUnit"><option value="pcs">Pieces (Pcs)</option><option value="kg">Kilogram (Kg)</option><option value="g">Gram (g)</option><option value="ltr">Litre (Ltr)</option><option value="ml">Millilitre (ml)</option><option value="pack">Pack</option><option value="box">Box</option><option value="dozen">Dozen</option><option value="pair">Pair</option><option value="set">Set</option><option value="meter">Metre</option><option value="bottle">Bottle</option><option value="jar">Jar</option></select></div>
         <div class="form-group" id="pincodeGroup"><label>Pincode(s) (delivery area)</label>
           <select class="form-input" id="pSavedAreaPicker" style="margin-bottom:6px;"><option value="">— Quick-fill from a saved area —</option></select>
           <input class="form-input" id="pPincode" placeholder="e.g. 226001, 226002, 226010">
@@ -1718,6 +1719,7 @@ function renderProducts() {
       document.getElementById('pPrice').value = p.price || '';
       document.getElementById('pOldPrice').value = p.old_price || '';
       document.getElementById('pStock').value = p.stock || 0;
+      document.getElementById('pSaleUnit').value = p.sale_unit || 'pcs';
       if (p.pincode === 'ALL') { setMode('pan_india'); } else { setMode('local'); document.getElementById('pPincode').value = p.pincode || ''; }
       document.getElementById('pHsn').value = p.hsn_code || '';
       document.getElementById('pGst').value = p.gst_percent != null ? p.gst_percent : '';
@@ -2488,7 +2490,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   try {
     const productPayload = {
         vendor_id: currentVendor.id, name: name, icon: icon, price: Number(price),
-        old_price: oldPrice ? Number(oldPrice) : null, stock: Number(stock), pincode: pincode,
+        old_price: oldPrice ? Number(oldPrice) : null, stock: Number(stock), sale_unit: document.getElementById('pSaleUnit').value || 'pcs', pincode: pincode,
         hsn_code: hsn, gst_percent: Number(gst),
         seo_title: seo.title, seo_description: seo.description,
         image_data: uploadedPhotoBase64 || null, features: features, is_returnable: selectedReturnable,
@@ -2620,6 +2622,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
 
     ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeightGrams','pLengthCm','pWidthCm','pHeightCm','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt','pPurchasePrice','pLeadTime','pPreorderLeadTime','pBookingDeadline','pDeliveryStart','pRack','pShelf','pBin'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('pStatus').value = 'active';
+    document.getElementById('pSaleUnit').value = 'pcs';
     document.getElementById('pPublishAtGroup').style.display = 'none';
     document.getElementById('pChannelWebsite').checked = true;
     document.getElementById('pChannelB2b').checked = false;
