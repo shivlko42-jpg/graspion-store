@@ -2361,7 +2361,7 @@ renderPayments();
 function renderPayments() {
 const list = document.getElementById('paymentList');
 const empty = document.getElementById('paymentEmpty');
-if (vendorSettlements.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; empty.textContent = 'No settlements yet — a settlement appears here automatically once your order\'s 7-day return window closes.'; return; }
+if (vendorSettlements.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; empty.textContent = 'No settlements yet — a settlement appears here automatically once your order\'s 7-day return window closes (pre-bookings: right after delivery).'; return; }
 empty.style.display = 'none';
 const totalPending = vendorSettlements.filter(function(s){ return s.status === 'pending'; }).reduce(function(sum,s){ return sum + Number(s.payable_amount || 0); }, 0);
 const totalPaid = vendorSettlements.filter(function(s){ return s.status === 'paid'; }).reduce(function(sum,s){ return sum + Number(s.payable_amount || 0); }, 0);
@@ -2373,7 +2373,7 @@ const badgeBg = isPaid ? '#dcfce7' : (isCancelled ? '#fee2e2' : '#fef3c7');
 const badgeColor = isPaid ? '#15803d' : (isCancelled ? '#dc2626' : '#b45309');
 const badgeText = isPaid ? '✓ Paid' : (isCancelled ? '✕ Cancelled (returned)' : '⏳ Pending');
 return '<div class="order-card" style="padding:14px;' + (isCancelled ? ' opacity:0.7;' : '') + '">' +
-'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span style="font-size:11px; color:#9ca3af;">Order #' + s.order_id.slice(0,8) + '</span><span class="pay-badge" style="background:' + badgeBg + '; color:' + badgeColor + ';">' + badgeText + '</span></div>' +
+'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span style="font-size:11px; color:#9ca3af;">' + (s.prebooking_id ? '📦 Pre-Booking #' + s.prebooking_id.slice(0,8) : 'Order #' + (s.order_id || '').slice(0,8)) + '</span><span class="pay-badge" style="background:' + badgeBg + '; color:' + badgeColor + ';">' + badgeText + '</span></div>' +
 '<div style="font-size:11.5px; line-height:1.8;">' +
 '<div style="display:flex; justify-content:space-between;"><span style="color:#6b7280;">Sale Amount</span><b>₹' + Number(s.sale_amount).toLocaleString('en-IN') + '</b></div>' +
 '<div style="display:flex; justify-content:space-between;"><span style="color:#6b7280;">− Commission</span><span style="color:#dc2626;">−₹' + Number(s.commission_amount || 0).toLocaleString('en-IN') + '</span></div>' +
