@@ -3394,7 +3394,7 @@ trackHtml = '<div style="margin-top:8px; background:#f5f3ff; border:1px solid #e
   : '<div style="font-size:12.5px; color:#374151; margin-top:4px;">Packed and handed to courier booking. Tracking number will appear here soon.</div>') +
 '</div>';
 }
-const needsRider = o.delivery_type === 'instant' && (o.status === 'shipped' || o.status === 'delivered');
+const needsRider = (!!o.rider_id || o.delivery_type === 'instant') && (o.status === 'shipped' || o.status === 'out_for_delivery' || o.status === 'delivered');
 const [riderResult, historyResult] = await Promise.all([
 needsRider ? fetch(SUPABASE_URL + '/rest/v1/rpc/get_order_rider_info', {
 method: 'POST',
@@ -3445,13 +3445,13 @@ returnHtml = '<div style="margin-top:8px; background:#fef3c7; padding:8px 10px; 
 returnHtml = '<button data-requestreturn="' + o.id + '" style="margin-top:8px; background:#fee2e2; color:#dc2626; border:none; padding:8px 12px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer;">↩ Request Return</button>';
 }
 return '<div style="border:1px solid #ece8f6; border-radius:12px; padding:12px; margin-bottom:10px; text-align:left; background:#fff;">' +
-'<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><span style="font-size:12.5px; font-weight:700; color:#7c3aed;">' + (o.delivery_type === 'instant' ? '⚡ Instant Delivery' : '📦 Pan-India Delivery') + '</span><span style="font-size:12px; color:#374151;">' + new Date(o.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) + '</span></div>' +
+'<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><span style="font-size:12.5px; font-weight:700; color:#7c3aed;">' + (o.delivery_type === 'instant' ? '⚡ Instant Delivery' : (o.rider_id ? '🚴 Local Delivery' : '📦 Pan-India Delivery')) + '</span><span style="font-size:12px; color:#374151;">' + new Date(o.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) + '</span></div>' +
 '<div style="font-size:12px; color:#374151; margin-top:2px;">Order #' + (o.order_number || o.id.slice(0,8)) + (o.suborder_count > 1 ? ' (' + o.suborder_count + ' shops)' : '') + '</div>' +
 itemsHtml +
 '<div style="margin-top:6px;"><span style="display:inline-block; background:' + pc[0] + '; color:' + pc[1] + '; font-size:12.5px; font-weight:700; padding:3px 10px; border-radius:20px;">' + (statusLabels[o.status] || o.status) + '</span></div>' +
 moneyHtml +
 trackHtml +
-(o.status === 'shipped' && o.delivery_otp ? '<div style="margin-top:8px; background:#f5f3ff; border:1px dashed #7c3aed; border-radius:8px; padding:8px 10px; font-size:12px; color:#5b21b6;">🔐 Give this code to the delivery partner: <b style="font-size:16px; letter-spacing:2px;">' + o.delivery_otp + '</b></div>' : '') +
+(o.status === 'shipped' && o.delivery_otp && (o.rider_id || o.delivery_type === 'instant') ? '<div style="margin-top:8px; background:#f5f3ff; border:1px dashed #7c3aed; border-radius:8px; padding:8px 10px; font-size:12px; color:#5b21b6;">🔐 Give this code to the delivery partner: <b style="font-size:16px; letter-spacing:2px;">' + o.delivery_otp + '</b></div>' : '') +
 riderHtml +
 timelineHtml +
 returnHtml +
