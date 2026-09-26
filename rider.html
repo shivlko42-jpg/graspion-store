@@ -463,7 +463,7 @@ async function loadOrders() {
 
     const prebookingsHtml = allPrebookings.map(function(b) {
       const isAssigned = !!b.rider_id;
-      const balanceDue = Number(b.full_amount) - Number(b.advance_amount);
+      const balanceDue = Math.max(Number(b.full_amount || 0) - (b.advance_paid ? Number(b.advance_amount || 0) : 0), 0);
       const productName = b.products ? b.products.name : 'Item';
       const telHref = b.customer_phone ? 'tel:' + b.customer_phone.replace(/[^0-9+]/g, '') : null;
       const mapsHref = b.customer_address ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(b.customer_address) : null;
@@ -477,6 +477,8 @@ async function loadOrders() {
         '<div class="order-addr">' + (isAssigned ? ((b.customer_name || 'Customer') + ' · ' + (b.customer_phone || '') + '<br>' + (b.customer_address || '')) : '📍 Ready for pickup — full address shown after you accept') + '</div>' +
         contactRow +
         (isAssigned ? '<input type="number" class="cod-input" id="pbbalance-' + b.id + '" placeholder="Enter amount collected (₹' + balanceDue + ')" style="display:block;">' : '') +
+        (isAssigned ? '<input type="text" maxlength="4" inputmode="numeric" class="cod-input" id="pbotp-' + b.id + '" placeholder="Enter 4-digit OTP from customer" style="display:block; margin-top:6px;">' : '') +
+        (isAssigned ? '<label style="display:block; margin-top:6px; font-size:10.5px; color:#6b7280; font-weight:700;">📸 Delivery photo (optional)</label><input type="file" accept="image/*" capture="environment" id="pbproof-' + b.id + '" style="display:block; margin-top:4px; font-size:10.5px;">' : '') +
         '<button class="action-btn" data-pbid="' + b.id + '" data-assigned="' + isAssigned + '" data-balance="' + balanceDue + '">' +
           (isAssigned ? 'Mark Delivered' : 'Accept & Pick Up') +
         '</button>' +
@@ -626,14 +628,43 @@ async function loadOrders() {
           loadOrders();
         } else {
           const collectedInput = document.getElementById('pbbalance-' + id);
-          const collected = collectedInput ? Number(collectedInput.value) : balanceDue;
-          if (collectedInput && !collectedInput.value) { alert('Please enter the balance amount collected.'); return; }
+          const collected = collectedInput && collectedInput.value !== '' ? Number(collectedInput.value) : 0;
+          if (balanceDue > 0 && !(collected > 0)) { alert('Please enter the balance amount collected (₹' + balanceDue + ').'); return; }
+          if (balanceDue > 0 && collected !== balanceDue) {
+            if (!confirm('You entered ₹' + collected + ', but the balance due is ₹' + balanceDue + '. Continue anyway?')) return;
+          }
+          const pbOtpInput = document.getElementById('pbotp-' + id);
+          const pbOtp = pbOtpInput ? pbOtpInput.value.trim() : '';
+          if (!pbOtp || pbOtp.length !== 4) { alert('Ask the customer for their 4-digit delivery OTP and enter it before marking as delivered'); return; }
           btn.textContent = '⏳';
-          await fetch(SUPABASE_URL + '/rest/v1/prebookings?id=eq.' + id, {
-            method: 'PATCH',
+          let pbProofUrl = null;
+          const pbProofInput = document.getElementById('pbproof-' + id);
+          const pbProofFile = pbProofInput && pbProofInput.files[0];
+          if (pbProofFile) {
+            try {
+              const path = currentRider.id + '/pb-' + id + '-' + Date.now() + '.jpg';
+              const up = await fetch(SUPABASE_URL + '/storage/v1/object/delivery-proof/' + path, {
+                method: 'POST',
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': pbProofFile.type || 'image/jpeg' },
+                body: pbProofFile
+              });
+              if (up.ok) { pbProofUrl = SUPABASE_URL + '/storage/v1/object/public/delivery-proof/' + path; }
+            } catch (e) { /* optional */ }
+          }
+          const pbRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/rider_mark_prebooking_delivered', {
+            method: 'POST',
             headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'delivered', balance_collected: collected })
+            body: JSON.stringify({ p_booking_id: id, p_otp: pbOtp, p_balance_collected: collected, p_proof_photo_url: pbProofUrl })
           });
+          if (!pbRes.ok) {
+            const errText = await pbRes.text();
+            alert(errText.indexOf('INVALID_OTP') !== -1 ? 'Wrong OTP — please check with the customer and try again' : 'Could not complete delivery: ' + errText);
+            btn.textContent = 'Mark Delivered';
+            return;
+          }
+          const refreshedPbRes = await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + currentRider.id + '&select=*', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+          const refreshedPbRows = refreshedPbRes.ok ? await refreshedPbRes.json() : [];
+          if (refreshedPbRows[0]) { currentRider = refreshedPbRows[0]; }
           loadOrders();
         }
       });

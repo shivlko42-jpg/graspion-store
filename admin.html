@@ -942,6 +942,22 @@ function maybeShowAdminInstallNudge() {
 }
 let authToken = SUPABASE_KEY;
 let allVendors = [], allProducts = [], allOrders = [], allOrderItems = [], allCarts = [];
+let allPrebookings = [];
+// Money actually received on a pre-booking: advance (if paid online) + balance (once collected on delivery)
+function prebookingReceived(b) {
+if (b.status === 'cancelled') return 0;
+const adv = b.advance_paid ? Number(b.advance_amount || 0) : 0;
+const bal = (b.balance_paid || b.status === 'delivered') ? Number(b.balance_collected || 0) : 0;
+return adv + bal;
+}
+// Same, but only the part received on a given calendar day (advance on booking day, balance on delivery day)
+function prebookingReceivedOn(b, dateStr) {
+if (b.status === 'cancelled') return 0;
+let t = 0;
+if (b.advance_paid && b.created_at && new Date(b.created_at).toDateString() === dateStr) t += Number(b.advance_amount || 0);
+if ((b.balance_paid || b.status === 'delivered') && b.delivered_at && new Date(b.delivered_at).toDateString() === dateStr) t += Number(b.balance_collected || 0);
+return t;
+}
 // Shared, single source of truth for "does this order count?" across every
 // KPI/analytics section — fixes cancelled and never-paid orders inflating
 // order counts and revenue figures throughout the admin panel.
@@ -1315,7 +1331,8 @@ const list = document.getElementById('adminPrebookingList');
 const empty = document.getElementById('adminPrebookingEmpty');
 if (rows.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
 empty.style.display = 'none';
-const statusColors = { pending: '#d97706', confirmed: '#15803d', fulfilled: '#7c3aed', cancelled: '#dc2626' };
+const statusColors = { pending: '#d97706', confirmed: '#15803d', in_production: '#0891b2', ready: '#2563eb', fulfilled: '#7c3aed', delivered: '#16a34a', cancelled: '#dc2626' };
+const riderNameById = {}; (typeof allRiders !== 'undefined' ? allRiders : []).forEach(function(r) { riderNameById[r.id] = r.name; });
 list.innerHTML = rows.map(function(b) {
 const vendorName = b.vendors ? b.vendors.name : 'Vendor';
 const productName = b.products ? b.products.name : 'Product';
@@ -1328,6 +1345,10 @@ return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:12px; 
 '<div style="font-size:11px; color:#4b5563; margin-top:8px; display:flex; gap:14px; flex-wrap:wrap;">' +
 '<span>💰 Full: ₹' + b.full_amount + '</span>' +
 '<span>💳 Advance: ₹' + b.advance_amount + ' ' + (b.advance_paid ? '✅' : '⏳') + '</span>' +
+(b.status === 'delivered' ? '<span>💵 Balance: ₹' + (b.balance_collected || 0) + ' ✅</span>' : (b.status !== 'cancelled' ? '<span>💵 Balance due: ₹' + Math.max(Number(b.full_amount || 0) - (b.advance_paid ? Number(b.advance_amount || 0) : 0), 0) + '</span>' : '')) +
+'<span>✅ Received: <b>₹' + prebookingReceived(b) + '</b></span>' +
+(b.rider_id ? '<span>🚴 ' + (riderNameById[b.rider_id] || 'Rider') + (b.status === 'ready' ? ' (out for delivery)' : '') + '</span>' : '') +
+(b.delivered_at ? '<span>📦 Delivered: ' + new Date(b.delivered_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + '</span>' : '') +
 '<span>📅 Needed by: <b>' + deliveryDateTxt + '</b></span>' +
 '</div>' +
 (b.customization_notes ? '<div style="font-size:10.5px; color:#6b7280; margin-top:6px; background:#faf9fd; padding:6px 8px; border-radius:6px;">📝 ' + b.customization_notes + '</div>' : '') +
@@ -1828,6 +1849,10 @@ allReturns = returnsRes.ok ? await returnsRes.json() : [];
 allRefunds = refundsRes.ok ? await refundsRes.json() : [];
 allCoupons = couponsRes.ok ? await couponsRes.json() : [];
 allHomepageSections = homepageSectionsRes.ok ? await homepageSectionsRes.json() : [];
+try {
+const pbAllRes = await fetch(SUPABASE_URL + '/rest/v1/prebookings?select=*&order=created_at.desc', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+allPrebookings = pbAllRes.ok ? await pbAllRes.json() : [];
+} catch (e) { allPrebookings = []; }
 badge.className = 'db-badge live';
 badge.textContent = '✅ Live';
 renderKPIs();
@@ -1884,8 +1909,11 @@ badge.textContent = '❌ Error: ' + err.message;
 }
 function renderKPIs() {
 const revenueOrders = allOrders.filter(isRevenueOrder);
-const totalRevenue = revenueOrders.reduce(function(s, o) { return s + Number(o.total_amount || 0); }, 0);
+const orderRevenue = revenueOrders.reduce(function(s, o) { return s + Number(o.total_amount || 0); }, 0);
+const prebookingRevenue = allPrebookings.reduce(function(s, b) { return s + prebookingReceived(b); }, 0);
+const totalRevenue = orderRevenue + prebookingRevenue;
 document.getElementById('kpiRevenue').textContent = '₹' + totalRevenue.toLocaleString('en-IN');
+document.getElementById('kpiRevenue').title = 'Orders ₹' + orderRevenue.toLocaleString('en-IN') + ' + Pre-bookings ₹' + prebookingRevenue.toLocaleString('en-IN');
 document.getElementById('kpiOrders').textContent = allOrders.filter(isCountableOrder).length;
 const uniqueCustomers = {};
 allOrders.forEach(function(o) { const key = o.customer_phone || o.customer_name; if (key) uniqueCustomers[key] = true; });
@@ -1898,7 +1926,7 @@ function renderSnapshot() {
 document.getElementById('snapPending').textContent = allOrders.filter(function(o) { return o.status === 'pending'; }).length;
 const todayStr = new Date().toDateString();
 const todayRevenue = allOrders.filter(function(o) { return isRevenueOrder(o) && o.created_at && new Date(o.created_at).toDateString() === todayStr; }).reduce(function(s, o) { return s + Number(o.total_amount || 0); }, 0);
-document.getElementById('snapTodayRevenue').textContent = '₹' + todayRevenue.toLocaleString('en-IN');
+document.getElementById('snapTodayRevenue').textContent = '₹' + (todayRevenue + allPrebookings.reduce(function(s, b) { return s + prebookingReceivedOn(b, todayStr); }, 0)).toLocaleString('en-IN');
 document.getElementById('snapLowStock').textContent = allProducts.filter(function(p) { return Number(p.stock) <= 5; }).length;
 const instantCount = allOrders.filter(function(o) { return o.delivery_type === 'instant'; }).length;
 const standardCount = allOrders.filter(function(o) { return o.delivery_type === 'standard'; }).length;
