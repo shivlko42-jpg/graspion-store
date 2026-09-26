@@ -3403,16 +3403,28 @@ riderHtml += '<button data-tracklive="' + o.id + '" style="margin-top:6px; width
 let timelineHtml = '';
 const history = historyResult;
 if (history.length > 0) {
-timelineHtml = '<div style="margin-top:8px; display:flex; flex-direction:column; gap:4px;">' + history.map(function(h) {
-return '<div style="font-size:10px; color:#9ca3af; display:flex; gap:6px;"><span>•</span><span>' + (statusLabels[h.status] || h.status) + ' — ' + new Date(h.changed_at).toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) + '</span></div>';
+timelineHtml = '<div style="margin-top:10px; padding:8px 10px; background:#faf9fd; border-radius:8px;"><div style="font-size:10.5px; font-weight:700; color:#6b7280; margin-bottom:4px;">Order updates</div>' + history.map(function(h, i) {
+const last = i === history.length - 1;
+return '<div style="font-size:11px; color:' + (last ? '#1f2937' : '#6b7280') + '; display:flex; gap:8px; align-items:baseline; padding:2px 0;"><span style="color:' + (last ? '#7c3aed' : '#c4b5fd') + ';">●</span><span>' + (last ? '<b>' : '') + (statusLabels[h.status] || h.status) + (last ? '</b>' : '') + ' <span style="color:#9ca3af;">· ' + new Date(h.changed_at).toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) + '</span></span></div>';
 }).join('') + '</div>';
 }
 const myItems = allMyOrderItems.filter(function(oi) { return oi.order_id === o.id; });
-const itemsHtml = myItems.length > 0 ? '<div style="margin-top:8px; padding-top:8px; border-top:1px dashed #f0eef7;">' + myItems.map(function(oi) {
+const itemsHtml = myItems.length > 0 ? '<div style="margin-top:8px;">' + myItems.map(function(oi) {
 const prod = productPool.find(function(p) { return p.id === oi.product_id; });
 const itemName = (prod ? prod.name : 'Product') + (oi.variant_details ? ' (' + oi.variant_details + ')' : '');
-return '<div style="display:flex; justify-content:space-between; font-size:11.5px; padding:2px 0;"><span>' + itemName + ' × ' + oi.quantity + '</span><span style="color:#6b7280;">₹' + (oi.price * oi.quantity) + '</span></div>';
+return '<div style="display:flex; justify-content:space-between; gap:10px; font-size:12.5px; font-weight:700; color:#1f2937; padding:2px 0;"><span>' + itemName + ' × ' + oi.quantity + '</span><span style="white-space:nowrap;">₹' + (oi.price * oi.quantity) + '</span></div>';
 }).join('') + '</div>' : '';
+const isPaidOnline = o.payment_status === 'paid';
+const isCod = !isPaidOnline && String(o.payment_method || 'cod').toLowerCase() === 'cod';
+const moneyHtml = '<div style="margin-top:8px; background:#faf9fd; border-radius:8px; padding:8px 10px; font-size:11.5px; color:#4b5563; line-height:1.8;">' +
+'<div style="display:flex; justify-content:space-between;"><span>Order total</span><b style="color:#1f2937;">₹' + o.total_amount + '</b></div>' +
+'<div style="display:flex; justify-content:space-between;"><span>Payment</span><span>' + (isPaidOnline ? '💳 Online · <b style="color:#15803d;">✅ Paid</b>' : (isCod ? '💵 Cash on Delivery' : (o.payment_method || 'Pending'))) + '</span></div>' +
+(o.status === 'cancelled' ? '' : (isPaidOnline || o.status === 'delivered'
+  ? '<div style="display:flex; justify-content:space-between; border-top:1px dashed #e5e7eb; margin-top:4px; padding-top:4px;"><span>Total paid</span><b style="color:#15803d;">₹' + o.total_amount + '</b></div>'
+  : '<div style="display:flex; justify-content:space-between; border-top:1px dashed #e5e7eb; margin-top:4px; padding-top:4px;"><span>Pay on delivery</span><b style="color:#dc2626;">₹' + o.total_amount + '</b></div>')) +
+'</div>';
+const pillColors = { pending:['#fef3c7','#92400e'], confirmed:['#fef3c7','#92400e'], preparing:['#dbeafe','#1e40af'], shipped:['#ede9fe','#5b21b6'], out_for_delivery:['#ede9fe','#5b21b6'], delivered:['#dcfce7','#15803d'], cancelled:['#fee2e2','#dc2626'], returned:['#f3f4f6','#4b5563'] };
+const pc = pillColors[o.status] || ['#f3f4f6','#4b5563'];
 const existingReturn = myReturns.find(function(r) { return r.order_id === o.id; });
 const returnStatusLabels = { pending: '⏳ Return Requested', approved: '✅ Return Approved', rejected: '✕ Return Rejected' };
 let returnHtml = '';
@@ -3421,11 +3433,12 @@ returnHtml = '<div style="margin-top:8px; background:#fef3c7; padding:8px 10px; 
 } else if (o.status === 'delivered' && o.return_deadline && new Date(o.return_deadline) > new Date()) {
 returnHtml = '<button data-requestreturn="' + o.id + '" style="margin-top:8px; background:#fee2e2; color:#dc2626; border:none; padding:8px 12px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">↩ Request Return</button>';
 }
-return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:14px; margin-bottom:10px;">' +
-'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-size:11px; color:#9ca3af;">#' + (o.order_number || o.id.slice(0,8)) + (o.suborder_count > 1 ? ' (' + o.suborder_count + ' shops)' : '') + ' · ' + new Date(o.created_at).toLocaleDateString('en-IN') + '</span><b style="font-size:14px;">₹' + o.total_amount + '</b></div>' +
-'<div style="font-size:12.5px; font-weight:700;">' + (statusLabels[o.status] || o.status) + ' · ' + (o.delivery_type === 'instant' ? '⚡ Instant' : '📦 Pan-India') + '</div>' +
+return '<div style="border:1px solid #ece8f6; border-radius:12px; padding:12px; margin-bottom:10px; text-align:left; background:#fff;">' +
+'<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><span style="font-size:11px; font-weight:700; color:#7c3aed;">' + (o.delivery_type === 'instant' ? '⚡ Instant Delivery' : '📦 Pan-India Delivery') + '</span><span style="font-size:10.5px; color:#6b7280;">' + new Date(o.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) + '</span></div>' +
+'<div style="font-size:10.5px; color:#6b7280; margin-top:2px;">Order #' + (o.order_number || o.id.slice(0,8)) + (o.suborder_count > 1 ? ' (' + o.suborder_count + ' shops)' : '') + '</div>' +
 itemsHtml +
-'<div style="font-size:11px; color:#9ca3af; margin-top:4px;">' + (o.payment_status === 'paid' ? '✓ Paid' : 'Payment: ' + (o.payment_method || 'COD')) + '</div>' +
+'<div style="margin-top:6px;"><span style="display:inline-block; background:' + pc[0] + '; color:' + pc[1] + '; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px;">' + (statusLabels[o.status] || o.status) + '</span></div>' +
+moneyHtml +
 (o.status === 'shipped' && o.delivery_otp ? '<div style="margin-top:8px; background:#f5f3ff; border:1px dashed #7c3aed; border-radius:8px; padding:8px 10px; font-size:12px; color:#5b21b6;">🔐 Give this code to the delivery partner: <b style="font-size:16px; letter-spacing:2px;">' + o.delivery_otp + '</b></div>' : '') +
 riderHtml +
 timelineHtml +
