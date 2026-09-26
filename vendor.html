@@ -705,6 +705,23 @@ window.addEventListener('load', function() {
 </div>
 
 <script>
+// pdf-lib's built-in fonts (Helvetica) only know basic Latin letters; ₹, Hindi text or emojis crash it.
+// Patch drawText/width once so every label/invoice turns ₹ into "Rs." and drops unsupported characters.
+function pdfSafeText(t) {
+  return String(t == null ? '' : t)
+    .replace(/₹/g, 'Rs.').replace(/[\u2013\u2014]/g, '-').replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2022/g, '-').replace(/\u2026/g, '...').replace(/\u00D7/g, 'x')
+    .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, '');
+}
+function pdfSafePatch() {
+  if (typeof PDFLib === 'undefined' || PDFLib.__safePatched) return;
+  const dt = PDFLib.PDFPage.prototype.drawText;
+  PDFLib.PDFPage.prototype.drawText = function(text, opts) { return dt.call(this, pdfSafeText(text), opts); };
+  const w = PDFLib.PDFFont.prototype.widthOfTextAtSize;
+  PDFLib.PDFFont.prototype.widthOfTextAtSize = function(text, size) { return w.call(this, pdfSafeText(text), size); };
+  PDFLib.__safePatched = true;
+}
+
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
 const supaAuth = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2021,7 +2038,7 @@ async function generateShippingLabel(orderId) {
         document.head.appendChild(s);
       });
     }
-    const { PDFDocument, rgb, StandardFonts } = PDFLib;
+    const { PDFDocument, rgb, StandardFonts } = PDFLib; pdfSafePatch();
     // Standard courier label size: 4in x 6in = 288 x 432 points
     const doc = await PDFDocument.create();
     const page = doc.addPage([288, 432]);
@@ -2115,7 +2132,7 @@ async function generateVendorInvoice(orderId) {
         document.head.appendChild(s);
       });
     }
-    const { PDFDocument, rgb, StandardFonts } = PDFLib;
+    const { PDFDocument, rgb, StandardFonts } = PDFLib; pdfSafePatch();
     const pdfDoc = await PDFDocument.create();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
