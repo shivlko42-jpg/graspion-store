@@ -999,6 +999,7 @@ let allWarehouses = [], allCategories = [], allBanners = [], allSettings = [];
 let allHomepageSections = [];
 let jumpVendorFilter = null;
 let allRiders = [];
+let allRiderLinks = [];
 let allPairings = [];
 let allCatalogItems = [], allCatalogPermissions = [];
 let allStaff = [];
@@ -1874,6 +1875,7 @@ allCategories = categoryRes.ok ? await categoryRes.json() : [];
 allBanners = bannerRes.ok ? await bannerRes.json() : [];
 allSettings = settingsRes.ok ? await settingsRes.json() : [];
 allRiders = ridersRes.ok ? await ridersRes.json() : [];
+try { const rl = await fetch(SUPABASE_URL + '/rest/v1/rider_vendor_links?select=rider_id,vendor_id', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } }); allRiderLinks = rl.ok ? await rl.json() : []; } catch (e) { allRiderLinks = []; }
 allPairings = pairingsRes.ok ? await pairingsRes.json() : [];
 allCatalogItems = catalogItemsRes.ok ? await catalogItemsRes.json() : [];
 allCatalogPermissions = catalogPermsRes.ok ? await catalogPermsRes.json() : [];
@@ -2279,12 +2281,14 @@ const hasActiveDelivery = allOrders.some(function(o) { return o.rider_id === r.i
 const statusLabel = hasActiveDelivery ? 'On delivery' : (isActive ? 'Active' : 'Inactive');
 const color = hasActiveDelivery ? '#f59e0b' : (isActive ? '#22c55e' : '#9ca3af');
 const totalDelivered = allOrders.filter(function(o) { return o.rider_id === r.id && o.status === 'delivered'; }).length;
-const assignedVendor = r.assigned_vendor_id ? allVendors.find(function(v) { return v.id === r.assigned_vendor_id; }) : null;
+const linkedIds = allRiderLinks.filter(function(l) { return l.rider_id === r.id; }).map(function(l) { return l.vendor_id; });
+const linkedVendors = allVendors.filter(function(v) { return linkedIds.indexOf(v.id) !== -1; });
 const warehouseOptionsHtml = '<option value="">— No dark store (pan-India only) —</option>' + allWarehouses.map(function(w) { return '<option value="' + w.id + '"' + (r.warehouse_id === w.id ? ' selected' : '') + '>' + w.name + '</option>'; }).join('');
-const vendorOptionsHtml = '<option value="">— Not dedicated to one vendor —</option>' + allVendors.map(function(v) { return '<option value="' + v.id + '"' + (r.assigned_vendor_id === v.id ? ' selected' : '') + '>' + v.name + '</option>'; }).join('');
+const sortedVendors = allVendors.slice().sort(function(a, b) { const ap = (r.pincode && a.pincode === r.pincode) ? 0 : 1; const bp = (r.pincode && b.pincode === r.pincode) ? 0 : 1; return ap - bp || String(a.name).localeCompare(String(b.name)); });
+const vendorChecksHtml = sortedVendors.map(function(v) { return '<label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border:1px solid ' + (linkedIds.indexOf(v.id) !== -1 ? '#a78bfa' : '#e5e7eb') + '; border-radius:8px; font-size:12px; color:#1f2937; cursor:pointer;"><input type="checkbox" data-riderlink="' + r.id + '" value="' + v.id + '"' + (linkedIds.indexOf(v.id) !== -1 ? ' checked' : '') + '> <span><b>' + v.name + '</b>' + (v.pincode ? ' <span style="color:#4b5563;">· ' + v.pincode + (r.pincode && v.pincode === r.pincode ? ' (same area)' : '') + '</span>' : '') + '</span></label>'; }).join('');
 return '<div class="vendor-row-item" style="display:block;">' +
 '<div style="display:flex; align-items:center; gap:10px;"><div class="v-icon2" style="background:' + color + ';">🚴</div>' +
-'<div class="v-info" style="min-width:0; flex:1;"><div class="vn">' + r.name + (r.bike_number ? ' · ' + r.bike_number : '') + '</div><div class="vs">' + statusLabel + ' · ' + totalDelivered + ' delivered' + (assignedVendor ? ' · dedicated to ' + assignedVendor.name : (r.pincode ? ' · pincode ' + r.pincode : '')) + '</div></div>' +
+'<div class="v-info" style="min-width:0; flex:1;"><div class="vn">' + r.name + (r.bike_number ? ' · ' + r.bike_number : '') + '</div><div class="vs">' + statusLabel + ' · ' + totalDelivered + ' delivered' + ((r.pincode ? ' · pincode ' + r.pincode : '') + (linkedVendors.length ? ' · 🏪 ' + linkedVendors.map(function(v) { return v.name; }).join(', ') : '')) + '</div></div>' +
 '</div>' +
 '<div class="item-actions" style="margin-top:10px; padding-left:2px;"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-ridertoggle="' + r.id + '" data-current="' + isActive + '" style="flex:1;">' + (isActive ? '✓' : 'Off') + '</button>' +
 '<button class="mini-btn" data-riderdetailid="' + r.id + '" style="background:#dbeafe; color:#1d4ed8; flex:1;">Details</button>' +
@@ -2309,11 +2313,9 @@ return '<div class="vendor-row-item" style="display:block;">' +
 '<input type="text" id="riderpincode-' + r.id + '" value="' + (r.pincode || '') + '" placeholder="Service pincode" style="padding:6px 8px; border-radius:6px; border:1px solid #e5e7eb; width:120px; font-size:11px;">' +
 '<select id="riderwh-' + r.id + '" style="padding:6px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11px;">' + warehouseOptionsHtml + '</select>' +
 '</div>' +
-'<div style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:4px;">🏪 Dedicate to One Vendor (optional)</div>' +
-'<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">' +
-'<select id="ridervendor-' + r.id + '" style="padding:6px 8px; border-radius:6px; border:1px solid #e5e7eb; font-size:11px; flex:1; min-width:180px;">' + vendorOptionsHtml + '</select>' +
-'<button class="mini-btn" data-saveriderassign="' + r.id + '" style="background:#dcfce7; color:#15803d;">Save</button>' +
-'</div>' +
+'<div style="font-size:12px; font-weight:700; color:#374151; margin-bottom:4px;">🏪 Linked shops — this rider gets orders & pre-bookings from all ticked shops</div>' +
+'<div style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; margin-bottom:8px;">' + (vendorChecksHtml || '<div style="font-size:12px; color:#4b5563;">No vendors yet.</div>') + '</div>' +
+'<button class="mini-btn" data-saveriderassign="' + r.id + '" style="background:#dcfce7; color:#15803d; padding:8px 14px; font-size:12px;">💾 Save</button>' +
 '</div></div>';
 }).join('') + '<div style="font-size:10.5px; color:#9ca3af; margin-top:10px;">' + activeOrders + ' order(s) currently out for delivery (status: Shipped)</div>';
 document.querySelectorAll('[data-riderdetailid]').forEach(function(btn) {
@@ -2370,10 +2372,17 @@ btn.addEventListener('click', async function() {
 const id = btn.getAttribute('data-saveriderassign');
 const pincode = document.getElementById('riderpincode-' + id).value.trim();
 const warehouseId = document.getElementById('riderwh-' + id).value || null;
-const vendorId = document.getElementById('ridervendor-' + id).value || null;
+const vendorIds = Array.prototype.map.call(document.querySelectorAll('[data-riderlink="' + id + '"]:checked'), function(cb) { return cb.value; });
+const hdrs = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' };
 btn.textContent = '...';
-await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ pincode: pincode || null, warehouse_id: warehouseId, assigned_vendor_id: vendorId }) });
-btn.textContent = 'Saved ✓';
+try {
+  const r1 = await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + id, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ pincode: pincode || null, warehouse_id: warehouseId, assigned_vendor_id: vendorIds[0] || null }) });
+  const r2 = await fetch(SUPABASE_URL + '/rest/v1/rider_vendor_links?rider_id=eq.' + id, { method: 'DELETE', headers: hdrs });
+  let r3 = { ok: true };
+  if (vendorIds.length) r3 = await fetch(SUPABASE_URL + '/rest/v1/rider_vendor_links', { method: 'POST', headers: hdrs, body: JSON.stringify(vendorIds.map(function(v) { return { rider_id: id, vendor_id: v }; })) });
+  if (!r1.ok || !r2.ok || !r3.ok) throw new Error('save failed');
+  btn.textContent = 'Saved ✓';
+} catch (e) { alert('Could not save rider links. Please try again.'); btn.textContent = '💾 Save'; return; }
 setTimeout(function(){ loadAllData(); }, 700);
 });
 });

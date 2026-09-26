@@ -385,35 +385,13 @@ async function loadOrders() {
     // Instant (dark store) orders match by warehouse; standard (pan-India) orders fall back to pincode
     let newOrders = [];
     if (currentRider.is_online) {
-    if (currentRider.warehouse_id) {
-      const instantRes = await fetch(SUPABASE_URL + '/rest/v1/orders?warehouse_id=eq.' + currentRider.warehouse_id + '&status=eq.preparing&rider_id=is.null&select=*', {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
-      });
-      newOrders = await instantRes.json();
-    }
-    if (currentRider.pincode) {
-      const standardRes = await fetch(SUPABASE_URL + '/rest/v1/orders?pincode=eq.' + currentRider.pincode + '&status=eq.preparing&rider_id=is.null&delivery_type=eq.standard&select=*', {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
-      });
-      let standardOrders = await standardRes.json();
-      // only show orders from marketplace vendors who've opted in to local rider delivery
-      const localVendorsRes = await fetch(SUPABASE_URL + '/rest/v1/vendors_public?select=id&local_delivery_enabled=eq.true', {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
-      });
-      const localVendorIds = localVendorsRes.ok ? (await localVendorsRes.json()).map(function(v){ return v.id; }) : [];
-      standardOrders = standardOrders.filter(function(o) { return localVendorIds.indexOf(o.vendor_id) !== -1; });
-      // avoid duplicates if an order already matched by warehouse
-      standardOrders.forEach(function(o) { if (!newOrders.find(function(x){ return x.id === o.id; })) newOrders.push(o); });
-    }
-    // if this rider is dedicated to one specific vendor, they see ALL of that
-    // vendor's standard-delivery orders regardless of local_delivery_enabled
-    if (currentRider.assigned_vendor_id) {
-      const dedicatedRes = await fetch(SUPABASE_URL + '/rest/v1/orders?vendor_id=eq.' + currentRider.assigned_vendor_id + '&status=eq.preparing&rider_id=is.null&delivery_type=eq.standard&select=*', {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
-      });
-      const dedicatedOrders = dedicatedRes.ok ? await dedicatedRes.json() : [];
-      dedicatedOrders.forEach(function(o) { if (!newOrders.find(function(x){ return x.id === o.id; })) newOrders.push(o); });
-    }
+    // The database only returns orders this rider may take: from any shop linked to
+    // the rider (Admin → Delivery Partners → Linked shops), the rider's own dark store,
+    // or same-pincode shops that opted in to local delivery.
+    const availRes = await fetch(SUPABASE_URL + '/rest/v1/orders?status=eq.preparing&rider_id=is.null&select=*&order=created_at.asc', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    newOrders = availRes.ok ? await availRes.json() : [];
     }
 
     // Today's delivered orders for earnings
@@ -441,12 +419,10 @@ async function loadOrders() {
     let readyPrebookings = [];
     let myPrebookings = [];
     if (currentRider.is_online) {
-      if (currentRider.assigned_vendor_id) {
-        const pbRes = await fetch(SUPABASE_URL + '/rest/v1/prebookings?vendor_id=eq.' + currentRider.assigned_vendor_id + '&status=eq.ready&rider_id=is.null&select=*,products(name)', {
-          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
-        });
-        readyPrebookings = pbRes.ok ? await pbRes.json() : [];
-      }
+      const pbRes = await fetch(SUPABASE_URL + '/rest/v1/prebookings?status=eq.ready&rider_id=is.null&select=*,products(name)', {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
+      });
+      readyPrebookings = pbRes.ok ? await pbRes.json() : [];
       const myPbRes = await fetch(SUPABASE_URL + '/rest/v1/prebookings?rider_id=eq.' + currentRider.id + '&status=eq.ready&select=*,products(name)', {
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
       });
@@ -519,17 +495,24 @@ async function loadOrders() {
 
         if (!isAssigned) {
           btn.textContent = '⏳';
-          const acceptRes = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id + '&rider_id=is.null', {
-            method: 'PATCH',
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-            body: JSON.stringify({ status: 'shipped', rider_id: currentRider.id })
+          const acceptRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/rider_accept_order', {
+            method: 'POST',
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ p_order_id: id })
           });
           if (!acceptRes.ok) {
             alert('Could not accept this order: ' + await acceptRes.text());
             btn.textContent = 'Accept & Pick Up';
             return;
           }
-          const acceptedRows = await acceptRes.json();
+          const acceptResult = await acceptRes.json();
+          if (!acceptResult.ok && acceptResult.error !== 'taken') {
+            alert('Could not accept this order: ' + acceptResult.error);
+            btn.textContent = 'Accept & Pick Up';
+            loadOrders();
+            return;
+          }
+          const acceptedRows = acceptResult.ok ? [{ id: id }] : [];
           if (!acceptedRows || acceptedRows.length === 0) {
             alert('Sorry — another rider already picked up this order.');
             loadOrders();
@@ -617,14 +600,14 @@ async function loadOrders() {
 
         if (!isAssigned) {
           btn.textContent = '⏳';
-          const acceptRes = await fetch(SUPABASE_URL + '/rest/v1/prebookings?id=eq.' + id + '&rider_id=is.null', {
-            method: 'PATCH',
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-            body: JSON.stringify({ rider_id: currentRider.id })
+          const acceptRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/rider_accept_prebooking', {
+            method: 'POST',
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ p_booking_id: id })
           });
           if (!acceptRes.ok) { alert('Could not accept this pre-booking: ' + await acceptRes.text()); btn.textContent = 'Accept & Pick Up'; return; }
-          const acceptedRows = await acceptRes.json();
-          if (!acceptedRows || acceptedRows.length === 0) { alert('Someone already picked this up.'); }
+          const pbAccept = await acceptRes.json();
+          if (!pbAccept.ok) { alert(pbAccept.error === 'taken' ? 'Someone already picked this up.' : 'Could not accept: ' + pbAccept.error); }
           loadOrders();
         } else {
           const collectedInput = document.getElementById('pbbalance-' + id);
