@@ -120,6 +120,14 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
 .icon-btn.off-btn { background:#fee2e2; color:#dc2626; }
 .icon-btn.del-btn { background:#f3f1f8; color:#6b7280; }
 @media(max-width:900px){ .panel-grid{grid-template-columns:1fr;} }
+/* keep wide panels inside the screen: grid children may shrink, wide tables scroll inside their own box */
+.panel-grid { grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); }
+.panel-grid > * { min-width:0; }
+.panel { min-width:0; max-width:100%; box-sizing:border-box; }
+#vendorList { overflow-wrap:anywhere; }
+#vendorList [style*="display:flex"] { flex-wrap:wrap; }
+#vendorList input, #vendorList select, #vendorList textarea { max-width:100%; box-sizing:border-box; }
+@media(max-width:900px){ .panel-grid{grid-template-columns:minmax(0,1fr);} }
 .mobile-hamburger { display:none; }
 .sidebar-backdrop { display:none; }
 @media(max-width:700px){
