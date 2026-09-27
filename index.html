@@ -966,6 +966,13 @@ let giftWrapSelected = false;
 let localQuotes = {};      // vendorId -> quote from local_delivery_quote()
 let localQuoteKey = '';
 function graspionGeo() { try { return window.graspionGeoCache || JSON.parse(localStorage.getItem('graspion_geo') || 'null'); } catch (e) { return null; } }
+function itemWeightKg(i) {
+  const g = Number(i.variantWeightGrams) || parseFloat(String(i.shipping_weight || i.shippingWeight || '').replace(/[^0-9.]/g, '')) || 500;
+  return (g * (Number(i.qty) || 1)) / 1000;
+}
+function localVendorWeights(items) {
+  const w = {}; items.forEach(function(i) { w[i.vendorId] = (w[i.vendorId] || 0) + itemWeightKg(i); }); return w;
+}
 function localVendorGroups(items) {
   const groups = {};
   items.forEach(function(i) { (groups[i.vendorId] = groups[i.vendorId] || []).push(i); });
@@ -983,14 +990,15 @@ async function refreshLocalQuotes(force) {
   const groups = localVendorGroups(cartItemsList());
   const geo = graspionGeo();
   const useGeo = geo && geo.lat && (!geo.pin || geo.pin === selectedPin) ? geo : null;
-  const key = JSON.stringify([groups, useGeo && [useGeo.lat, useGeo.lng], selectedPin]);
+  const weights = localVendorWeights(cartItemsList());
+  const key = JSON.stringify([groups, weights, useGeo && [useGeo.lat, useGeo.lng], selectedPin]);
   if (!force && key === localQuoteKey) return;
   localQuoteKey = key;
   const fresh = {};
   await Promise.all(Object.keys(groups).map(async function(vid) {
     try {
       const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/local_delivery_quote', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ p_vendor_id: vid, p_lat: useGeo ? useGeo.lat : null, p_lng: useGeo ? useGeo.lng : null, p_pincode: selectedPin || null, p_items_total: groups[vid] }) });
+        body: JSON.stringify({ p_vendor_id: vid, p_lat: useGeo ? useGeo.lat : null, p_lng: useGeo ? useGeo.lng : null, p_pincode: selectedPin || null, p_items_total: groups[vid], p_weight_kg: Math.round((weights[vid] || 0) * 10) / 10 }) });
       if (r.ok) fresh[vid] = await r.json();
     } catch (e) {}
   }));
@@ -1063,7 +1071,7 @@ vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(f
 productPool = visibleProducts.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
 const firstFeature = p.features ? p.features.split('\n')[0].trim() : '';
-return { id: p.id, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: (function() { if (!p.created_at) return null; const daysSince = (Date.now() - new Date(p.created_at).getTime()) / 86400000; return daysSince <= 14 ? '🆕 New' : null; })(), image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, subcategoryId: p.subcategory_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '', imageAlt: p.image_alt_text || p.name, shortDescription: p.short_description || '', longDescription: p.long_description || '', warrantyAvailable: !!p.warranty_available, warrantyPeriod: p.warranty_period || '', warrantyType: p.warranty_type || '', careInstructions: p.care_instructions || '', safetyInfo: p.safety_info || '', installationInfo: p.installation_info || '', whatsIncluded: p.whats_included || '', isSponsored: !!p.is_sponsored, adBid: Number(p.ad_bid) || 0, createdAt: p.created_at || null, isPreorder: !!p.is_preorder, preorderAdvancePercent: p.preorder_advance_percent != null ? Number(p.preorder_advance_percent) : 20, preorderUnit: p.preorder_unit || 'pieces', preorderMinQty: Number(p.preorder_min_qty) || 1, preorderLeadTimeDays: p.preorder_lead_time_days || null, preorderBookingDeadline: p.preorder_booking_deadline, preorderDeliveryStart: p.preorder_delivery_start || null, sampleAvailable: !!p.sample_available, samplePrice: Number(p.sample_price) || 0, gstPercent: Number(p.gst_percent) || 18 };
+return { id: p.id, shipping_weight: p.shipping_weight || null, icon: p.icon, name: p.name, price: p.price, old: p.old_price || p.price, off: offPct + '% OFF', vendorId: p.vendor_id, pincode: p.pincode, badge: (function() { if (!p.created_at) return null; const daysSince = (Date.now() - new Date(p.created_at).getTime()) / 86400000; return daysSince <= 14 ? '🆕 New' : null; })(), image: p.image_data || null, feature: firstFeature, returnable: p.is_returnable !== false, stock: Number(p.stock) || 0, categoryId: p.category_id || null, subcategoryId: p.subcategory_id || null, fulfillmentType: p.fulfillment_type || 'standard', codAllowed: p.cod_allowed !== false, additionalImages: Array.isArray(p.additional_images) ? p.additional_images : [], brand: p.brand || '', fullFeatures: p.features || '', imageAlt: p.image_alt_text || p.name, shortDescription: p.short_description || '', longDescription: p.long_description || '', warrantyAvailable: !!p.warranty_available, warrantyPeriod: p.warranty_period || '', warrantyType: p.warranty_type || '', careInstructions: p.care_instructions || '', safetyInfo: p.safety_info || '', installationInfo: p.installation_info || '', whatsIncluded: p.whats_included || '', isSponsored: !!p.is_sponsored, adBid: Number(p.ad_bid) || 0, createdAt: p.created_at || null, isPreorder: !!p.is_preorder, preorderAdvancePercent: p.preorder_advance_percent != null ? Number(p.preorder_advance_percent) : 20, preorderUnit: p.preorder_unit || 'pieces', preorderMinQty: Number(p.preorder_min_qty) || 1, preorderLeadTimeDays: p.preorder_lead_time_days || null, preorderBookingDeadline: p.preorder_booking_deadline, preorderDeliveryStart: p.preorder_delivery_start || null, sampleAvailable: !!p.sample_available, samplePrice: Number(p.sample_price) || 0, gstPercent: Number(p.gst_percent) || 18 };
 });
 renderQuickCategories();
 renderPinSuggestions();
@@ -1688,7 +1696,7 @@ const variant = variants.find(function(v){ return v.id === parsed.variantId; });
 if (variant) {
 const attrs = productVariantAttrsMap[variant.id] || [];
 const variantLabel = attrs.map(function(a){ return a.attribute_value; }).join(', ');
-return Object.assign({}, p, { qty: cart[key], cartKey: key, price: Number(variant.selling_price), old: Number(variant.mrp || variant.selling_price), stock: Number(variant.stock), variantId: variant.id, variantLabel: variantLabel, name: p.name + (variantLabel ? ' (' + variantLabel + ')' : '') });
+return Object.assign({}, p, { qty: cart[key], cartKey: key, price: Number(variant.selling_price), old: Number(variant.mrp || variant.selling_price), stock: Number(variant.stock), variantWeightGrams: Number(variant.weight_grams) || null, variantId: variant.id, variantLabel: variantLabel, name: p.name + (variantLabel ? ' (' + variantLabel + ')' : '') });
 }
 }
 return Object.assign({}, p, { qty: cart[key], cartKey: key });
@@ -1977,7 +1985,7 @@ const orderId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xx
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_email: (currentCustomer && currentCustomer.email) || customerInfo.email || null, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: vendorId, total_amount: vTotal, shipping_charge: vDelivery, customer_lat: (graspionGeo() && (!graspionGeo().pin || graspionGeo().pin === selectedPin)) ? graspionGeo().lat : null, customer_lng: (graspionGeo() && (!graspionGeo().pin || graspionGeo().pin === selectedPin)) ? graspionGeo().lng : null, discount_amount: t.itemTotal > 0 ? Math.round(t.discount * vItems / t.itemTotal * 100) / 100 : 0, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: (vi === 0 && appliedCoupon) ? appliedCoupon.code : null, gift_wrap: vWrap > 0, gift_wrap_charge: vWrap, bundle_id: (vi === 0 && activeBundle) ? activeBundle.id : null, bundle_savings: vi === 0 ? t.bundleSavings : 0, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null, order_group_id: groupId, suborder_index: vi + 1, suborder_count: vendorIds.length })
+body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_email: (currentCustomer && currentCustomer.email) || customerInfo.email || null, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: vendorId, total_amount: vTotal, shipping_charge: vDelivery, delivery_weight_kg: Math.round((localVendorWeights(vendorItems)[vendorId] || 0) * 100) / 100 || null, customer_lat: (graspionGeo() && (!graspionGeo().pin || graspionGeo().pin === selectedPin)) ? graspionGeo().lat : null, customer_lng: (graspionGeo() && (!graspionGeo().pin || graspionGeo().pin === selectedPin)) ? graspionGeo().lng : null, discount_amount: t.itemTotal > 0 ? Math.round(t.discount * vItems / t.itemTotal * 100) / 100 : 0, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: (vi === 0 && appliedCoupon) ? appliedCoupon.code : null, gift_wrap: vWrap > 0, gift_wrap_charge: vWrap, bundle_id: (vi === 0 && activeBundle) ? activeBundle.id : null, bundle_savings: vi === 0 ? t.bundleSavings : 0, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null, order_group_id: groupId, suborder_index: vi + 1, suborder_count: vendorIds.length })
 });
 if (!orderRes.ok) {
 const orderErr = await orderRes.text();
@@ -2098,7 +2106,8 @@ const localRows = localVids.map(function(vid) {
   if (!q.allowed && q.reason === 'too_far') { localBlocked = nm + ' delivers only up to ' + q.max_km + ' km. You are about ' + q.km + ' km away.'; return '<div style="font-size:12.5px; color:#b91c1c; font-weight:700;">❌ ' + localBlocked + '</div>'; }
   if (!q.allowed && q.reason === 'min_order') { localBlocked = 'For ' + nm + ' at ' + q.km + ' km, minimum order is ₹' + q.min_order + '. Add ₹' + Math.max(0, Math.ceil(q.min_order - t.localGroups[vid])) + ' more.'; return '<div style="font-size:12.5px; color:#b45309; font-weight:700;">⚠️ ' + localBlocked + '</div>'; }
   if (!q.allowed) return '';
-  return '<div style="font-size:12.5px; color:#1f2937;">🚴 ' + nm + ' · ' + (q.estimated ? '≈' : '') + q.km + ' km · <b>' + (Number(q.customer_fee) === 0 ? 'FREE delivery' : '₹' + q.customer_fee) + '</b></div>';
+  return '<div style="font-size:12.5px; color:#1f2937;">🚴 ' + nm + ' · ' + (q.estimated ? '≈' : '') + q.km + ' km' + (q.weight_kg ? ' · ' + q.weight_kg + ' kg' + (Number(q.weight_extra) > 0 ? ' (heavy +₹' + q.weight_extra + ')' : '') : '') + ' · <b>' + (Number(q.customer_fee) === 0 ? 'FREE delivery' : '₹' + q.customer_fee) + '</b></div>' +
+    (q.heavy ? '<div style="font-size:11.5px; color:#b45309; margin-top:2px;">📦 Heavy order — it may come in two trips or by a small tempo.</div>' : '');
 }).join('');
 const anyEstimated = localVids.some(function(vid) { return localQuotes[vid] && localQuotes[vid].estimated; });
 const localDeliveryHtml = localVids.length ? '<div class="co-section"><h4>🚴 Local Delivery by Graspion Rider</h4>' + localRows +
@@ -2381,19 +2390,36 @@ setArea(val);
 document.getElementById('areaBtn').addEventListener('click', function(){ document.getElementById('pinModal').style.display = 'flex'; });
 // GPS → pincode, made robust: OpenStreetMap often has no postcode for Indian localities
 // (e.g. "Sector 16"), which used to leave the customer with no local vendors.
+// Map postcodes are sometimes simply wrong (e.g. "Sector 16, Lucknow" tagged 255001, which is Hathras).
+// Accept a pincode only if India Post says it belongs to the same city/district.
+const pinDistrictCache = {};
+async function pincodeMatchesCity(pin, city) {
+  if (!pin || !city) return true;
+  try {
+    if (!(pin in pinDistrictCache)) {
+      const r = await fetch('https://api.postalpincode.in/pincode/' + pin);
+      const d = await r.json();
+      const po = (d && d[0] && d[0].PostOffice) || [];
+      pinDistrictCache[pin] = po.map(function(o) { return (String(o.District || '') + ' ' + String(o.Division || '') + ' ' + String(o.Region || '')).toLowerCase(); }).join(' | ');
+    }
+    const info = pinDistrictCache[pin];
+    if (!info) return false;                       // unknown / invalid pincode
+    return info.indexOf(city.split(' ')[0]) !== -1;
+  } catch (e) { return true; }                     // India Post down: don't block
+}
 async function resolvePincodeSmart(addr, lat, lng) {
   const ok = function(p) { p = String(p || '').replace(/\D/g, ''); return p.length === 6 ? p : null; };
-  // 1. postcode straight from the map
+  const city = String(addr.city || addr.town || addr.state_district || addr.county || '').toLowerCase();
+  // 1. postcode straight from the map (only if it really is in this city)
   let pin = ok(addr.postcode);
-  if (pin) return pin;
-  // 2. ask the map again at street level (often has the postcode when the first answer didn't)
+  if (pin && await pincodeMatchesCity(pin, city)) return pin;
+  // 2. ask the map again at street level
   try {
     const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&addressdetails=1&lat=' + lat + '&lon=' + lng);
     const d = await r.json(); pin = ok(d && d.address && d.address.postcode);
-    if (pin) return pin;
+    if (pin && await pincodeMatchesCity(pin, city)) return pin;
   } catch (e) {}
   // 3. India Post: look up the locality name, keep results from the same city/district
-  const city = String(addr.city || addr.town || addr.state_district || addr.county || '').toLowerCase();
   const names = [addr.suburb, addr.neighbourhood, addr.city_district, addr.quarter].filter(Boolean);
   for (let i = 0; i < names.length; i++) {
     try {
