@@ -1538,7 +1538,7 @@ document.getElementById('dsCsvBtn').addEventListener('click', async function() {
     return [o.order_number||o.id, new Date(o.created_at).toLocaleString('en-IN'), o.customer_name, o.customer_phone, o.vendors?o.vendors.name:'', o.total_amount, o.payment_method, o.payment_status, o.status, o.customer_address||o.address];
   }), ['Order #','Date','Customer','Phone','Vendor','Amount','Payment Method','Payment Status','Status','Address']);
   csv += '\n\nPRE-BOOKINGS\n' + toCsv(data.prebookings.map(function(b) {
-    return [new Date(b.created_at).toLocaleString('en-IN'), b.customer_name, b.customer_phone, b.vendors?b.vendors.name:'', b.products?b.products.name:'', b.quantity, b.full_amount, b.advance_amount, b.advance_paid?'Paid':'Pending', b.preferred_delivery_date||'', b.status];
+    return [new Date(b.created_at).toLocaleString('en-IN'), b.customer_name, b.customer_phone, b.vendors?b.vendors.name:'', (b.products?b.products.name:'') + (b.variant_details ? ' (' + b.variant_details + ')' : ''), b.quantity, b.full_amount, b.advance_amount, b.advance_paid?'Paid':'Pending', b.preferred_delivery_date||'', b.status];
   }), ['Date Booked','Customer','Phone','Vendor','Product','Qty','Full Amount','Advance','Advance Status','Needed By','Status']);
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
@@ -1566,7 +1566,7 @@ const productName = b.products ? b.products.name : 'Product';
 const deliveryDateTxt = b.preferred_delivery_date ? new Date(b.preferred_delivery_date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not specified';
 return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:12px; margin-bottom:10px;">' +
 '<div style="display:flex; justify-content:space-between; align-items:flex-start;"><div>' +
-'<div style="font-size:12.5px; font-weight:700;">' + productName + ' × ' + b.quantity + '</div>' +
+'<div style="font-size:12.5px; font-weight:700;">' + productName + (b.variant_details ? ' (' + b.variant_details + ' pack)' : '') + ' × ' + b.quantity + '</div>' +
 '<div style="font-size:10.5px; color:#9ca3af; margin-top:2px;">🏪 ' + vendorName + ' · 👤 ' + (b.customer_name || 'Customer') + ' · ' + (b.customer_phone || '') + '</div>' +
 '</div><span style="font-size:9.5px; font-weight:800; padding:3px 9px; border-radius:20px; color:#fff; background:' + (statusColors[b.status] || '#6b7280') + '; flex-shrink:0;">' + (b.status || 'pending').toUpperCase() + '</span></div>' +
 '<div style="font-size:11px; color:#4b5563; margin-top:8px; display:flex; gap:14px; flex-wrap:wrap;">' +

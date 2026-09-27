@@ -440,7 +440,7 @@ async function loadOrders() {
     const prebookingsHtml = allPrebookings.map(function(b) {
       const isAssigned = !!b.rider_id;
       const balanceDue = Math.max(Number(b.full_amount || 0) - (b.advance_paid ? Number(b.advance_amount || 0) : 0), 0);
-      const productName = b.products ? b.products.name : 'Item';
+      const productName = (b.products ? b.products.name : 'Item') + (b.variant_details ? ' (' + b.variant_details + ' pack)' : '');
       const telHref = b.customer_phone ? 'tel:' + b.customer_phone.replace(/[^0-9+]/g, '') : null;
       const mapsHref = b.customer_address ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(b.customer_address) : null;
       const contactRow = isAssigned ? '<div style="display:flex; gap:6px; margin:8px 0;">' +

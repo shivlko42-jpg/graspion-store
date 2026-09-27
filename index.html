@@ -3337,7 +3337,7 @@ async function renderMyPrebookings() {
       const statusText = outForDelivery ? '🚴 Out for Delivery' : (PB_LABELS[b.status] || b.status);
       return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:12px; margin-bottom:10px;">' +
         '<div style="font-size:12.5px; font-weight:700; color:#7c3aed;">' + (b.booking_type === 'sample' ? '🧪 Sample Request' : '📦 Bulk Pre-Order') + '</div>' +
-        '<div style="font-size:14px; font-weight:700; margin-top:2px;">' + (p ? p.name : 'Product') + ' × ' + b.quantity + '</div>' +
+        '<div style="font-size:14px; font-weight:700; margin-top:2px;">' + (p ? p.name : 'Product') + (b.variant_details ? ' <span style="color:#7c3aed;">(' + b.variant_details + ' pack)</span>' : '') + ' × ' + b.quantity + '</div>' +
         '<div style="font-size:12.5px; color:#374151; margin-top:6px;">Status: <b>' + statusText + '</b>' + (b.delivered_at && b.status === 'delivered' ? ' · ' + fmtDate(b.delivered_at) : '') + '</div>' +
         (b.preferred_delivery_date ? '<div style="font-size:12.5px; color:#374151; margin-top:2px;">📅 Needed by: <b>' + fmtDate(b.preferred_delivery_date + 'T00:00:00') + '</b></div>' : '') +
         (full > 0 ? '<div style="margin-top:8px; background:#faf9fd; border-radius:8px; padding:8px 10px; font-size:12.5px; color:#1f2937; line-height:1.8;">' +
@@ -3837,7 +3837,7 @@ async function generateAdvanceReceipt(bookingId, btn) {
       meta: meta,
       seller: { name: v.name, legal: v.legal_name, address: v.address, gstin: v.gstin, fssai: v.fssai },
       buyer: { name: b.customer_name || 'Customer', phone: b.customer_phone, address: [b.customer_address, b.pincode].filter(Boolean).join(' - ') },
-      items: [{ name: it.product_name || 'Item', sub: (b.booking_type === 'sample' ? 'Sample request' : 'Pre-order') + ' - rate per ' + invUnit(it.unit, 1), hsn: it.hsn_code, qty: it.quantity, unit: it.unit, rate: it.price, taxable: it.taxable_amount, gstPct: it.gst_percent, tax: tax, amount: d.total_amount }],
+      items: [{ name: it.product_name || 'Item', sub: (b.booking_type === 'sample' ? 'Sample request' : 'Pre-order') + (b.variant_details ? ' - ' + b.variant_details + ' pack' : ' - rate per ' + invUnit(it.unit, 1)), hsn: it.hsn_code, qty: it.quantity, unit: b.has_variant ? 'pcs' : it.unit, rate: it.price, taxable: it.taxable_amount, gstPct: it.gst_percent, tax: tax, amount: d.total_amount }],
       totals: { taxable: Number(it.taxable_amount || 0), cgst: Number(it.cgst_amount || 0), sgst: Number(it.sgst_amount || 0), igst: Number(it.igst_amount || 0), grand: Number(d.total_amount || 0) },
       payment: payment, notes: 'This is a receipt for the advance paid - not a tax invoice. The tax invoice is issued when your order is dispatched.' + (b.notes ? '  Your instructions: ' + b.notes : ''),
       fileName: 'Graspion-Advance-Receipt-' + num + '.pdf'
@@ -3872,6 +3872,12 @@ async function generateAdvanceReceipt(bookingId, btn) {
 })();
 
 // ===================== PRE-BOOKING (sample request / advance booking) =====================
+// Pack sizes for pre-order items come from product variants that have an option (e.g. Size: 500 g)
+function preorderPacks(productId) {
+  return (productVariantsMap[productId] || []).filter(function(v) { return (productVariantAttrsMap[v.id] || []).length > 0 && v.status !== 'inactive'; })
+    .map(function(v) { return { id: v.id, label: (productVariantAttrsMap[v.id] || []).map(function(a) { return a.attribute_value; }).join(' / '), price: Number(v.selling_price), mrp: Number(v.mrp || 0) }; })
+    .sort(function(a, b) { return a.price - b.price; });
+}
 function openPrebookingModal(productId, type) {
   const p = productPool.find(function(pp) { return pp.id === productId; });
   if (!p) return;
@@ -3892,11 +3898,15 @@ function openPrebookingModal(productId, type) {
   }
   document.getElementById('prebookingModal').style.display = 'flex';
   document.getElementById('pbModalTitle').textContent = type === 'sample' ? '🧪 Request a Sample' : '📦 Book with Advance';
+  const packs = type === 'preorder' ? preorderPacks(p.id) : [];
+  let chosenPack = packs.length ? packs[0] : null;
+  const minQty = packs.length ? 1 : p.preorderMinQty;
+  const unitPrice = function() { return chosenPack ? chosenPack.price : p.price; };
   function computeAdvance(qty) {
     if (type === 'sample') return p.samplePrice;
-    return Math.round(p.price * qty * p.preorderAdvancePercent / 100);
+    return Math.round(unitPrice() * qty * p.preorderAdvancePercent / 100);
   }
-  const amount = computeAdvance(p.preorderMinQty);
+  const amount = computeAdvance(minQty);
   const body = document.getElementById('pbModalBody');
   const fieldLabel = 'font-size:10.5px; font-weight:700; color:#8b87a8; margin-bottom:5px; display:block;';
   const fieldInput = 'width:100%; box-sizing:border-box; border:1.5px solid #f0eef7; border-radius:10px; padding:10px 12px; font-size:12.5px; background:#faf9fd;';
@@ -3904,10 +3914,11 @@ function openPrebookingModal(productId, type) {
     '<div style="display:flex; align-items:center; gap:10px; background:#faf9fd; border-radius:12px; padding:10px 12px; margin-bottom:16px;">' +
       '<div style="width:38px; height:38px; border-radius:10px; overflow:hidden; flex-shrink:0; background:#fff; display:flex; align-items:center; justify-content:center; font-size:18px;">' + (p.image ? '<img src="' + p.image + '" style="width:100%; height:100%; object-fit:cover;">' : '📦') + '</div>' +
       '<div style="flex:1; min-width:0;"><div style="font-size:12px; font-weight:700; color:#1e1b3a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + p.name + '</div>' +
-      (type === 'sample' ? '<div style="font-size:11px; color:#7c3aed; font-weight:700; margin-top:2px;">' + (amount > 0 ? '₹' + amount + ' sample fee' : 'Free sample') + '</div>' : '<div style="font-size:11px; color:#7c3aed; font-weight:700; margin-top:2px;">₹' + p.price + ' / ' + p.preorderUnit.replace(/s$/, '') + '</div>') +
+      (type === 'sample' ? '<div style="font-size:11px; color:#7c3aed; font-weight:700; margin-top:2px;">' + (amount > 0 ? '₹' + amount + ' sample fee' : 'Free sample') + '</div>' : '<div id="pbUnitPrice" style="font-size:11px; color:#7c3aed; font-weight:700; margin-top:2px;">' + (chosenPack ? '₹' + chosenPack.price + ' / ' + chosenPack.label + ' pack' : '₹' + p.price + ' / ' + p.preorderUnit.replace(/s$/, '')) + '</div>') +
       '</div></div>' +
     (type === 'sample' ? '<p style="font-size:10.5px; color:#9ca3af; margin:-8px 0 14px; line-height:1.5;">We\'ll send one sample to the address below before you commit to a bulk order.</p>' : '') +
-    (type === 'preorder' ? '<div style="display:flex; gap:10px; margin-bottom:10px;"><div style="flex:1;"><label style="' + fieldLabel + '">Quantity (min ' + p.preorderMinQty + ' ' + p.preorderUnit + ')</label><input type="number" id="pbQty" style="' + fieldInput + '" value="' + p.preorderMinQty + '" min="' + p.preorderMinQty + '"></div></div>' +
+    (type === 'preorder' && packs.length ? '<div style="margin-bottom:10px;"><label style="' + fieldLabel + '">Choose pack</label><div style="display:flex; gap:8px; flex-wrap:wrap;">' + packs.map(function(k, i) { return '<button type="button" data-pbpack="' + k.id + '" style="padding:9px 14px; border-radius:10px; font-size:13px; font-weight:800; cursor:pointer; border:1.5px solid ' + (i === 0 ? '#7c3aed; background:#7c3aed; color:#fff;' : '#d8cff5; background:#fff; color:#1f2937;') + '">' + k.label + ' · ₹' + k.price + '</button>'; }).join('') + '</div></div>' : '') +
+    (type === 'preorder' ? '<div style="display:flex; gap:10px; margin-bottom:10px;"><div style="flex:1;"><label style="' + fieldLabel + '">' + (packs.length ? 'Number of packs' : 'Quantity (min ' + p.preorderMinQty + ' ' + p.preorderUnit + ')') + '</label><input type="number" id="pbQty" style="' + fieldInput + '" value="' + minQty + '" min="' + minQty + '" step="1"></div></div>' +
     (function() {
       const earliest = new Date();
       earliest.setDate(earliest.getDate() + (p.preorderLeadTimeDays || 1));
@@ -3926,9 +3937,22 @@ function openPrebookingModal(productId, type) {
     '<div id="pbModalError" style="color:#dc2626; font-size:11px; margin-top:8px; text-align:center;"></div>';
 
   const pbQtyEl = document.getElementById('pbQty');
+  const refreshPbAmount = function() {
+    const liveAmount = computeAdvance(Number(pbQtyEl && pbQtyEl.value) || minQty);
+    document.getElementById('pbSubmitBtn').textContent = liveAmount > 0 ? 'Pay ₹' + liveAmount + ' & Confirm' : 'Confirm — Free';
+  };
+  body.querySelectorAll('[data-pbpack]').forEach(function(b) {
+    b.addEventListener('click', function() {
+      chosenPack = packs.find(function(k) { return k.id === b.getAttribute('data-pbpack'); }) || chosenPack;
+      body.querySelectorAll('[data-pbpack]').forEach(function(x) { x.style.background = '#fff'; x.style.color = '#1f2937'; x.style.borderColor = '#d8cff5'; });
+      b.style.background = '#7c3aed'; b.style.color = '#fff'; b.style.borderColor = '#7c3aed';
+      document.getElementById('pbUnitPrice').textContent = '₹' + chosenPack.price + ' / ' + chosenPack.label + ' pack';
+      refreshPbAmount();
+    });
+  });
   if (pbQtyEl) {
     pbQtyEl.addEventListener('input', function() {
-      const qty = Number(pbQtyEl.value) || p.preorderMinQty;
+      const qty = Number(pbQtyEl.value) || minQty;
       const liveAmount = computeAdvance(qty);
       document.getElementById('pbSubmitBtn').textContent = liveAmount > 0 ? 'Pay ₹' + liveAmount + ' & Confirm' : 'Confirm — Free';
     });
@@ -3945,7 +3969,7 @@ function openPrebookingModal(productId, type) {
     const qty = type === 'preorder' ? Number(document.getElementById('pbQty').value) : 1;
     const amount = computeAdvance(qty); // recomputed fresh — never trust a value captured before the customer finished editing quantity
     if (!name || !phone || !address || !pincode) { errEl.textContent = 'Please fill in all fields.'; return; }
-    if (type === 'preorder' && qty < p.preorderMinQty) { errEl.textContent = 'Minimum quantity is ' + p.preorderMinQty + ' ' + p.preorderUnit + '.'; return; }
+    if (type === 'preorder' && (qty < minQty || Math.floor(qty) !== qty)) { errEl.textContent = packs.length ? 'Please enter a whole number of packs (1 or more).' : 'Minimum quantity is ' + p.preorderMinQty + ' ' + p.preorderUnit + '.'; return; }
     const deliveryDateEl = document.getElementById('pbDeliveryDate');
     const preferredDeliveryDate = deliveryDateEl ? deliveryDateEl.value : null;
     if (type === 'preorder' && !preferredDeliveryDate) { errEl.textContent = 'Please choose when you need this by.'; return; }
@@ -3955,7 +3979,9 @@ function openPrebookingModal(productId, type) {
     const bookingPayload = {
       customer_id: currentCustomer.id, vendor_id: p.vendorId, product_id: p.id,
       booking_type: type, quantity: qty,
-      full_amount: type === 'preorder' ? (p.price * qty) : p.samplePrice,
+      full_amount: type === 'preorder' ? (unitPrice() * qty) : p.samplePrice,
+      variant_id: chosenPack ? chosenPack.id : null,
+      variant_details: chosenPack ? chosenPack.label : null,
       advance_amount: amount,
       customer_name: name, customer_phone: phone, customer_address: address, pincode: pincode,
       customization_notes: type === 'preorder' ? document.getElementById('pbNotes').value.trim() : null,
@@ -4225,7 +4251,7 @@ const allPhotos = [p.image].concat(p.additionalImages || []).filter(Boolean);
 const mainImgHtml = allPhotos.length > 0 ? '<img src="' + allPhotos[0] + '" id="pdMainImg" style="width:100%; height:300px; object-fit:cover; border-radius:14px;">' : '<div style="width:100%; height:170px; background:#f3f1f8; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:96px;">' + p.icon + '</div>';
 const thumbsHtml = allPhotos.length > 1 ? '<div style="display:flex; gap:7px; margin-top:8px;">' + allPhotos.map(function(src){ return '<img src="' + src + '" data-pdthumb="' + src + '" style="width:54px; height:54px; object-fit:cover; border-radius:9px; cursor:pointer; opacity:0.7; border:2px solid transparent;">'; }).join('') + '</div>' : '';
 
-const variants = productVariantsMap[productId] || [];
+const variants = p.isPreorder ? [] : (productVariantsMap[productId] || []).filter(function(v) { return (productVariantAttrsMap[v.id] || []).length > 0; });
 let variantSelectorHtml = '';
 let selectedVariant = null;
 if (variants.length > 0) {
@@ -4239,10 +4265,10 @@ attrGroups[a.attribute_name].add(a.attribute_value);
 });
 variantSelectorHtml = '<div id="pdVariantPicker" style="margin-top:10px;">' + Object.keys(attrGroups).map(function(attrName) {
 const values = Array.from(attrGroups[attrName]);
-return '<div style="margin-bottom:8px;"><div style="font-size:10.5px; font-weight:700; color:#6b7280; margin-bottom:5px;">' + attrName + '</div><div style="display:flex; gap:6px; flex-wrap:wrap;">' + values.map(function(val) {
-return '<button type="button" class="pd-attr-btn" data-attrname="' + attrName + '" data-attrvalue="' + val + '" style="padding:6px 12px; border-radius:8px; border:1.5px solid #e5e7eb; background:#fff; font-size:11.5px; cursor:pointer;">' + val + '</button>';
+return '<div style="margin-bottom:10px; text-align:left;"><div style="font-size:13px; font-weight:700; color:#374151; margin-bottom:6px;">Choose ' + attrName + ':</div><div style="display:flex; gap:8px; flex-wrap:wrap;">' + values.map(function(val) {
+return '<button type="button" class="pd-attr-btn" data-attrname="' + attrName + '" data-attrvalue="' + val + '" style="padding:8px 16px; border-radius:10px; border:1.5px solid #d8cff5; background:#fff; color:#1f2937; font-size:13.5px; font-weight:700; cursor:pointer;">' + val + '</button>';
 }).join('') + '</div></div>';
-}).join('') + '<div id="pdVariantStatus" style="font-size:11px; color:#9ca3af; margin-top:4px;">Select options above</div></div>';
+}).join('') + '<div id="pdVariantStatus" style="font-size:12px; color:#374151; margin-top:4px; text-align:left;">👆 Choose an option above</div></div>';
 }
 
 content.innerHTML =
@@ -4347,7 +4373,8 @@ variantSelectorHtml +
 
 const bottomBarHtml = p.isPreorder ?
 (function() {
-  const minQtyAdvance = Math.round(p.price * p.preorderMinQty * p.preorderAdvancePercent / 100);
+  const packs = preorderPacks(p.id);
+  const minQtyAdvance = packs.length ? Math.round(packs[0].price * p.preorderAdvancePercent / 100) : Math.round(p.price * p.preorderMinQty * p.preorderAdvancePercent / 100);
   const closed = isBookingClosed(p);
   const deadlineTxt = p.preorderBookingDeadline ? new Date(p.preorderBookingDeadline + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
   if (closed) {
@@ -4358,12 +4385,14 @@ const bottomBarHtml = p.isPreorder ?
   }
   return '<div style="background:#faf9fd; border:1.5px solid #e9d5ff; border-radius:14px; padding:14px;">' +
   '<div style="font-size:12.5px; font-weight:800; color:#7c3aed;">📦 Bulk / Pre-Order Item</div>' +
-  '<div style="font-size:11px; color:#6b7280; margin-top:6px; line-height:1.6;">Minimum order: <b>' + p.preorderMinQty + ' ' + p.preorderUnit + '</b>' + (p.preorderLeadTimeDays ? ' · Ready in ~' + p.preorderLeadTimeDays + ' days' : '') + '</div>' +
+  (packs.length
+    ? '<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">' + packs.map(function(k) { return '<span style="background:#fff; border:1.5px solid #d8cff5; border-radius:10px; padding:6px 12px; font-size:13px; font-weight:800; color:#1f2937;">' + k.label + ' · ₹' + k.price + (k.mrp > k.price ? ' <s style="color:#9ca3af; font-weight:600;">₹' + k.mrp + '</s>' : '') + '</span>'; }).join('') + '</div>' + (p.preorderLeadTimeDays ? '<div style="font-size:11px; color:#6b7280; margin-top:6px;">Ready in ~' + p.preorderLeadTimeDays + ' days</div>' : '')
+    : '<div style="font-size:11px; color:#6b7280; margin-top:6px; line-height:1.6;">Minimum order: <b>' + p.preorderMinQty + ' ' + p.preorderUnit + '</b>' + (p.preorderLeadTimeDays ? ' · Ready in ~' + p.preorderLeadTimeDays + ' days' : '') + '</div>') +
   (deadlineTxt ? '<div style="font-size:11px; color:#dc2626; font-weight:700; margin-top:4px;">⏰ Book before ' + deadlineTxt + '</div>' : '') +
   (p.preorderDeliveryStart ? '<div style="font-size:11px; color:#059669; font-weight:700; margin-top:4px;">🚚 Delivery starts ' + new Date(p.preorderDeliveryStart + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '</div>' : '') +
-  '<div style="font-size:11px; color:#6b7280; margin-top:4px;">Book now with a token advance of <b>₹' + minQtyAdvance + '</b> (' + p.preorderAdvancePercent + '%) at minimum order — pay the rest when it\'s ready.</div>' +
+  '<div style="font-size:11px; color:#6b7280; margin-top:4px;">Book now with a token advance of <b>' + (packs.length ? 'from ' : '') + '₹' + minQtyAdvance + '</b> (' + p.preorderAdvancePercent + '%)' + (packs.length ? '' : ' at minimum order') + ' — pay the rest when it\'s ready.</div>' +
   (p.sampleAvailable ? '<button data-requestsample="' + p.id + '" style="width:100%; margin-top:12px; background:#fff; color:#7c3aed; border:1.5px solid #7c3aed; padding:11px; border-radius:10px; font-weight:800; cursor:pointer;">🧪 Request a Sample' + (p.samplePrice > 0 ? ' (₹' + p.samplePrice + ')' : ' (Free)') + '</button>' : '') +
-  '<button data-bookadvance="' + p.id + '" style="width:100%; margin-top:10px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">📦 Book Now — Pay ₹' + minQtyAdvance + ' Advance</button>' +
+  '<button data-bookadvance="' + p.id + '" style="width:100%; margin-top:10px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">📦 ' + (packs.length ? 'Choose Pack & Book' : 'Book Now — Pay ₹' + minQtyAdvance + ' Advance') + '</button>' +
   '</div>';
 })()
 :
@@ -4504,14 +4533,14 @@ const attrNames = Array.from(document.querySelectorAll('#pdVariantPicker > div')
 const allSelected = attrNames.every(function(n) { return selectedAttrs[n]; });
 const statusEl = document.getElementById('pdVariantStatus');
 const addBtn = document.querySelector('[data-detailadd]');
-if (!allSelected) { statusEl.textContent = 'Select options above'; addBtn.disabled = true; addBtn.style.opacity = '0.5'; addBtn.textContent = 'Select Options'; return; }
+if (!allSelected) { statusEl.textContent = '👆 Choose an option above'; addBtn.disabled = true; addBtn.style.opacity = '0.5'; addBtn.textContent = 'Select Options'; return; }
 const match = variants.find(function(v) {
 const vAttrs = productVariantAttrsMap[v.id] || [];
 return attrNames.every(function(n) { return vAttrs.some(function(a){ return a.attribute_name === n && a.attribute_value === selectedAttrs[n]; }); });
 });
 if (match) {
 selectedVariant = match;
-document.getElementById('pdPrice').textContent = '₹' + match.selling_price;
+document.getElementById('pdPrice').innerHTML = '₹' + match.selling_price + (match.mrp && Number(match.mrp) > Number(match.selling_price) ? ' <span style="font-size:15px; color:#9ca3af; text-decoration:line-through; font-weight:600;">₹' + match.mrp + '</span> <span style="font-size:13px; color:#15803d; font-weight:800;">' + Math.round((1 - match.selling_price / match.mrp) * 100) + '% OFF</span>' : '');
 statusEl.textContent = match.stock > 0 ? '✓ In stock (' + match.stock + ' available)' : '✕ Out of stock';
 addBtn.disabled = match.stock <= 0; addBtn.style.opacity = match.stock > 0 ? '1' : '0.5';
 addBtn.textContent = match.stock > 0 ? 'Add to Cart' : 'Out of Stock';
@@ -4526,11 +4555,17 @@ btn.addEventListener('click', function() {
 const name = btn.getAttribute('data-attrname');
 const val = btn.getAttribute('data-attrvalue');
 selectedAttrs[name] = val;
-document.querySelectorAll('.pd-attr-btn[data-attrname="' + name + '"]').forEach(function(b) { b.style.borderColor = '#e5e7eb'; b.style.background = '#fff'; b.style.color = '#000'; });
+document.querySelectorAll('.pd-attr-btn[data-attrname="' + name + '"]').forEach(function(b) { b.style.borderColor = '#d8cff5'; b.style.background = '#fff'; b.style.color = '#1f2937'; });
 btn.style.borderColor = '#7c3aed'; btn.style.background = '#7c3aed'; btn.style.color = '#fff';
 tryMatchVariant();
 });
 });
+
+(function autoPickSingle() {
+  const groups = {};
+  document.querySelectorAll('.pd-attr-btn').forEach(function(b) { const n = b.getAttribute('data-attrname'); (groups[n] = groups[n] || []).push(b); });
+  Object.keys(groups).forEach(function(n) { if (groups[n].length === 1) groups[n][0].click(); });
+})();
 
 let pdSelectedQty = 1;
 const maxAvailableStock = variants.length > 0 ? null : p.stock; // for variant products, stock cap applies once a variant is chosen

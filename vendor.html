@@ -171,7 +171,8 @@ window.addEventListener('load', function() {
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><h3 style="font-size:15px;">🎨 Manage Variants — <span id="variantProductName"></span></h3><button id="closeVariantBtn" style="background:#f3f1f8; border:none; width:30px; height:30px; border-radius:50%; cursor:pointer;">✕</button></div>
 <div id="variantList" style="margin-bottom:14px;"></div>
 <div style="border-top:1px solid #f0eef7; padding-top:12px;">
-<div style="font-size:11.5px; font-weight:700; margin-bottom:8px;">+ Add New Variant</div>
+<div style="font-size:11.5px; font-weight:700; margin-bottom:6px;">+ Add New Variant</div>
+<div style="font-size:11.5px; color:#374151; background:#f5f3ff; border-radius:8px; padding:8px 10px; margin-bottom:10px; line-height:1.6;">Make <b>one variant per size</b>. Example: Option name <b>Size</b> → value <b>5 Ltr</b>, price 1000 → Add Variant. Then again Size → <b>16 Ltr</b>, its own price → Add Variant. Do not type the price in the value box.</div>
 <div id="variantAttrRows"></div>
 <button id="addAttrRowBtn" type="button" style="background:none; border:1px dashed #7c3aed; color:#7c3aed; padding:6px 10px; border-radius:8px; font-size:11px; cursor:pointer; margin-bottom:10px;">+ Add Attribute (e.g. Size, Color)</button>
 <div class="form-row">
@@ -2454,7 +2455,7 @@ async function loadVendorPrebookings() {
         statusButtons += '<button data-pbcancel="' + b.id + '" style="background:#fee2e2; color:#dc2626; border:none; padding:6px 12px; border-radius:8px; font-size:10.5px; font-weight:700;">Cancel</button>';
       }
       return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:12px; margin-bottom:10px;">' +
-        '<div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><div style="font-size:11px; font-weight:700; color:#7c3aed;">' + typeLabel + '</div><div style="font-size:12.5px; font-weight:700; margin-top:2px;">' + (product ? product.name : 'Product') + ' × ' + b.quantity + '</div></div><span style="font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px; background:#f3f1f8; color:#4b5563;">' + PB_STATUS_LABELS[b.status] + '</span></div>' +
+        '<div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><div style="font-size:11px; font-weight:700; color:#7c3aed;">' + typeLabel + '</div><div style="font-size:12.5px; font-weight:700; margin-top:2px;">' + (product ? product.name : 'Product') + (b.variant_details ? ' <span style="color:#7c3aed;">(' + b.variant_details + ' pack)</span>' : '') + ' × ' + b.quantity + '</div></div><span style="font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px; background:#f3f1f8; color:#4b5563;">' + PB_STATUS_LABELS[b.status] + '</span></div>' +
         '<div style="font-size:10.5px; color:#6b7280; margin-top:6px;">👤 ' + (b.customer_name || '-') + ' · 📞 ' + (b.customer_phone || '-') + '</div>' +
         (b.customer_address ? '<div style="font-size:10px; color:#9ca3af; margin-top:2px;">📍 ' + b.customer_address + '</div>' : '') +
         (b.customization_notes ? '<div style="font-size:10.5px; margin-top:6px; background:#faf9fd; padding:6px 8px; border-radius:6px;">📝 ' + b.customization_notes + '</div>' : '') +
@@ -3070,7 +3071,7 @@ attrRowCount++;
 const row = document.createElement('div');
 row.className = 'form-row';
 row.id = 'attrRow' + attrRowCount;
-row.innerHTML = '<div class="form-group"><input class="form-input" placeholder="Attribute (e.g. Size)" data-attrname></div><div class="form-group"><input class="form-input" placeholder="Value (e.g. Large)" data-attrvalue></div>';
+row.innerHTML = '<div class="form-group"><label>Option name</label><input class="form-input" placeholder="e.g. Size / Colour / Pack" data-attrname' + (attrRowCount === 1 ? ' value="Size"' : '') + '></div><div class="form-group"><label>This variant\'s value</label><input class="form-input" placeholder="e.g. 5 Ltr / Red / Pack of 2" data-attrvalue></div>';
 document.getElementById('variantAttrRows').appendChild(row);
 }
 document.getElementById('addAttrRowBtn').addEventListener('click', addAttrRow);
@@ -3208,6 +3209,18 @@ const mrp = document.getElementById('vMrp').value;
 const price = document.getElementById('vPrice').value;
 const stock = document.getElementById('vStock').value;
 if (!price || !stock) { alert('Selling Price and Stock are required.'); return; }
+const attrPairs = [];
+let attrProblem = '';
+document.querySelectorAll('#variantAttrRows [data-attrname]').forEach(function(nameEl, idx) {
+  const valueEl = document.querySelectorAll('#variantAttrRows [data-attrvalue]')[idx];
+  const n = nameEl.value.trim(), v = valueEl ? valueEl.value.trim() : '';
+  if (n && v) attrPairs.push([n, v]);
+  else if (n || v) attrProblem = 'Please fill both Option name (e.g. Size) and its value (e.g. 5 Ltr).';
+  if (/^[0-9]+([.,][0-9]+)?$/.test(n)) attrProblem = 'Option name should be a word like Size or Colour, not "' + n + '". Put the size (e.g. ' + n + ') in the value box.';
+  if (v && /^[0-9]+([.,][0-9]+)?$/.test(v) && (v === String(price) || v === String(mrp))) attrProblem = 'The value "' + v + '" looks like a price. Type the size here (e.g. 5 Ltr, 500 g, M) - the price goes in Selling Price.';
+});
+if (attrProblem) { alert(attrProblem); return; }
+if (!attrPairs.length) { alert('Add at least one option, e.g. Option name "Size" and value "5 Ltr". A variant without an option cannot be chosen by customers.'); return; }
 const btn = document.getElementById('saveVariantBtn');
 btn.textContent = '⏳ Adding...'; btn.disabled = true;
 try {
