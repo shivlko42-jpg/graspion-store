@@ -67,6 +67,12 @@ body { background:#f6f5fb; color:#1e1b3a; -webkit-user-select:none; -moz-user-se
 input, textarea, select { -webkit-user-select:text; -moz-user-select:text; user-select:text; -webkit-touch-callout:default; }
 img { -webkit-user-drag:none; user-drag:none; pointer-events:auto; }
 .modal-overlay { position:fixed; inset:0; background:rgba(15,10,30,0.8); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
+/* Product page: size the full-screen sheet to the VISIBLE screen (dvh), not 100vh. On phones 100vh
+   includes the area under Chrome's address bar, which hid the sticky Add to Cart / Buy Now bar,
+   especially when the page was opened from a shared link. */
+#productDetailModal { height:100vh; height:100dvh; }
+#productDetailModal > .modal-box { height:100% !important; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+#pdBottomBar { padding-bottom:max(10px, env(safe-area-inset-bottom)) !important; }
 .modal-box { background:#fff; border-radius:24px; padding:36px 28px; max-width:380px; width:100%; text-align:center; }
 .modal-box { scrollbar-width:thin; scrollbar-color:#d4c9f0 transparent; }
 .modal-box::-webkit-scrollbar { width:6px; }
