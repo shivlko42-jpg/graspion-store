@@ -301,10 +301,10 @@ window.addEventListener('load', function() {
       <div style="margin-bottom:14px;">
         <label style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:8px; display:block;">🎁 Gift Wrapping</label>
         <div class="radio-row">
-          <div class="radio-option selected" id="giftWrapYes" data-giftwrap="true"><span class="ro-icon">✅</span>I offer gift wrapping</div>
-          <div class="radio-option" id="giftWrapNo" data-giftwrap="false"><span class="ro-icon">🚫</span>I don't offer this</div>
+          <div class="radio-option" id="giftWrapYes" data-giftwrap="true"><span class="ro-icon">✅</span>I offer gift wrapping</div>
+          <div class="radio-option selected" id="giftWrapNo" data-giftwrap="false"><span class="ro-icon">🚫</span>I don't offer this</div>
         </div>
-        <p style="font-size:10px; color:#9ca3af; margin-top:4px;">If you turn this off, customers won't see a gift-wrap option for your products at checkout.</p>
+        <p style="font-size:10px; color:#9ca3af; margin-top:4px;">Only if you choose ✅, customers see a gift-wrap option (+₹25) for your products at checkout. You pack them as a gift; the ₹25 is included in your order amount.</p>
       </div>
       <div id="localDeliveryRow" style="display:none; margin-bottom:14px;">
         <label style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:#6b7280;"><input type="checkbox" id="localDeliveryEnabled"> 🚴 Accept local rider delivery for my area (in addition to Shiprocket)</label>
@@ -1232,7 +1232,7 @@ document.querySelectorAll('.vtab-btn').forEach(function(btn) {
 showVendorTab('products');
 
 let selectedStoreOpen = true;
-let selectedGiftWrap = true;
+let selectedGiftWrap = false;
 function populateSettingsForm() {
   const logoPreview = document.getElementById('storeLogoPreview');
   if (logoPreview) {
@@ -1266,7 +1266,7 @@ function populateSettingsForm() {
     document.getElementById('localDeliveryRow').style.display = 'block';
     document.getElementById('localDeliveryEnabled').checked = !!currentVendor.local_delivery_enabled;
   }
-  selectedGiftWrap = currentVendor.gift_wrap_enabled !== false;
+  selectedGiftWrap = currentVendor.gift_wrap_enabled === true;
   document.getElementById('giftWrapYes').classList.toggle('selected', selectedGiftWrap);
   document.getElementById('giftWrapNo').classList.toggle('selected', !selectedGiftWrap);
 }

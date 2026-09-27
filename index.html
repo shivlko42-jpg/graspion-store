@@ -960,6 +960,12 @@ let customerInfo = { name:'', phone:'', email:'', address:'', city:'', pincode:'
 let savedAddresses = [];
 let selectedAddressId = null; // an address book id, or 'new' to show the manual entry form
 let giftWrapSelected = false;
+// Gift wrap is offered per shop, only by vendors who opted in (vendor panel → Gift Wrapping)
+function giftWrapVendorIds(items) {
+  return Array.from(new Set(items.map(function(i) { return i.vendorId; }))).filter(function(vid) {
+    const v = vendors.find(function(vv) { return vv.id === vid; }); return !!(v && v.giftWrapEnabled);
+  });
+}
 let selectedSortOption = 'relevance';
 let productsShowAll = false;
 let activeFilters = { priceMin: null, priceMax: null, brands: [] };
@@ -1015,7 +1021,7 @@ serviceAreaRows.forEach(function(a) { (serviceAreasByVendor[a.vendor_id] = servi
 vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){
   const isPaidActive = !!v.nearby_subscription_active && (!v.nearby_subscription_expires_at || new Date(v.nearby_subscription_expires_at) >= new Date());
   const isInFreeTrial = v.created_at ? (new Date() - new Date(v.created_at)) < (90 * 24 * 60 * 60 * 1000) : false; // first 3 months free
-  return { id: v.id, name: v.name, icon: v.icon, logo_url: v.logo_url || null, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode].concat(serviceAreasByVendor[v.id] || []), vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, giftWrapEnabled: v.gift_wrap_enabled !== false, gstin: v.gstin || null, address: v.address || null, email: v.email || null, phone: v.phone || null, fssaiLicense: v.fssai_license_number || null, drugLicense: v.drug_license_number || null, nearbySubscribed: isPaidActive || isInFreeTrial };
+  return { id: v.id, name: v.name, icon: v.icon, logo_url: v.logo_url || null, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode].concat(serviceAreasByVendor[v.id] || []), vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, giftWrapEnabled: v.gift_wrap_enabled === true, gstin: v.gstin || null, address: v.address || null, email: v.email || null, phone: v.phone || null, fssaiLicense: v.fssai_license_number || null, drugLicense: v.drug_license_number || null, nearbySubscribed: isPaidActive || isInFreeTrial };
 });
 productPool = visibleProducts.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
@@ -1710,7 +1716,7 @@ const igst = isInterState ? gstAmount : 0;
 const bundleMatch = findMatchingBundle(items);
 activeBundle = bundleMatch ? bundleMatch.bundle : null;
 const bundleSavings = bundleMatch ? bundleMatch.savings : 0;
-const delivery = itemTotal > 199 || itemTotal === 0 ? 0 : 29; const giftWrapCharge = (giftWrapSelected && itemTotal > 0) ? Number(siteSettings.gift_wrap_charge || 25) : 0; const gross = itemTotal + delivery + giftWrapCharge; const couponDiscount = appliedCoupon ? Math.min(appliedCoupon.discount, gross) : 0; const discount = couponDiscount + bundleSavings; return { itemTotal: itemTotal, subtotal: subtotal, gstAmount: gstAmount, cgst: cgst, sgst: sgst, igst: igst, isInterState: isInterState, delivery: delivery, giftWrapCharge: giftWrapCharge, bundleSavings: bundleSavings, discount: discount, total: Math.max(gross - discount, 0), count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
+const delivery = itemTotal > 199 || itemTotal === 0 ? 0 : 29; const giftWrapCharge = (giftWrapSelected && itemTotal > 0) ? Number(siteSettings.gift_wrap_charge || 25) * giftWrapVendorIds(items).length : 0; const gross = itemTotal + delivery + giftWrapCharge; const couponDiscount = appliedCoupon ? Math.min(appliedCoupon.discount, gross) : 0; const discount = couponDiscount + bundleSavings; return { itemTotal: itemTotal, subtotal: subtotal, gstAmount: gstAmount, cgst: cgst, sgst: sgst, igst: igst, isInterState: isInterState, delivery: delivery, giftWrapCharge: giftWrapCharge, bundleSavings: bundleSavings, discount: discount, total: Math.max(gross - discount, 0), count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
 async function applyCoupon(code){
 if (!code) return;
 couponMessage = '⏳ Checking...';
@@ -1908,15 +1914,25 @@ const itemsByVendor = {};
 items.forEach(function(i) { (itemsByVendor[i.vendorId] = itemsByVendor[i.vendorId] || []).push(i); });
 const vendorIds = Object.keys(itemsByVendor);
 const orderIds = [];
+let subTotalSoFar = 0;
 
 for (var vi = 0; vi < vendorIds.length; vi++) {
 const vendorId = vendorIds[vi];
 const vendorItems = itemsByVendor[vendorId];
+// Each shop's sub-order carries only its own share: its items, its gift wrap, the delivery fee on the
+// first sub-order, and a proportional share of discounts. The last sub-order absorbs rounding so the
+// sub-orders always add up exactly to what the customer pays.
+const vItems = vendorItems.reduce(function(sum, i) { return sum + i.price * i.qty; }, 0);
+const vWrap = (giftWrapSelected && giftWrapVendorIds(items).indexOf(vendorId) !== -1) ? Number(siteSettings.gift_wrap_charge || 25) : 0;
+let vTotal;
+if (vi === vendorIds.length - 1) { vTotal = Math.round((t.total - subTotalSoFar) * 100) / 100; }
+else { vTotal = Math.round((vItems + (vi === 0 ? t.delivery : 0) + vWrap - (t.itemTotal > 0 ? t.discount * vItems / t.itemTotal : 0)) * 100) / 100; }
+subTotalSoFar += vTotal;
 const orderId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){ const r = Math.random()*16|0; const v = c === 'x' ? r : (r&0x3|0x8); return v.toString(16); });
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_email: (currentCustomer && currentCustomer.email) || customerInfo.email || null, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: vendorId, total_amount: t.total, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: (vi === 0 && appliedCoupon) ? appliedCoupon.code : null, gift_wrap: vi === 0 ? giftWrapSelected : false, gift_wrap_charge: vi === 0 ? t.giftWrapCharge : 0, bundle_id: (vi === 0 && activeBundle) ? activeBundle.id : null, bundle_savings: vi === 0 ? t.bundleSavings : 0, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null, order_group_id: groupId, suborder_index: vi + 1, suborder_count: vendorIds.length })
+body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_email: (currentCustomer && currentCustomer.email) || customerInfo.email || null, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: vendorId, total_amount: vTotal, shipping_charge: vi === 0 ? t.delivery : 0, discount_amount: t.itemTotal > 0 ? Math.round(t.discount * vItems / t.itemTotal * 100) / 100 : 0, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: (vi === 0 && appliedCoupon) ? appliedCoupon.code : null, gift_wrap: vWrap > 0, gift_wrap_charge: vWrap, bundle_id: (vi === 0 && activeBundle) ? activeBundle.id : null, bundle_savings: vi === 0 ? t.bundleSavings : 0, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null, order_group_id: groupId, suborder_index: vi + 1, suborder_count: vendorIds.length })
 });
 if (!orderRes.ok) {
 const orderErr = await orderRes.text();
@@ -2021,8 +2037,11 @@ const items = cartItemsList();
 // computed, so the charged amount can never include a gift-wrap fee for an
 // order where the option wasn't even shown to the customer.
 const cartVendorIds = Array.from(new Set(items.map(function(i) { return i.vendorId; })));
-const allSupportGiftWrap = cartVendorIds.every(function(vid) { const v = vendors.find(function(vv) { return vv.id === vid; }); return v ? v.giftWrapEnabled : true; });
+const wrapVendorIds = giftWrapVendorIds(items);
+const allSupportGiftWrap = wrapVendorIds.length > 0;
 if (!allSupportGiftWrap) giftWrapSelected = false;
+const wrapShopNames = wrapVendorIds.map(function(vid) { const v = vendors.find(function(vv) { return vv.id === vid; }); return v ? v.name : ''; }).filter(Boolean);
+const noWrapItems = items.filter(function(i) { return wrapVendorIds.indexOf(i.vendorId) === -1; });
 const t = cartTotals();
 const wrap = document.getElementById('coWrap');
 if(checkoutStep === 'address'){
@@ -2052,7 +2071,8 @@ if (showPicker) {
 }
 wrap.innerHTML = addressSectionHtml +
 (allSupportGiftWrap ? '<div class="co-section"><h4>🎁 Gift Wrap</h4>' +
-  '<label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="checkbox" id="coGiftWrap" ' + (giftWrapSelected ? 'checked' : '') + '><span style="font-size:12.5px;">Wrap this order as a gift (+₹' + Number(siteSettings.gift_wrap_charge || 25) + ')</span></label>' +
+  '<label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="checkbox" id="coGiftWrap" ' + (giftWrapSelected ? 'checked' : '') + '><span style="font-size:12.5px;">' + (noWrapItems.length ? 'Gift-wrap items from ' + wrapShopNames.join(', ') : 'Wrap this order as a gift') + ' (+₹' + Number(siteSettings.gift_wrap_charge || 25) * wrapVendorIds.length + ')</span></label>' +
+  (noWrapItems.length ? '<div style="font-size:11.5px; color:#374151; margin-top:6px;">Not available for: ' + noWrapItems.map(function(i) { return i.name; }).join(', ') + '</div>' : '') +
   '</div>' : '') +
 '<div class="co-section"><h4>🏷️ Coupon</h4>' +
 (appliedCoupon
