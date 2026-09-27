@@ -4529,7 +4529,7 @@ card.addEventListener('click', function() { openProductDetail(card.getAttribute(
 
 const selectedAttrs = {};
 function tryMatchVariant() {
-const attrNames = Array.from(document.querySelectorAll('#pdVariantPicker > div')).map(function(d){ return d.querySelector('.pd-attr-btn').getAttribute('data-attrname'); });
+const attrNames = Array.from(new Set(Array.from(document.querySelectorAll('#pdVariantPicker .pd-attr-btn')).map(function(b){ return b.getAttribute('data-attrname'); })));
 const allSelected = attrNames.every(function(n) { return selectedAttrs[n]; });
 const statusEl = document.getElementById('pdVariantStatus');
 const addBtn = document.querySelector('[data-detailadd]');
