@@ -2395,6 +2395,14 @@ document.getElementById('areaBtn').addEventListener('click', function(){ documen
 const pinDistrictCache = {};
 async function pincodeMatchesCity(pin, city) {
   if (!pin || !city) return true;
+  // Quick offline check first: if we have shops in this city, their pincodes tell us the city's
+  // pincode prefix (Lucknow = 226/227). A map pincode with a different prefix is wrong.
+  const cityKey = city.split(' ')[0];
+  const prefixes = {};
+  (vendors || []).forEach(function(v) {
+    if (String(v.address || '').toLowerCase().indexOf(cityKey) !== -1) (v.pincodes || []).forEach(function(p) { p = String(p); if (/^\d{6}$/.test(p)) prefixes[p.slice(0, 3)] = true; });
+  });
+  if (Object.keys(prefixes).length && !prefixes[pin.slice(0, 3)]) return false;
   try {
     if (!(pin in pinDistrictCache)) {
       const r = await fetch('https://api.postalpincode.in/pincode/' + pin);
