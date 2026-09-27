@@ -3459,7 +3459,7 @@ trackHtml +
 riderHtml +
 timelineHtml +
 returnHtml +
-((o.status !== 'cancelled' && (o.payment_status === 'paid' || o.status === 'delivered')) ? '<button data-downloadinvoice="' + o.id + '" style="margin-top:8px; width:100%; background:#f3f1f8; color:#4b5563; border:none; padding:8px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">🧾 Download Invoice</button>' : '') +
+((o.status !== 'cancelled' && (o.payment_status === 'paid' || ['shipped','out_for_delivery','delivered'].indexOf(o.status) !== -1)) ? '<button data-downloadinvoice="' + o.id + '" style="margin-top:8px; width:100%; background:#f3f1f8; color:#4b5563; border:none; padding:8px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">🧾 Download Invoice</button>' : '') +
 
 '</div>';
 }));
@@ -3508,6 +3508,16 @@ async function loadPdfLib() {
     PDFLib.__safePatched = true;
   }
   return PDFLib;
+}
+async function loadQrLib() {
+  if (typeof qrcode === 'undefined') {
+    await new Promise(function(resolve, reject) {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+      s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+    });
+  }
+  return qrcode;
 }
 function amountInWordsINR(num) {
   num = Math.round(Number(num || 0) * 100) / 100;
@@ -3568,7 +3578,7 @@ async function renderPremiumInvoice(m) {
   T('GRASPION', L, H - 52, { size: 26, bold: true, color: C.brand });
   T('graspion.in  |  Shop local. Shop Indian.', L, H - 68, { size: 9, color: C.sub });
   TR(m.title.toUpperCase(), R, H - 46, { size: 16, bold: true, color: C.ink });
-  TR('No. ' + m.number, R, H - 63, { size: 9.5, color: C.sub });
+  TR((m.numberLabel || 'No.') + ' ' + m.number, R, H - 63, { size: 9.5, bold: true, color: C.ink });
   TR('Date: ' + m.date, R, H - 76, { size: 9.5, color: C.sub });
   page.drawLine({ start: { x: L, y: H - 92 }, end: { x: R, y: H - 92 }, thickness: 1.2, color: C.lav });
   let y = H - 118;
@@ -3622,7 +3632,7 @@ async function renderPremiumInvoice(m) {
     const nameLines = wrap(it.name, 164, 8.5, true, 2);
     const subLines = it.sub ? wrap(it.sub, 164, 7.5, false, 1) : [];
     const rowH = 10 + nameLines.length * 11 + subLines.length * 10;
-    if (y - rowH < 200) { page = doc.addPage([W, H]); y = H - 60; }
+    if (y - rowH < 230) { page = doc.addPage([W, H]); y = H - 60; }
     if (i % 2 === 1) box(L, y - rowH, CW, rowH, C.soft);
     let ry = y - 14;
     T(String(i + 1), L + 8, ry, { size: 8.5, color: C.sub });
@@ -3632,7 +3642,7 @@ async function renderPremiumInvoice(m) {
     TR(String(it.qty) + ' ' + invUnit(it.unit, it.qty), L + 272, ry, { size: 8.5 });
     TR(Number(it.rate || 0).toFixed(2), L + 318, ry, { size: 8.5 });
     TR(Number(it.taxable || 0).toFixed(2), L + 367, ry, { size: 8.5 });
-    TR((it.gstPct || 0) + '%', L + 400, ry, { size: 8.5, color: C.sub });
+    TR(it.gstPct === '-' ? '-' : (it.gstPct || 0) + '%', L + 400, ry, { size: 8.5, color: C.sub });
     TR(Number(it.tax || 0).toFixed(2), L + 445, ry, { size: 8.5 });
     TR(Number(it.amount || 0).toFixed(2), R - 8, ry, { size: 8.5, bold: true });
     y -= rowH;
@@ -3642,9 +3652,14 @@ async function renderPremiumInvoice(m) {
 
   // ---- totals (right) + payment (left) ----
   const tx = L + CW * 0.55, tw = R - tx;
-  const tRows = [['Taxable value', invMoney(m.totals.taxable)]];
-  if (m.totals.igst > 0) tRows.push(['IGST', invMoney(m.totals.igst)]);
-  else { tRows.push(['CGST', invMoney(m.totals.cgst)]); tRows.push(['SGST', invMoney(m.totals.sgst)]); }
+  const tRows = [];
+  if (m.noTax) { tRows.push(['Items total', invMoney(m.totals.taxable)]); }
+  else {
+    tRows.push(['Taxable value', invMoney(m.totals.taxable)]);
+    if (m.totals.igst > 0) tRows.push(['IGST', invMoney(m.totals.igst)]);
+    else { tRows.push(['CGST', invMoney(m.totals.cgst)]); tRows.push(['SGST', invMoney(m.totals.sgst)]); }
+  }
+  (m.extras || []).forEach(function(e) { tRows.push([e[0], (Number(e[1]) < 0 ? '- ' : '') + invMoney(Math.abs(Number(e[1])))]); });
   let ty = y;
   tRows.forEach(function(r) { T(r[0], tx + 10, ty, { size: 9, color: C.sub }); TR(r[1], R - 10, ty, { size: 9 }); ty -= 15; });
   ty -= 10;
@@ -3673,6 +3688,24 @@ async function renderPremiumInvoice(m) {
     y -= 6;
   }
 
+  // ---- verify QR (last page, above footer) ----
+  if (m.verify && m.verify.code) {
+    const qs = 66, qx = R - qs, qy = 88;
+    let drewQr = false;
+    try {
+      const qr = await loadQrLib();
+      const q = qr(0, 'M'); q.addData(m.verify.url); q.make();
+      const n = q.getModuleCount(), cell = qs / n;
+      box(qx - 3, qy - 3, qs + 6, qs + 6, C.white, C.line);
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) page.drawRectangle({ x: qx + c * cell, y: qy + qs - (r + 1) * cell, width: cell + 0.05, height: cell + 0.05, color: C.ink });
+      drewQr = true;
+    } catch (e) { drewQr = false; }
+    const vx = drewQr ? qx - 12 : R;
+    TR('Scan to verify this bill on Graspion', vx, qy + 46, { size: 8.5, bold: true, color: C.brand });
+    TR(m.verify.url.replace(/^https?:\/\//, ''), vx, qy + 33, { size: 7.5, color: C.sub });
+    TR('Verification code: ' + m.verify.code, vx, qy + 20, { size: 8, bold: true });
+  }
+
   // ---- footer (every page) ----
   doc.getPages().forEach(function(pg, i, arr) {
     page = pg;
@@ -3690,52 +3723,95 @@ async function renderPremiumInvoice(m) {
   setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
 }
 
-async function generateCustomerInvoice(orderId) {
-  const btn = document.querySelector('[data-downloadinvoice="' + orderId + '"]');
-  if (btn) btn.textContent = '⏳ Generating...';
+
+// Build the PDF model from a frozen invoice (RPC get_or_issue_invoice)
+function invoiceModelFromSnapshot(d) {
+  const live = d.live || {};
+  const isTax = d.doc_type === 'tax_invoice';
+  const isPb = d.kind === 'prebooking';
+  let stamp, payment = [];
+  if (isPb) {
+    const adv = Number(live.advance_received || 0), bal = Number(live.balance_received || 0), full = Number(d.full_amount || d.totals.grand || 0);
+    const due = Math.max(full - adv - bal, 0);
+    stamp = due <= 0 ? { text: 'PAID', tone: 'green' } : { text: 'BALANCE DUE', tone: 'amber' };
+    payment.push(['Advance (online)', invMoney(adv) + (adv > 0 ? '  Paid' : ''), adv > 0 ? 'green' : null]);
+    if (bal > 0) payment.push(['Balance (cash)', invMoney(bal) + '  Paid', 'green']);
+    if (due > 0) payment.push(['Balance due', invMoney(due) + '  on delivery', 'red']);
+  } else {
+    const paid = live.payment_status === 'paid';
+    const cod = String(live.payment_method || '').toLowerCase() === 'cod';
+    const settled = paid || (cod && live.status === 'delivered');
+    stamp = live.status === 'cancelled' ? { text: 'CANCELLED', tone: 'red' } : (settled ? { text: 'PAID', tone: 'green' } : { text: 'PAY ON DELIVERY', tone: 'amber' });
+    payment.push(['Payment mode', cod ? 'Cash on Delivery' : (paid ? 'Online (prepaid)' : (live.payment_method || '-'))]);
+    payment.push(['Status', settled ? 'Paid' : 'Due on delivery', settled ? 'green' : 'amber']);
+  }
+  if (live.status === 'delivered' && live.delivered_at) payment.push(['Delivered on', invDate(live.delivered_at)]);
+  const meta = [['Graspion Order No.', d.order_number], ['Order Date', invDate(d.order_date)]];
+  if (isPb && d.preferred_delivery_date) meta.push(['Delivery Date', invDate(d.preferred_delivery_date + 'T00:00:00')]);
+  else if (!isPb) meta.push(['Delivery', d.delivery_type === 'instant' ? 'Instant' : 'Standard']);
+  const s = d.seller || {}, b = d.buyer || {};
+  const notes = [];
+  if (!isTax) notes.push('Seller is not registered under GST - issued as Bill of Supply, no GST charged.');
+  if (d.notes) notes.push('Customer instructions: ' + d.notes);
+  return {
+    title: isTax ? 'Tax Invoice' : 'Bill of Supply', numberLabel: 'Invoice No.', number: d.invoice_number, date: invDate(d.issued_at),
+    stamp: stamp, meta: meta, noTax: !isTax,
+    seller: { name: s.name, legal: s.legal, address: s.address, gstin: s.gstin, fssai: s.fssai },
+    buyer: { name: b.name, phone: b.phone, address: [b.address, b.pincode].filter(Boolean).join(' - ') },
+    items: (d.items || []).map(function(it) { return { name: it.name, sub: it.sub, hsn: it.hsn, qty: it.qty, unit: it.unit, rate: it.rate, taxable: it.taxable, gstPct: isTax ? it.gst_pct : '-', tax: Number(it.cgst || 0) + Number(it.sgst || 0) + Number(it.igst || 0), amount: it.amount }; }),
+    totals: { taxable: Number(d.totals.taxable || 0), cgst: Number(d.totals.cgst || 0), sgst: Number(d.totals.sgst || 0), igst: Number(d.totals.igst || 0), grand: Number(d.totals.grand || 0) },
+    extras: d.extras || [], payment: payment, notes: notes.join('  '),
+    verify: { code: d.verify_code, url: 'https://graspion.in/?verify=' + d.verify_code },
+    fileName: 'Invoice-' + String(d.invoice_number).replace(/\//g, '-') + '.pdf'
+  };
+}
+// Issue-once-then-reprint: same invoice number every time, for vendor, customer and admin
+async function printFrozenInvoice(kind, id, btn) {
+  const label = btn ? btn.textContent : '';
+  if (btn) btn.textContent = '⏳ Preparing bill...';
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_invoice_data', {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_or_issue_invoice', {
       method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ p_order_id: orderId })
+      body: JSON.stringify({ p_kind: kind, p_id: id })
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+      const t = await res.text();
+      if (t.indexOf('NOT_READY') !== -1) throw new Error('The bill is created when the order is packed/dispatched (or paid online). Please try again after that.');
+      if (t.indexOf('CANCELLED') !== -1) throw new Error('This order is cancelled, so no bill is issued.');
+      if (t.indexOf('NOT_ALLOWED') !== -1) throw new Error('You do not have access to this bill.');
+      throw new Error(t);
+    }
     const d = await res.json();
-    const o = d.order, v = d.vendor, items = d.items || [];
-    let tTax = 0, tC = 0, tS = 0, tI = 0;
-    const rows = items.map(function(it) {
-      const amount = Number(it.price) * Number(it.quantity);
-      const c = Number(it.cgst_amount || 0), s = Number(it.sgst_amount || 0), ig = Number(it.igst_amount || 0);
-      const taxable = Number(it.taxable_amount || (amount - c - s - ig));
-      tTax += taxable; tC += c; tS += s; tI += ig;
-      return { name: it.product_name || 'Item', sub: it.variant || '', hsn: it.hsn_code, qty: it.quantity, unit: it.unit, rate: it.price, taxable: taxable, gstPct: it.gst_percent || 0, tax: c + s + ig, amount: amount };
-    });
-    const paid = o.payment_status === 'paid';
-    const isCod = String(o.payment_method || '').toLowerCase() === 'cod';
-    const delivered = o.status === 'delivered';
-    const returned = o.return_status === 'returned' || o.return_status === 'approved';
-    const stamp = returned ? { text: 'RETURNED', tone: 'red' } : (paid || (isCod && delivered)) ? { text: 'PAID', tone: 'green' } : { text: 'PAY ON DELIVERY', tone: 'amber' };
-    const payment = [['Payment mode', isCod ? 'Cash on Delivery' : (paid ? 'Online (prepaid)' : (o.payment_method || '-'))]];
-    payment.push(['Status', (paid || (isCod && delivered)) ? 'Paid' : 'Due on delivery', (paid || (isCod && delivered)) ? 'green' : 'amber']);
-    if (delivered && o.delivered_at) payment.push(['Delivered on', invDate(o.delivered_at)]);
-    await renderPremiumInvoice({
-      title: 'Tax Invoice', number: o.order_number || o.id.slice(0, 8).toUpperCase(), date: invDate(o.created_at),
-      stamp: stamp,
-      meta: [['Order No.', o.order_number || o.id.slice(0, 8)], ['Order Date', invDate(o.created_at)], ['Delivery', o.delivery_type === 'instant' ? 'Instant' : 'Standard']],
-      seller: { name: v.name, legal: v.legal_name, address: v.address, gstin: v.gstin, fssai: v.fssai },
-      buyer: { name: o.customer_name || 'Customer', phone: o.customer_phone, address: [o.customer_address, o.pincode].filter(Boolean).join(' - ') },
-      items: rows, totals: { taxable: tTax, cgst: tC, sgst: tS, igst: tI, grand: Number(o.total_amount || 0) },
-      payment: payment, notes: returned ? 'This order was returned. Refund, if applicable, is processed as per the return policy.' : '',
-      fileName: 'Graspion-Invoice-' + (o.order_number || o.id.slice(0, 8)) + '.pdf'
-    });
-    if (btn) btn.textContent = '🧾 Download Invoice';
+    await renderPremiumInvoice(invoiceModelFromSnapshot(d));
   } catch (err) {
-    alert('Could not generate invoice: ' + err.message);
-    if (btn) btn.textContent = '🧾 Download Invoice';
+    alert('Could not create bill: ' + err.message);
+  } finally {
+    if (btn) btn.textContent = label;
   }
 }
 
+async function generateCustomerInvoice(orderId) {
+  await printFrozenInvoice('order', orderId, document.querySelector('[data-downloadinvoice="' + orderId + '"]'));
+}
 async function generatePrebookingInvoice(bookingId) {
   const btn = document.querySelector('[data-pbinvoice="' + bookingId + '"]');
+  const label = btn ? btn.textContent : '';
+  if (btn) btn.textContent = '⏳ Preparing bill...';
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_or_issue_invoice', {
+      method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_kind: 'prebooking', p_id: bookingId })
+    });
+    if (res.ok) { await renderPremiumInvoice(invoiceModelFromSnapshot(await res.json())); }
+    else {
+      const t = await res.text();
+      if (t.indexOf('NOT_READY') !== -1) { if (btn) btn.textContent = label; await generateAdvanceReceipt(bookingId, btn); return; }
+      throw new Error(t);
+    }
+  } catch (err) { alert('Could not create bill: ' + err.message); }
+  finally { if (btn) btn.textContent = label; }
+}
+async function generateAdvanceReceipt(bookingId, btn) {
   if (btn) btn.textContent = '⏳ Generating...';
   try {
     const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_prebooking_invoice_data', {
@@ -3756,15 +3832,15 @@ async function generatePrebookingInvoice(bookingId) {
     if (b.preferred_delivery_date) meta.push(['Delivery Date', invDate(b.preferred_delivery_date + 'T00:00:00')]);
     const tax = Number(it.cgst_amount || 0) + Number(it.sgst_amount || 0) + Number(it.igst_amount || 0);
     await renderPremiumInvoice({
-      title: b.status === 'delivered' ? 'Tax Invoice' : 'Booking Receipt', number: num, date: invDate(b.status === 'delivered' && b.delivered_at ? b.delivered_at : b.created_at),
+      title: 'Advance Receipt', numberLabel: 'Booking', number: num, date: invDate(b.created_at),
       stamp: fullyPaid ? { text: 'PAID', tone: 'green' } : (b.status === 'cancelled' ? { text: 'CANCELLED', tone: 'red' } : { text: 'ADVANCE PAID', tone: 'amber' }),
       meta: meta,
       seller: { name: v.name, legal: v.legal_name, address: v.address, gstin: v.gstin, fssai: v.fssai },
       buyer: { name: b.customer_name || 'Customer', phone: b.customer_phone, address: [b.customer_address, b.pincode].filter(Boolean).join(' - ') },
       items: [{ name: it.product_name || 'Item', sub: (b.booking_type === 'sample' ? 'Sample request' : 'Pre-order') + ' - rate per ' + invUnit(it.unit, 1), hsn: it.hsn_code, qty: it.quantity, unit: it.unit, rate: it.price, taxable: it.taxable_amount, gstPct: it.gst_percent, tax: tax, amount: d.total_amount }],
       totals: { taxable: Number(it.taxable_amount || 0), cgst: Number(it.cgst_amount || 0), sgst: Number(it.sgst_amount || 0), igst: Number(it.igst_amount || 0), grand: Number(d.total_amount || 0) },
-      payment: payment, notes: b.notes ? 'Your instructions: ' + b.notes : '',
-      fileName: 'Graspion-' + (b.status === 'delivered' ? 'Invoice-' : 'Booking-') + num + '.pdf'
+      payment: payment, notes: 'This is a receipt for the advance paid - not a tax invoice. The tax invoice is issued when your order is dispatched.' + (b.notes ? '  Your instructions: ' + b.notes : ''),
+      fileName: 'Graspion-Advance-Receipt-' + num + '.pdf'
     });
     if (btn) btn.textContent = '🧾 Download Bill';
   } catch (err) {
@@ -3772,6 +3848,28 @@ async function generatePrebookingInvoice(bookingId) {
     if (btn) btn.textContent = '🧾 Download Bill';
   }
 }
+
+// ---- Bill verification page: graspion.in/?verify=CODE (QR on every bill) ----
+(function() {
+  const code = new URLSearchParams(window.location.search).get('verify');
+  if (!code) return;
+  const esc = function(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed; inset:0; background:rgba(15,10,30,0.55); z-index:9999; display:flex; align-items:center; justify-content:center; padding:18px;';
+  wrap.innerHTML = '<div style="background:#fff; border-radius:18px; max-width:420px; width:100%; padding:20px; text-align:left; border-top:5px solid #7c3aed;"><div style="font-size:18px; font-weight:800; color:#5b21b6;">🔎 Bill Verification</div><div id="verifyBody" style="margin-top:12px; font-size:14px; color:#1f2937; line-height:1.7;">Checking...</div><button id="verifyClose" style="margin-top:14px; width:100%; background:#7c3aed; color:#fff; border:none; padding:11px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer;">Continue to Graspion</button></div>';
+  document.body.appendChild(wrap);
+  wrap.querySelector('#verifyClose').addEventListener('click', function() { wrap.remove(); history.replaceState(null, '', window.location.pathname); });
+  fetch(SUPABASE_URL + '/rest/v1/rpc/verify_invoice', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_code: code }) })
+    .then(function(r) { return r.json(); })
+    .then(function(v) {
+      const body = wrap.querySelector('#verifyBody');
+      if (!v || !v.valid) { body.innerHTML = '<div style="background:#fee2e2; color:#b91c1c; padding:12px; border-radius:10px; font-weight:700;">❌ No bill found with this code. This bill may not be genuine.</div>'; return; }
+      body.innerHTML = '<div style="background:#dcfce7; color:#15803d; padding:10px 12px; border-radius:10px; font-weight:800;">✅ Genuine bill issued via Graspion</div>' +
+        '<div style="margin-top:10px;">' + (v.doc_type === 'tax_invoice' ? 'Tax Invoice' : 'Bill of Supply') + ' No.: <b>' + esc(v.invoice_number) + '</b><br>Date: <b>' + new Date(v.issued_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '</b><br>Graspion Order No.: <b>' + esc(v.order_number) + '</b><br>Seller: <b>' + esc(v.seller) + '</b>' + (v.gstin ? ' (GSTIN ' + esc(v.gstin) + ')' : '') + '<br>Customer: <b>' + esc(v.buyer) + '</b><br>Items: ' + (v.items || []).map(function(i) { return esc(i.name) + ' × ' + esc(i.qty) + ' ' + esc(i.unit || ''); }).join(', ') + '<br>Bill amount: <b style="color:#5b21b6;">₹' + Number(v.grand_total).toLocaleString('en-IN') + '</b></div>' +
+        '<div style="margin-top:8px; font-size:12px; color:#4b5563;">If the amount or details on your paper bill are different from these, the paper bill has been altered.</div>';
+    })
+    .catch(function() { wrap.querySelector('#verifyBody').textContent = 'Could not check right now. Please try again.'; });
+})();
 
 // ===================== PRE-BOOKING (sample request / advance booking) =====================
 function openPrebookingModal(productId, type) {
