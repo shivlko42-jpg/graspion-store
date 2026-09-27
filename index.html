@@ -3874,6 +3874,7 @@ async function generateAdvanceReceipt(bookingId, btn) {
 // ===================== PRE-BOOKING (sample request / advance booking) =====================
 // Pack sizes for pre-order items come from product variants that have an option (e.g. Size: 500 g)
 function preorderPacks(productId) {
+  return []; // pre-booking kept simple: customer writes packing in notes
   return (productVariantsMap[productId] || []).filter(function(v) { return (productVariantAttrsMap[v.id] || []).length > 0 && v.status !== 'inactive'; })
     .map(function(v) { return { id: v.id, label: (productVariantAttrsMap[v.id] || []).map(function(a) { return a.attribute_value; }).join(' / '), price: Number(v.selling_price), mrp: Number(v.mrp || 0) }; })
     .sort(function(a, b) { return a.price - b.price; });
@@ -3932,7 +3933,7 @@ function openPrebookingModal(productId, type) {
     '<div style="display:flex; gap:10px; margin-bottom:10px;"><div style="flex:1;"><label style="' + fieldLabel + '">👤 Name</label><input style="' + fieldInput + '" id="pbName" value="' + (customerInfo.name || '') + '"></div><div style="flex:1;"><label style="' + fieldLabel + '">📱 Phone</label><input style="' + fieldInput + '" id="pbPhone" value="' + (customerInfo.phone || '') + '"></div></div>' +
     '<div style="margin-bottom:10px;"><label style="' + fieldLabel + '">📍 Delivery Address</label><textarea style="' + fieldInput + ' resize:none;" id="pbAddress" rows="2">' + (customerInfo.address || '') + '</textarea></div>' +
     '<div style="margin-bottom:' + (type === 'preorder' ? '10px' : '14px') + ';"><label style="' + fieldLabel + '">Pincode</label><input style="' + fieldInput + '" id="pbPincode" value="' + (customerInfo.pincode || '') + '"></div>' +
-    (type === 'preorder' ? '<div style="margin-bottom:14px;"><label style="' + fieldLabel + '">Customization notes (optional)</label><textarea style="' + fieldInput + ' resize:none;" id="pbNotes" rows="2" placeholder="e.g. message on the box, packaging preference"></textarea></div>' : '') +
+    (type === 'preorder' ? '<div style="margin-bottom:14px;"><label style="' + fieldLabel + '">Packing / notes (optional)</label><textarea style="' + fieldInput + ' resize:none;" id="pbNotes" rows="2" placeholder="Packing: e.g. 2 box of 500 g + 1 box of 1 kg, message on box"></textarea></div>' : '') +
     '<button id="pbSubmitBtn" style="width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer;">' + (amount > 0 ? 'Pay ₹' + amount + ' & Confirm' : 'Confirm — Free') + '</button>' +
     '<div id="pbModalError" style="color:#dc2626; font-size:11px; margin-top:8px; text-align:center;"></div>';
 
@@ -4257,7 +4258,7 @@ let selectedVariant = null;
 if (variants.length > 0) {
 // group attribute names -> unique values across all variants (e.g. Size: [S,M,L], Color: [Red,Blue])
 const attrGroups = {};
-variants.forEach(function(v) {
+variants.slice().sort(function(x, y) { return Number(x.selling_price) - Number(y.selling_price); }).forEach(function(v) {
 (productVariantAttrsMap[v.id] || []).forEach(function(a) {
 if (!attrGroups[a.attribute_name]) attrGroups[a.attribute_name] = new Set();
 attrGroups[a.attribute_name].add(a.attribute_value);
@@ -4397,8 +4398,8 @@ const bottomBarHtml = p.isPreorder ?
 })()
 :
 '<div style="display:flex; align-items:center; gap:14px;"><span style="font-size:11.5px; font-weight:700; color:#6b7280;">Quantity</span><div style="display:flex; align-items:center; gap:10px; background:#f3f1f8; border-radius:10px; padding:6px 10px;"><button type="button" id="pdQtyDec" style="background:#fff; border:none; width:26px; height:26px; border-radius:6px; font-size:16px; font-weight:700; cursor:pointer;">−</button><span id="pdQtyVal" style="font-size:14px; font-weight:800; min-width:20px; text-align:center;">1</span><button type="button" id="pdQtyInc" style="background:#fff; border:none; width:26px; height:26px; border-radius:6px; font-size:16px; font-weight:700; cursor:pointer;">+</button></div></div>' +
-'<div style="display:flex; gap:8px; margin-top:10px;"><button data-detailadd="' + p.id + '" ' + (variants.length > 0 ? 'disabled' : '') + ' style="flex:1; background:#fff; color:#7c3aed; border:2px solid #7c3aed; padding:13px; border-radius:12px; font-weight:800; cursor:pointer; opacity:' + (variants.length > 0 ? '0.5' : '1') + ';">' + (variants.length > 0 ? 'Select Options' : '🛒 Add to Cart') + '</button>' +
-(variants.length === 0 ? '<button data-buynow="' + p.id + '" style="flex:1; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">⚡ Buy Now</button>' : '') +
+'<div style="display:flex; gap:8px; margin-top:10px;"><button data-detailadd="' + p.id + '" style="flex:1; background:#fff; color:#7c3aed; border:2px solid #7c3aed; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">🛒 Add to Cart</button>' +
+'<button data-buynow="' + p.id + '" style="flex:1; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">⚡ Buy Now</button>' +
 '</div>';
 
 document.getElementById('pdBottomBar').innerHTML = bottomBarHtml;
@@ -4533,7 +4534,9 @@ const attrNames = Array.from(new Set(Array.from(document.querySelectorAll('#pdVa
 const allSelected = attrNames.every(function(n) { return selectedAttrs[n]; });
 const statusEl = document.getElementById('pdVariantStatus');
 const addBtn = document.querySelector('[data-detailadd]');
-if (!allSelected) { statusEl.textContent = '👆 Choose an option above'; addBtn.disabled = true; addBtn.style.opacity = '0.5'; addBtn.textContent = 'Select Options'; return; }
+const buyBtn = document.querySelector('[data-buynow]');
+const setBtns = function(ok, label) { [addBtn, buyBtn].forEach(function(b) { if (b) { b.disabled = !ok; b.style.opacity = ok ? '1' : '0.5'; } }); if (addBtn) addBtn.textContent = ok ? '🛒 Add to Cart' : label; if (buyBtn) buyBtn.textContent = ok ? '⚡ Buy Now' : label; };
+if (!allSelected) { statusEl.textContent = '👆 Choose an option above'; setBtns(false, 'Choose option'); return; }
 const match = variants.find(function(v) {
 const vAttrs = productVariantAttrsMap[v.id] || [];
 return attrNames.every(function(n) { return vAttrs.some(function(a){ return a.attribute_name === n && a.attribute_value === selectedAttrs[n]; }); });
@@ -4542,12 +4545,11 @@ if (match) {
 selectedVariant = match;
 document.getElementById('pdPrice').innerHTML = '₹' + match.selling_price + (match.mrp && Number(match.mrp) > Number(match.selling_price) ? ' <span style="font-size:15px; color:#9ca3af; text-decoration:line-through; font-weight:600;">₹' + match.mrp + '</span> <span style="font-size:13px; color:#15803d; font-weight:800;">' + Math.round((1 - match.selling_price / match.mrp) * 100) + '% OFF</span>' : '');
 statusEl.textContent = match.stock > 0 ? '✓ In stock (' + match.stock + ' available)' : '✕ Out of stock';
-addBtn.disabled = match.stock <= 0; addBtn.style.opacity = match.stock > 0 ? '1' : '0.5';
-addBtn.textContent = match.stock > 0 ? 'Add to Cart' : 'Out of Stock';
+setBtns(match.stock > 0, 'Out of Stock');
 } else {
 selectedVariant = null;
 statusEl.textContent = 'This combination is not available';
-addBtn.disabled = true; addBtn.style.opacity = '0.5'; addBtn.textContent = 'Not Available';
+setBtns(false, 'Not Available');
 }
 }
 document.querySelectorAll('.pd-attr-btn').forEach(function(btn) {
@@ -4561,10 +4563,14 @@ tryMatchVariant();
 });
 });
 
-(function autoPickSingle() {
-  const groups = {};
-  document.querySelectorAll('.pd-attr-btn').forEach(function(b) { const n = b.getAttribute('data-attrname'); (groups[n] = groups[n] || []).push(b); });
-  Object.keys(groups).forEach(function(n) { if (groups[n].length === 1) groups[n][0].click(); });
+(function pickDefaultVariant() {
+  if (!variants.length) return;
+  const sorted = variants.slice().sort(function(x, y) { return Number(x.selling_price) - Number(y.selling_price); });
+  const def = variants.find(function(v) { return Number(v.selling_price) === Number(p.price) && v.stock > 0; }) || sorted.find(function(v) { return v.stock > 0; }) || sorted[0];
+  (productVariantAttrsMap[def.id] || []).forEach(function(a) {
+    const btn = Array.from(document.querySelectorAll('.pd-attr-btn')).find(function(b) { return b.getAttribute('data-attrname') === a.attribute_name && b.getAttribute('data-attrvalue') === a.attribute_value; });
+    if (btn) btn.click();
+  });
 })();
 
 let pdSelectedQty = 1;
