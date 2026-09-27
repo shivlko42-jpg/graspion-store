@@ -422,8 +422,8 @@ window.addEventListener('load', function() {
             <div class="form-group"><label>Warranty Type</label><select class="form-input" id="pWarrantyType"><option value="">—</option><option value="Manufacturer">Manufacturer</option><option value="Seller">Seller</option></select></div>
           </div>
           <div class="form-group" style="margin-bottom:10px;"><label>What's Included</label><input class="form-input" id="pWhatsIncluded" placeholder="e.g. 1 Charger, 1 Cable, User Manual"></div>
-          <div class="form-group" style="margin-bottom:10px;"><label>Care Instructions</label><input class="form-input" id="pCareInstructions" placeholder="How to care for this product"></div>
-          <div class="form-group" style="margin-bottom:10px;"><label>Safety Information</label><input class="form-input" id="pSafetyInfo" placeholder="Safety warnings, if any"></div>
+          <div class="form-group" style="margin-bottom:10px;"><label>Care / Storage Instructions</label><textarea class="form-input" id="pCareInstructions" rows="2" placeholder="How to store / use / care for this product"></textarea></div>
+          <div class="form-group" style="margin-bottom:10px;"><label>Quality &amp; Trust (shown to customers — who makes it, FSSAI etc.)</label><textarea class="form-input" id="pSafetyInfo" rows="3" placeholder="Filled by ✨ AI-fill from your verified shop details"></textarea></div>
           <div class="form-group" style="margin-bottom:10px;"><label>Installation Info</label><input class="form-input" id="pInstallationInfo" placeholder="Installation notes, if applicable"></div>
           <div style="font-size:11px; font-weight:700; color:#6b7280; margin:10px 0 6px;">💰 Cost & Wholesale Pricing (for your own profit tracking — not shown to customers)</div>
           <div class="form-row">
@@ -3134,7 +3134,9 @@ document.getElementById('autoDescBtn').addEventListener('click', async function(
     const res = await fetch(SUPABASE_URL + '/functions/v1/generate-product-description', {
       method: 'POST',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_name: name, category: cleanCategory, brand: brand })
+      body: JSON.stringify({ product_name: name, category: cleanCategory, brand: brand,
+        seller: currentVendor ? { name: currentVendor.name, legal_name: currentVendor.owner_name, fssai: currentVendor.fssai_license_number, city: (String(currentVendor.address || '').split(',').map(function(x) { return x.trim(); }).filter(Boolean).pop() || '').replace(/[-0-9 ]+$/, '') } : null,
+        preorder: document.getElementById('pIsPreorder') && document.getElementById('pIsPreorder').checked ? { is_preorder: true, deadline: document.getElementById('pBookingDeadline').value || '', delivery_start: document.getElementById('pDeliveryStart').value || '' } : null })
     });
     if (!res.ok) throw new Error('AI generator unavailable');
     const result = await res.json();
@@ -3149,6 +3151,13 @@ document.getElementById('autoDescBtn').addEventListener('click', async function(
     if (!document.getElementById('pHsn').value.trim() && result.hsn_code) {
       document.getElementById('pHsn').value = result.hsn_code;
     }
+    // "Additional Information" block on the product page — only fill empty boxes, never overwrite the vendor's own text
+    let filledExtra = false;
+    [['pSafetyInfo', result.quality_trust], ['pCareInstructions', result.care], ['pWhatsIncluded', result.whats_included]].forEach(function(pair) {
+      const el = document.getElementById(pair[0]);
+      if (el && !el.value.trim() && pair[1]) { el.value = pair[1]; filledExtra = true; }
+    });
+    if (filledExtra && document.getElementById('advancedFields')) { document.getElementById('advancedFields').style.display = 'block'; document.getElementById('advancedArrow').textContent = '▴'; }
   } catch (err) {
     // AI generator failed (not configured yet, network issue, etc.) — fall back
     // to the free local template so the button still does something useful.
