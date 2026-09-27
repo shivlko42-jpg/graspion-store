@@ -960,6 +960,43 @@ let customerInfo = { name:'', phone:'', email:'', address:'', city:'', pincode:'
 let savedAddresses = [];
 let selectedAddressId = null; // an address book id, or 'new' to show the manual entry form
 let giftWrapSelected = false;
+// ---- Distance-based local rider delivery ----
+// A shop's part of the cart is "local" when the shop does its own rider delivery, every item is an
+// area-only product (not pan-India), and the customer's pincode is in the shop's service area.
+let localQuotes = {};      // vendorId -> quote from local_delivery_quote()
+let localQuoteKey = '';
+function graspionGeo() { try { return window.graspionGeoCache || JSON.parse(localStorage.getItem('graspion_geo') || 'null'); } catch (e) { return null; } }
+function localVendorGroups(items) {
+  const groups = {};
+  items.forEach(function(i) { (groups[i.vendorId] = groups[i.vendorId] || []).push(i); });
+  const out = {};
+  Object.keys(groups).forEach(function(vid) {
+    const v = vendors.find(function(vv) { return vv.id === vid; });
+    const allLocal = groups[vid].every(function(i) { return i.pincode && i.pincode !== 'ALL'; });
+    if (v && v.localDelivery && allLocal && selectedPin && v.pincodes && v.pincodes.indexOf(selectedPin) !== -1) {
+      out[vid] = groups[vid].reduce(function(sum, i) { return sum + i.price * i.qty; }, 0);
+    }
+  });
+  return out;
+}
+async function refreshLocalQuotes(force) {
+  const groups = localVendorGroups(cartItemsList());
+  const geo = graspionGeo();
+  const useGeo = geo && geo.lat && (!geo.pin || geo.pin === selectedPin) ? geo : null;
+  const key = JSON.stringify([groups, useGeo && [useGeo.lat, useGeo.lng], selectedPin]);
+  if (!force && key === localQuoteKey) return;
+  localQuoteKey = key;
+  const fresh = {};
+  await Promise.all(Object.keys(groups).map(async function(vid) {
+    try {
+      const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/local_delivery_quote', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_vendor_id: vid, p_lat: useGeo ? useGeo.lat : null, p_lng: useGeo ? useGeo.lng : null, p_pincode: selectedPin || null, p_items_total: groups[vid] }) });
+      if (r.ok) fresh[vid] = await r.json();
+    } catch (e) {}
+  }));
+  localQuotes = fresh;
+  if (document.getElementById('checkoutOverlay') && document.getElementById('checkoutOverlay').classList.contains('open')) renderCheckout();
+}
 // Gift wrap is offered per shop, only by vendors who opted in (vendor panel → Gift Wrapping)
 function giftWrapVendorIds(items) {
   return Array.from(new Set(items.map(function(i) { return i.vendorId; }))).filter(function(vid) {
@@ -1021,7 +1058,7 @@ serviceAreaRows.forEach(function(a) { (serviceAreasByVendor[a.vendor_id] = servi
 vendors = vendorData.filter(function(v){ return v.status !== 'blocked'; }).map(function(v){
   const isPaidActive = !!v.nearby_subscription_active && (!v.nearby_subscription_expires_at || new Date(v.nearby_subscription_expires_at) >= new Date());
   const isInFreeTrial = v.created_at ? (new Date() - new Date(v.created_at)) < (90 * 24 * 60 * 60 * 1000) : false; // first 3 months free
-  return { id: v.id, name: v.name, address: v.address || '', icon: v.icon, logo_url: v.logo_url || null, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode].concat(serviceAreasByVendor[v.id] || []), vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, giftWrapEnabled: v.gift_wrap_enabled === true, gstin: v.gstin || null, address: v.address || null, email: v.email || null, phone: v.phone || null, fssaiLicense: v.fssai_license_number || null, drugLicense: v.drug_license_number || null, nearbySubscribed: isPaidActive || isInFreeTrial };
+  return { id: v.id, name: v.name, localDelivery: v.local_delivery_enabled === true, icon: v.icon, logo_url: v.logo_url || null, rating: v.rating, eta: v.eta_minutes + ' min', pincodes: [v.pincode].concat(serviceAreasByVendor[v.id] || []), vendorType: v.vendor_type || 'marketplace', warehouseId: v.warehouse_id || null, is_open: v.is_open, giftWrapEnabled: v.gift_wrap_enabled === true, gstin: v.gstin || null, address: v.address || null, email: v.email || null, phone: v.phone || null, fssaiLicense: v.fssai_license_number || null, drugLicense: v.drug_license_number || null, nearbySubscribed: isPaidActive || isInFreeTrial };
 });
 productPool = visibleProducts.map(function(p){
 const offPct = p.old_price ? Math.round((1 - p.price/p.old_price) * 100) : 0;
@@ -1716,7 +1753,13 @@ const igst = isInterState ? gstAmount : 0;
 const bundleMatch = findMatchingBundle(items);
 activeBundle = bundleMatch ? bundleMatch.bundle : null;
 const bundleSavings = bundleMatch ? bundleMatch.savings : 0;
-const delivery = itemTotal > 199 || itemTotal === 0 ? 0 : 29; const giftWrapCharge = (giftWrapSelected && itemTotal > 0) ? Number(siteSettings.gift_wrap_charge || 25) * giftWrapVendorIds(items).length : 0; const gross = itemTotal + delivery + giftWrapCharge; const couponDiscount = appliedCoupon ? Math.min(appliedCoupon.discount, gross) : 0; const discount = couponDiscount + bundleSavings; return { itemTotal: itemTotal, subtotal: subtotal, gstAmount: gstAmount, cgst: cgst, sgst: sgst, igst: igst, isInterState: isInterState, delivery: delivery, giftWrapCharge: giftWrapCharge, bundleSavings: bundleSavings, discount: discount, total: Math.max(gross - discount, 0), count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
+const localGroups = localVendorGroups(items);
+const localItemTotal = Object.keys(localGroups).reduce(function(sum, vid) { return sum + localGroups[vid]; }, 0);
+const nonLocalTotal = itemTotal - localItemTotal;
+const standardDelivery = nonLocalTotal > 199 || nonLocalTotal === 0 ? 0 : 29;
+const localFeeByVendor = {};
+Object.keys(localGroups).forEach(function(vid) { const q = localQuotes[vid]; localFeeByVendor[vid] = q && q.allowed ? Number(q.customer_fee || 0) : 0; });
+const delivery = standardDelivery + Object.keys(localFeeByVendor).reduce(function(sum, vid) { return sum + localFeeByVendor[vid]; }, 0); const giftWrapCharge = (giftWrapSelected && itemTotal > 0) ? Number(siteSettings.gift_wrap_charge || 25) * giftWrapVendorIds(items).length : 0; const gross = itemTotal + delivery + giftWrapCharge; const couponDiscount = appliedCoupon ? Math.min(appliedCoupon.discount, gross) : 0; const discount = couponDiscount + bundleSavings; return { itemTotal: itemTotal, subtotal: subtotal, gstAmount: gstAmount, cgst: cgst, sgst: sgst, igst: igst, isInterState: isInterState, delivery: delivery, standardDelivery: standardDelivery, localFeeByVendor: localFeeByVendor, localGroups: localGroups, giftWrapCharge: giftWrapCharge, bundleSavings: bundleSavings, discount: discount, total: Math.max(gross - discount, 0), count: items.reduce(function(s,i){ return s + i.qty; }, 0) }; }
 async function applyCoupon(code){
 if (!code) return;
 couponMessage = '⏳ Checking...';
@@ -1924,15 +1967,17 @@ const vendorItems = itemsByVendor[vendorId];
 // sub-orders always add up exactly to what the customer pays.
 const vItems = vendorItems.reduce(function(sum, i) { return sum + i.price * i.qty; }, 0);
 const vWrap = (giftWrapSelected && giftWrapVendorIds(items).indexOf(vendorId) !== -1) ? Number(siteSettings.gift_wrap_charge || 25) : 0;
+const firstStdVendor = vendorIds.find(function(x) { return !(t.localGroups && t.localGroups[x] !== undefined); });
+const vDelivery = (t.localGroups && t.localGroups[vendorId] !== undefined) ? (t.localFeeByVendor[vendorId] || 0) : (vendorId === firstStdVendor ? t.standardDelivery : 0);
 let vTotal;
 if (vi === vendorIds.length - 1) { vTotal = Math.round((t.total - subTotalSoFar) * 100) / 100; }
-else { vTotal = Math.round((vItems + (vi === 0 ? t.delivery : 0) + vWrap - (t.itemTotal > 0 ? t.discount * vItems / t.itemTotal : 0)) * 100) / 100; }
+else { vTotal = Math.round((vItems + vDelivery + vWrap - (t.itemTotal > 0 ? t.discount * vItems / t.itemTotal : 0)) * 100) / 100; }
 subTotalSoFar += vTotal;
 const orderId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){ const r = Math.random()*16|0; const v = c === 'x' ? r : (r&0x3|0x8); return v.toString(16); });
 const orderRes = await fetch(SUPABASE_URL + '/rest/v1/orders', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_email: (currentCustomer && currentCustomer.email) || customerInfo.email || null, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: vendorId, total_amount: vTotal, shipping_charge: vi === 0 ? t.delivery : 0, discount_amount: t.itemTotal > 0 ? Math.round(t.discount * vItems / t.itemTotal * 100) / 100 : 0, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: (vi === 0 && appliedCoupon) ? appliedCoupon.code : null, gift_wrap: vWrap > 0, gift_wrap_charge: vWrap, bundle_id: (vi === 0 && activeBundle) ? activeBundle.id : null, bundle_savings: vi === 0 ? t.bundleSavings : 0, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null, order_group_id: groupId, suborder_index: vi + 1, suborder_count: vendorIds.length })
+body: JSON.stringify({ id: orderId, customer_name: customerInfo.name, customer_phone: customerInfo.phone, customer_email: (currentCustomer && currentCustomer.email) || customerInfo.email || null, customer_id: currentCustomer ? currentCustomer.id : null, vendor_id: vendorId, total_amount: vTotal, shipping_charge: vDelivery, customer_lat: (graspionGeo() && (!graspionGeo().pin || graspionGeo().pin === selectedPin)) ? graspionGeo().lat : null, customer_lng: (graspionGeo() && (!graspionGeo().pin || graspionGeo().pin === selectedPin)) ? graspionGeo().lng : null, discount_amount: t.itemTotal > 0 ? Math.round(t.discount * vItems / t.itemTotal * 100) / 100 : 0, status: 'pending', payment_status: paymentStatus, payment_method: selectedPayMethod, pincode: customerInfo.pincode, address: customerInfo.address + ', ' + customerInfo.city, customer_address: customerInfo.address + ', ' + customerInfo.city, delivery_type: isInstantZone ? 'instant' : 'standard', warehouse_id: isInstantZone ? selectedWarehouseId : null, sales_channel: 'website', coupon_code: (vi === 0 && appliedCoupon) ? appliedCoupon.code : null, gift_wrap: vWrap > 0, gift_wrap_charge: vWrap, bundle_id: (vi === 0 && activeBundle) ? activeBundle.id : null, bundle_savings: vi === 0 ? t.bundleSavings : 0, delivery_state: (areaData[customerInfo.pincode] || areaData[selectedPin]) ? (areaData[customerInfo.pincode] || areaData[selectedPin]).state : null, order_group_id: groupId, suborder_index: vi + 1, suborder_count: vendorIds.length })
 });
 if (!orderRes.ok) {
 const orderErr = await orderRes.text();
@@ -2042,8 +2087,24 @@ const allSupportGiftWrap = wrapVendorIds.length > 0;
 if (!allSupportGiftWrap) giftWrapSelected = false;
 const wrapShopNames = wrapVendorIds.map(function(vid) { const v = vendors.find(function(vv) { return vv.id === vid; }); return v ? v.name : ''; }).filter(Boolean);
 const noWrapItems = items.filter(function(i) { return wrapVendorIds.indexOf(i.vendorId) === -1; });
+refreshLocalQuotes(false);
 const t = cartTotals();
 const wrap = document.getElementById('coWrap');
+const localVids = Object.keys(t.localGroups || {});
+let localBlocked = '';
+const localRows = localVids.map(function(vid) {
+  const v = vendors.find(function(vv) { return vv.id === vid; }); const q = localQuotes[vid]; const nm = v ? v.name : 'Shop';
+  if (!q) return '<div style="font-size:12.5px; color:#374151;">🚴 ' + nm + ': calculating delivery charge…</div>';
+  if (!q.allowed && q.reason === 'too_far') { localBlocked = nm + ' delivers only up to ' + q.max_km + ' km. You are about ' + q.km + ' km away.'; return '<div style="font-size:12.5px; color:#b91c1c; font-weight:700;">❌ ' + localBlocked + '</div>'; }
+  if (!q.allowed && q.reason === 'min_order') { localBlocked = 'For ' + nm + ' at ' + q.km + ' km, minimum order is ₹' + q.min_order + '. Add ₹' + Math.max(0, Math.ceil(q.min_order - t.localGroups[vid])) + ' more.'; return '<div style="font-size:12.5px; color:#b45309; font-weight:700;">⚠️ ' + localBlocked + '</div>'; }
+  if (!q.allowed) return '';
+  return '<div style="font-size:12.5px; color:#1f2937;">🚴 ' + nm + ' · ' + (q.estimated ? '≈' : '') + q.km + ' km · <b>' + (Number(q.customer_fee) === 0 ? 'FREE delivery' : '₹' + q.customer_fee) + '</b></div>';
+}).join('');
+const anyEstimated = localVids.some(function(vid) { return localQuotes[vid] && localQuotes[vid].estimated; });
+const localDeliveryHtml = localVids.length ? '<div class="co-section"><h4>🚴 Local Delivery by Graspion Rider</h4>' + localRows +
+  (anyEstimated ? '<button type="button" id="coExactLocBtn" style="margin-top:8px; background:#f5f3ff; color:#5b21b6; border:1px solid #e4dcfb; padding:8px 12px; border-radius:10px; font-size:12.5px; font-weight:700; cursor:pointer;">📍 Use my exact location for the correct charge</button>' : '') +
+  '</div>' : '';
+window.graspionLocalBlocked = localBlocked;
 if(checkoutStep === 'address'){
 const showPicker = currentCustomer && savedAddresses.length > 0 && selectedAddressId !== 'new';
 let addressSectionHtml;
@@ -2069,7 +2130,7 @@ if (showPicker) {
     (currentCustomer ? '<label style="display:flex; align-items:center; gap:8px; font-size:11.5px; margin-top:10px; cursor:pointer;"><input type="checkbox" id="coSaveAddr" checked><span>Save this address as:</span></label><select class="co-input" id="coAddrLabel" style="margin-top:6px;"><option value="Home">🏠 Home</option><option value="Office">🏢 Office</option><option value="Other">📍 Other</option></select>' : '') +
     '</div>';
 }
-wrap.innerHTML = addressSectionHtml +
+wrap.innerHTML = addressSectionHtml + localDeliveryHtml +
 (allSupportGiftWrap ? '<div class="co-section"><h4>🎁 Gift Wrap</h4>' +
   '<label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="checkbox" id="coGiftWrap" ' + (giftWrapSelected ? 'checked' : '') + '><span style="font-size:12.5px;">' + (noWrapItems.length ? 'Gift-wrap items from ' + wrapShopNames.join(', ') : 'Wrap this order as a gift') + ' (+₹' + Number(siteSettings.gift_wrap_charge || 25) * wrapVendorIds.length + ')</span></label>' +
   (noWrapItems.length ? '<div style="font-size:11.5px; color:#374151; margin-top:6px;">Not available for: ' + noWrapItems.map(function(i) { return i.name; }).join(', ') + '</div>' : '') +
@@ -2085,6 +2146,13 @@ wrap.innerHTML = addressSectionHtml +
 '<div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>CGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*50).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.cgst).toLocaleString('en-IN') + '</span></div><div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>SGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*50).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.sgst).toLocaleString('en-IN') + '</span></div>') +
 '<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?'₹0':'₹'+t.delivery) + '</b></div>' + (t.giftWrapCharge > 0 ? '<div class="co-item-row"><span>🎁 Gift Wrap</span><b>₹' + t.giftWrapCharge + '</b></div>' : '') + (t.bundleSavings > 0 ? '<div class="co-item-row" style="color:#a21caf;"><span>🎁 Bundle savings' + (activeBundle ? ' (' + activeBundle.name + ')' : '') + '</span><b>-₹' + t.bundleSavings.toLocaleString('en-IN') + '</b></div>' : '') + (appliedCoupon ? '<div class="co-item-row" style="color:#15803d;"><span>Coupon discount</span><b>-₹' + Math.min(appliedCoupon.discount, t.itemTotal + t.delivery + t.giftWrapCharge).toLocaleString('en-IN') + '</b></div>' : '') + '<div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
 if (document.getElementById('coGiftWrap')) { document.getElementById('coGiftWrap').addEventListener('change', function() { giftWrapSelected = this.checked; renderCheckout(); }); }
+if (document.getElementById('coExactLocBtn')) { document.getElementById('coExactLocBtn').addEventListener('click', function() {
+  const b = this; b.textContent = '⏳ Getting your location...';
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    try { window.graspionGeoCache = { lat: pos.coords.latitude, lng: pos.coords.longitude, pin: selectedPin, at: Date.now() }; localStorage.setItem('graspion_geo', JSON.stringify(window.graspionGeoCache)); } catch (e) {}
+    refreshLocalQuotes(true);
+  }, function() { b.textContent = '📍 Location not available — charge is an estimate'; }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+}); }
 if (document.getElementById('applyCouponBtn')) { document.getElementById('applyCouponBtn').addEventListener('click', function(){ applyCoupon(document.getElementById('coCouponInput').value); }); }
 if (document.getElementById('removeCouponBtn')) { document.getElementById('removeCouponBtn').addEventListener('click', removeCoupon); }
 if (showPicker) {
@@ -2189,6 +2257,8 @@ codOptionHtml + codNoticeHtml +
 wrap.querySelectorAll('[data-pay]').forEach(function(el) { el.addEventListener('click', function() { selectedPayMethod = el.getAttribute('data-pay'); renderCheckout(); }); });
 document.getElementById('placeOrderBtn').addEventListener('click', async function() {
 const btn = document.getElementById('placeOrderBtn');
+if (window.graspionLocalBlocked) { alert(window.graspionLocalBlocked); return; }
+if (Object.keys(cartTotals().localGroups || {}).some(function(vid) { return !localQuotes[vid]; })) { alert('Calculating delivery charge, please wait a second and try again.'); refreshLocalQuotes(true); return; }
 btn.textContent = '⏳ ' + graspionT('processingOrder');
 btn.disabled = true;
 window.lastOrderDebug = null;
@@ -2359,6 +2429,7 @@ navigator.geolocation.getCurrentPosition(async function(pos) {
 try {
 if (!dataLoaded) { await loadDataFromDatabase(); }  // need warehouses loaded before we can match
 const lat = pos.coords.latitude, lng = pos.coords.longitude;
+try { window.graspionGeoCache = { lat: lat, lng: lng, pin: null, at: Date.now() }; localStorage.setItem('graspion_geo', JSON.stringify(window.graspionGeoCache)); } catch (e) {}
 
 // Step 1: is the customer inside a dark store's service radius? -> instant delivery zone
 const nearestWarehouse = findNearestWarehouse(lat, lng);
@@ -2369,6 +2440,7 @@ const res = await fetch('https://nominatim.openstreetmap.org/reverse?format=json
 const data = await res.json();
 const addr = data.address || {};
 const detectedPincode = await resolvePincodeSmart(addr, lat, lng);
+try { const g = { lat: lat, lng: lng, pin: nearestWarehouse ? (detectedPincode || nearestWarehouse.pincode) : detectedPincode, at: Date.now() }; window.graspionGeoCache = g; localStorage.setItem('graspion_geo', JSON.stringify(g)); } catch (e) {}
 const localityName = addr.suburb || addr.neighbourhood || addr.city_district || addr.road || 'Your Area';
 const cityName = addr.city || addr.town || addr.village || addr.state_district || '';
 const streetPart = [addr.house_number, addr.road].filter(Boolean).join(' ');

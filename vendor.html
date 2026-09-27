@@ -306,6 +306,11 @@ window.addEventListener('load', function() {
         </div>
         <p style="font-size:10px; color:#9ca3af; margin-top:4px;">Only if you choose ✅, customers see a gift-wrap option (+₹25) for your products at checkout. You pack them as a gift; the ₹25 is included in your order amount.</p>
       </div>
+      <div style="margin-bottom:14px; background:#f5f3ff; border:1px solid #e4dcfb; border-radius:12px; padding:12px;">
+        <label style="font-size:12px; font-weight:700; color:#374151; display:block; margin-bottom:6px;">📍 Shop Location (for local rider delivery charges)</label>
+        <div id="shopLocStatus" style="font-size:12px; color:#374151; margin-bottom:8px;">Not set yet — customers are charged an estimated distance.</div>
+        <button type="button" id="setShopLocBtn" style="background:#7c3aed; color:#fff; border:none; padding:9px 14px; border-radius:10px; font-size:12.5px; font-weight:700; cursor:pointer;">📍 Set my shop location (stand at your shop)</button>
+      </div>
       <div id="localDeliveryRow" style="display:none; margin-bottom:14px;">
         <label style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:#6b7280;"><input type="checkbox" id="localDeliveryEnabled"> 🚴 Accept local rider delivery for my area (in addition to Shiprocket)</label>
         <p style="font-size:10px; color:#9ca3af; margin-top:4px; margin-left:24px;">If enabled, riders serving your pincode can pick up and hand-deliver your orders locally — often faster and cheaper than courier for nearby customers.</p>
@@ -3561,6 +3566,32 @@ body: JSON.stringify({ ad_bid: Number(input.value) || 0 })
 });
 });
 }
+
+// ===== Shop location for distance-based local delivery =====
+function renderShopLocStatus() {
+  const el = document.getElementById('shopLocStatus'); if (!el || !currentVendor) return;
+  if (currentVendor.shop_lat && currentVendor.shop_lng) el.innerHTML = '✅ Saved (' + Number(currentVendor.shop_lat).toFixed(5) + ', ' + Number(currentVendor.shop_lng).toFixed(5) + ') · <a href="https://maps.google.com/?q=' + currentVendor.shop_lat + ',' + currentVendor.shop_lng + '" target="_blank" rel="noopener" style="color:#5b21b6;">check on map</a>';
+}
+setInterval(function() { if (currentVendor && document.getElementById('shopLocStatus') && !document.getElementById('shopLocStatus').dataset.done && currentVendor.shop_lat) { renderShopLocStatus(); document.getElementById('shopLocStatus').dataset.done = '1'; } }, 1500);
+document.getElementById('setShopLocBtn').addEventListener('click', function() {
+  const btn = this;
+  if (!currentVendor) { alert('Please log in first.'); return; }
+  if (!navigator.geolocation) { alert('Location is not supported on this device.'); return; }
+  if (!confirm('Are you standing at your shop right now? The rider delivery charge will be measured from this spot.')) return;
+  btn.textContent = '⏳ Getting location...'; btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(async function(pos) {
+    try {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/vendors?id=eq.' + currentVendor.id, { method: 'PATCH', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        body: JSON.stringify({ shop_lat: pos.coords.latitude, shop_lng: pos.coords.longitude }) });
+      if (!res.ok) throw new Error(await res.text());
+      currentVendor.shop_lat = pos.coords.latitude; currentVendor.shop_lng = pos.coords.longitude;
+      renderShopLocStatus();
+      alert('✅ Shop location saved (accuracy about ' + Math.round(pos.coords.accuracy) + ' m).');
+    } catch (e) { alert('Could not save location: ' + e.message); }
+    btn.textContent = '📍 Update shop location'; btn.disabled = false;
+  }, function() { alert('Could not get location. Turn on GPS and allow location for this site.'); btn.textContent = '📍 Set my shop location (stand at your shop)'; btn.disabled = false; },
+  { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+});
 </script>
 
 </body>

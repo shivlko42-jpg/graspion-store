@@ -473,6 +473,7 @@ async function loadOrders() {
       '</div>' : '';
       return '<div class="order-card">' +
         '<div class="order-top"><span class="order-id">#' + (o.order_number || o.id.slice(0,8)) + ' · ' + deliveryBadge + '</span><span class="order-amt">₹' + o.total_amount + '</span></div>' +
+        ((o.rider_pay || o.delivery_distance_km) ? '<div style="margin:6px 0; display:inline-block; background:rgba(34,197,94,0.15); color:#22c55e; font-size:13px; font-weight:800; padding:5px 10px; border-radius:8px;">' + (o.delivery_distance_km ? '📏 ' + o.delivery_distance_km + ' km' : '') + (o.rider_pay ? ' · 💰 You earn ₹' + o.rider_pay : '') + '</div>' : '') +
         '<span class="pay-tag ' + (isCOD ? 'pay-cod' : 'pay-online') + '">' + (isCOD ? '💵 Collect COD' : '✅ Already Paid Online') + '</span>' +
         '<div class="order-addr">' + (isAssigned ? ((o.customer_name || 'Customer') + ' · ' + (o.customer_phone || '') + '<br>' + (o.address || '')) : ('📍 Delivery area: ' + (o.pincode || 'nearby') + ' <span style="color:#64748b;">(full address shown after you accept)</span>')) + '</div>' +
         contactRow +
