@@ -325,7 +325,8 @@ instead of staying stuck at mobile's 2 columns. */
 .checkout-btn { width:100%; background:linear-gradient(90deg,#7c3aed,#ec4899); border:none; color:#fff; padding:15px; border-radius:14px; font-weight:800; font-size:14px; cursor:pointer; margin-top:12px; }
 .checkout-overlay { position:fixed; inset:0; background:#f6f5fb; z-index:300; overflow-y:auto; display:none; }
 .checkout-overlay.open { display:block; }
-.co-header { background:#fff; padding:16px 20px; display:flex; align-items:center; gap:14px; position:sticky; top:0; }
+.co-header { background:#f5f3ff; border-top:3px solid #7c3aed; border-bottom:1px solid #e4dcfb; padding:16px 20px; display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:5; }
+.co-header h2 { color:#3b0764; }
 .co-back { background:#f3f1f8; border:none; font-size:18px; cursor:pointer; width:34px; height:34px; border-radius:10px; }
 .co-header h2 { font-size:16px; font-weight:800; }
 .co-wrap { max-width:600px; margin:0 auto; padding:20px; }
@@ -2135,6 +2136,17 @@ if (!allSupportGiftWrap) giftWrapSelected = false;
 const wrapShopNames = wrapVendorIds.map(function(vid) { const v = vendors.find(function(vv) { return vv.id === vid; }); return v ? v.name : ''; }).filter(Boolean);
 const noWrapItems = items.filter(function(i) { return wrapVendorIds.indexOf(i.vendorId) === -1; });
 refreshLocalQuotes(false);
+(function silentExactLocation() {
+  if (window.graspionCheckoutGeoTried || !navigator.permissions || !navigator.geolocation) return;
+  window.graspionCheckoutGeoTried = true;
+  navigator.permissions.query({ name: 'geolocation' }).then(function(st) {
+    if (st.state !== 'granted') return;
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      try { window.graspionGeoCache = { lat: pos.coords.latitude, lng: pos.coords.longitude, pin: deliveryPin(), at: Date.now() }; localStorage.setItem('graspion_geo', JSON.stringify(window.graspionGeoCache)); } catch (e) {}
+      refreshLocalQuotes(true);
+    }, function() {}, { enableHighAccuracy: true, timeout: 12000, maximumAge: 300000 });
+  }).catch(function() {});
+})();
 const t = cartTotals();
 const wrap = document.getElementById('coWrap');
 const localVids = Object.keys(t.localGroups || {});
@@ -2142,16 +2154,14 @@ let localBlocked = '';
 const localRows = localVids.map(function(vid) {
   const v = vendors.find(function(vv) { return vv.id === vid; }); const q = localQuotes[vid]; const nm = v ? v.name : 'Shop';
   if (!q) return '<div style="font-size:12.5px; color:#374151;">🚴 ' + nm + ': calculating delivery charge…</div>';
-  if (!q.allowed && q.reason === 'too_far') { localBlocked = nm + ' delivers only up to ' + q.max_km + ' km. You are about ' + q.km + ' km away.'; return '<div style="font-size:12.5px; color:#b91c1c; font-weight:700;">❌ ' + localBlocked + '</div>'; }
-  if (!q.allowed && q.reason === 'min_order') { localBlocked = 'For ' + nm + ' at ' + q.km + ' km, minimum order is ₹' + q.min_order + '. Add ₹' + Math.max(0, Math.ceil(q.min_order - t.localGroups[vid])) + ' more.'; return '<div style="font-size:12.5px; color:#b45309; font-weight:700;">⚠️ ' + localBlocked + '</div>'; }
+  if (!q.allowed && q.reason === 'too_far') { localBlocked = nm + ' does not deliver to this address yet (too far). Please remove its items or choose a nearer address.'; return '<div style="font-size:12.5px; color:#b91c1c; font-weight:700;">❌ ' + localBlocked + '</div>'; }
+  if (!q.allowed && q.reason === 'min_order') { localBlocked = 'Minimum order for ' + nm + ' at your address is ₹' + q.min_order + '. Please add ₹' + Math.max(0, Math.ceil(q.min_order - t.localGroups[vid])) + ' more from this shop.'; return '<div style="font-size:12.5px; color:#b45309; font-weight:700;">⚠️ ' + localBlocked + '</div>'; }
   if (!q.allowed) return '';
   return '<div style="font-size:12.5px; color:#1f2937;">🚴 ' + nm + ' · ' + (q.estimated ? '≈' : '') + q.km + ' km' + (q.weight_kg ? ' · ' + q.weight_kg + ' kg' + (Number(q.weight_extra) > 0 ? ' (heavy +₹' + q.weight_extra + ')' : '') : '') + ' · <b>' + (Number(q.customer_fee) === 0 ? 'FREE delivery' : '₹' + q.customer_fee) + '</b></div>' +
     (q.heavy ? '<div style="font-size:11.5px; color:#b45309; margin-top:2px;">📦 Heavy order — it may come in two trips or by a small tempo.</div>' : '');
 }).join('');
 const anyEstimated = localVids.some(function(vid) { return localQuotes[vid] && localQuotes[vid].estimated; });
-const localDeliveryHtml = localVids.length ? '<div class="co-section"><h4>🚴 Local Delivery by Graspion Rider</h4>' + localRows +
-  (anyEstimated ? '<button type="button" id="coExactLocBtn" style="margin-top:8px; background:#f5f3ff; color:#5b21b6; border:1px solid #e4dcfb; padding:8px 12px; border-radius:10px; font-size:12.5px; font-weight:700; cursor:pointer;">📍 Use my exact location for the correct charge</button>' : '') +
-  '</div>' : '';
+const localDeliveryHtml = localBlocked ? '<div class="co-section"><h4>🚚 Delivery</h4><div style="font-size:13px; color:#b45309; font-weight:700; line-height:1.5;">' + localBlocked + '</div></div>' : '';
 window.graspionLocalBlocked = localBlocked;
 if(checkoutStep === 'address'){
 const showPicker = currentCustomer && savedAddresses.length > 0 && selectedAddressId !== 'new';
@@ -2192,7 +2202,7 @@ wrap.innerHTML = addressSectionHtml + localDeliveryHtml +
 '<div class="co-item-row" style="color:#9ca3af; font-size:11px; border-top:1px solid #f0eef7; padding-top:8px; margin-top:4px;"><span>Subtotal</span><span>₹' + Math.round(t.subtotal).toLocaleString('en-IN') + '</span></div>' +
 (t.isInterState ? '<div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>IGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*100).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.igst).toLocaleString('en-IN') + '</span></div>' :
 '<div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>CGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*50).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.cgst).toLocaleString('en-IN') + '</span></div><div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>SGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*50).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.sgst).toLocaleString('en-IN') + '</span></div>') +
-'<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?'₹0':'₹'+t.delivery) + '</b></div>' + (t.giftWrapCharge > 0 ? '<div class="co-item-row"><span>🎁 Gift Wrap</span><b>₹' + t.giftWrapCharge + '</b></div>' : '') + (t.bundleSavings > 0 ? '<div class="co-item-row" style="color:#a21caf;"><span>🎁 Bundle savings' + (activeBundle ? ' (' + activeBundle.name + ')' : '') + '</span><b>-₹' + t.bundleSavings.toLocaleString('en-IN') + '</b></div>' : '') + (appliedCoupon ? '<div class="co-item-row" style="color:#15803d;"><span>Coupon discount</span><b>-₹' + Math.min(appliedCoupon.discount, t.itemTotal + t.delivery + t.giftWrapCharge).toLocaleString('en-IN') + '</b></div>' : '') + '<div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
+'<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?'<span style="color:#15803d;">FREE</span>':'₹'+t.delivery) + '</b></div>' + (t.giftWrapCharge > 0 ? '<div class="co-item-row"><span>🎁 Gift Wrap</span><b>₹' + t.giftWrapCharge + '</b></div>' : '') + (t.bundleSavings > 0 ? '<div class="co-item-row" style="color:#a21caf;"><span>🎁 Bundle savings' + (activeBundle ? ' (' + activeBundle.name + ')' : '') + '</span><b>-₹' + t.bundleSavings.toLocaleString('en-IN') + '</b></div>' : '') + (appliedCoupon ? '<div class="co-item-row" style="color:#15803d;"><span>Coupon discount</span><b>-₹' + Math.min(appliedCoupon.discount, t.itemTotal + t.delivery + t.giftWrapCharge).toLocaleString('en-IN') + '</b></div>' : '') + '<div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
 if (document.getElementById('coGiftWrap')) { document.getElementById('coGiftWrap').addEventListener('change', function() { giftWrapSelected = this.checked; renderCheckout(); }); }
 if (document.getElementById('coExactLocBtn')) { document.getElementById('coExactLocBtn').addEventListener('click', function() {
   const b = this; b.textContent = '⏳ Getting your location...';
