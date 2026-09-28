@@ -1473,13 +1473,17 @@ row.querySelectorAll('.vendor-card').forEach(function(el){ el.addEventListener('
 // → Delivery Coverage) — this lets a "Local Area" vendor (e.g. delivering
 // across a whole city) set their coverage once, rather than having to
 // retype the same long pincode list on every product they list.
-// VISIBILITY vs DELIVERY
-// Every active product is always visible (a shop must never look empty, and a wrongly detected
-// location must never hide products). Location only decides (a) ordering: products that deliver
-// to the customer's area come first, and (b) delivery: an area-only product can be ordered only
-// to an address inside its area, checked at checkout.
+// WHO SEES WHAT
+// Pan-India products: everyone, everywhere.
+// Area-only products (e.g. Rudra's Lucknow items): once the customer's pincode is known, only if they
+// deliver to that pincode - a Delhi customer never sees Lucknow-only items. While the pincode is not
+// known yet (location still loading or refused) we cannot tell Delhi from Lucknow, so nothing is hidden;
+// the delivery-address pincode is checked again at checkout.
 function productMatchesPincode(p, pin){
-return !!p.pincode;
+if (!p.pincode) return false;
+if (p.pincode === 'ALL') return true;
+if (!pin) return true;
+return productDeliverable(p, pin) === true;
 }
 // true = delivers to this pincode, false = does not, null = area not known yet
 function productDeliverable(p, pin){
@@ -1518,9 +1522,7 @@ return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class=
 '<div class="img-wrap" style="position:relative;">' + (allPhotos.length > 0 ? '<img data-mainimg="' + p.id + '" src="' + allPhotos[0] + '" alt="' + (p.imageAlt || p.name).replace(/"/g,'&quot;') + '" loading="lazy" decoding="async">' : p.icon) + heartBtn + '</div>' + thumbStripHtml + '<div class="card-body"><h3>' + p.name + '</h3>' +
 '<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
 '<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span>' + (p.fulfillmentType === 'instant' ? '<div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div>' : '') + '<div class="feature-tag" style="margin-left:0;">' + deliveryBadge + '</div>' +
-(productAreaName(p) ? (productDeliverable(p, selectedPin) === false
-  ? '<div style="font-size:10.5px; font-weight:700; color:#9ca3af; margin-top:3px;">📍 Only ' + productAreaName(p) + ' delivery</div>'
-  : '<div style="font-size:10.5px; font-weight:800; color:#15803d; margin-top:3px;">📍 ' + (productDeliverable(p, selectedPin) === true ? 'Delivers in your area' : 'Local · ' + productAreaName(p)) + '</div>') : '') +
+
 (isStoreClosed ? '<div style="text-align:center; margin-top:10px; background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">🚫 Store Currently Closed</div>' :
 (p.isPreorder ? (isBookingClosed(p) ? '<div style="text-align:center; margin-top:10px; background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">⏰ Booking Closed</div>' : '<div style="text-align:center; margin-top:10px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">📦 Book Now</div>') :
 (p.stock <= 0 ? '<div style="text-align:center; margin-top:10px; background:#fee2e2; color:#dc2626; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">Out of Stock</div>' :
