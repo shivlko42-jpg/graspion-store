@@ -1027,7 +1027,7 @@ renderLanguageSwitcher('modalLangSwitcher');
 loadDataFromDatabase(); // load proactively so the location modal can show real dark-store pincode suggestions right away
 document.addEventListener('graspionLanguageChanged', function() {
   if (checkoutStep) renderCheckout();
-  if (selectedPin) renderProducts(selectedPin);
+  renderProducts(selectedPin);
 });
 
 async function loadDataFromDatabase(){
@@ -1428,7 +1428,7 @@ function renderSearchSuggestions(query) {
       document.getElementById('searchInput').value = p.name;
       searchQuery = p.name.toLowerCase();
       box.classList.remove('open');
-      if (selectedPin) renderProducts(selectedPin);
+      renderProducts(selectedPin);
       document.getElementById('dealGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
@@ -1436,7 +1436,7 @@ function renderSearchSuggestions(query) {
 document.getElementById('searchInput').addEventListener('input', function(){
 searchQuery = this.value.trim().toLowerCase();
 renderSearchSuggestions(this.value);
-if (selectedPin) renderProducts(selectedPin);
+renderProducts(selectedPin);
 });
 document.getElementById('searchInput').addEventListener('blur', function(){
 if (this.value.trim().length >= 2 && typeof gtag === 'function') { gtag('event', 'search', { search_term: this.value.trim() }); }
@@ -1472,7 +1472,9 @@ row.querySelectorAll('.vendor-card').forEach(function(el){ el.addEventListener('
 // across a whole city) set their coverage once, rather than having to
 // retype the same long pincode list on every product they list.
 function productMatchesPincode(p, pin){
-if (!p.pincode || !pin) return false;
+if (!p.pincode) return false;
+// no area chosen yet: show everything that ships all over India, so the shop is never empty
+if (!pin) return p.pincode === 'ALL';
 if (p.pincode === 'ALL') return true;
 if (p.pincode.split(',').map(function(s){ return s.trim(); }).indexOf(pin) !== -1) return true;
 const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
@@ -2559,10 +2561,22 @@ if (autoLocationEnabled && navigator.permissions && navigator.permissions.query)
 return;
 }
 } catch (e) {}
-// No saved area yet — show the picker. Only auto-trigger the native location
-// prompt if the customer hasn't turned that off.
-document.getElementById('pinModal').style.display = 'flex';
-if (autoLocationEnabled) { detectLocation(true); }
+// No saved area yet: DON'T block the screen. Show all pan-India products straight away and
+// find the location quietly in the background; local shops appear as soon as it's known.
+try { renderVendors(null); renderProducts(null); } catch (e) {}
+const areaLabelEl = document.getElementById('areaLabel');
+if (autoLocationEnabled && navigator.geolocation) {
+  if (areaLabelEl) areaLabelEl.textContent = 'Finding your area…';
+  detectLocation(true, { lowAccuracy: true });
+  setTimeout(function() {
+    if (!selectedPin) {
+      if (areaLabelEl) areaLabelEl.textContent = 'Select location ▾';
+      locationToast('📍 Tap "Select location" to see local shops & delivery time');
+    }
+  }, 12000);
+} else {
+  locationToast('📍 Tap "Select location" to see local shops & delivery time');
+}
 })();
 document.getElementById('startSellingBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'flex'; });
 if (new URLSearchParams(window.location.search).get('sell') === '1') { document.getElementById('vendorApplyModal').style.display = 'flex'; }
@@ -3159,7 +3173,7 @@ const rows = res.ok ? await res.json() : [];
 wishlistIds = new Set(rows.map(function(r){ return r.product_id; }));
 } catch (err) { wishlistIds = new Set(); }
 updateWishlistCount();
-if (selectedPin) renderProducts(selectedPin);
+renderProducts(selectedPin);
 }
 function updateWishlistCount() {
 const el = document.getElementById('wishlistCount');
@@ -3178,7 +3192,7 @@ wishlistIds.add(productId);
 await fetch(SUPABASE_URL + '/rest/v1/wishlists', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ customer_id: currentCustomer.id, product_id: productId }) });
 }
 updateWishlistCount();
-if (selectedPin) renderProducts(selectedPin);
+renderProducts(selectedPin);
 }
 function renderWishlistModal() {
 const list = document.getElementById('wishlistItemsList');
@@ -4307,7 +4321,7 @@ activeSubcategoryId = null;
 searchQuery = '';
 document.getElementById('searchInput').value = '';
 window.scrollTo({ top: 0, behavior: 'smooth' });
-if (selectedPin) renderProducts(selectedPin);
+renderProducts(selectedPin);
 });
 document.getElementById('bnCategories').addEventListener('click', function(){
 setBottomNavActive('bnCategories');
