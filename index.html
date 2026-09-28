@@ -2547,6 +2547,12 @@ errEl.textContent = 'Could not detect a valid location. Please enter your pincod
 } catch (err) { if (!isAutoTriggered) errEl.textContent = 'Location lookup failed. Please enter your pincode manually.'; }
 if (btn) btn.textContent = '📍 Use My Current Location';
 }, function(geoError) {
+// Permission refused on the automatic check: stop saying "Finding your area…" right away
+if (isAutoTriggered && geoError.code === geoError.PERMISSION_DENIED && !selectedPin) {
+  const al = document.getElementById('areaLabel'); if (al) al.textContent = 'Select location ▾';
+  if (!opts.silent) locationToast('📍 Tap "Select location" and enter your pincode for local shops');
+  return;
+}
 // Automatic mode: GPS-quality fix can time out indoors — retry once with network/Wi-Fi location
 if (isAutoTriggered && !opts.retried && geoError.code !== geoError.PERMISSION_DENIED) {
   opts.retried = true; opts.lowAccuracy = true;
@@ -2616,6 +2622,28 @@ if (autoLocationEnabled && navigator.geolocation) {
 } else {
   locationToast('📍 Tap "Select location" to see local shops & delivery time');
 }
+})();
+// Keep the area up to date while the site is in use: quietly re-check the location when the customer
+// comes back to the tab and every 10 minutes while it is open. Only if they already allowed location,
+// never during checkout (so the cart / delivery charge doesn't jump), and the area changes only when
+// the pincode really changed. Uses the phone's cheap network location, not continuous GPS (battery).
+(function keepLocationFresh() {
+  let lastCheck = Date.now();
+  function refresh(force) {
+    try { if (localStorage.getItem('graspion_auto_location') === 'off') return; } catch (e) {}
+    if (document.visibilityState !== 'visible') return;
+    const co = document.getElementById('checkoutOverlay');
+    if (co && co.classList.contains('open')) return;
+    if (!force && Date.now() - lastCheck < 5 * 60 * 1000) return;
+    if (!navigator.permissions || !navigator.permissions.query || !navigator.geolocation) return;
+    navigator.permissions.query({ name: 'geolocation' }).then(function(st) {
+      if (st.state !== 'granted') return;
+      lastCheck = Date.now();
+      detectLocation(true, { silent: true, previousPin: selectedPin, lowAccuracy: true });
+    }).catch(function() {});
+  }
+  document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') refresh(false); });
+  setInterval(function() { refresh(true); }, 10 * 60 * 1000);
 })();
 document.getElementById('startSellingBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'flex'; });
 if (new URLSearchParams(window.location.search).get('sell') === '1') { document.getElementById('vendorApplyModal').style.display = 'flex'; }
