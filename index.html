@@ -1350,7 +1350,7 @@ function isBookingClosed(p) {
 function getVendorEtaLabel(v, supplyType) {
   if (supplyType.type === 'dark_store') return v.eta;
   if (supplyType.type === 'local_area') return 'Same-day delivery';
-  return v.eta;
+  return '';
 }
 function vendorBadgeHtml(v, sizePx) {
   if (!v) return '';
@@ -1521,7 +1521,7 @@ const heartBtn = '<button data-wishlisttoggle="' + p.id + '" style="position:abs
 return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class="badge new">' + p.badge + '</div>' : '') + (p.isSponsored ? '<div class="badge sponsored">Sponsored</div>' : '') +
 '<div class="img-wrap" style="position:relative;">' + (allPhotos.length > 0 ? '<img data-mainimg="' + p.id + '" src="' + allPhotos[0] + '" alt="' + (p.imageAlt || p.name).replace(/"/g,'&quot;') + '" loading="lazy" decoding="async">' : p.icon) + heartBtn + '</div>' + thumbStripHtml + '<div class="card-body"><h3>' + p.name + '</h3>' +
 '<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
-'<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span>' + (p.fulfillmentType === 'instant' ? '<div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div>' : '') + '<div class="feature-tag" style="margin-left:0;">' + deliveryBadge + '</div>' +
+'<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span>' + ((p.fulfillmentType === 'instant' && vendor && getVendorSupplyType(vendor).type === 'dark_store') ? '<div class="free-del">⏱ ' + vendor.eta + ' ' + graspionT('delivery') + '</div>' : '') +
 
 (isStoreClosed ? '<div style="text-align:center; margin-top:10px; background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">🚫 Store Currently Closed</div>' :
 (p.isPreorder ? (isBookingClosed(p) ? '<div style="text-align:center; margin-top:10px; background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">⏰ Booking Closed</div>' : '<div style="text-align:center; margin-top:10px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">📦 Book Now</div>') :
@@ -4607,12 +4607,7 @@ variantSelectorHtml +
   // in optional fields) so this block never has nothing useful to show.
   const alwaysKnown = [];
   if (p.sku) alwaysKnown.push(['SKU', p.sku]);
-  if (p.fulfillmentType === 'instant' && vendor) {
-    const supplyType = getVendorSupplyType(vendor);
-    alwaysKnown.push(['Delivery Type', supplyType.type === 'dark_store' ? '⚡ Instant (' + vendor.eta + ')' : '🏘️ Same-day (Local Area)']);
-  } else {
-    alwaysKnown.push(['Delivery Type', '📦 Standard (Pan-India courier)']);
-  }
+  if (p.fulfillmentType === 'instant' && vendor && getVendorSupplyType(vendor).type === 'dark_store') alwaysKnown.push(['Delivery', '⏱ ' + vendor.eta]);
   if (p.codAllowed !== false) alwaysKnown.push(['Cash on Delivery', 'Available']);
   if (alwaysKnown.length > 0) addlParts.push('<table style="width:100%; font-size:11.5px; color:#4b5563; border-collapse:collapse; margin-bottom:10px;">' + alwaysKnown.map(function(r) { return '<tr><td style="padding:4px 0; color:#9ca3af; width:45%;">' + r[0] + '</td><td style="padding:4px 0; font-weight:600;">' + r[1] + '</td></tr>'; }).join('') + '</table>');
   if (p.whatsIncluded) addlParts.push('<div style="font-size:12px; font-weight:800; margin-bottom:4px;">📦 What\'s In The Box</div><p style="font-size:12.5px; color:#4b5563; line-height:1.6; text-align:justify; white-space:pre-line; margin-bottom:10px;">' + p.whatsIncluded + '</p>');
