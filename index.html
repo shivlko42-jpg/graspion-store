@@ -979,14 +979,16 @@ function itemWeightKg(i) {
 function localVendorWeights(items) {
   const w = {}; items.forEach(function(i) { w[i.vendorId] = (w[i.vendorId] || 0) + itemWeightKg(i); }); return w;
 }
+function deliveryPin() { return String((customerInfo && customerInfo.pincode) || selectedPin || '').trim() || null; }
 function localVendorGroups(items) {
+  const dPin = deliveryPin();
   const groups = {};
   items.forEach(function(i) { (groups[i.vendorId] = groups[i.vendorId] || []).push(i); });
   const out = {};
   Object.keys(groups).forEach(function(vid) {
     const v = vendors.find(function(vv) { return vv.id === vid; });
     const allLocal = groups[vid].every(function(i) { return i.pincode && i.pincode !== 'ALL'; });
-    if (v && v.localDelivery && allLocal && selectedPin && v.pincodes && v.pincodes.indexOf(selectedPin) !== -1) {
+    if (v && v.localDelivery && allLocal && dPin && v.pincodes && v.pincodes.indexOf(dPin) !== -1) {
       out[vid] = groups[vid].reduce(function(sum, i) { return sum + i.price * i.qty; }, 0);
     }
   });
@@ -995,16 +997,16 @@ function localVendorGroups(items) {
 async function refreshLocalQuotes(force) {
   const groups = localVendorGroups(cartItemsList());
   const geo = graspionGeo();
-  const useGeo = geo && geo.lat && (!geo.pin || geo.pin === selectedPin) ? geo : null;
+  const useGeo = geo && geo.lat && (!geo.pin || geo.pin === deliveryPin()) ? geo : null;
   const weights = localVendorWeights(cartItemsList());
-  const key = JSON.stringify([groups, weights, useGeo && [useGeo.lat, useGeo.lng], selectedPin]);
+  const key = JSON.stringify([groups, weights, useGeo && [useGeo.lat, useGeo.lng], deliveryPin()]);
   if (!force && key === localQuoteKey) return;
   localQuoteKey = key;
   const fresh = {};
   await Promise.all(Object.keys(groups).map(async function(vid) {
     try {
       const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/local_delivery_quote', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ p_vendor_id: vid, p_lat: useGeo ? useGeo.lat : null, p_lng: useGeo ? useGeo.lng : null, p_pincode: selectedPin || null, p_items_total: groups[vid], p_weight_kg: Math.round((weights[vid] || 0) * 10) / 10 }) });
+        body: JSON.stringify({ p_vendor_id: vid, p_lat: useGeo ? useGeo.lat : null, p_lng: useGeo ? useGeo.lng : null, p_pincode: deliveryPin(), p_items_total: groups[vid], p_weight_kg: Math.round((weights[vid] || 0) * 10) / 10 }) });
       if (r.ok) fresh[vid] = await r.json();
     } catch (e) {}
   }));
@@ -1471,9 +1473,32 @@ row.querySelectorAll('.vendor-card').forEach(function(el){ el.addEventListener('
 // → Delivery Coverage) — this lets a "Local Area" vendor (e.g. delivering
 // across a whole city) set their coverage once, rather than having to
 // retype the same long pincode list on every product they list.
+// VISIBILITY vs DELIVERY
+// Every active product is always visible (a shop must never look empty, and a wrongly detected
+// location must never hide products). Location only decides (a) ordering: products that deliver
+// to the customer's area come first, and (b) delivery: an area-only product can be ordered only
+// to an address inside its area, checked at checkout.
 function productMatchesPincode(p, pin){
+return !!p.pincode;
+}
+// true = delivers to this pincode, false = does not, null = area not known yet
+function productDeliverable(p, pin){
+if (!p || !p.pincode) return false;
+if (p.pincode === 'ALL') return true;
+if (!pin) return null;
+if (p.pincode.split(',').map(function(s){ return s.trim(); }).indexOf(pin) !== -1) return true;
+const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
+return !!(vendor && vendor.pincodes && vendor.pincodes.indexOf(pin) !== -1);
+}
+// "Lucknow" for an area-only product (city taken from the shop's address)
+function productAreaName(p){
+if (!p || !p.pincode || p.pincode === 'ALL') return '';
+const v = vendors.find(function(vv){ return vv.id === p.vendorId; });
+const parts = String((v && v.address) || '').split(',').map(function(x){ return x.replace(/[-0-9]+/g, '').trim(); }).filter(Boolean);
+return parts.length ? parts[parts.length - 1] : 'selected areas';
+}
+function productMatchesPincodeOld(p, pin){
 if (!p.pincode) return false;
-// no area chosen yet: show everything that ships all over India, so the shop is never empty
 if (!pin) return p.pincode === 'ALL';
 if (p.pincode === 'ALL') return true;
 if (p.pincode.split(',').map(function(s){ return s.trim(); }).indexOf(pin) !== -1) return true;
@@ -1493,6 +1518,9 @@ return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class=
 '<div class="img-wrap" style="position:relative;">' + (allPhotos.length > 0 ? '<img data-mainimg="' + p.id + '" src="' + allPhotos[0] + '" alt="' + (p.imageAlt || p.name).replace(/"/g,'&quot;') + '" loading="lazy" decoding="async">' : p.icon) + heartBtn + '</div>' + thumbStripHtml + '<div class="card-body"><h3>' + p.name + '</h3>' +
 '<div class="price-row"><span class="price-new">₹' + p.price.toLocaleString('en-IN') + '</span><span class="price-old">₹' + p.old.toLocaleString('en-IN') + '</span></div>' +
 '<span class="off">' + p.off + '</span><br><span class="rating-pill">★ ' + (vendor ? vendor.rating : '4.0') + '</span>' + (p.fulfillmentType === 'instant' ? '<div class="free-del">⏱ ' + (vendor ? vendor.eta : '20 min') + ' ' + graspionT('delivery') + '</div>' : '') + '<div class="feature-tag" style="margin-left:0;">' + deliveryBadge + '</div>' +
+(productAreaName(p) ? (productDeliverable(p, selectedPin) === false
+  ? '<div style="font-size:10.5px; font-weight:700; color:#9ca3af; margin-top:3px;">📍 Only ' + productAreaName(p) + ' delivery</div>'
+  : '<div style="font-size:10.5px; font-weight:800; color:#15803d; margin-top:3px;">📍 ' + (productDeliverable(p, selectedPin) === true ? 'Delivers in your area' : 'Local · ' + productAreaName(p)) + '</div>') : '') +
 (isStoreClosed ? '<div style="text-align:center; margin-top:10px; background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">🚫 Store Currently Closed</div>' :
 (p.isPreorder ? (isBookingClosed(p) ? '<div style="text-align:center; margin-top:10px; background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">⏰ Booking Closed</div>' : '<div style="text-align:center; margin-top:10px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">📦 Book Now</div>') :
 (p.stock <= 0 ? '<div style="text-align:center; margin-top:10px; background:#fee2e2; color:#dc2626; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">Out of Stock</div>' :
@@ -1624,6 +1652,7 @@ if(searchQuery) {
 // in a dark-store zone, instant items lead; standard (pan-India) items still show below, clearly labelled
 if (isInstantZone) {
 filtered = filtered.slice().sort(function(a,b){ return (a.fulfillmentType==='instant'?0:1) - (b.fulfillmentType==='instant'?0:1); });
+if (pin) { const rank = function(p){ const d = productDeliverable(p, pin); return d === true ? (p.pincode === 'ALL' ? 1 : 0) : 2; }; filtered = filtered.map(function(p, i){ return { p: p, i: i }; }).sort(function(a, b){ return rank(a.p) - rank(b.p) || a.i - b.i; }).map(function(x){ return x.p; }); }
 }
 // Customer-selected filters (price range, brand) apply on top of the
 // category/search/pincode filtering already done above.
@@ -2275,6 +2304,14 @@ wrap.querySelectorAll('[data-pay]').forEach(function(el) { el.addEventListener('
 document.getElementById('placeOrderBtn').addEventListener('click', async function() {
 const btn = document.getElementById('placeOrderBtn');
 if (window.graspionLocalBlocked) { alert(window.graspionLocalBlocked); return; }
+{
+  const shipPin = String((customerInfo && customerInfo.pincode) || (document.getElementById('coPincode') && document.getElementById('coPincode').value) || selectedPin || '').trim();
+  const blocked = cartItemsList().filter(function(i){ return productDeliverable(i, shipPin) === false; });
+  if (blocked.length) {
+    alert('These items are delivered only in their local area and not to pincode ' + shipPin + ':\n\n' + blocked.map(function(i){ return '• ' + i.name + ' (only ' + productAreaName(i) + ')'; }).join('\n') + '\n\nPlease remove them or use a delivery address in that area.');
+    return;
+  }
+}
 if (Object.keys(cartTotals().localGroups || {}).some(function(vid) { return !localQuotes[vid]; })) { alert('Calculating delivery charge, please wait a second and try again.'); refreshLocalQuotes(true); return; }
 btn.textContent = '⏳ ' + graspionT('processingOrder');
 btn.disabled = true;
