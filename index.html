@@ -4262,7 +4262,7 @@ function openPrebookingModal(productId, type) {
     const address = document.getElementById('pbAddress').value.trim();
     const pincode = document.getElementById('pbPincode').value.trim();
     const qty = type === 'preorder' ? Number(document.getElementById('pbQty').value) : 1;
-    const amount = computeAdvance(qty); // recomputed fresh — never trust a value captured before the customer finished editing quantity
+    let amount = computeAdvance(qty); // display only - the real amount comes from the server below
     if (!name || !phone || !address || !pincode) { errEl.textContent = 'Please fill in all fields.'; return; }
     if (type === 'preorder' && (qty < minQty || Math.floor(qty) !== qty)) { errEl.textContent = packs.length ? 'Please enter a whole number of packs (1 or more).' : 'Minimum quantity is ' + p.preorderMinQty + ' ' + p.preorderUnit + '.'; return; }
     const deliveryDateEl = document.getElementById('pbDeliveryDate');
@@ -4271,6 +4271,20 @@ function openPrebookingModal(productId, type) {
     if (!currentCustomer) { errEl.textContent = 'Please log in first.'; return; }
 
     btn.disabled = true; btn.textContent = 'Processing...';
+    // The amount to pay is decided by the server (product/pack price, min qty, booking deadline),
+    // exactly the same figure the database will store - the browser can't change it.
+    try {
+      const qRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/prebooking_quote', {
+        method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_product_id: p.id, p_variant_id: chosenPack ? chosenPack.id : null, p_quantity: qty, p_type: type })
+      });
+      const qText = await qRes.text();
+      if (!qRes.ok) {
+        const m = (qText.match(/MIN_QTY:(\d+)/) || [])[1];
+        throw new Error(m ? 'Minimum quantity is ' + m + ' ' + (p.preorderUnit || '') + '.' : qText.indexOf('BOOKING_CLOSED') !== -1 ? 'Booking for this item is closed.' : 'Could not calculate the amount. Please try again.');
+      }
+      amount = Number(JSON.parse(qText).advance_amount) || 0;
+    } catch (e) { errEl.textContent = e.message; btn.disabled = false; btn.textContent = 'Pay ₹' + computeAdvance(qty) + ' & Confirm'; return; }
     const bookingPayload = {
       customer_id: currentCustomer.id, vendor_id: p.vendorId, product_id: p.id,
       booking_type: type, quantity: qty,
@@ -4305,6 +4319,7 @@ function openPrebookingModal(productId, type) {
               });
               const bookData = await bookRes.json();
               const bookingId = bookData[0] ? bookData[0].id : null;
+              if (!bookRes.ok || !bookingId) throw new Error('booking could not be saved');
               const verifyRes = await fetch(SUPABASE_URL + '/functions/v1/verify-prebooking-payment', {
                 method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id, razorpay_signature: response.razorpay_signature, prebooking_id: bookingId, expected_amount: amount })
