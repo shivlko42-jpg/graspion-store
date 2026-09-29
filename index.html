@@ -1510,9 +1510,20 @@ if (p.pincode.split(',').map(function(s){ return s.trim(); }).indexOf(pin) !== -
 const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
 return !!(vendor && vendor.pincodes && vendor.pincodes.indexOf(pin) !== -1);
 }
+// The size a customer most likely wants: the one matching the shown price, else the cheapest in stock
+function defaultVariantFor(p){
+const list = (productVariantsMap[p.id] || []).filter(function(v){ return (productVariantAttrsMap[v.id] || []).length > 0; });
+if (!list.length) return null;
+const sorted = list.slice().sort(function(a, b){ return Number(a.selling_price) - Number(b.selling_price); });
+return list.find(function(v){ return Number(v.selling_price) === Number(p.price) && v.stock > 0; }) || sorted.find(function(v){ return v.stock > 0; }) || sorted[0];
+}
 function buildProductCardHtml(p){
 const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
 const qty = cart[p.id] || 0;
+const dv = p.isPreorder ? null : defaultVariantFor(p);
+const dvKey = dv ? makeCartKey(p.id, dv.id) : null;
+const dvQty = dv ? (cart[dvKey] || 0) : 0;
+const dvLabel = dv ? (productVariantAttrsMap[dv.id] || []).map(function(a){ return a.attribute_value; }).join(' / ') : '';
 const deliveryBadge = p.fulfillmentType === 'instant' ? '⚡ ' + graspionT('instantTag') : '📦 ' + graspionT('standardTag');
 const allPhotos = [p.image].concat(p.additionalImages || []).filter(Boolean);
 const thumbStripHtml = allPhotos.length > 1 ? '<div class="thumb-strip">' + allPhotos.map(function(src, idx){ return '<img class="thumb-img' + (idx===0?' active':'') + '" src="' + src + '" data-thumbswap="' + p.id + '" data-src="' + src + '" loading="lazy" decoding="async">'; }).join('') + '</div>' : '';
@@ -1527,11 +1538,14 @@ return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class=
 (isStoreClosed ? '<div style="text-align:center; margin-top:10px; background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">🚫 Store Currently Closed</div>' :
 (p.isPreorder ? (isBookingClosed(p) ? '<div style="text-align:center; margin-top:10px; background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">⏰ Booking Closed</div>' : '<div style="text-align:center; margin-top:10px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">📦 Book Now</div>') :
 (p.stock <= 0 ? '<div style="text-align:center; margin-top:10px; background:#fee2e2; color:#dc2626; font-size:11px; font-weight:800; padding:9px; border-radius:10px;">Out of Stock</div>' :
-((productVariantsMap[p.id] && productVariantsMap[p.id].length > 0) ? '<button class="add-btn" data-viewid="' + p.id + '" style="background:#f3f1f8; color:#7c3aed;">Select Options</button>' : (qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '" ' + (qty >= p.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>'))))) +
+(dv ? ((dvQty === 0
+  ? (dv.stock > 0 ? '<button class="add-btn" data-add="' + dvKey + '">' + graspionT('addToCart') + '</button>' : '<button class="add-btn" disabled style="opacity:0.5;">Out of Stock</button>')
+  : '<div class="qty-row"><button class="qty-btn" data-dec="' + dvKey + '">−</button><span class="qty-val">' + dvQty + '</span><button class="qty-btn" data-inc="' + dvKey + '" ' + (dvQty >= dv.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>')
+  + '<div style="font-size:10.5px; color:#6b7280; margin-top:3px; text-align:center;">' + dvLabel + ((productVariantsMap[p.id] || []).length > 1 ? ' · more sizes inside' : '') + '</div>') : (qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '" ' + (qty >= p.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>'))))) +
 '</div></div>';
 }
 function wireProductCardEvents(container){
-container.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id = btn.getAttribute('data-add'); cart[id] = 1; logProductEvent(id, 'add_to_cart'); const p = productPool.find(function(pp){ return pp.id === id; }); if (typeof gtag === 'function' && p) { gtag('event', 'add_to_cart', { currency: 'INR', value: p.price, items: [{ item_id: p.id, item_name: p.name, price: p.price, quantity: 1 }] }); } refreshAll(); bounceCartIcon(); }); });
+container.querySelectorAll('[data-add]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const key = btn.getAttribute('data-add'); const id = parseCartKey(key).productId; cart[key] = 1; logProductEvent(id, 'add_to_cart'); const p = productPool.find(function(pp){ return pp.id === id; }); if (typeof gtag === 'function' && p) { gtag('event', 'add_to_cart', { currency: 'INR', value: p.price, items: [{ item_id: p.id, item_name: p.name, price: p.price, quantity: 1 }] }); } refreshAll(); bounceCartIcon(); }); });
 container.querySelectorAll('[data-wishlisttoggle]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); toggleWishlist(btn.getAttribute('data-wishlisttoggle')); }); });
 container.querySelectorAll('[data-inc]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id=btn.getAttribute('data-inc'); cart[id]=(cart[id]||0)+1; refreshAll(); }); });
 container.querySelectorAll('[data-dec]').forEach(function(btn){ btn.addEventListener('click', function(e){ e.stopPropagation(); const id=btn.getAttribute('data-dec'); cart[id]=(cart[id]||0)-1; if(cart[id]<=0) delete cart[id]; refreshAll(); }); });
