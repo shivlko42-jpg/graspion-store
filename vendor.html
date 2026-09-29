@@ -571,6 +571,11 @@ window.addEventListener('load', function() {
             </select>
           </div>
           <div id="advancePreview" style="font-size:10.5px; color:#6b7280; margin:6px 0;"></div>
+          <div style="margin:8px 0 10px; padding:10px; background:#fff; border:1px dashed #d8cff5; border-radius:10px;">
+            <label style="font-size:11.5px; font-weight:700; color:#374151; display:block; margin-bottom:4px;">💰 Bulk price (optional) — lower price for bigger orders</label>
+            <p style="font-size:10.5px; color:#6b7280; margin:0 0 8px;">Example: From qty 50 → ₹1,400 per unit, From qty 100 → ₹1,350. Leave empty if you have one price.</p>
+            <div id="pPriceTiers"><div class="form-row" style="margin-bottom:4px;"><div class="form-group"><input class="form-input" type="number" min="1" data-tierqty placeholder="From qty (e.g. 50)"></div><div class="form-group"><input class="form-input" type="number" min="1" data-tierprice placeholder="Price per unit ₹"></div></div><div class="form-row" style="margin-bottom:4px;"><div class="form-group"><input class="form-input" type="number" min="1" data-tierqty placeholder="From qty (e.g. 100)"></div><div class="form-group"><input class="form-input" type="number" min="1" data-tierprice placeholder="Price per unit ₹"></div></div><div class="form-row" style="margin-bottom:4px;"><div class="form-group"><input class="form-input" type="number" min="1" data-tierqty placeholder="From qty (e.g. 500)"></div><div class="form-group"><input class="form-input" type="number" min="1" data-tierprice placeholder="Price per unit ₹"></div></div></div>
+          </div>
           <div class="form-group"><label>Lead Time (days to prepare)</label><input class="form-input" id="pPreorderLeadTime" type="number" placeholder="e.g. 5"></div>
           <div class="form-group"><label>Booking Deadline (optional — for occasion items like festival sweets)</label><input class="form-input" id="pBookingDeadline" type="date"></div>
           <div class="form-group"><label>Delivery Starts From (optional — e.g. Diwali batch delivers from 1 Nov)</label><input class="form-input" id="pDeliveryStart" type="date"></div>
@@ -1735,6 +1740,7 @@ function renderProducts() {
       document.getElementById('preorderFields').style.display = p.is_preorder ? 'block' : 'none';
       document.getElementById('pAdvancePercent').value = p.preorder_advance_percent != null ? p.preorder_advance_percent : 20;
       document.getElementById('pMinQty').value = p.preorder_min_qty || '';
+      setPriceTiersForm(p.preorder_price_tiers || []);
       document.getElementById('pPreorderUnit').value = p.preorder_unit || 'pieces';
       document.getElementById('pPreorderLeadTime').value = p.preorder_lead_time_days || '';
       document.getElementById('pBookingDeadline').value = p.preorder_booking_deadline || '';
@@ -2680,6 +2686,8 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
   const preorderUnit = isPreorder ? document.getElementById('pPreorderUnit').value : null;
   const leadTime = isPreorder ? (Number(document.getElementById('pPreorderLeadTime').value) || null) : null;
   const bookingDeadline = isPreorder ? (document.getElementById('pBookingDeadline').value || null) : null;
+  const priceTiers = isPreorder ? readPriceTiersForm() : [];
+  if (priceTiers === null) return;
   const deliveryStart = isPreorder ? (document.getElementById('pDeliveryStart').value || null) : null;
   const sampleAvailable = isPreorder && document.getElementById('pSampleAvailable').checked;
   const samplePrice = sampleAvailable ? (Number(document.getElementById('pSamplePrice').value) || 0) : 0;
@@ -2749,6 +2757,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
         preorder_unit: preorderUnit,
         preorder_lead_time_days: leadTime,
         preorder_booking_deadline: bookingDeadline,
+        preorder_price_tiers: priceTiers,
         preorder_delivery_start: deliveryStart,
         sample_available: sampleAvailable,
         sample_price: samplePrice
@@ -2830,6 +2839,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
     ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeightGrams','pLengthCm','pWidthCm','pHeightCm','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt','pPurchasePrice','pLeadTime','pPreorderLeadTime','pBookingDeadline','pDeliveryStart','pRack','pShelf','pBin'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('pStatus').value = 'active';
     document.getElementById('pSaleUnit').value = 'pcs';
+    setPriceTiersForm([]);
     document.getElementById('pPublishAtGroup').style.display = 'none';
     document.getElementById('pChannelWebsite').checked = true;
     document.getElementById('pChannelB2b').checked = false;
@@ -3592,6 +3602,34 @@ document.getElementById('setShopLocBtn').addEventListener('click', function() {
   }, function() { alert('Could not get location. Turn on GPS and allow location for this site.'); btn.textContent = '📍 Set my shop location (stand at your shop)'; btn.disabled = false; },
   { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
 });
+
+// ===== Bulk price tiers for pre-order / bulk items (vendor's own choice) =====
+function setPriceTiersForm(tiers) {
+  const q = document.querySelectorAll('#pPriceTiers [data-tierqty]'), pr = document.querySelectorAll('#pPriceTiers [data-tierprice]');
+  const list = (Array.isArray(tiers) ? tiers : []).slice().sort(function(a, b) { return a.min_qty - b.min_qty; });
+  q.forEach(function(el, i) { el.value = list[i] ? list[i].min_qty : ''; });
+  pr.forEach(function(el, i) { el.value = list[i] ? list[i].price : ''; });
+}
+function readPriceTiersForm() {
+  const base = Number(document.getElementById('pPrice').value) || 0;
+  const minQty = Number(document.getElementById('pMinQty').value) || 1;
+  const q = document.querySelectorAll('#pPriceTiers [data-tierqty]'), pr = document.querySelectorAll('#pPriceTiers [data-tierprice]');
+  const out = [];
+  for (let i = 0; i < q.length; i++) {
+    const mq = Number(q[i].value), p = Number(pr[i].value);
+    if (!q[i].value && !pr[i].value) continue;
+    if (!(mq > 0) || !(p > 0)) { alert('Bulk price row ' + (i + 1) + ': please fill both "From qty" and "Price per unit".'); return null; }
+    if (mq <= minQty) { alert('Bulk price row ' + (i + 1) + ': "From qty" must be more than the minimum order (' + minQty + ').'); return null; }
+    if (base && p >= base) { alert('Bulk price row ' + (i + 1) + ': bulk price should be lower than the normal price ₹' + base + '.'); return null; }
+    out.push({ min_qty: mq, price: p });
+  }
+  out.sort(function(a, b) { return a.min_qty - b.min_qty; });
+  for (let i = 1; i < out.length; i++) {
+    if (out[i].min_qty === out[i - 1].min_qty) { alert('Two bulk price rows have the same quantity.'); return null; }
+    if (out[i].price > out[i - 1].price) { alert('Bigger quantity should have the same or lower price.'); return null; }
+  }
+  return out;
+}
 </script>
 
 </body>
