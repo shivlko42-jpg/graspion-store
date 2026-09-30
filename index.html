@@ -226,6 +226,7 @@ and matches how dialogs normally behave on a desktop OS. */
 #pdBottomBar > div:first-child { margin-right:auto; }
 #pdBottomBar > div:last-child { margin-top:0 !important; flex:0 0 auto; }
 #pdBottomBar button[data-detailadd], #pdBottomBar button[data-buynow] { min-width:150px; }
+#pdBottomBar > .pd-prebar { flex:1 1 auto !important; margin:0 !important; }
 }
 @media(min-width:1300px){ .grid { grid-template-columns:repeat(6,1fr); } }
 .card { background:#fff; border-radius:16px; overflow:hidden; position:relative; border:1px solid #f0eef7; }
@@ -2234,9 +2235,9 @@ wrap.innerHTML = addressSectionHtml + localDeliveryHtml +
   : '<div style="display:flex;gap:8px;"><input class="co-input" placeholder="Enter coupon code" id="coCouponInput" style="flex:1;margin:0;text-transform:uppercase;"><button id="applyCouponBtn" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:0 16px;font-weight:700;cursor:pointer;">Apply</button></div>') +
 (couponMessage ? '<p style="font-size:11px;margin-top:6px;">' + couponMessage + '</p>' : '') +
 '</div><div class="co-section"><h4>🧾 ' + graspionT('orderSummary') + ' (' + items.length + ')</h4>' + items.map(function(i) { return '<div class="co-item-row"><span>' + i.name + ' × ' + i.qty + '</span><b>₹' + (i.price*i.qty).toLocaleString('en-IN') + '</b></div>'; }).join('') +
-'<div class="co-item-row" style="color:#9ca3af; font-size:11px; border-top:1px solid #f0eef7; padding-top:8px; margin-top:4px;"><span>Subtotal</span><span>₹' + Math.round(t.subtotal).toLocaleString('en-IN') + '</span></div>' +
-(t.isInterState ? '<div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>IGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*100).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.igst).toLocaleString('en-IN') + '</span></div>' :
-'<div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>CGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*50).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.cgst).toLocaleString('en-IN') + '</span></div><div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>SGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*50).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.sgst).toLocaleString('en-IN') + '</span></div>') +
+'<div class="co-item-row" style="color:#1f2937; font-size:13px; border-top:1px solid #f0eef7; padding-top:8px; margin-top:4px;"><span>Subtotal</span><span>₹' + Math.round(t.subtotal).toLocaleString('en-IN') + '</span></div>' +
+(t.isInterState ? '<div class="co-item-row" style="color:#1f2937; font-size:13px;"><span>IGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*100).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.igst).toLocaleString('en-IN') + '</span></div>' :
+'<div class="co-item-row" style="color:#1f2937; font-size:13px;"><span>CGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*50).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.cgst).toLocaleString('en-IN') + '</span></div><div class="co-item-row" style="color:#1f2937; font-size:13px;"><span>SGST (' + (t.subtotal > 0 ? (t.gstAmount/t.subtotal*50).toFixed(1) : '0') + '%)</span><span>₹' + Math.round(t.sgst).toLocaleString('en-IN') + '</span></div>') +
 '<div class="co-item-row"><span>' + graspionT('deliveryFee') + '</span><b>' + (t.delivery===0?'<span style="color:#15803d;">FREE</span>':'₹'+t.delivery) + '</b></div>' + (t.giftWrapCharge > 0 ? '<div class="co-item-row"><span>🎁 Gift Wrap</span><b>₹' + t.giftWrapCharge + '</b></div>' : '') + (t.bundleSavings > 0 ? '<div class="co-item-row" style="color:#a21caf;"><span>🎁 Bundle savings' + (activeBundle ? ' (' + activeBundle.name + ')' : '') + '</span><b>-₹' + t.bundleSavings.toLocaleString('en-IN') + '</b></div>' : '') + (appliedCoupon ? '<div class="co-item-row" style="color:#15803d;"><span>Coupon discount</span><b>-₹' + Math.min(appliedCoupon.discount, t.itemTotal + t.delivery + t.giftWrapCharge).toLocaleString('en-IN') + '</b></div>' : '') + '<div class="co-item-row" style="font-size:14px;border-top:1px solid #f0eef7;padding-top:10px;margin-top:4px;"><span>' + graspionT('total') + '</span><b>₹' + t.total.toLocaleString('en-IN') + '</b></div></div><button class="place-order-btn" id="toPaymentBtn">' + graspionT('continueToPayment') + ' →</button>';
 if (document.getElementById('coGiftWrap')) { document.getElementById('coGiftWrap').addEventListener('change', function() { giftWrapSelected = this.checked; renderCheckout(); }); }
 if (document.getElementById('coExactLocBtn')) { document.getElementById('coExactLocBtn').addEventListener('click', function() {
@@ -2337,9 +2338,9 @@ const effectiveRate = t.subtotal > 0 ? (t.gstAmount / t.subtotal * 100) : 0;
 const halfRate = (effectiveRate / 2).toFixed(1);
 const taxBreakupHtml = '<div class="co-section"><h4>🧾 Price Details</h4>' +
 '<div class="co-item-row"><span>Subtotal</span><span>₹' + Math.round(t.subtotal).toLocaleString('en-IN') + '</span></div>' +
-(t.isInterState ? '<div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>IGST (' + effectiveRate.toFixed(1) + '%)</span><span>₹' + Math.round(t.igst).toLocaleString('en-IN') + '</span></div>' :
-'<div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>CGST (' + halfRate + '%)</span><span>₹' + Math.round(t.cgst).toLocaleString('en-IN') + '</span></div><div class="co-item-row" style="color:#9ca3af; font-size:11px;"><span>SGST (' + halfRate + '%)</span><span>₹' + Math.round(t.sgst).toLocaleString('en-IN') + '</span></div>') +
-'<div class="co-item-row"><span>Delivery Fee</span><span>₹' + t.delivery + '</span></div>' +
+(t.isInterState ? '<div class="co-item-row" style="color:#1f2937; font-size:13px;"><span>IGST (' + effectiveRate.toFixed(1) + '%)</span><span>₹' + Math.round(t.igst).toLocaleString('en-IN') + '</span></div>' :
+'<div class="co-item-row" style="color:#1f2937; font-size:13px;"><span>CGST (' + halfRate + '%)</span><span>₹' + Math.round(t.cgst).toLocaleString('en-IN') + '</span></div><div class="co-item-row" style="color:#1f2937; font-size:13px;"><span>SGST (' + halfRate + '%)</span><span>₹' + Math.round(t.sgst).toLocaleString('en-IN') + '</span></div>') +
+'<div class="co-item-row"><span>Delivery Fee</span><span>' + (t.delivery === 0 ? '<b style="color:#15803d;">FREE</b>' : '₹' + t.delivery) + '</span></div>' +
 '</div>';
 wrap.innerHTML = taxBreakupHtml + (deliveryEstimateHtml ? '<div class="co-section"><h4>🚚 Delivery Estimate</h4>' + deliveryEstimateHtml + '<p style="font-size:10px; color:#9ca3af; margin-top:6px;">Based on real courier data for your pincode.</p></div>' : '') +
 '<div class="co-section"><h4>💳 ' + graspionT('selectPayment') + '</h4>' +
@@ -4710,6 +4711,7 @@ variantSelectorHtml +
 
 const bottomBarHtml = p.isPreorder ?
 (function() {
+  window._pdPreorderInfo = '';
   const packs = preorderPacks(p.id);
   const minQtyAdvance = packs.length ? Math.round(packs[0].price * p.preorderAdvancePercent / 100) : Math.round(p.price * p.preorderMinQty * p.preorderAdvancePercent / 100);
   const closed = isBookingClosed(p);
@@ -4720,17 +4722,19 @@ const bottomBarHtml = p.isPreorder ?
     '<div style="font-size:11px; color:#9ca3af; margin-top:6px;">This item was only bookable until ' + deadlineTxt + '. Check back for the next occasion.</div>' +
     '</div>';
   }
-  return '<div style="background:#faf9fd; border:1.5px solid #e9d5ff; border-radius:14px; padding:14px;">' +
-  '<div style="font-size:12.5px; font-weight:800; color:#7c3aed;">📦 Bulk / Pre-Order Item</div>' +
+  window._pdPreorderInfo = '<div class="pd-preinfo" style="background:#faf9fd; border:1.5px solid #e9d5ff; border-radius:14px; padding:14px; margin-top:14px; text-align:left;">' +
+  '<div style="font-size:13px; font-weight:800; color:#7c3aed;">📦 Bulk / Pre-Order Item</div>' +
   (packs.length
     ? '<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">' + packs.map(function(k) { return '<span style="background:#fff; border:1.5px solid #d8cff5; border-radius:10px; padding:6px 12px; font-size:13px; font-weight:800; color:#1f2937;">' + k.label + ' · ₹' + k.price + (k.mrp > k.price ? ' <s style="color:#9ca3af; font-weight:600;">₹' + k.mrp + '</s>' : '') + '</span>'; }).join('') + '</div>' + (p.preorderLeadTimeDays ? '<div style="font-size:11px; color:#6b7280; margin-top:6px;">Ready in ~' + p.preorderLeadTimeDays + ' days</div>' : '')
-    : '<div style="font-size:11px; color:#6b7280; margin-top:6px; line-height:1.6;">Minimum order: <b>' + p.preorderMinQty + ' ' + p.preorderUnit + '</b>' + (p.preorderLeadTimeDays ? ' · Ready in ~' + p.preorderLeadTimeDays + ' days' : '') + '</div>' +
+    : '<div style="font-size:12.5px; color:#374151; margin-top:6px; line-height:1.6;">Minimum order: <b>' + p.preorderMinQty + ' ' + p.preorderUnit + '</b>' + (p.preorderLeadTimeDays ? ' · Ready in ~' + p.preorderLeadTimeDays + ' days' : '') + '</div>' +
       ((p.preorderPriceTiers || []).length ? '<div style="font-size:12px; color:#15803d; font-weight:800; margin-top:4px;">💰 Bulk price: ' + preorderTierText(p) + '</div>' : '')) +
   (deadlineTxt ? '<div style="font-size:11px; color:#dc2626; font-weight:700; margin-top:4px;">⏰ Book before ' + deadlineTxt + '</div>' : '') +
   (p.preorderDeliveryStart ? '<div style="font-size:11px; color:#059669; font-weight:700; margin-top:4px;">🚚 Delivery starts ' + new Date(p.preorderDeliveryStart + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '</div>' : '') +
-  '<div style="font-size:11px; color:#6b7280; margin-top:4px;">Book now with a token advance of <b>' + (packs.length ? 'from ' : '') + '₹' + minQtyAdvance + '</b> (' + p.preorderAdvancePercent + '%)' + (packs.length ? '' : ' at minimum order') + ' — pay the rest when it\'s ready.</div>' +
-  (p.sampleAvailable ? '<button data-requestsample="' + p.id + '" style="width:100%; margin-top:12px; background:#fff; color:#7c3aed; border:1.5px solid #7c3aed; padding:11px; border-radius:10px; font-weight:800; cursor:pointer;">🧪 Request a Sample' + (p.samplePrice > 0 ? ' (₹' + p.samplePrice + ')' : ' (Free)') + '</button>' : '') +
-  '<button data-bookadvance="' + p.id + '" style="width:100%; margin-top:10px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">📦 ' + (packs.length ? 'Choose Pack & Book' : 'Book Now — Pay ₹' + minQtyAdvance + ' Advance') + '</button>' +
+  '<div style="font-size:12.5px; color:#374151; margin-top:4px;">Book now with a token advance of <b>' + (packs.length ? 'from ' : '') + '₹' + minQtyAdvance + '</b> (' + p.preorderAdvancePercent + '%)' + (packs.length ? '' : ' at minimum order') + ' — pay the rest when it\'s ready.</div>' +
+  '</div>';
+  return '<div class="pd-prebar" style="display:flex; gap:10px; align-items:stretch; text-align:left;">' +
+  (p.sampleAvailable ? '<button data-requestsample="' + p.id + '" style="flex:0 0 auto; margin-top:0; background:#fff; color:#7c3aed; border:1.5px solid #7c3aed; padding:11px; border-radius:10px; font-weight:800; cursor:pointer;">🧪 Sample' + (p.samplePrice > 0 ? ' ₹' + p.samplePrice : ' (Free)') + '</button>' : '') +
+  '<button data-bookadvance="' + p.id + '" style="flex:1 1 auto; margin-top:0; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:13px; border-radius:12px; font-weight:800; cursor:pointer;">📦 ' + (packs.length ? 'Choose Pack & Book' : 'Book Now · ₹' + minQtyAdvance + ' advance') + '</button>' +
   '</div>';
 })()
 :
@@ -4742,7 +4746,7 @@ const bottomBarHtml = p.isPreorder ?
 document.getElementById('pdBottomBar').innerHTML = bottomBarHtml;
 document.getElementById('pdBottomBar').style.display = 'block';
 
-content.innerHTML += (p.isPreorder ? '' :
+content.innerHTML += (p.isPreorder ? (window._pdPreorderInfo || '') :
 '<div style="display:flex; justify-content:space-between; margin-top:16px; padding:10px 4px; border-top:1px solid #f0eef7;">' +
 '<div style="text-align:center; flex:1;"><div style="font-size:18px;">🛡️</div><div style="font-size:9px; color:#6b7280; font-weight:700; margin-top:2px;">100% Genuine</div></div>' +
 '<div style="text-align:center; flex:1;"><div style="font-size:18px;">🔒</div><div style="font-size:9px; color:#6b7280; font-weight:700; margin-top:2px;">Secure Payment</div></div>' +
