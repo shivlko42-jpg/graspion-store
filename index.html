@@ -56,6 +56,27 @@ gtag('config', 'G-DTK5XRHFL6');
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Graspion">
+<script>
+// Phone opened in Chrome "Desktop site" mode (or a tablet that defaults to it): the page is laid out
+// 980px wide and looks like a tiny computer site. A website can't switch that off itself, so show a
+// one-line tip telling the customer how to switch back. Shown at most once a day.
+window.addEventListener('load', function () {
+  try {
+    var touch = (navigator.maxTouchPoints || 0) > 0;
+    var smallScreen = Math.min(screen.width, screen.height) <= 820;
+    var desktopLayout = window.innerWidth >= 960 && window.innerWidth > screen.width * 1.4;
+    if (!(touch && smallScreen && desktopLayout)) return;
+    var today = new Date().toDateString();
+    if (localStorage.getItem('graspion_desktop_tip') === today) return;
+    localStorage.setItem('graspion_desktop_tip', today);
+    var bar = document.createElement('div');
+    bar.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99999;background:#3b0764;color:#fff;font:600 34px/1.4 system-ui,sans-serif;padding:26px 30px;text-align:center;';
+    bar.innerHTML = 'Site computer mode me khul rahi hai. Chrome me upar <b>⋮</b> dabakar <b>"Desktop site"</b> ka tick hata dein. <span style="text-decoration:underline;cursor:pointer;margin-left:10px;" id="gDeskTipX">Theek hai</span>';
+    document.body.appendChild(bar);
+    document.getElementById('gDeskTipX').onclick = function () { bar.remove(); };
+  } catch (e) {}
+});
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="graspion-logo.js?v=2"></script>
 <script src="graspion-lang.js"></script>
