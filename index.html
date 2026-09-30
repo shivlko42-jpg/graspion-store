@@ -207,7 +207,7 @@ header { z-index:150; }
 desktop — repeating the same 19 categories again as a homepage grid is
 redundant there (it's a mobile-only convenience, since mobile's sidebar is
 hidden behind a tap). */
-#topCategoriesStrip { display:none !important; }
+
 .subcat-rail { flex-wrap:wrap; overflow-x:visible; padding:16px 20px; justify-content:center; }
 .subcat-chip { padding:10px 20px; font-size:13px; }
 .pd-two-col { display:flex; gap:26px; align-items:flex-start; }
@@ -388,6 +388,7 @@ instead of staying stuck at mobile's 2 columns. */
 }
 
 /* ===== Brand hero (premium) ===== */
+#topCategoriesStrip { display:none !important; } /* replaced by the photo strip 'Shop by category' */
 .brand-hero { max-width:1280px; margin:14px auto 0; background:#F4EFFD; border-radius:32px; padding:44px 44px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.05fr); gap:40px; align-items:center; box-sizing:border-box; }
 .bh-text { display:flex; flex-direction:column; gap:18px; text-align:left; }
 .bh-eyebrow { align-self:flex-start; background:#E9A23B; color:#1E1033; font-size:12.5px; font-weight:800; letter-spacing:1.5px; padding:7px 13px; border-radius:999px; }
@@ -495,7 +496,7 @@ window.addEventListener('load', function() {
 <p class="bh-sub">Groceries, home &amp; kitchen, electronics, office supplies and festive sweets — from local sellers and brands across India, delivered by our riders in Lucknow.</p>
 <div class="bh-ctas">
 <button type="button" class="bh-btn bh-primary" id="bhShopAll">Shop all products</button>
-<button type="button" class="bh-btn bh-secondary" id="bhPrebook" style="display:none;">Diwali pre-booking</button>
+<button type="button" class="bh-btn bh-secondary" id="bhPrebook" style="display:none;">Diwali booking</button>
 </div>
 </div>
 <div class="bh-collage" id="bhCollage"></div>
@@ -1163,6 +1164,8 @@ renderQuickCategories();
 renderPinSuggestions();
 loadProductVariants();
 dataLoaded = true;
+// No area chosen yet (new visitor / location refused or still loading): show the shop right away
+if (!selectedPin) { try { renderVendors(null); renderProducts(null); } catch (e) {} }
 if (siteSettings.show_live_stats_badge === 'true') {
   badge.style.display = '';
   badge.className = 'db-status-badge live';
@@ -1656,7 +1659,7 @@ function renderBrandHero(){
   const key = picked.map(function(p){ return p.id; }).join(',');
   if (key !== bhKey) {
     bhKey = key;
-    box.innerHTML = picked.map(function(p){ return '<div class="bh-tile" data-viewid="' + p.id + '"><img src="' + p.image + '" alt="' + (p.imageAlt || p.name).replace(/"/g, '&quot;') + '" loading="lazy"><div class="bh-tag">' + p.name.split(/[–-]/)[0].trim().slice(0, 28) + '<span>₹' + Number(p.price).toLocaleString('en-IN') + '</span></div></div>'; }).join('');
+    box.innerHTML = picked.map(function(p){ return '<div class="bh-tile" data-viewid="' + p.id + '"><img src="' + p.image + '" alt="' + (p.imageAlt || p.name).replace(/"/g, '&quot;') + '" loading="lazy"><div class="bh-tag">' + p.name.split(/ [–-] /)[0].trim().slice(0, 28) + '<span>₹' + Number(p.price).toLocaleString('en-IN') + '</span></div></div>'; }).join('');
     box.querySelectorAll('[data-viewid]').forEach(function(t){ t.addEventListener('click', function(){ openProductDetail(t.getAttribute('data-viewid')); }); });
   }
   const pre = productPool.find(function(p){ return p.isPreorder && !isBookingClosed(p) && productMatchesPincode(p, selectedPin); });
@@ -1674,7 +1677,8 @@ function renderCatPhotoStrip(){
   strip.style.display = '';
   grid.innerHTML = mainCats.map(function(c){
     const visual = (typeof CATEGORY_VISUALS !== 'undefined' && CATEGORY_VISUALS[c.slug]) || null;
-    const inner = c.image_url ? '<img src="' + c.image_url + '" alt="' + c.name.replace(/"/g, '&quot;') + '" loading="lazy">' : (visual && visual.icon ? visual.icon : '🛍️');
+    const fallbackIcon = (visual && visual.icon ? visual.icon : '🛍️');
+    const inner = c.image_url ? '<img src="' + c.image_url + '" alt="' + c.name.replace(/"/g, '&quot;') + '" loading="lazy" onerror="this.parentNode.textContent=\'' + fallbackIcon + '\'">' : fallbackIcon;
     return '<button type="button" class="cat-photo" data-catphoto="' + c.id + '"><div class="cp-img">' + inner + '</div><div class="cp-name">' + c.name.split(/,| & /)[0] + '</div></button>';
   }).join('');
   grid.querySelectorAll('[data-catphoto]').forEach(function(b){ b.addEventListener('click', function(){ filterByCategory(b.getAttribute('data-catphoto')); const t = document.querySelector('.shop-layout'); if (t) t.scrollIntoView({ behavior: 'smooth' }); }); });
