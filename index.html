@@ -207,7 +207,7 @@ header { z-index:150; }
 desktop — repeating the same 19 categories again as a homepage grid is
 redundant there (it's a mobile-only convenience, since mobile's sidebar is
 hidden behind a tap). */
-
+#topCategoriesStrip { display:none !important; }
 .subcat-rail { flex-wrap:wrap; overflow-x:visible; padding:16px 20px; justify-content:center; }
 .subcat-chip { padding:10px 20px; font-size:13px; }
 .pd-two-col { display:flex; gap:26px; align-items:flex-start; }
@@ -388,7 +388,8 @@ instead of staying stuck at mobile's 2 columns. */
 }
 
 /* ===== Brand hero (premium) ===== */
-#topCategoriesStrip { display:none !important; } /* replaced by the photo strip 'Shop by category' */
+/* Mobile keeps the compact 2-line category rail (subcategories open right below it); desktop uses the photo strip */
+@media (max-width: 900px) { #catPhotoStrip { display:none !important; } }
 .brand-hero { max-width:1280px; margin:14px auto 0; background:#F4EFFD; border-radius:32px; padding:44px 44px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.05fr); gap:40px; align-items:center; box-sizing:border-box; }
 .bh-text { display:flex; flex-direction:column; gap:18px; text-align:left; }
 .bh-eyebrow { align-self:flex-start; background:#E9A23B; color:#1E1033; font-size:12.5px; font-weight:800; letter-spacing:1.5px; padding:7px 13px; border-radius:999px; }
@@ -1647,20 +1648,37 @@ return '<div data-viewid="' + p.id + '" style="flex:0 0 118px; cursor:pointer;">
 row.querySelectorAll('[data-viewid]').forEach(function(card){ card.addEventListener('click', function(){ openProductDetail(card.getAttribute('data-viewid')); }); });
 }
 // Brand hero collage: real products from DIFFERENT shops/categories (multi-vendor look), visible in this area
-let bhKey = '';
+let bhKey = '', bhOrder = [], bhStep = 0, bhTimer = null;
+function bhTileHtml(p){
+  return '<div class="bh-tile" data-viewid="' + p.id + '"><img src="' + p.image + '" alt="' + (p.imageAlt || p.name).replace(/"/g, '&quot;') + '" loading="lazy"><div class="bh-tag">' + p.name.split(/ [–-] /)[0].trim().slice(0, 28) + '<span>₹' + Number(p.price).toLocaleString('en-IN') + '</span></div></div>';
+}
+function bhShow(){
+  const box = document.getElementById('bhCollage'); if (!box || !bhOrder.length) return;
+  const n = Math.min(3, bhOrder.length), picked = [];
+  for (let i = 0; i < n; i++) picked.push(bhOrder[(bhStep + i) % bhOrder.length]);
+  box.style.opacity = '0';
+  setTimeout(function(){
+    box.innerHTML = picked.map(bhTileHtml).join('');
+    box.querySelectorAll('[data-viewid]').forEach(function(t){ t.addEventListener('click', function(){ openProductDetail(t.getAttribute('data-viewid')); }); });
+    box.style.opacity = '1';
+  }, box.childElementCount ? 350 : 0);
+}
 function renderBrandHero(){
   const box = document.getElementById('bhCollage'); if (!box) return;
+  // Round-robin over categories so each set of 3 photos comes from different categories (and shops),
+  // and over time every category that has products with photos gets its turn.
   const pool = productPool.filter(function(p){ return p.image && productMatchesPincode(p, selectedPin); });
-  const picked = [], usedCat = {}, usedVendor = {};
-  const add = function(p){ if (picked.length < 3 && picked.indexOf(p) === -1) { picked.push(p); usedCat[p.categoryId] = 1; usedVendor[p.vendorId] = 1; } };
-  pool.forEach(function(p){ if (!usedCat[p.categoryId] && !usedVendor[p.vendorId]) add(p); });
-  pool.forEach(function(p){ if (!usedCat[p.categoryId]) add(p); });
-  pool.forEach(function(p){ add(p); });
-  const key = picked.map(function(p){ return p.id; }).join(',');
+  const byCat = {}, cats = [];
+  pool.forEach(function(p){ const c = p.categoryId || 'x'; if (!byCat[c]) { byCat[c] = []; cats.push(c); } byCat[c].push(p); });
+  const order = [];
+  for (let round = 0; order.length < pool.length; round++) cats.forEach(function(c){ if (byCat[c][round]) order.push(byCat[c][round]); });
+  const key = order.map(function(p){ return p.id; }).join(',');
   if (key !== bhKey) {
-    bhKey = key;
-    box.innerHTML = picked.map(function(p){ return '<div class="bh-tile" data-viewid="' + p.id + '"><img src="' + p.image + '" alt="' + (p.imageAlt || p.name).replace(/"/g, '&quot;') + '" loading="lazy"><div class="bh-tag">' + p.name.split(/ [–-] /)[0].trim().slice(0, 28) + '<span>₹' + Number(p.price).toLocaleString('en-IN') + '</span></div></div>'; }).join('');
-    box.querySelectorAll('[data-viewid]').forEach(function(t){ t.addEventListener('click', function(){ openProductDetail(t.getAttribute('data-viewid')); }); });
+    bhKey = key; bhOrder = order; bhStep = 0;
+    box.style.transition = 'opacity .35s ease';
+    bhShow();
+    if (bhTimer) clearInterval(bhTimer);
+    if (order.length > 3) bhTimer = setInterval(function(){ if (document.visibilityState === 'visible') { bhStep = (bhStep + 3) % bhOrder.length; bhShow(); } }, 4500);
   }
   const pre = productPool.find(function(p){ return p.isPreorder && !isBookingClosed(p) && productMatchesPincode(p, selectedPin); });
   const preBtn = document.getElementById('bhPrebook');
