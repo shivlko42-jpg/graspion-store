@@ -15,11 +15,11 @@ gtag('config', 'G-DTK5XRHFL6');
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Graspion - Every Need, Fast Delivery</title>
-<meta name="description" content="Graspion — instant 10-20 min delivery from local dark stores plus Pan-India marketplace shopping. Groceries, fashion, electronics and more, delivered fast across India.">
+<meta name="description" content="Graspion — Lucknow's local shops and trusted Indian brands in one place. Groceries, festive sweets, home &amp; kitchen, electronics and office supplies, with rider delivery in Lucknow and shipping across India.">
 <link rel="canonical" href="https://graspion.in/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Graspion - Every Need. Every Area. Fast.">
-<meta property="og:description" content="Instant 10-20 min delivery from local dark stores plus Pan-India marketplace shopping, all on one platform.">
+<meta property="og:description" content="Lucknow's local shops and trusted Indian brands — groceries, sweets, home, electronics and more.">
 <meta property="og:image" content="https://graspion.in/icon-customer.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Graspion">
@@ -27,7 +27,7 @@ gtag('config', 'G-DTK5XRHFL6');
 <meta property="og:locale" content="en_IN">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Graspion - Every Need. Every Area. Fast.">
-<meta name="twitter:description" content="Instant 10-20 min delivery from local dark stores plus Pan-India marketplace shopping.">
+<meta name="twitter:description" content="Lucknow's local shops and trusted Indian brands — groceries, sweets, home, electronics and more.">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -53,6 +53,7 @@ gtag('config', 'G-DTK5XRHFL6');
 <link rel="icon" href="icon-customer.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-customer.png">
 <meta name="theme-color" content="#7c3aed">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Graspion">
@@ -385,6 +386,41 @@ instead of staying stuck at mobile's 2 columns. */
   .logo-mark{width:26px;height:26px;font-size:13px;}
   .cart-btn{ padding:9px 12px; font-size:12px; margin-right:2px; }
 }
+
+/* ===== Brand hero (premium) ===== */
+.brand-hero { max-width:1280px; margin:14px auto 0; background:#F4EFFD; border-radius:32px; padding:44px 44px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.05fr); gap:40px; align-items:center; box-sizing:border-box; }
+.bh-text { display:flex; flex-direction:column; gap:18px; text-align:left; }
+.bh-eyebrow { align-self:flex-start; background:#E9A23B; color:#1E1033; font-size:12.5px; font-weight:800; letter-spacing:1.5px; padding:7px 13px; border-radius:999px; }
+.bh-title { margin:0; font-family:Fraunces, Georgia, serif; font-weight:600; font-size:54px; line-height:1.05; letter-spacing:-1px; color:#1E1033; }
+.bh-sub { margin:0; font-size:17px; line-height:1.55; color:#4A4060; max-width:520px; }
+.bh-ctas { display:flex; gap:12px; flex-wrap:wrap; }
+.bh-btn { border-radius:14px; padding:14px 22px; font-size:15.5px; font-weight:800; cursor:pointer; font-family:inherit; }
+.bh-primary { background:#5B21B6; color:#fff; border:none; }
+.bh-secondary { background:#fff; color:#1E1033; border:1.5px solid #D9CFF0; }
+.bh-collage { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); grid-template-rows:200px 200px; gap:14px; }
+.bh-tile { position:relative; border-radius:22px; overflow:hidden; cursor:pointer; background:#fff; }
+.bh-tile:first-child { grid-row:span 2; }
+.bh-tile img { width:100%; height:100%; object-fit:cover; display:block; }
+.bh-tag { position:absolute; left:12px; bottom:12px; right:12px; background:#fff; color:#1E1033; border-radius:999px; padding:6px 12px; font-size:13px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:max-content; }
+.bh-tag span { color:#5B21B6; margin-left:6px; }
+.cat-photos { max-width:1280px; margin:22px auto 0; padding:0 20px; box-sizing:border-box; text-align:left; }
+.bh-h2 { margin:0 0 14px; font-family:Fraunces, Georgia, serif; font-weight:600; font-size:28px; color:#1E1033; }
+.cat-photo-grid { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:16px; }
+.cat-photo { cursor:pointer; display:flex; flex-direction:column; gap:8px; text-align:center; background:none; border:none; padding:0; font-family:inherit; }
+.cat-photo .cp-img { width:100%; aspect-ratio:1/1; border-radius:20px; overflow:hidden; background:#F4EFFD; display:flex; align-items:center; justify-content:center; font-size:34px; }
+.cat-photo img { width:100%; height:100%; object-fit:cover; display:block; }
+.cat-photo .cp-name { font-size:13.5px; font-weight:700; color:#1E1033; line-height:1.25; }
+@media (max-width: 900px) {
+  .brand-hero { margin:10px 12px 0; padding:22px 18px; grid-template-columns:1fr; gap:18px; border-radius:24px; }
+  .bh-title { font-size:34px; }
+  .bh-sub { font-size:15px; }
+  .bh-collage { grid-template-rows:130px 130px; gap:10px; }
+  .bh-btn { flex:1 1 auto; text-align:center; }
+  .cat-photos { padding:0 14px; }
+  .bh-h2 { font-size:22px; }
+  .cat-photo-grid { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:84px; overflow-x:auto; padding-bottom:6px; gap:12px; }
+  .cat-photo .cp-name { font-size:12px; }
+}
 </style>
 </head>
 <body>
@@ -449,7 +485,23 @@ window.addEventListener('load', function() {
 </div>
 </header>
 
-<section class="hero">
+<section class="brand-hero" id="brandHero">
+<div class="bh-text">
+<div class="bh-eyebrow">SHOP LOCAL · SHOP INDIAN</div>
+<h1 class="bh-title">Lucknow’s local shops &amp; trusted brands, at your door.</h1>
+<p class="bh-sub">Groceries, home &amp; kitchen, electronics, office supplies and festive sweets — from local sellers and brands across India, delivered by our riders in Lucknow.</p>
+<div class="bh-ctas">
+<button type="button" class="bh-btn bh-primary" id="bhShopAll">Shop all products</button>
+<button type="button" class="bh-btn bh-secondary" id="bhPrebook" style="display:none;">Diwali pre-booking</button>
+</div>
+</div>
+<div class="bh-collage" id="bhCollage"></div>
+</section>
+<section class="cat-photos" id="catPhotoStrip" style="display:none;">
+<h2 class="bh-h2">Shop by category</h2>
+<div class="cat-photo-grid" id="catPhotoGrid"></div>
+</section>
+<section class="hero" id="promoHero" style="display:none;">
 <div class="hero-banner" id="heroBanner">
 <video id="heroBannerVideo" muted autoplay loop playsinline style="display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:inherit; z-index:0;"></video>
 <div class="hero-text" style="position:relative; z-index:1;">
@@ -463,10 +515,10 @@ window.addEventListener('load', function() {
 </section>
 
 <div class="trust-row">
-<div class="trust-item">✅ <span data-i18n="genuineProducts">100% Genuine Products</span></div>
-<div class="trust-item">🔒 <span data-i18n="securePayments">Secure Payments</span></div>
-<div class="trust-item">🔄 <span data-i18n="easyReturns">Easy Returns</span></div>
-<div class="trust-item">🏪 <span data-i18n="localVendors">Local Vendors</span></div>
+<div class="trust-item">🏪 Local shops &amp; farmers’ co-ops</div>
+<div class="trust-item">📍 Live delivery tracking in Lucknow</div>
+<div class="trust-item">🔒 Secure payments</div>
+<div class="trust-item">🧾 Bill with every order</div>
 </div>
 
 <div class="db-status">
@@ -1159,7 +1211,9 @@ const startsOk = !b.start_date || new Date(b.start_date) <= now;
 const endsOk = !b.end_date || new Date(b.end_date) >= now;
 return startsOk && endsOk;
 });
-if (eligible.length === 0) return; // keep default hero text
+const promo = document.getElementById('promoHero');
+if (eligible.length === 0) { if (promo) promo.style.display = 'none'; return; }
+if (promo) promo.style.display = '';
 if (eligible.length > 1) {
 const interestCats = await getCustomerInterestCategories();
 if (interestCats.size > 0) {
@@ -1586,6 +1640,42 @@ return '<div data-viewid="' + p.id + '" style="flex:0 0 118px; cursor:pointer;">
 }).join('');
 row.querySelectorAll('[data-viewid]').forEach(function(card){ card.addEventListener('click', function(){ openProductDetail(card.getAttribute('data-viewid')); }); });
 }
+// Brand hero collage: real products from DIFFERENT shops/categories (multi-vendor look), visible in this area
+let bhKey = '';
+function renderBrandHero(){
+  const box = document.getElementById('bhCollage'); if (!box) return;
+  const pool = productPool.filter(function(p){ return p.image && productMatchesPincode(p, selectedPin); });
+  const picked = [], usedCat = {}, usedVendor = {};
+  const add = function(p){ if (picked.length < 3 && picked.indexOf(p) === -1) { picked.push(p); usedCat[p.categoryId] = 1; usedVendor[p.vendorId] = 1; } };
+  pool.forEach(function(p){ if (!usedCat[p.categoryId] && !usedVendor[p.vendorId]) add(p); });
+  pool.forEach(function(p){ if (!usedCat[p.categoryId]) add(p); });
+  pool.forEach(function(p){ add(p); });
+  const key = picked.map(function(p){ return p.id; }).join(',');
+  if (key !== bhKey) {
+    bhKey = key;
+    box.innerHTML = picked.map(function(p){ return '<div class="bh-tile" data-viewid="' + p.id + '"><img src="' + p.image + '" alt="' + (p.imageAlt || p.name).replace(/"/g, '&quot;') + '" loading="lazy"><div class="bh-tag">' + p.name.split(/[–-]/)[0].trim().slice(0, 28) + '<span>₹' + Number(p.price).toLocaleString('en-IN') + '</span></div></div>'; }).join('');
+    box.querySelectorAll('[data-viewid]').forEach(function(t){ t.addEventListener('click', function(){ openProductDetail(t.getAttribute('data-viewid')); }); });
+  }
+  const pre = productPool.find(function(p){ return p.isPreorder && !isBookingClosed(p) && productMatchesPincode(p, selectedPin); });
+  const preBtn = document.getElementById('bhPrebook');
+  if (preBtn) { preBtn.style.display = pre ? '' : 'none'; preBtn.onclick = pre ? function(){ openProductDetail(pre.id); } : null; }
+  const shopBtn = document.getElementById('bhShopAll');
+  if (shopBtn && !shopBtn.onclick) shopBtn.onclick = function(){ const t = document.querySelector('.shop-layout'); if (t) t.scrollIntoView({ behavior: 'smooth' }); };
+}
+function renderCatPhotoStrip(){
+  const strip = document.getElementById('catPhotoStrip'), grid = document.getElementById('catPhotoGrid');
+  if (!strip || !grid) return;
+  const mainCats = categoryList.filter(function(c){ return !c.parent_id; }).slice(0, 16);
+  if (!mainCats.length) { strip.style.display = 'none'; return; }
+  if (grid.childElementCount === mainCats.length) return;
+  strip.style.display = '';
+  grid.innerHTML = mainCats.map(function(c){
+    const visual = (typeof CATEGORY_VISUALS !== 'undefined' && CATEGORY_VISUALS[c.slug]) || null;
+    const inner = c.image_url ? '<img src="' + c.image_url + '" alt="' + c.name.replace(/"/g, '&quot;') + '" loading="lazy">' : (visual && visual.icon ? visual.icon : '🛍️');
+    return '<button type="button" class="cat-photo" data-catphoto="' + c.id + '"><div class="cp-img">' + inner + '</div><div class="cp-name">' + c.name.split(/,| & /)[0] + '</div></button>';
+  }).join('');
+  grid.querySelectorAll('[data-catphoto]').forEach(function(b){ b.addEventListener('click', function(){ filterByCategory(b.getAttribute('data-catphoto')); const t = document.querySelector('.shop-layout'); if (t) t.scrollIntoView({ behavior: 'smooth' }); }); });
+}
 function renderTopCategories(){
 const strip = document.getElementById('topCategoriesStrip');
 const grid = document.getElementById('topCategoriesGrid');
@@ -1731,6 +1821,7 @@ wireProductCardEvents(dealGrid);
 renderDynamicHomeSections();
 renderRecentlyViewed();
 renderTopCategories();
+try { renderBrandHero(); renderCatPhotoStrip(); } catch (e) {}
 document.querySelectorAll('[data-viewid]').forEach(function(card){ card.addEventListener('click', function(){ openProductDetail(card.getAttribute('data-viewid')); }); });
 document.querySelectorAll('[data-thumbswap]').forEach(function(thumb){ thumb.addEventListener('click', function(e){ e.stopPropagation(); const id = thumb.getAttribute('data-thumbswap'); const src = thumb.getAttribute('data-src'); const mainImg = document.querySelector('[data-mainimg="' + id + '"]'); if (mainImg) mainImg.src = src; thumb.parentElement.querySelectorAll('.thumb-img').forEach(function(t){ t.classList.remove('active'); }); thumb.classList.add('active'); }); });
 }
