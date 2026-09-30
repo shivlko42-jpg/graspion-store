@@ -1563,7 +1563,7 @@ return '<div class="card" data-viewid="' + p.id + '">' + (p.badge ? '<div class=
 (dv ? ((dvQty === 0
   ? (dv.stock > 0 ? '<button class="add-btn" data-add="' + dvKey + '">' + graspionT('addToCart') + '</button>' : '<button class="add-btn" disabled style="opacity:0.5;">Out of Stock</button>')
   : '<div class="qty-row"><button class="qty-btn" data-dec="' + dvKey + '">−</button><span class="qty-val">' + dvQty + '</span><button class="qty-btn" data-inc="' + dvKey + '" ' + (dvQty >= dv.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>')
-  + '<div style="font-size:10.5px; color:#6b7280; margin-top:3px; text-align:center;">' + dvLabel + ((productVariantsMap[p.id] || []).length > 1 ? ' · more sizes inside' : '') + '</div>') : (qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '" ' + (qty >= p.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>'))))) +
+  + '<div style="font-size:11px; font-weight:700; color:#374151; margin-top:4px; text-align:center;">' + dvLabel + ((productVariantsMap[p.id] || []).length > 1 ? ' · more sizes inside' : '') + '</div>') : (qty === 0 ? '<button class="add-btn" data-add="' + p.id + '">' + graspionT('addToCart') + '</button>' : '<div class="qty-row"><button class="qty-btn" data-dec="' + p.id + '">−</button><span class="qty-val">' + qty + '</span><button class="qty-btn" data-inc="' + p.id + '" ' + (qty >= p.stock ? 'disabled style="opacity:0.4;"' : '') + '>+</button></div>'))))) +
 '</div></div>';
 }
 function wireProductCardEvents(container){
@@ -1919,7 +1919,28 @@ return '<div class="pair-card"><div class="pair-icon">' + p.icon + '</div><div c
 }).join('');
 return '<div class="pair-suggest-box"><div class="pair-suggest-title">🔗 Frequently Bought Together</div><div class="pair-suggest-row">' + cardsHtml + '</div></div>';
 }
-function refreshAll(){ renderProducts(selectedPin); renderCartDrawer(); persistCart(); }
+function refreshAll(){ renderProducts(selectedPin); renderCartDrawer(); persistCart(); updateViewCartBar(); }
+// Floating "View Cart" bar (like Blinkit/Zepto): appears as soon as something is in the cart, so after
+// choosing quantity on a card the customer can move forward in one tap.
+function updateViewCartBar(){
+  let bar = document.getElementById('viewCartBar');
+  if (!bar) {
+    bar = document.createElement('button');
+    bar.id = 'viewCartBar'; bar.type = 'button';
+    bar.style.cssText = 'position:fixed; left:12px; right:12px; bottom:calc(72px + env(safe-area-inset-bottom, 0px)); z-index:85; display:none; align-items:center; justify-content:space-between; gap:10px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; border-radius:14px; padding:13px 18px; font-size:14.5px; font-weight:800; box-shadow:0 8px 24px rgba(124,58,237,0.35); cursor:pointer; max-width:560px; margin:0 auto;';
+    bar.addEventListener('click', function(){ document.getElementById('cartDrawer').classList.add('open'); document.getElementById('drawerOverlay').classList.add('open'); });
+    document.body.appendChild(bar);
+  }
+  const items = cartItemsList();
+  const qty = items.reduce(function(s, i){ return s + i.qty; }, 0);
+  const total = items.reduce(function(s, i){ return s + i.price * i.qty; }, 0);
+  const blocked = ['cartDrawer', 'checkoutOverlay'].some(function(id){ const el = document.getElementById(id); return el && el.classList.contains('open'); })
+    || (document.getElementById('productDetailModal') && document.getElementById('productDetailModal').style.display === 'flex');
+  if (!qty || blocked) { bar.style.display = 'none'; return; }
+  bar.innerHTML = '<span>🛒 ' + qty + ' item' + (qty > 1 ? 's' : '') + ' · ₹' + Math.round(total).toLocaleString('en-IN') + '</span><span>View Cart →</span>';
+  bar.style.display = 'flex';
+}
+setInterval(updateViewCartBar, 800);
 
 // Cart persistence — saved instantly to localStorage (works for guests too,
 // survives closing the tab), and synced to Supabase (debounced) for logged-in
