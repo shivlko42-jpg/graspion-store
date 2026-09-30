@@ -2579,13 +2579,13 @@ if (!pin) { if (!isAutoTriggered) errEl.textContent = 'We found your area but no
 document.getElementById('pinInput').value = pin;
 areaData[pin] = { city: cityName, area: localityName, fullAddress: fullAddress, state: addr.state || null, eta: siteSettings.instant_delivery_minutes + ' mins' };
 if (opts.silent && opts.previousPin === pin) { /* same area, nothing to change */ }
-else { setArea(pin, nearestWarehouse.id); if (opts.silent) locationToast('📍 Location updated: ' + localityName + (cityName ? ', ' + cityName : '')); }
+else { setArea(pin, nearestWarehouse.id); /* silent update: header area name changes, no popup */ }
 } else if (detectedPincode && detectedPincode.length === 6) {
 // No nearby dark store — customer still served via pan-India marketplace vendors
 document.getElementById('pinInput').value = detectedPincode;
 areaData[detectedPincode] = { city: cityName, area: localityName, fullAddress: fullAddress, state: addr.state || null, eta: siteSettings.standard_delivery_days_min + '-' + siteSettings.standard_delivery_days_max + ' days' };
 if (opts.silent && opts.previousPin === detectedPincode) { /* same area */ }
-else { setArea(detectedPincode, null); if (opts.silent) locationToast('📍 Location updated: ' + localityName + (cityName ? ', ' + cityName : '')); }
+else { setArea(detectedPincode, null); /* silent update: header area name changes, no popup */ }
 } else if (!isAutoTriggered) {
 errEl.textContent = 'Could not detect a valid location. Please enter your pincode manually.';
 }
