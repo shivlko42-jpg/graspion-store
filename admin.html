@@ -4557,7 +4557,7 @@ document.addEventListener('click', async function(e) {
     h += '<div style="margin-top:8px; font-weight:700;">Status updates (webhook):</div>';
     h += row(d.secrets.webhook_secret_set ? true : null, d.secrets.webhook_secret_set ? 'Webhook token set' : 'SHIPROCKET_WEBHOOK_SECRET not set (optional but recommended)');
     h += d.webhook_last_seen ? row(true, 'Last update received from Shiprocket: <b>' + new Date(d.webhook_last_seen).toLocaleString('en-IN') + '</b>') : row(null, 'No update received from Shiprocket yet — add the webhook URL in Shiprocket and press its Test button');
-    h += '<div style="margin-top:6px; font-size:11.5px; color:#4b5563; word-break:break-all;">Webhook URL: <b>' + SUPABASE_URL + '/functions/v1/shiprocket-webhook</b></div>';
+    h += '<div style="margin-top:6px; font-size:11.5px; color:#4b5563; word-break:break-all;">Webhook URL: <b>' + SUPABASE_URL + '/functions/v1/courier-updates</b></div>';
     out.innerHTML = h;
   } catch (err) {
     out.innerHTML = row(false, 'Could not run the check: ' + esc(err.message));

@@ -1932,6 +1932,7 @@ const giftWrapBadge = o.gift_wrap ? '<span style="display:inline-block; backgrou
         itemsHtml +
       '</div>' +
       '<div class="pipeline">' + stepsHtml + '</div>' +
+      ((o.status === 'shipped' || o.status === 'out_for_delivery') && o.delivery_type !== 'instant' && !o.rider_id ? '<button class="mini-btn" data-courierlabel="' + o.id + '" style="background:#fef3c7;color:#92400e;margin-top:8px;margin-right:6px;">🏷️ Courier Label (stick on box)</button>' : '') +
       (showShipBtn ? '<button class="mini-btn" data-shipid="' + o.id + '" style="background:#dbeafe;color:#1d4ed8;margin-top:8px;margin-right:6px;">📦 Ship via Shiprocket</button>' : '') +
       (o.status !== 'cancelled' ? '<button class="mini-btn" data-printlabel="' + o.id + '" style="background:#f3f1f8;color:#4b5563;margin-top:8px;margin-right:6px;">🏷️ Print Shipping Label</button>' : '') +
       ((o.status !== 'cancelled' && (o.payment_status === 'paid' || ['preparing','shipped','out_for_delivery','delivered'].indexOf(o.status) !== -1)) ? '<button class="mini-btn" data-vendorinvoice="' + o.id + '" style="background:#ede9fe;color:#5b21b6;margin-top:8px;margin-right:6px;">🧾 Print Bill (put in box)</button>' : '') +
@@ -2003,6 +2004,21 @@ const giftWrapBadge = o.gift_wrap ? '<span style="display:inline-block; backgrou
       loadVendorData();
     });
   });
+  document.querySelectorAll('[data-courierlabel]').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      const label = btn.textContent; btn.textContent = '⏳ Getting label...'; btn.disabled = true;
+      try {
+        const res = await fetch(SUPABASE_URL + '/functions/v1/create-shiprocket-shipment', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken, 'apikey': SUPABASE_KEY },
+          body: JSON.stringify({ order_id: btn.getAttribute('data-courierlabel'), action: 'label' })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.label_url) alert('Could not get the courier label: ' + (data.error || 'Unknown error'));
+        else window.open(data.label_url, '_blank');
+      } catch (e) { alert('Network error: ' + e.message); }
+      btn.textContent = label; btn.disabled = false;
+    });
+  });
   document.querySelectorAll('[data-shipid]').forEach(function(btn) {
     btn.addEventListener('click', async function() {
       const orderId = btn.getAttribute('data-shipid');
@@ -2021,7 +2037,10 @@ const giftWrapBadge = o.gift_wrap ? '<span style="display:inline-block; backgrou
           btn.disabled = false;
           return;
         }
-        alert('✅ Shipment booked!\nAWB: ' + data.awb);
+        alert('✅ Courier booked!\n\nAWB (tracking no.): ' + data.awb + (data.courier ? '\nCourier: ' + data.courier : '') +
+          (data.pickup_scheduled_date ? '\nPickup: ' + data.pickup_scheduled_date : '\nPickup: courier will be informed by Shiprocket') +
+          '\n\nNext: print the COURIER LABEL, stick it on the box, put our bill inside, and keep the parcel ready for pickup.');
+        if (data.label_url) window.open(data.label_url, '_blank');
         loadVendorData();
       } catch (err) {
         alert('Network error while booking shipment: ' + err.message);
