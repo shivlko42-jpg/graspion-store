@@ -1445,7 +1445,7 @@ function getVendorEtaLabel(v, supplyType) {
 function vendorBadgeHtml(v, sizePx) {
   if (!v) return '';
   const size = sizePx || 32;
-  if (v.logo_url) return '<img loading="lazy" decoding="async" src="\' + v.logo_url + \'" style="width:' + size + 'px; height:' + size + 'px; object-fit:cover; border-radius:' + Math.round(size*0.28) + 'px; vertical-align:middle;">';
+  if (v.logo_url) return '<img loading="lazy" decoding="async" src="' + v.logo_url + '" style="width:' + size + 'px; height:' + size + 'px; object-fit:cover; border-radius:' + Math.round(size*0.28) + 'px; vertical-align:middle;">';
   return '<span style="font-size:' + size + 'px; vertical-align:middle;">' + v.icon + '</span>';
 }
 // Same 3-way classification as vendor.html's Store Settings badge — always
@@ -1508,7 +1508,7 @@ function renderSearchSuggestions(query) {
     const p = x.p;
     const idx = p.name.toLowerCase().indexOf(q);
     const highlighted = idx !== -1 ? p.name.slice(0, idx) + '<mark>' + p.name.slice(idx, idx + q.length) + '</mark>' + p.name.slice(idx + q.length) : p.name;
-    const iconHtml = p.image ? '<img loading="lazy" decoding="async" src="\' + p.image + \'" style="width:100%;height:100%;object-fit:cover;">' : p.icon;
+    const iconHtml = p.image ? '<img loading="lazy" decoding="async" src="' + p.image + '" style="width:100%;height:100%;object-fit:cover;">' : p.icon;
     return '<div class="sugg-item" data-suggid="' + p.id + '"><div class="sugg-icon">' + iconHtml + '</div><div class="sugg-text"><div class="sugg-name">' + highlighted + '</div><div class="sugg-meta">' + (p.brand || '') + '</div></div><div class="sugg-price">₹' + p.price + '</div></div>';
   }).join('');
   box.classList.add('open');
@@ -1649,7 +1649,7 @@ const items = recentIds.map(function(id) { return productPool.find(function(p) {
 if (items.length === 0) { strip.style.display = 'none'; return; }
 strip.style.display = 'block';
 row.innerHTML = items.map(function(p) {
-return '<div data-viewid="' + p.id + '" style="flex:0 0 118px; cursor:pointer;"><div style="width:118px; height:118px; border-radius:12px; overflow:hidden; background:#f3f1f8; display:flex; align-items:center; justify-content:center; font-size:34px;">' + (p.image ? '<img loading="lazy" decoding="async" src="\' + p.image + \'" style="width:100%; height:100%; object-fit:cover;">' : p.icon) + '</div><div style="font-size:10.5px; margin-top:5px; line-height:1.35; height:28px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">' + p.name + '</div><div style="font-size:11px; font-weight:800; color:#7c3aed; margin-top:2px;">₹' + p.price + '</div></div>';
+return '<div data-viewid="' + p.id + '" style="flex:0 0 118px; cursor:pointer;"><div style="width:118px; height:118px; border-radius:12px; overflow:hidden; background:#f3f1f8; display:flex; align-items:center; justify-content:center; font-size:34px;">' + (p.image ? '<img loading="lazy" decoding="async" src="' + p.image + '" style="width:100%; height:100%; object-fit:cover;">' : p.icon) + '</div><div style="font-size:10.5px; margin-top:5px; line-height:1.35; height:28px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">' + p.name + '</div><div style="font-size:11px; font-weight:800; color:#7c3aed; margin-top:2px;">₹' + p.price + '</div></div>';
 }).join('');
 row.querySelectorAll('[data-viewid]').forEach(function(card){ card.addEventListener('click', function(){ openProductDetail(card.getAttribute('data-viewid')); }); });
 }
@@ -1789,7 +1789,7 @@ if (selectedVendorId !== 'all') {
     storeBanner.style.display = 'block';
     const supplyType = getVendorSupplyType(v);
     storeBanner.innerHTML = '<div style="background:linear-gradient(90deg,#7c3aed,#ec4899); border-radius:16px; padding:18px 20px; display:flex; align-items:center; gap:14px; color:#fff;">' +
-      '<div style="font-size:34px; background:rgba(255,255,255,0.18); width:56px; height:56px; border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden;">' + (v.logo_url ? '<img loading="lazy" decoding="async" src="\' + v.logo_url + \'" style="width:100%; height:100%; object-fit:cover;">' : v.icon) + '</div>' +
+      '<div style="font-size:34px; background:rgba(255,255,255,0.18); width:56px; height:56px; border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden;">' + (v.logo_url ? '<img loading="lazy" decoding="async" src="' + v.logo_url + '" style="width:100%; height:100%; object-fit:cover;">' : v.icon) + '</div>' +
       '<div style="flex:1; min-width:0;"><div style="font-size:17px; font-weight:800;">' + v.name + ' <span style="font-size:10px; font-weight:700; background:rgba(255,255,255,0.22); padding:2px 8px; border-radius:20px; vertical-align:middle;">' + supplyType.label + '</span></div><div style="font-size:11.5px; opacity:0.9; margin-top:2px;">⭐ ' + v.rating + ' · ⏱ ' + getVendorEtaLabel(v, supplyType) + ' · ' + filtered.length + ' products</div></div>' +
       '<button id="storeBackBtn" style="background:rgba(255,255,255,0.18); border:none; color:#fff; font-size:11px; font-weight:700; padding:8px 14px; border-radius:10px; cursor:pointer; flex-shrink:0;">← All Vendors</button>' +
       '</div>';
@@ -2011,7 +2011,7 @@ if (bnBadge) { bnBadge.textContent = t.count; bnBadge.style.display = t.count > 
 if(items.length === 0){ body.innerHTML = '<div class="empty-cart">🛒<br><br>' + graspionT('emptyCart') + '</div>'; foot.style.display = 'none'; return; }
 body.innerHTML = items.map(function(i){
 const vendor = vendors.find(function(v){ return v.id === i.vendorId; });
-return '<div class="cart-item"><div class="ci-icon">' + (i.image ? '<img loading="lazy" decoding="async" src="\' + i.image + \'" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">' : i.icon) + '</div><div class="ci-info"><div class="ci-name">' + i.name + '</div><div class="ci-vendor">' + (vendor ? vendorBadgeHtml(vendor, 14) + ' ' + vendor.name : '') + '</div><div class="ci-price">₹' + (i.price*i.qty).toLocaleString('en-IN') + '</div><div class="ci-qty"><button class="qty-btn" data-dec2="' + i.cartKey + '">−</button><span class="qty-val">' + i.qty + '</span><button class="qty-btn" data-inc2="' + i.cartKey + '">+</button></div></div></div>';
+return '<div class="cart-item"><div class="ci-icon">' + (i.image ? '<img loading="lazy" decoding="async" src="' + i.image + '" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">' : i.icon) + '</div><div class="ci-info"><div class="ci-name">' + i.name + '</div><div class="ci-vendor">' + (vendor ? vendorBadgeHtml(vendor, 14) + ' ' + vendor.name : '') + '</div><div class="ci-price">₹' + (i.price*i.qty).toLocaleString('en-IN') + '</div><div class="ci-qty"><button class="qty-btn" data-dec2="' + i.cartKey + '">−</button><span class="qty-val">' + i.qty + '</span><button class="qty-btn" data-inc2="' + i.cartKey + '">+</button></div></div></div>';
 }).join('') + renderPairingSuggestions(items);
 foot.style.display = 'block';
 document.getElementById('fItemTotal').textContent = '₹' + t.itemTotal.toLocaleString('en-IN');
@@ -2879,7 +2879,7 @@ rows.forEach(function(r) { s[r.key] = r.value; });
 const wrap = document.getElementById('midpageBannerWrap');
 if (wrap && s.midpage_banner_active === true && s.midpage_banner_image) {
 wrap.style.display = 'block';
-wrap.innerHTML = '<img loading="lazy" decoding="async" src="\' + s.midpage_banner_image + \'" style="width:100%; border-radius:16px; display:block; ' + (s.midpage_banner_link ? 'cursor:pointer;' : '') + '" id="midpageBannerImg">';
+wrap.innerHTML = '<img loading="lazy" decoding="async" src="' + s.midpage_banner_image + '" style="width:100%; border-radius:16px; display:block; ' + (s.midpage_banner_link ? 'cursor:pointer;' : '') + '" id="midpageBannerImg">';
 if (s.midpage_banner_link) document.getElementById('midpageBannerImg').addEventListener('click', function() { window.location.href = s.midpage_banner_link; });
 }
 } catch (e) {}
@@ -3124,7 +3124,7 @@ const imgSrc = ad.image_url || (product && product.image_data);
 if (!imgSrc) return;
 document.getElementById('popupAdContent').innerHTML =
 '<div data-popupadclick="' + ad.product_id + '" style="cursor:pointer;">' +
-'<img loading="lazy" decoding="async" src="\' + imgSrc + \'" style="width:100%; display:block;">' +
+'<img loading="lazy" decoding="async" src="' + imgSrc + '" style="width:100%; display:block;">' +
 '<div style="padding:14px;"><div style="font-size:9px; color:#9ca3af; font-weight:700; text-transform:uppercase;">Sponsored</div>' +
 (product ? '<div style="font-size:14px; font-weight:800; margin-top:4px;">' + product.name + '</div><div style="font-size:15px; font-weight:900; color:#7c3aed; margin-top:4px;">₹' + product.price + '</div>' : '') +
 '<button style="width:100%; margin-top:10px; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; border:none; padding:11px; border-radius:10px; font-weight:800; cursor:pointer;">Shop Now →</button></div></div>';
@@ -3459,7 +3459,7 @@ if (items.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; re
 empty.style.display = 'none';
 list.innerHTML = items.map(function(p) {
 return '<div style="display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #f7f6fb;">' +
-'<div style="width:52px; height:52px; border-radius:10px; overflow:hidden; background:#f3f1f8; display:flex; align-items:center; justify-content:center; font-size:24px; flex:0 0 auto;">' + (p.image ? '<img loading="lazy" decoding="async" src="\' + p.image + \'" style="width:100%;height:100%;object-fit:cover;">' : p.icon) + '</div>' +
+'<div style="width:52px; height:52px; border-radius:10px; overflow:hidden; background:#f3f1f8; display:flex; align-items:center; justify-content:center; font-size:24px; flex:0 0 auto;">' + (p.image ? '<img loading="lazy" decoding="async" src="' + p.image + '" style="width:100%;height:100%;object-fit:cover;">' : p.icon) + '</div>' +
 '<div style="flex:1; min-width:0;"><div style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + p.name + '</div><div style="font-size:13px; font-weight:900; color:#7c3aed;">₹' + p.price.toLocaleString('en-IN') + '</div></div>' +
 '<button data-wladd="' + p.id + '" style="background:#1e1b3a; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; flex:0 0 auto;">Add to Cart</button>' +
 '<button data-wlremove="' + p.id + '" style="background:none; border:none; color:#dc2626; font-size:16px; cursor:pointer; flex:0 0 auto;">✕</button>' +
@@ -4382,7 +4382,7 @@ function openPrebookingModal(productId, type) {
   const fieldInput = 'width:100%; box-sizing:border-box; border:1.5px solid #f0eef7; border-radius:10px; padding:10px 12px; font-size:12.5px; background:#faf9fd;';
   body.innerHTML =
     '<div style="display:flex; align-items:center; gap:10px; background:#faf9fd; border-radius:12px; padding:10px 12px; margin-bottom:16px;">' +
-      '<div style="width:38px; height:38px; border-radius:10px; overflow:hidden; flex-shrink:0; background:#fff; display:flex; align-items:center; justify-content:center; font-size:18px;">' + (p.image ? '<img loading="lazy" decoding="async" src="\' + p.image + \'" style="width:100%; height:100%; object-fit:cover;">' : '📦') + '</div>' +
+      '<div style="width:38px; height:38px; border-radius:10px; overflow:hidden; flex-shrink:0; background:#fff; display:flex; align-items:center; justify-content:center; font-size:18px;">' + (p.image ? '<img loading="lazy" decoding="async" src="' + p.image + '" style="width:100%; height:100%; object-fit:cover;">' : '📦') + '</div>' +
       '<div style="flex:1; min-width:0;"><div style="font-size:12px; font-weight:700; color:#1e1b3a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + p.name + '</div>' +
       (type === 'sample' ? '<div style="font-size:11px; color:#7c3aed; font-weight:700; margin-top:2px;">' + (amount > 0 ? '₹' + amount + ' sample fee' : 'Free sample') + '</div>' : '<div id="pbUnitPrice" style="font-size:11px; color:#7c3aed; font-weight:700; margin-top:2px;">' + (chosenPack ? '₹' + chosenPack.price + ' / ' + chosenPack.label + ' pack' : '₹' + p.price + ' / ' + p.preorderUnit.replace(/s$/, '')) + '</div>') +
       '</div></div>' +
@@ -4718,7 +4718,7 @@ if (group.length === 0) return;
 const cardsHtml = group.map(function(r) {
 const rp = productPool.find(function(pp) { return pp.id === r.related_product_id; });
 if (!rp) return '';
-return '<div data-viewid="' + rp.id + '" style="flex:0 0 108px; cursor:pointer;"><div style="width:108px; height:108px; border-radius:10px; overflow:hidden; background:#f3f1f8; display:flex; align-items:center; justify-content:center; font-size:32px;">' + (rp.image ? '<img loading="lazy" decoding="async" src="\' + rp.image + \'" style="width:100%; height:100%; object-fit:cover;">' : rp.icon) + '</div><div style="font-size:10.5px; margin-top:5px; line-height:1.35; height:28px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">' + rp.name + '</div><div style="font-size:11px; font-weight:800; color:#7c3aed; margin-top:2px;">₹' + rp.price + '</div></div>';
+return '<div data-viewid="' + rp.id + '" style="flex:0 0 108px; cursor:pointer;"><div style="width:108px; height:108px; border-radius:10px; overflow:hidden; background:#f3f1f8; display:flex; align-items:center; justify-content:center; font-size:32px;">' + (rp.image ? '<img loading="lazy" decoding="async" src="' + rp.image + '" style="width:100%; height:100%; object-fit:cover;">' : rp.icon) + '</div><div style="font-size:10.5px; margin-top:5px; line-height:1.35; height:28px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">' + rp.name + '</div><div style="font-size:11px; font-weight:800; color:#7c3aed; margin-top:2px;">₹' + rp.price + '</div></div>';
 }).join('');
 relatedHtml += '<div style="margin-top:16px;"><div style="font-size:12.5px; font-weight:700; margin-bottom:8px;">' + relTypeLabels[type] + '</div><div style="display:flex; gap:10px; overflow-x:auto; padding-bottom:4px;">' + cardsHtml + '</div></div>';
 });
@@ -4729,7 +4729,7 @@ if (relatedHtml === '') {
 const sameCategoryProducts = productPool.filter(function(pp) { return pp.id !== p.id && (pp.categoryId === p.categoryId || pp.subcategoryId === p.subcategoryId) && pp.categoryId; }).slice(0, 8);
 if (sameCategoryProducts.length > 0) {
 const cardsHtml = sameCategoryProducts.map(function(rp) {
-return '<div data-viewid="' + rp.id + '" style="flex:0 0 108px; cursor:pointer;"><div style="width:108px; height:108px; border-radius:10px; overflow:hidden; background:#f3f1f8; display:flex; align-items:center; justify-content:center; font-size:32px;">' + (rp.image ? '<img loading="lazy" decoding="async" src="\' + rp.image + \'" style="width:100%; height:100%; object-fit:cover;">' : rp.icon) + '</div><div style="font-size:10.5px; margin-top:5px; line-height:1.35; height:28px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">' + rp.name + '</div><div style="font-size:11px; font-weight:800; color:#7c3aed; margin-top:2px;">₹' + rp.price + '</div></div>';
+return '<div data-viewid="' + rp.id + '" style="flex:0 0 108px; cursor:pointer;"><div style="width:108px; height:108px; border-radius:10px; overflow:hidden; background:#f3f1f8; display:flex; align-items:center; justify-content:center; font-size:32px;">' + (rp.image ? '<img loading="lazy" decoding="async" src="' + rp.image + '" style="width:100%; height:100%; object-fit:cover;">' : rp.icon) + '</div><div style="font-size:10.5px; margin-top:5px; line-height:1.35; height:28px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">' + rp.name + '</div><div style="font-size:11px; font-weight:800; color:#7c3aed; margin-top:2px;">₹' + rp.price + '</div></div>';
 }).join('');
 relatedHtml = '<div style="margin-top:16px;"><div style="font-size:12.5px; font-weight:700; margin-bottom:8px;">🔎 More from this category</div><div style="display:flex; gap:10px; overflow-x:auto; padding-bottom:4px;">' + cardsHtml + '</div></div>';
 }
@@ -4737,8 +4737,8 @@ relatedHtml = '<div style="margin-top:16px;"><div style="font-size:12.5px; font-
 
 const avgRating = reviews.length > 0 ? (reviews.reduce(function(s,r){ return s + Number(r.rating || 0); }, 0) / reviews.length).toFixed(1) : null;
 const allPhotos = [p.image].concat(p.additionalImages || []).filter(Boolean);
-const mainImgHtml = allPhotos.length > 0 ? '<img loading="lazy" decoding="async" src="\' + allPhotos[0] + \'" id="pdMainImg" style="width:100%; height:300px; object-fit:cover; border-radius:14px;">' : '<div style="width:100%; height:170px; background:#f3f1f8; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:96px;">' + p.icon + '</div>';
-const thumbsHtml = allPhotos.length > 1 ? '<div style="display:flex; gap:7px; margin-top:8px;">' + allPhotos.map(function(src){ return '<img loading="lazy" decoding="async" src="\' + src + \'" data-pdthumb="' + src + '" style="width:54px; height:54px; object-fit:cover; border-radius:9px; cursor:pointer; opacity:0.7; border:2px solid transparent;">'; }).join('') + '</div>' : '';
+const mainImgHtml = allPhotos.length > 0 ? '<img loading="lazy" decoding="async" src="' + allPhotos[0] + '" id="pdMainImg" style="width:100%; height:300px; object-fit:cover; border-radius:14px;">' : '<div style="width:100%; height:170px; background:#f3f1f8; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:96px;">' + p.icon + '</div>';
+const thumbsHtml = allPhotos.length > 1 ? '<div style="display:flex; gap:7px; margin-top:8px;">' + allPhotos.map(function(src){ return '<img loading="lazy" decoding="async" src="' + src + '" data-pdthumb="' + src + '" style="width:54px; height:54px; object-fit:cover; border-radius:9px; cursor:pointer; opacity:0.7; border:2px solid transparent;">'; }).join('') + '</div>' : '';
 
 const variants = p.isPreorder ? [] : (productVariantsMap[productId] || []).filter(function(v) { return (productVariantAttrsMap[v.id] || []).length > 0; });
 let variantSelectorHtml = '';
