@@ -393,6 +393,30 @@ instead of staying stuck at mobile's 2 columns. */
   .cart-btn{ padding:9px 12px; font-size:12px; margin-right:2px; }
 }
 
+/* ===== Partner section (light, premium) ===== */
+.cta-banner.cta-partner { background:#F4EFFD !important; color:#1E1033; text-align:left; padding:34px 36px; }
+.pt-grid { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:32px; align-items:center; }
+.pt-left { display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
+.pt-pill { background:#E9A23B; color:#1E1033; font-size:12px; font-weight:800; letter-spacing:1.4px; padding:6px 12px; border-radius:999px; }
+.pt-h { margin:0; font-family:'Fraunces', Georgia, serif; font-weight:600; font-size:36px; line-height:1.06; letter-spacing:-0.8px; color:#1E1033; }
+.pt-sub { margin:0; font-size:15px; color:#4A4060; }
+.pt-btns { display:flex; gap:10px; flex-wrap:wrap; }
+.pt-primary { background:#5B21B6 !important; color:#fff !important; border:none; border-radius:12px; padding:12px 22px; font-size:15px; font-weight:700; cursor:pointer; }
+.pt-wa { background:#fff; color:#1E1033; border:1.5px solid #D9CFF0; border-radius:12px; padding:11px 20px; font-size:15px; font-weight:700; text-decoration:none; }
+.pt-rider { background:none !important; border:none; padding:0; color:#5B21B6 !important; font-size:13.5px; font-weight:700; cursor:pointer; }
+.pt-benefits { display:flex; flex-direction:column; gap:14px; }
+.pt-ben { display:flex; align-items:center; gap:12px; font-size:15.5px; font-weight:700; color:#1E1033; }
+.pt-ico { width:44px; height:44px; border-radius:12px; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+/* beat the older generic .cta-banner h2/p/button rules */
+.cta-banner.cta-partner .pt-h { font-size:36px !important; color:#1E1033 !important; margin:0 !important; font-family:'Fraunces', Georgia, serif !important; font-weight:600 !important; }
+.cta-banner.cta-partner .pt-sub { color:#4A4060 !important; font-size:15px !important; opacity:1 !important; margin:0 !important; }
+.cta-banner.cta-partner .pt-rider { margin:0 !important; padding:0 !important; box-shadow:none !important; }
+.cta-banner.cta-partner .pt-primary { margin:0 !important; }
+@media (max-width: 900px) { .pt-grid { grid-template-columns:minmax(0,1fr); gap:18px; } .cta-banner.cta-partner .pt-h { font-size:28px !important; } .cta-banner.cta-partner { padding:24px 20px; } .pt-ben { font-size:14.5px; } }
+/* Banners whose image already carries the message: show the whole picture at its own shape */
+#heroBanner.bn-baked { padding:0 !important; min-height:0 !important; aspect-ratio:3 / 1; background-size:cover; }
+@media (max-width: 699px) { #heroBanner.bn-baked { aspect-ratio:8 / 5; } }
+
 /* ===== Brand hero (premium) ===== */
 /* Mobile keeps the compact 2-line category rail (subcategories open right below it); desktop uses the photo strip */
 @media (max-width: 900px) { #catPhotoStrip { display:none !important; } }
@@ -607,11 +631,19 @@ window.addEventListener('load', function() {
 <div class="cta-banner" id="ctaBanner">
 <video id="ctaBannerVideo" muted autoplay loop playsinline style="display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:inherit; z-index:0;"></video>
 <div id="ctaSlideContent" style="position:relative; z-index:1;">
-<h2 data-i18n="becomeVendor">Become a Graspion Partner</h2>
-<p data-i18n="becomeVendorDesc">List your store and start selling online — zero commission for the first 3 months</p>
-<div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-<button id="startSellingBtn" data-i18n="startSelling">Start Selling</button>
-<button id="becomeRiderBtn" style="background:rgba(255,255,255,0.15); color:#fff; border:1.5px solid rgba(255,255,255,0.4); padding:8px 20px; border-radius:10px; font-weight:700; font-size:12.5px; cursor:pointer;">🚴 Become a Delivery Partner</button>
+<div class="pt-grid">
+<div class="pt-left">
+<div class="pt-pill">FIRST 3 MONTHS · 0% COMMISSION</div>
+<h2 class="pt-h">Bring your shop online with Graspion</h2>
+<p class="pt-sub">अपनी दुकान ऑनलाइन लाइए — दुकानदार, किसान समूह (FPO) और घर से बने ब्रांड</p>
+<div class="pt-btns"><button id="startSellingBtn" class="pt-primary">Start selling</button><a class="pt-wa" href="https://wa.me/918004873819?text=Namaste%2C%20main%20Graspion%20par%20apni%20dukaan%20jodna%20chahta%20hoon." target="_blank" rel="noopener">WhatsApp 80048 73819</a></div>
+<button id="becomeRiderBtn" class="pt-rider">Become a delivery partner →</button>
+</div>
+<div class="pt-benefits">
+<div class="pt-ben"><span class="pt-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5B21B6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1.5-5h15L21 9"></path><path d="M4 9v11h16V9"></path><path d="M9 20v-6h6v6"></path></svg></span>Your own online shop — photos, prices, stock</div>
+<div class="pt-ben"><span class="pt-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5B21B6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="17.5" r="3.5"></circle><circle cx="18.5" cy="17.5" r="3.5"></circle><path d="M15 6h2l3 7"></path><path d="M5.5 17.5L9 10h6l3.5 7.5"></path></svg></span>We deliver in Lucknow, courier across India</div>
+<div class="pt-ben"><span class="pt-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5B21B6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"></path><path d="M9 7h6"></path><path d="M9 11h6"></path></svg></span>Payments, bills and accounts in one app</div>
+</div>
 </div>
 </div>
 </div>
@@ -1308,6 +1340,7 @@ else banner.style.backgroundImage = DEFAULT_HERO_GRADIENT;
 banner.style.backgroundSize = 'cover';
 banner.style.backgroundPosition = 'center';
 }
+banner.classList.toggle('bn-baked', !!(b.hide_text_overlay && !b.video_url && (b.desktop_image || b.mobile_image)));
 banner.style.cursor = b.link_url ? 'pointer' : 'default';
 banner.onclick = b.link_url ? function(){ window.location.href = b.link_url; } : null;
 renderHeroBannerDots();
@@ -3015,16 +3048,19 @@ function showCtaSlide(i) {
 const slide = ctaSlides[i];
 const content = document.getElementById('ctaSlideContent');
 const banner = document.getElementById('ctaBanner');
+banner.classList.remove('cta-partner');
 if (!slide || slide.type === 'partner') {
 content.innerHTML = PARTNER_CTA_HTML;
 const ctaVideo = document.getElementById('ctaBannerVideo');
 if (ctaVideo) { ctaVideo.style.display = 'none'; ctaVideo.removeAttribute('src'); }
-banner.style.backgroundImage = 'linear-gradient(120deg,#1e1b3a,#4c1d95)';
+banner.style.backgroundImage = 'none';
+banner.classList.add('cta-partner');
 banner.onclick = null;
 banner.style.cursor = 'default';
 document.getElementById('startSellingBtn').addEventListener('click', function(){ document.getElementById('vendorApplyModal').style.display = 'flex'; });
 document.getElementById('becomeRiderBtn').addEventListener('click', function(){ const el = document.getElementById('riderApplyModal'); if (el) el.style.display = 'flex'; });
 } else if (slide.type === 'brandimage') {
+banner.classList.remove('cta-partner');
 content.innerHTML = ''; // image already contains its own message — no text overlay to avoid clashing
 const ctaVideo3 = document.getElementById('ctaBannerVideo');
 if (ctaVideo3) { ctaVideo3.style.display = 'none'; ctaVideo3.removeAttribute('src'); }
