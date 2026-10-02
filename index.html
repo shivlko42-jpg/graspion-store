@@ -403,14 +403,14 @@ instead of staying stuck at mobile's 2 columns. */
 .pt-btns { display:flex; gap:10px; flex-wrap:wrap; }
 .pt-primary { background:#5B21B6 !important; color:#fff !important; border:none; border-radius:12px; padding:12px 22px; font-size:15px; font-weight:700; cursor:pointer; }
 .pt-wa { background:#fff; color:#1E1033; border:1.5px solid #D9CFF0; border-radius:12px; padding:11px 20px; font-size:15px; font-weight:700; text-decoration:none; }
-.pt-rider { background:none !important; border:none; padding:0; color:#5B21B6 !important; font-size:13.5px; font-weight:700; cursor:pointer; }
+.pt-rider { background:#FFF4DE !important; border:1.5px solid #E9A23B !important; color:#7A4A00 !important; border-radius:12px !important; padding:10px 16px !important; font-size:14px; font-weight:800; cursor:pointer; }
 .pt-benefits { display:flex; flex-direction:column; gap:14px; }
 .pt-ben { display:flex; align-items:center; gap:12px; font-size:15.5px; font-weight:700; color:#1E1033; }
 .pt-ico { width:44px; height:44px; border-radius:12px; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 /* beat the older generic .cta-banner h2/p/button rules */
 .cta-banner.cta-partner .pt-h { font-size:36px !important; color:#1E1033 !important; margin:0 !important; font-family:'Fraunces', Georgia, serif !important; font-weight:600 !important; }
 .cta-banner.cta-partner .pt-sub { color:#4A4060 !important; font-size:15px !important; opacity:1 !important; margin:0 !important; }
-.cta-banner.cta-partner .pt-rider { margin:0 !important; padding:0 !important; box-shadow:none !important; }
+.cta-banner.cta-partner .pt-rider { margin:2px 0 0 !important; box-shadow:none !important; }
 .cta-banner.cta-partner .pt-primary { margin:0 !important; }
 @media (max-width: 900px) { .pt-grid { grid-template-columns:minmax(0,1fr); gap:18px; } .cta-banner.cta-partner .pt-h { font-size:28px !important; } .cta-banner.cta-partner { padding:24px 20px; } .pt-ben { font-size:14.5px; } }
 /* Banners whose image already carries the message: show the whole picture at its own shape */
@@ -636,8 +636,8 @@ window.addEventListener('load', function() {
 <div class="pt-pill">FIRST 3 MONTHS · 0% COMMISSION</div>
 <h2 class="pt-h">Bring your shop online with Graspion</h2>
 <p class="pt-sub">अपनी दुकान ऑनलाइन लाइए — दुकानदार, किसान समूह (FPO) और घर से बने ब्रांड</p>
-<div class="pt-btns"><button id="startSellingBtn" class="pt-primary">Start selling</button><a class="pt-wa" href="https://wa.me/918004873819?text=Namaste%2C%20main%20Graspion%20par%20apni%20dukaan%20jodna%20chahta%20hoon." target="_blank" rel="noopener">WhatsApp 80048 73819</a></div>
-<button id="becomeRiderBtn" class="pt-rider">Become a delivery partner →</button>
+<div class="pt-btns"><button id="startSellingBtn" class="pt-primary">Start selling</button><a class="pt-wa" href="https://wa.me/918004873819?text=Namaste%2C%20main%20Graspion%20par%20apni%20dukaan%20jodna%20chahta%20hoon." target="_blank" rel="noopener">Chat on WhatsApp</a></div>
+<button id="becomeRiderBtn" class="pt-rider">🛵 Earn as a delivery partner — ₹25–₹100 per delivery →</button>
 </div>
 <div class="pt-benefits">
 <div class="pt-ben"><span class="pt-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5B21B6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1.5-5h15L21 9"></path><path d="M4 9v11h16V9"></path><path d="M9 20v-6h6v6"></path></svg></span>Your own online shop — photos, prices, stock</div>
@@ -1177,8 +1177,10 @@ return true; // 'active' or any unrecognized legacy value stays visible (backwar
 });
 warehouses = warehouseRes.ok ? await warehouseRes.json() : [];
 categoryList = categoryRes.ok ? await categoryRes.json() : [];
-const bannerList = bannerRes.ok ? await bannerRes.json() : [];
+const bannerListAll = bannerRes.ok ? await bannerRes.json() : [];
+const bannerList = bannerListAll.filter(function(b){ return (b.placement || 'hero') !== 'midpage'; });
 applyActiveBanner(bannerList);
+renderMidpageAds(bannerListAll.filter(function(b){ return b.placement === 'midpage'; }));
 if (settingsRes.ok) {
 const settingsRows = await settingsRes.json();
 settingsRows.forEach(function(s){ siteSettings[s.key] = s.value; });
@@ -2902,6 +2904,36 @@ if (btn && s.occasion_banner_cta_link) btn.addEventListener('click', function() 
 }
 } catch (e) {}
 })();
+// Mid-page ads: Admin → Banners with "Where: Middle of page". Several rotate (6 s), each with its own
+// dates; images load only when the slot comes near the screen (no cost to first load). If none are set,
+// the older single "midpage banner" setting below still works.
+let midAdsTimer = null, midAdsShown = false;
+function renderMidpageAds(list){
+  const wrap = document.getElementById('midpageBannerWrap'); if (!wrap) return;
+  const now = new Date();
+  const ads = (list || []).filter(function(b){ return (!b.start_date || new Date(b.start_date) <= now) && (!b.end_date || new Date(b.end_date) >= now) && (b.desktop_image || b.mobile_image); });
+  if (!ads.length) return;
+  midAdsShown = true;
+  const pick = function(b){ return window.matchMedia('(min-width:700px)').matches ? (b.desktop_image || b.mobile_image) : (b.mobile_image || b.desktop_image); };
+  wrap.style.display = 'block';
+  wrap.innerHTML = '<div style="position:relative; border-radius:16px; overflow:hidden; aspect-ratio:3 / 1;" class="mid-ad-box">' + ads.map(function(b, i){
+    return '<a href="' + (b.link_url || '#') + '" data-midad="' + i + '" style="position:absolute; inset:0; opacity:' + (i ? 0 : 1) + '; transition:opacity .5s ease; display:block;" aria-label="' + String(b.title || 'Offer').replace(/"/g, '&quot;') + '"><img data-src="' + pick(b) + '" alt="' + String(b.title || 'Offer').replace(/"/g, '&quot;') + '" decoding="async" style="width:100%; height:100%; object-fit:cover; display:block;"></a>';
+  }).join('') + (ads.length > 1 ? '<div style="position:absolute; left:0; right:0; bottom:8px; display:flex; justify-content:center; gap:5px;">' + ads.map(function(_, i){ return '<span data-middot="' + i + '" style="width:' + (i ? 6 : 16) + 'px; height:6px; border-radius:3px; background:' + (i ? 'rgba(255,255,255,0.6)' : '#fff') + '; transition:width .3s;"></span>'; }).join('') + '</div>' : '') + '</div>';
+  if (!window.matchMedia('(min-width:700px)').matches) wrap.querySelector('.mid-ad-box').style.aspectRatio = '8 / 5';
+  const load = function(){ wrap.querySelectorAll('img[data-src]').forEach(function(img){ img.src = img.getAttribute('data-src'); img.removeAttribute('data-src'); }); };
+  if ('IntersectionObserver' in window) { const io = new IntersectionObserver(function(es){ if (es.some(function(e){ return e.isIntersecting; })) { load(); io.disconnect(); } }, { rootMargin: '300px' }); io.observe(wrap); } else load();
+  if (ads.length > 1) {
+    let cur = 0;
+    if (midAdsTimer) clearInterval(midAdsTimer);
+    midAdsTimer = setInterval(function(){
+      if (document.visibilityState !== 'visible') return;
+      const slides = wrap.querySelectorAll('[data-midad]'), dots = wrap.querySelectorAll('[data-middot]');
+      slides[cur].style.opacity = 0; if (dots[cur]) { dots[cur].style.width = '6px'; dots[cur].style.background = 'rgba(255,255,255,0.6)'; }
+      cur = (cur + 1) % slides.length;
+      slides[cur].style.opacity = 1; if (dots[cur]) { dots[cur].style.width = '16px'; dots[cur].style.background = '#fff'; }
+    }, 6000);
+  }
+}
 (async function checkMidpageBanner() {
 try {
 const keys = ['midpage_banner_active','midpage_banner_image','midpage_banner_link'];
@@ -2910,6 +2942,7 @@ const rows = res.ok ? await res.json() : [];
 const s = {};
 rows.forEach(function(r) { s[r.key] = r.value; });
 const wrap = document.getElementById('midpageBannerWrap');
+if (midAdsShown) return; // new mid-page ads from Admin → Banners take over
 if (wrap && s.midpage_banner_active === true && s.midpage_banner_image) {
 wrap.style.display = 'block';
 wrap.innerHTML = '<img loading="lazy" decoding="async" src="' + s.midpage_banner_image + '" style="width:100%; border-radius:16px; display:block; ' + (s.midpage_banner_link ? 'cursor:pointer;' : '') + '" id="midpageBannerImg">';

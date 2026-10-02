@@ -691,6 +691,7 @@ Continue with Google
 <h3>🖼️ Homepage Banners</h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Control the hero banners shown on the customer site — no code changes needed.</p>
 <div class="form-grid">
+<div style="grid-column:1/-1;"><label style="font-size:11px; color:#374151; display:block; margin-bottom:2px;">Where to show</label><select class="form-input" id="banPlacement"><option value="hero">Top slider (below the main banner)</option><option value="midpage">Middle of the page (between sections)</option></select></div>
 <input class="form-input" id="banTitle" placeholder="Title">
 <input class="form-input" id="banSubtitle" placeholder="Subtitle">
 <input class="form-input" id="banDesktopImg" placeholder="Desktop image URL">
@@ -3144,7 +3145,7 @@ if (allBanners.length === 0) { empty.style.display = 'block'; list.innerHTML = '
 empty.style.display = 'none';
 list.innerHTML = allBanners.map(function(b) {
 const isActive = b.status !== 'inactive';
-return '<div class="item-card"><div class="ic-info"><div class="ic-title">🖼️ ' + (b.title || 'Untitled banner') + '</div><div class="ic-sub">' + (b.subtitle || '') + (b.start_date || b.end_date ? ' · 🗓 ' + (b.start_date ? new Date(b.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'now') + ' → ' + (b.end_date ? new Date(b.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'no end') : '') + ' · priority: ' + b.priority + '</div></div>' +
+return '<div class="item-card"><div class="ic-info"><div class="ic-title">🖼️ ' + (b.title || 'Untitled banner') + '</div><div class="ic-sub">' + (b.subtitle || '') + (b.start_date || b.end_date ? ' · 🗓 ' + (b.start_date ? new Date(b.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'now') + ' → ' + (b.end_date ? new Date(b.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'no end') : '') + ' · ' + (b.placement === 'midpage' ? '📍 middle of page' : '📍 top slider') + ' · priority: ' + b.priority + '</div></div>' +
 '<div class="item-actions"><button class="icon-btn ' + (isActive ? 'on-btn' : 'off-btn') + '" data-bantoggle="' + b.id + '" data-current="' + isActive + '">' + (isActive ? '✓ Active' : 'Inactive') + '</button>' +
 '<button class="icon-btn del-btn" data-bandel="' + b.id + '">Delete</button></div></div>';
 }).join('');
@@ -3173,7 +3174,7 @@ btn.textContent = '⏳ Adding...';
 await fetch(SUPABASE_URL + '/rest/v1/banners', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-body: JSON.stringify({ title: title, subtitle: document.getElementById('banSubtitle').value.trim(), desktop_image: document.getElementById('banDesktopImg').value.trim(), mobile_image: document.getElementById('banMobileImg').value.trim(), video_url: document.getElementById('banVideoUrl').value.trim() || null, category_id: document.getElementById('banCategory').value || null, hide_text_overlay: document.getElementById('banHideOverlay').checked, button_text: document.getElementById('banButtonText').value.trim(), link_url: document.getElementById('banLink').value.trim(), priority: parseInt(document.getElementById('banPriority').value) || 0, status: 'active' , start_date: document.getElementById('banStart').value ? new Date(document.getElementById('banStart').value).toISOString() : null, end_date: document.getElementById('banEnd').value ? new Date(document.getElementById('banEnd').value).toISOString() : null })
+body: JSON.stringify({ title: title, subtitle: document.getElementById('banSubtitle').value.trim(), desktop_image: document.getElementById('banDesktopImg').value.trim(), mobile_image: document.getElementById('banMobileImg').value.trim(), video_url: document.getElementById('banVideoUrl').value.trim() || null, category_id: document.getElementById('banCategory').value || null, hide_text_overlay: document.getElementById('banHideOverlay').checked, button_text: document.getElementById('banButtonText').value.trim(), link_url: document.getElementById('banLink').value.trim(), priority: parseInt(document.getElementById('banPriority').value) || 0, status: 'active' , placement: document.getElementById('banPlacement').value || 'hero', start_date: document.getElementById('banStart').value ? new Date(document.getElementById('banStart').value).toISOString() : null, end_date: document.getElementById('banEnd').value ? new Date(document.getElementById('banEnd').value).toISOString() : null })
 });
 ['banTitle','banSubtitle','banDesktopImg','banMobileImg','banVideoUrl','banCategory','banButtonText','banLink','banStart','banEnd'].forEach(function(id){ const el = document.getElementById(id); if (el) el.value = ''; });
 document.getElementById('banHideOverlay').checked = false;
