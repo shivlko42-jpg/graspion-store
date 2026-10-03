@@ -43,7 +43,7 @@ body { background:#0f1117; color:#fff; max-width:420px; margin:0 auto; min-heigh
 .earnings-val { font-size:18px; font-weight:900; }
 .earnings-label { font-size:9.5px; opacity:0.9; margin-top:2px; }
 
-.section-label { padding:0 18px 10px; font-size:11px; color:#64748b; font-weight:700; }
+.section-label { padding:0 18px 10px; font-size:15px; color:#e5e7eb; font-weight:700; }
 .order-card { margin:0 18px 14px; background:#181b25; border-radius:16px; padding:16px; }
 .order-top { display:flex; justify-content:space-between; margin-bottom:8px; }
 .order-id { font-size:12px; font-weight:800; color:#a78bfa; }
@@ -58,7 +58,7 @@ body { background:#0f1117; color:#fff; max-width:420px; margin:0 auto; min-heigh
 .cod-input[id^="otp-"], .cod-input[id^="pbotp-"] { letter-spacing:6px; text-align:center; font-size:22px; }
 .cod-input[id^="otp-"]::placeholder, .cod-input[id^="pbotp-"]::placeholder { letter-spacing:0; font-size:16px; }
 .action-btn { width:100%; padding:11px; border-radius:10px; border:none; font-weight:800; font-size:12.5px; cursor:pointer; background:linear-gradient(90deg,#7c3aed,#ec4899); color:#fff; }
-.empty { text-align:center; padding:40px; color:#64748b; font-size:13px; }
+.empty { text-align:center; padding:40px 24px; color:#e5e7eb; font-size:16px; font-weight:600; line-height:1.5; }
 </style>
 </head>
 <body>
@@ -107,14 +107,14 @@ Continue with Google
 <button class="login-btn" id="loginBtn">Start Delivering →</button>
 <p style="text-align:center; margin-top:8px;"><span id="riderForgotBtn" style="font-size:11.5px; color:#a78bfa; text-decoration:underline; cursor:pointer; font-weight:700;">Forgot password?</span></p>
 <div class="login-error" id="loginError"></div>
-<div style="margin-top:14px; font-size:11.5px; color:#9ca3af;">New rider? <span id="openRiderApplyBtn" style="color:#a78bfa; text-decoration:underline; cursor:pointer;">Apply here</span></div>
+<div style="margin-top:14px; font-size:13px; color:#cbd5e1;">New rider? <span id="openRiderApplyBtn" style="color:#a78bfa; text-decoration:underline; cursor:pointer;">Apply here</span></div>
 </div>
 </div>
 
 <div class="modal-overlay" id="riderApplyModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300; align-items:center; justify-content:center; padding:20px;">
 <div style="max-width:380px; width:100%; background:#181b25; border-radius:20px; padding:24px; max-height:85vh; overflow-y:auto; color:#fff;">
 <h3 style="margin-bottom:4px;">🚴 Apply to Become a Rider</h3>
-<p style="font-size:11px; color:#9ca3af; margin-bottom:14px;">Our team will review your application and email you your login once approved.</p>
+<p style="font-size:13px; color:#cbd5e1; margin-bottom:14px;">Our team will review your application and email you your login once approved.</p>
 <input id="rAppName" placeholder="Your full name" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
 <input id="rAppEmail" type="email" placeholder="Email" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
 <input id="rAppPassword" type="password" placeholder="Create a password (for your login once approved)" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
@@ -122,16 +122,16 @@ Continue with Google
 <input id="rAppBike" placeholder="Bike number (optional)" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
 <input id="rAppPincode" placeholder="Your area pincode" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
 <textarea id="rAppAddress" placeholder="Your full address" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff; min-height:50px; font-family:inherit;"></textarea>
-<label style="font-size:10.5px; font-weight:700; color:#9ca3af; display:block; margin-bottom:4px;">📎 KYC Documents</label>
-<label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Driving License</label>
+<label style="font-size:13px; font-weight:700; color:#cbd5e1; display:block; margin-bottom:4px;">📎 KYC Documents</label>
+<label style="font-size:12.5px; color:#d1d5db; display:block; margin-bottom:2px;">Driving License</label>
 <input type="file" accept="image/*" id="rAppLicenseFile" style="width:100%; margin-bottom:8px; font-size:11px; color:#fff;">
-<label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">Vehicle RC (bike registration)</label>
+<label style="font-size:12.5px; color:#d1d5db; display:block; margin-bottom:2px;">Vehicle RC (bike registration)</label>
 <input type="file" accept="image/*" id="rAppRcFile" style="width:100%; margin-bottom:8px; font-size:11px; color:#fff;">
-<label style="font-size:10px; color:#6b7280; display:block; margin-bottom:2px;">ID Proof (Aadhar/other)</label>
+<label style="font-size:12.5px; color:#d1d5db; display:block; margin-bottom:2px;">ID Proof (Aadhar/other)</label>
 <input type="file" accept="image/*" id="rAppIdFile" style="width:100%; margin-bottom:8px; font-size:11px; color:#fff;">
 <div id="riderApplyError" style="color:#f87171; font-size:11px; margin-bottom:8px;"></div>
 <button id="submitRiderAppBtn" class="login-btn" style="width:100%;">Submit Application</button>
-<button id="closeRiderApplyBtn" style="width:100%; background:none; border:none; color:#9ca3af; padding:10px; margin-top:4px; cursor:pointer;">Cancel</button>
+<button id="closeRiderApplyBtn" style="width:100%; background:none; border:none; color:#cbd5e1; padding:10px; margin-top:4px; cursor:pointer;">Cancel</button>
 </div>
 </div>
 
@@ -436,7 +436,7 @@ async function loadOrders() {
 
     if (allOrders.length === 0 && allPrebookings.length === 0) {
       list.innerHTML = currentRider.is_online
-        ? '<div class="empty">No orders to deliver in your area right now 🎉</div>'
+        ? '<div class="empty">No orders to deliver right now 🎉<br><span style="font-size:14px; font-weight:500; color:#cbd5e1;">अभी कोई ऑर्डर नहीं है — नया ऑर्डर आते ही यहाँ दिखेगा</span></div>'
         : '<div class="empty">You\'re Offline — tap "Go Online" above to start receiving new orders.</div>';
       return;
     }
@@ -458,7 +458,7 @@ async function loadOrders() {
         contactRow +
         (isAssigned ? '<input type="number" class="cod-input" id="pbbalance-' + b.id + '" placeholder="Enter amount collected (₹' + balanceDue + ')" style="display:block;">' : '') +
         (isAssigned ? '<input type="text" maxlength="4" inputmode="numeric" class="cod-input" id="pbotp-' + b.id + '" placeholder="Enter 4-digit OTP from customer" style="display:block; margin-top:6px;">' : '') +
-        (isAssigned ? '<label style="display:block; margin-top:6px; font-size:10.5px; color:#6b7280; font-weight:700;">📸 Delivery photo (optional)</label><input type="file" accept="image/*" capture="environment" id="pbproof-' + b.id + '" style="display:block; margin-top:4px; font-size:10.5px;">' : '') +
+        (isAssigned ? '<label style="display:block; margin-top:6px; font-size:13px; color:#d1d5db; font-weight:700;">📸 Delivery photo (optional)</label><input type="file" accept="image/*" capture="environment" id="pbproof-' + b.id + '" style="display:block; margin-top:4px; font-size:10.5px;">' : '') +
         '<button class="action-btn" data-pbid="' + b.id + '" data-assigned="' + isAssigned + '" data-balance="' + balanceDue + '">' +
           (isAssigned ? 'Mark Delivered' : 'Accept & Pick Up') +
         '</button>' +
@@ -480,11 +480,11 @@ async function loadOrders() {
         ((o.rider_pay || o.delivery_distance_km) ? '<div style="margin:6px 0; display:inline-block; background:rgba(34,197,94,0.15); color:#22c55e; font-size:13px; font-weight:800; padding:5px 10px; border-radius:8px;">' + (o.delivery_distance_km ? '📏 ' + o.delivery_distance_km + ' km' : '') + (o.delivery_weight_kg ? ' · ⚖️ ' + Number(o.delivery_weight_kg) + ' kg' : '') + (o.rider_pay ? ' · 💰 You earn ₹' + o.rider_pay : '') + '</div>' : '') +
         (Number(o.delivery_weight_kg) > 20 ? '<div style="margin:4px 0; color:#f59e0b; font-size:12.5px; font-weight:800;">📦 HEAVY ORDER — 2 trips or tempo needed. Call the office if unsure.</div>' : '') +
         '<span class="pay-tag ' + (isCOD ? 'pay-cod' : 'pay-online') + '">' + (isCOD ? '💵 Collect COD' : '✅ Already Paid Online') + '</span>' +
-        '<div class="order-addr">' + (isAssigned ? ((o.customer_name || 'Customer') + ' · ' + (o.customer_phone || '') + '<br>' + (o.address || '')) : ('📍 Delivery area: ' + (o.pincode || 'nearby') + ' <span style="color:#64748b;">(full address shown after you accept)</span>')) + '</div>' +
+        '<div class="order-addr">' + (isAssigned ? ((o.customer_name || 'Customer') + ' · ' + (o.customer_phone || '') + '<br>' + (o.address || '')) : ('📍 Delivery area: ' + (o.pincode || 'nearby') + ' <span style="color:#cbd5e1;">(full address shown after you accept)</span>')) + '</div>' +
         contactRow +
         (isCOD && isAssigned ? '<input type="number" class="cod-input" id="cod-' + o.id + '" placeholder="Enter amount collected (₹' + o.total_amount + ')" style="display:block;">' : '') +
         (isAssigned ? '<input type="text" maxlength="4" inputmode="numeric" class="cod-input" id="otp-' + o.id + '" placeholder="Enter 4-digit OTP from customer" style="display:block; margin-top:6px;">' : '') +
-(isAssigned ? '<label style="display:block; margin-top:6px; font-size:10.5px; color:#6b7280; font-weight:700;">📸 Delivery photo (optional)</label><input type="file" accept="image/*" capture="environment" id="proof-' + o.id + '" style="display:block; margin-top:4px; font-size:10.5px;">' : '') +
+(isAssigned ? '<label style="display:block; margin-top:6px; font-size:13px; color:#d1d5db; font-weight:700;">📸 Delivery photo (optional)</label><input type="file" accept="image/*" capture="environment" id="proof-' + o.id + '" style="display:block; margin-top:4px; font-size:10.5px;">' : '') +
         '<button class="action-btn" data-id="' + o.id + '" data-assigned="' + isAssigned + '" data-cod="' + isCOD + '" data-amount="' + o.total_amount + '">' +
           (isAssigned ? 'Mark Delivered' : 'Accept & Pick Up') +
         '</button>' +
@@ -728,7 +728,7 @@ errEl.textContent = 'Could not submit: ' + errText;
 btn.textContent = 'Submit Application'; btn.disabled = false;
 return;
 }
-document.getElementById('riderApplyModal').innerHTML = '<div style="max-width:340px; width:100%; background:#181b25; border-radius:20px; padding:30px; text-align:center; color:#fff;"><div style="font-size:48px; margin-bottom:10px;">✅</div><h3>Application Submitted!</h3><p style="font-size:12px; color:#9ca3af; margin-top:8px;">Our team will review it. Once approved, log in anytime using the email and password you just created.</p><button onclick="document.getElementById(\'riderApplyModal\').style.display=\'none\';" class="login-btn" style="margin-top:16px;">Close</button></div>';
+document.getElementById('riderApplyModal').innerHTML = '<div style="max-width:340px; width:100%; background:#181b25; border-radius:20px; padding:30px; text-align:center; color:#fff;"><div style="font-size:48px; margin-bottom:10px;">✅</div><h3>Application Submitted!</h3><p style="font-size:12px; color:#cbd5e1; margin-top:8px;">Our team will review it. Once approved, log in anytime using the email and password you just created.</p><button onclick="document.getElementById(\'riderApplyModal\').style.display=\'none\';" class="login-btn" style="margin-top:16px;">Close</button></div>';
 } catch (err) {
 errEl.textContent = 'Network error: ' + err.message;
 btn.textContent = 'Submit Application'; btn.disabled = false;
