@@ -4048,7 +4048,13 @@ let returnHtml = '';
 if (existingReturn) {
 returnHtml = '<div style="margin-top:8px; background:#fef3c7; padding:8px 10px; border-radius:8px; font-size:12.5px; color:#92400e;">' + (returnStatusLabels[existingReturn.approval_status] || existingReturn.approval_status) + '</div>';
 } else if (['pending','confirmed','preparing'].indexOf(o.status) !== -1 && !o.rider_id) {
-returnHtml = '<button data-cancelorder="' + o.id + '" data-paid="' + (o.payment_status === 'paid' && String(o.payment_method || '').toLowerCase().indexOf('cod') === -1 ? '1' : '0') + '" data-amount="' + o.total_amount + '" style="margin-top:8px; background:#fff; color:#b91c1c; border:1.5px solid #fca5a5; padding:8px 12px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer;">✕ Cancel Order</button>';
+const shopBusy = !o.accepted_at && (o.vendor_rejected_at || (o.accept_deadline && new Date(o.accept_deadline) < new Date()));
+const newShop = o.passed_from_vendor_id ? ((vendors.find(function(v) { return v.id === o.vendor_id; }) || {}).name || 'another shop nearby') : '';
+returnHtml = (newShop ? '<div style="margin-top:8px; background:#eef2ff; border-radius:10px; padding:9px 11px; font-size:13px; color:#1e1b4b;"><b>Good news:</b> your order will now come from <b>' + newShop + '</b>. Same items, same price, same delivery time.</div>' : '') +
+  (shopBusy && o.customer_choice !== 'wait' ? '<div style="margin-top:8px; background:#fff7ed; border:1.5px solid #fdba74; border-radius:12px; padding:10px 12px;"><div style="font-size:14px; font-weight:800; color:#7c2d12;">The shop is a little busy</div><div style="font-size:13px; color:#374151; margin:3px 0 8px;">We could not confirm your order yet. Would you like to wait, or cancel' + (o.payment_status === 'paid' ? ' with a full refund' : '') + '?</div><div style="display:flex; gap:8px;"><button data-orderwait="' + o.id + '" style="flex:1; padding:10px; border-radius:10px; border:none; background:#6d28d9; color:#fff; font-weight:800; font-size:13px; cursor:pointer;">I\'ll wait</button></div></div>' : '') +
+  (o.customer_choice === 'wait' && !o.accepted_at ? '<div style="margin-top:8px; background:#f5f3ff; border-radius:10px; padding:9px 11px; font-size:13px; color:#3b0764;">Thanks for waiting — we will update you within 1 hour.</div>' : '') +
+  (o.accepted_at && ['pending','confirmed'].indexOf(o.status) !== -1 ? '<div style="margin-top:8px; font-size:12.5px; color:#15803d; font-weight:700;">✓ Shop has accepted your order</div>' : '') +
+  '<button data-cancelorder="' + o.id + '" data-paid="' + (o.payment_status === 'paid' && String(o.payment_method || '').toLowerCase().indexOf('cod') === -1 ? '1' : '0') + '" data-amount="' + o.total_amount + '" style="margin-top:8px; background:#fff; color:#b91c1c; border:1.5px solid #fca5a5; padding:8px 12px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer;">✕ Cancel Order</button>';
 } else if (o.status === 'cancelled') {
 returnHtml = '<div style="margin-top:8px; background:#f3f4f6; padding:8px 10px; border-radius:8px; font-size:12.5px; color:#374151;">' + (o.cancelled_by === 'customer' ? 'You cancelled this order' : 'This order was cancelled') + (o.cancellation_reason ? ' · ' + String(o.cancellation_reason).replace(/</g, '&lt;') : '') +
   (o.payment_status === 'refunded' ? '<br><b style="color:#15803d;">Refund of ₹' + o.total_amount + ' started to your original payment method (usually 5–7 working days).</b>' : (o.payment_status === 'refund_pending' ? '<br><b style="color:#b45309;">Refund of ₹' + o.total_amount + ' is being processed by our team.</b>' : '')) + '</div>';
@@ -4076,6 +4082,13 @@ btn.addEventListener('click', function() { generateCustomerInvoice(btn.getAttrib
 });
 document.querySelectorAll('[data-requestreturn]').forEach(function(btn) {
 btn.addEventListener('click', function() { openReturnModal(btn.getAttribute('data-requestreturn')); });
+});
+document.querySelectorAll('[data-orderwait]').forEach(function(btn) {
+btn.addEventListener('click', async function() {
+  btn.disabled = true;
+  try { await fetch(SUPABASE_URL + '/rest/v1/rpc/customer_order_wait', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_order_id: btn.getAttribute('data-orderwait') }) }); } catch (e) {}
+  if (typeof renderMyOrdersFiltered === 'function') renderMyOrdersFiltered();
+});
 });
 document.querySelectorAll('[data-cancelorder]').forEach(function(btn) {
 btn.addEventListener('click', function() { openCancelOrderModal(btn.getAttribute('data-cancelorder'), btn.getAttribute('data-paid') === '1', btn.getAttribute('data-amount')); });
