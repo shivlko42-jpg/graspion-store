@@ -2557,7 +2557,8 @@ btn.disabled = true; btn.textContent = 'Checking delivery...';
 // with a real pincode), never on the product-listing page where it would
 // mean many API calls for an estimate the customer isn't committing to yet.
 deliveryEstimates = {};
-const standardVendorIds = Array.from(new Set(items.filter(function(i) { return i.fulfillmentType !== 'instant'; }).map(function(i) { return i.vendorId; })));
+const localVidsForEta = Object.keys(localVendorGroups(items));
+const standardVendorIds = Array.from(new Set(items.filter(function(i) { return i.fulfillmentType !== 'instant' && localVidsForEta.indexOf(i.vendorId) === -1; }).map(function(i) { return i.vendorId; })));
 try {
 await Promise.all(standardVendorIds.map(async function(vId) {
 const res = await fetch(SUPABASE_URL + '/functions/v1/check-delivery-estimate', {
@@ -2576,10 +2577,21 @@ const cartHasCodBlockedItem = items.some(function(i){ return i.codAllowed === fa
 if (cartHasCodBlockedItem && selectedPayMethod === 'cod') { selectedPayMethod = 'upi'; }
 const codOptionHtml = cartHasCodBlockedItem ? '' : '<div class="pay-option ' + (selectedPayMethod==='cod'?'selected':'') + '" data-pay="cod">💵 ' + graspionT('cod') + '<span class="pay-sub" style="color:#9ca3af;">Pay at doorstep</span></div>';
 const codNoticeHtml = cartHasCodBlockedItem ? '<p style="font-size:10.5px; color:#9ca3af; margin:-6px 0 10px;">💳 One or more items in your cart are prepaid-only — COD isn\'t available for this order.</p>' : '';
-const hasInstant = items.some(function(i) { return i.fulfillmentType === 'instant'; });
-const estimateEntries = Object.keys(deliveryEstimates);
+// 10-20 min only for dark-store items; shops delivering with a local (Routix) rider get a same-day promise;
+// everything else uses the real courier estimate.
+const etaLocalVids = Object.keys(localVendorGroups(items));
+const hasInstant = items.some(function(i) { const v = vendors.find(function(vv) { return vv.id === i.vendorId; }); return i.fulfillmentType === 'instant' && v && getVendorSupplyType(v).type === 'dark_store'; });
+const estimateEntries = Object.keys(deliveryEstimates).filter(function(vId) { return etaLocalVids.indexOf(vId) === -1; });
 let deliveryEstimateHtml = '';
 if (hasInstant) deliveryEstimateHtml += '<div class="co-item-row"><span>⚡ Instant items</span><b>10-20 minutes</b></div>';
+if (etaLocalVids.length) {
+  const hr = new Date().getHours();
+  const localEta = hr < 18 ? 'Today' : 'Tomorrow';
+  etaLocalVids.forEach(function(vId) {
+    const v = vendors.find(function(vv) { return vv.id === vId; }) || {};
+    deliveryEstimateHtml += '<div class="co-item-row"><span>🛵 ' + (etaLocalVids.length > 1 && v.name ? v.name : 'Local delivery') + '</span><b>' + localEta + ' · by our local rider</b></div>';
+  });
+}
 estimateEntries.forEach(function(vId) {
 const est = deliveryEstimates[vId];
 if (est.serviceable === false) deliveryEstimateHtml += '<div class="co-item-row" style="color:#dc2626;"><span>📦 Standard item</span><b>⚠️ Not deliverable to this pincode</b></div>';
@@ -2594,7 +2606,7 @@ const taxBreakupHtml = '<div class="co-section"><h4>🧾 Price Details</h4>' +
 '<div class="co-item-row" style="color:#1f2937; font-size:13px;"><span>CGST (' + halfRate + '%)</span><span>₹' + Math.round(t.cgst).toLocaleString('en-IN') + '</span></div><div class="co-item-row" style="color:#1f2937; font-size:13px;"><span>SGST (' + halfRate + '%)</span><span>₹' + Math.round(t.sgst).toLocaleString('en-IN') + '</span></div>') +
 '<div class="co-item-row"><span>Delivery Fee</span><span>' + (t.delivery === 0 ? '<b style="color:#15803d;">FREE</b>' : '₹' + t.delivery) + '</span></div>' +
 '</div>';
-wrap.innerHTML = taxBreakupHtml + (deliveryEstimateHtml ? '<div class="co-section"><h4>🚚 Delivery Estimate</h4>' + deliveryEstimateHtml + '<p style="font-size:10px; color:#9ca3af; margin-top:6px;">Based on real courier data for your pincode.</p></div>' : '') +
+wrap.innerHTML = taxBreakupHtml + (deliveryEstimateHtml ? '<div class="co-section"><h4>🚚 Delivery Estimate</h4>' + deliveryEstimateHtml + (estimateEntries.length ? '<p style="font-size:11px; color:#4b5563; margin-top:6px;">Courier time is based on real courier data for your pincode.</p>' : '') + '</div>' : '') +
 '<div class="co-section"><h4>💳 ' + graspionT('selectPayment') + '</h4>' +
 '<div class="pay-option pay-recommended ' + (selectedPayMethod==='upi'?'selected':'') + '" data-pay="upi"><span class="pay-badge-tag">FASTEST</span>📱 ' + graspionT('upi') + '<span class="pay-sub">Instant confirmation</span></div>' +
 '<div class="pay-option ' + (selectedPayMethod==='card'?'selected':'') + '" data-pay="card">💳 ' + graspionT('card') + '</div>' +
