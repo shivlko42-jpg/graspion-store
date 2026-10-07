@@ -1269,11 +1269,11 @@ function populateSettingsForm() {
   kycBadge.style.cssText += kycColors[status] || kycColors.pending;
   kycBadge.textContent = 'KYC: ' + status;
 
+  document.getElementById('storeOpenRow').style.display = 'block';
+  selectedStoreOpen = currentVendor.is_open !== false;
+  document.getElementById('storeOpenYes').classList.toggle('selected', selectedStoreOpen);
+  document.getElementById('storeOpenNo').classList.toggle('selected', !selectedStoreOpen);
   if (currentVendor.vendor_type === 'dark_store') {
-    document.getElementById('storeOpenRow').style.display = 'block';
-    selectedStoreOpen = currentVendor.is_open !== false;
-    document.getElementById('storeOpenYes').classList.toggle('selected', selectedStoreOpen);
-    document.getElementById('storeOpenNo').classList.toggle('selected', !selectedStoreOpen);
   } else {
     document.getElementById('localDeliveryRow').style.display = 'block';
     document.getElementById('localDeliveryEnabled').checked = !!currentVendor.local_delivery_enabled;
@@ -1407,7 +1407,7 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async funct
         address: document.getElementById('sAddress').value.trim(),
         bank_account_no: document.getElementById('sBankAccount').value.trim(),
         bank_ifsc: document.getElementById('sBankIfsc').value.trim(),
-        is_open: currentVendor.vendor_type === 'dark_store' ? selectedStoreOpen : currentVendor.is_open,
+        is_open: selectedStoreOpen,
         local_delivery_enabled: currentVendor.vendor_type !== 'dark_store' ? document.getElementById('localDeliveryEnabled').checked : currentVendor.local_delivery_enabled,
         gift_wrap_enabled: selectedGiftWrap
       })
@@ -1889,7 +1889,11 @@ function renderOrders() {
   if (filteredOrders.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; empty.textContent = currentOrderTab === 'all' ? 'No orders yet' : 'No orders in this status'; return; }
   empty.style.display = 'none';
 
-  list.innerHTML = filteredOrders.map(function(o) {
+  const waitingAll = vendorOrders.filter(function(o) { return !o.accepted_at && !o.vendor_rejected_at && o.status !== 'cancelled' && ['pending','confirmed'].indexOf(o.status) !== -1; })
+    .sort(function(a, b) { return new Date(a.accept_deadline || a.created_at) - new Date(b.accept_deadline || b.created_at); });
+  const compactMode = waitingAll.length >= 2;
+  const cardsSource = compactMode ? filteredOrders.filter(function(o) { return waitingAll.indexOf(o) === -1; }) : filteredOrders;
+  list.innerHTML = (compactMode ? manyOrdersHtml(waitingAll) : '') + cardsSource.map(function(o) {
     const currentIndex = STATUS_STEPS.indexOf(o.status || 'pending');
     const isCOD = (o.payment_method || '').toLowerCase() === 'cod';
     const payBadge = o.payment_status === 'paid'
@@ -3754,7 +3758,7 @@ function acceptBoxHtml(o, itemsHtml) {
     '</div>' +
     '<div style="background:#f3f4f6; border-radius:10px; padding:8px 10px; font-size:12.5px; color:#374151;">🔒 Customer name, phone and full address will show after you accept.</div>' +
     '<div style="display:flex; gap:8px;">' +
-      '<select data-rejectreason="' + o.id + '" aria-label="Reason to reject" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid #fca5a5; font-size:13px; color:#1f2937; background:#fff;"><option value="">Reject? choose reason…</option><option>Out of stock</option><option>Can\'t deliver to this area</option><option>Shop closed today</option><option>Other</option></select>' +
+      '<select data-rejectreason="' + o.id + '" aria-label="Reason to reject" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid #fca5a5; font-size:13px; color:#1f2937; background:#fff;"><option value="">Reject? choose reason…</option><option>Stock finished (sold in shop)</option><option>Cannot give this quantity</option><option>Shop closed today</option><option>Cannot deliver to this area</option><option>Suspicious order</option><option>Other</option></select>' +
       '<button class="mini-btn" data-rejectorder="' + o.id + '" style="background:#fff; color:#b91c1c; border:1.5px solid #fca5a5;">✕ Reject</button>' +
     '</div>' +
     '<button data-acceptorder="' + o.id + '" style="height:48px; border:none; border-radius:12px; background:#15803d; color:#fff; font-size:15px; font-weight:800; cursor:pointer;">✓ Accept order</button>' +
@@ -3777,6 +3781,7 @@ document.addEventListener('click', async function(e) {
     const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const d = await r.json();
     if (!r.ok || !d.ok) { alert((d && (d.error || d.message)) || 'Could not update. Please try again.'); btn.disabled = false; return; }
+    if (d.marked_out_of_stock) alert('Order rejected. These items are now marked OUT OF STOCK on the site, so no new orders come in. Update stock in Products when you have it again.');
     await loadVendorData();
   } catch (err) { alert('Network error: ' + err.message); btn.disabled = false; }
 });
@@ -3796,6 +3801,95 @@ setInterval(function() {
     if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
   } catch (e) {}
 }, 120000);
+
+// ===== Many new orders at once: compact list, accept together =====
+function orderItemsSummary(o) {
+  const its = vendorOrderItems.filter(function(it) { return it.order_id === o.id; });
+  return its.map(function(it) { const p = vendorProducts.find(function(vp) { return vp.id === it.product_id; }); return ((p ? p.name : 'Item').split(/ [–-] /)[0].slice(0, 32)) + (it.variant_details ? ' ' + it.variant_details : '') + ' × ' + it.quantity; }).join(', ') || 'Items';
+}
+function manyOrdersHtml(waiting) {
+  const urgent = waiting.filter(function(o) { return o.accept_deadline && (new Date(o.accept_deadline) - Date.now()) < 10 * 60000; }).length;
+  // stock check: total quantity needed per product (+pack) across the waiting orders
+  const need = {};
+  waiting.forEach(function(o) { vendorOrderItems.filter(function(it) { return it.order_id === o.id; }).forEach(function(it) { const k = it.product_id + '|' + (it.variant_details || ''); need[k] = (need[k] || 0) + Number(it.quantity || 0); }); });
+  const stockLine = Object.keys(need).map(function(k) {
+    const pid = k.split('|')[0], pack = k.split('|')[1]; const p = vendorProducts.find(function(vp) { return vp.id === pid; });
+    const name = (p ? p.name : 'Item').split(/ [–-] /)[0].slice(0, 24) + (pack ? ' ' + pack : '');
+    const have = p && !pack ? Number(p.stock || 0) : null;
+    return name + ' needs ' + need[k] + (have !== null ? ' · you have ' + have + (have >= need[k] ? ' ✓' : ' ⚠️') : '');
+  }).join(' · ');
+  return '<div style="background:#1f1638; color:#fff; border-radius:14px; padding:12px 14px; margin-bottom:10px;">' +
+    '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><b style="font-size:15px;">' + waiting.length + ' new orders waiting</b>' + (urgent ? '<span style="background:#b91c1c; font-size:12px; font-weight:800; padding:3px 9px; border-radius:999px;">' + urgent + ' urgent</span>' : '') + '</div>' +
+    '<div style="font-size:12.5px; color:#d9cff0; margin:4px 0 8px;">Nearest time-limit first. Untick any you cannot make, then accept the rest together.</div>' +
+    '<div style="display:flex; gap:8px;"><button id="acceptSelectedBtn" style="flex:1; height:46px; border:none; border-radius:12px; background:#15803d; color:#fff; font-size:15px; font-weight:800; cursor:pointer;">Accept selected (' + waiting.length + ')</button></div>' +
+    (stockLine ? '<div style="font-size:12px; color:#d9cff0; margin-top:8px;">Stock check: ' + stockLine + '</div>' : '') +
+  '</div>' +
+  waiting.map(function(o) {
+    const ms = o.accept_deadline ? new Date(o.accept_deadline) - Date.now() : 0; const urg = ms < 10 * 60000;
+    const isCOD = (o.payment_method || '').toLowerCase() === 'cod';
+    return '<div style="background:#fff; border:1.5px solid ' + (urg ? '#fca5a5' : '#e9e2fb') + '; border-radius:14px; padding:10px 12px; margin-bottom:8px; display:grid; grid-template-columns:28px 1fr auto; gap:10px; align-items:center;">' +
+      '<input type="checkbox" data-pickorder="' + o.id + '" checked aria-label="Select order ' + (o.order_number || '') + '" style="width:22px; height:22px; accent-color:#15803d;">' +
+      '<div style="min-width:0;"><div style="display:flex; gap:8px; align-items:center;"><b style="font-size:13.5px;">#' + (o.order_number || o.id.slice(0, 8)).slice(-6) + '</b>' +
+        '<span data-countdown="' + o.id + '" style="font-size:11.5px; font-weight:800; color:' + (urg ? '#b91c1c' : '#92400e') + '; background:' + (urg ? '#fef2f2' : '#fef3c7') + '; padding:2px 8px; border-radius:999px;">⏱ ' + acceptCountdownText(o) + '</span></div>' +
+        '<div style="font-size:13px; color:#1f1638; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + orderItemsSummary(o) + '</div>' +
+        '<div style="font-size:12px; color:#4b4366;">₹' + o.total_amount + ' · ' + (isCOD ? 'COD' : (o.payment_status === 'paid' ? 'Paid' : 'Unpaid')) + ' · ' + (o.pincode || '-') + '</div></div>' +
+      '<div style="display:flex; gap:6px;"><button data-quickreject="' + o.id + '" aria-label="Reject" style="width:44px; height:44px; border-radius:12px; border:1.5px solid #fca5a5; background:#fff; color:#b91c1c; font-size:18px; font-weight:800; cursor:pointer;">✕</button>' +
+      '<button data-acceptorder="' + o.id + '" aria-label="Accept" style="width:44px; height:44px; border-radius:12px; border:none; background:#15803d; color:#fff; font-size:18px; font-weight:800; cursor:pointer;">✓</button></div>' +
+    '</div>';
+  }).join('');
+}
+function rejectSheet(orderId) {
+  const reasons = ['Stock finished (sold in shop)', 'Cannot give this quantity', 'Shop closed today', 'Cannot deliver to this area', 'Suspicious order', 'Other'];
+  const w = document.createElement('div');
+  w.style.cssText = 'position:fixed; inset:0; background:rgba(15,10,30,0.6); z-index:400; display:flex; align-items:flex-end; justify-content:center;';
+  w.innerHTML = '<div style="background:#fff; width:100%; max-width:480px; border-radius:20px 20px 0 0; padding:18px 16px calc(16px + env(safe-area-inset-bottom,0px));">' +
+    '<div style="font-size:17px; font-weight:800; color:#1f1638;">Why are you rejecting?</div>' +
+    '<div style="font-size:12.5px; color:#374151; margin:2px 0 10px;">Graspion will try to send the order through another shop.</div>' +
+    reasons.map(function(r, i) { return '<label style="display:flex; gap:10px; align-items:center; padding:10px 12px; border:1.5px solid #e5e7eb; border-radius:10px; margin-bottom:6px; font-size:14px; color:#1f2937;"><input type="radio" name="rjr" value="' + r + '"' + (i === 0 ? ' checked' : '') + '>' + r + '</label>'; }).join('') +
+    '<label style="display:flex; gap:8px; align-items:center; font-size:13px; color:#1f2937; margin:6px 2px;"><input type="checkbox" id="rjMarkOut" checked> Also mark these items <b>out of stock</b> on the site</label>' +
+    '<div style="display:flex; gap:8px; margin-top:8px;"><button id="rjBack" style="flex:1; padding:12px; border-radius:12px; border:1.5px solid #d1d5db; background:#fff; font-weight:700;">Back</button><button id="rjGo" style="flex:1; padding:12px; border-radius:12px; border:none; background:#dc2626; color:#fff; font-weight:800;">Reject order</button></div></div>';
+  document.body.appendChild(w);
+  const markRow = w.querySelector('#rjMarkOut').parentNode;
+  const sync = function() { const v = (w.querySelector('input[name="rjr"]:checked') || {}).value || ''; markRow.style.display = v.indexOf('Stock') === 0 ? 'flex' : 'none'; };
+  w.querySelectorAll('input[name="rjr"]').forEach(function(r) { r.addEventListener('change', sync); }); sync();
+  w.querySelector('#rjBack').onclick = function() { w.remove(); };
+  w.querySelector('#rjGo').onclick = async function() {
+    const reason = (w.querySelector('input[name="rjr"]:checked') || {}).value || 'Other';
+    const markOut = reason.indexOf('Stock') === 0 && w.querySelector('#rjMarkOut').checked;
+    this.disabled = true;
+    const hdr = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' };
+    const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/vendor_reject_order', { method: 'POST', headers: hdr, body: JSON.stringify({ p_order_id: orderId, p_reason: reason }) });
+    const d = await r.json().catch(function() { return {}; });
+    if (!r.ok || !d.ok) { alert((d && (d.error || d.message)) || 'Could not reject'); this.disabled = false; return; }
+    if (markOut) {
+      // stops new orders for an item that is no longer there
+      for (const it of vendorOrderItems.filter(function(x) { return x.order_id === orderId; })) {
+        const url = it.variant_id ? '/rest/v1/product_variants?id=eq.' + it.variant_id : '/rest/v1/products?id=eq.' + it.product_id;
+        try { await fetch(SUPABASE_URL + url, { method: 'PATCH', headers: hdr, body: JSON.stringify({ stock: 0 }) }); } catch (e) {}
+      }
+    }
+    w.remove(); await loadVendorData();
+  };
+}
+document.addEventListener('click', async function(e) {
+  const qr = e.target.closest && e.target.closest('[data-quickreject]');
+  if (qr) { rejectSheet(qr.getAttribute('data-quickreject')); return; }
+  const all = e.target.closest && e.target.closest('#acceptSelectedBtn');
+  if (!all) return;
+  const ids = Array.prototype.map.call(document.querySelectorAll('[data-pickorder]:checked'), function(c) { return c.getAttribute('data-pickorder'); });
+  if (!ids.length) { alert('Tick at least one order.'); return; }
+  all.disabled = true; all.textContent = 'Accepting ' + ids.length + '…';
+  let fail = 0;
+  for (const id of ids) {
+    try { const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/vendor_accept_order', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_order_id: id }) }); const d = await r.json(); if (!r.ok || !d.ok) fail++; } catch (err) { fail++; }
+  }
+  if (fail) alert(fail + ' order(s) could not be accepted (maybe the customer cancelled). Others are accepted.');
+  await loadVendorData();
+});
+document.addEventListener('change', function(e) {
+  if (!e.target.matches || !e.target.matches('[data-pickorder]')) return;
+  const n = document.querySelectorAll('[data-pickorder]:checked').length; const b = document.getElementById('acceptSelectedBtn'); if (b) b.textContent = 'Accept selected (' + n + ')';
+});
 </script>
 
 </body>
