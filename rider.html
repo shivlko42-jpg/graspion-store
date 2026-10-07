@@ -6,6 +6,77 @@
 <meta http-equiv="Expires" content="0">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+// ===== Graspion attribution (step 4A/4B): where did this visitor come from? =====
+// First touch = the very first way they found us (kept 90 days, never overwritten).
+// Last touch  = the latest campaign/ad/link that brought them back (updated when a new one arrives).
+// Saved in this browser only, and sent along with an order or a vendor/rider signup.
+(function () {
+  try {
+    var KEY_FIRST = 'gr_attr_first', KEY_LAST = 'gr_attr_last', DAYS = 90;
+    var q = new URLSearchParams(location.search);
+    var get = function (k) { var v = q.get(k); return v ? String(v).slice(0, 300) : null; };
+    var ref = '';
+    try { ref = document.referrer && new URL(document.referrer).hostname !== location.hostname ? document.referrer : ''; } catch (e) { ref = ''; }
+    var refHost = ''; try { refHost = ref ? new URL(ref).hostname.replace(/^www\./, '') : ''; } catch (e) {}
+    var t = {
+      utm_source: get('utm_source'), utm_medium: get('utm_medium'), utm_campaign: get('utm_campaign'),
+      utm_content: get('utm_content'), utm_term: get('utm_term'),
+      gclid: get('gclid'), fbclid: get('fbclid'), ref_code: get('ref'),
+      referrer: ref ? ref.slice(0, 300) : null,
+      landing_page: (location.pathname + location.search).slice(0, 300),
+      at: new Date().toISOString()
+    };
+    // No UTM? Work out the source from click ids / the referring site.
+    if (!t.utm_source) {
+      if (t.gclid) { t.utm_source = 'google'; t.utm_medium = 'cpc'; }
+      else if (t.fbclid) { t.utm_source = /instagram/.test(refHost) ? 'instagram' : 'meta'; t.utm_medium = 'social'; }
+      else if (t.ref_code) { t.utm_source = 'vendor_link'; t.utm_medium = 'referral'; }
+      else if (refHost) {
+        if (/(^|\.)google\./.test(refHost)) { t.utm_source = 'google'; t.utm_medium = 'organic'; }
+        else if (/bing\.|yahoo\.|duckduckgo\./.test(refHost)) { t.utm_source = refHost.split('.')[0]; t.utm_medium = 'organic'; }
+        else if (/instagram\./.test(refHost)) { t.utm_source = 'instagram'; t.utm_medium = 'social'; }
+        else if (/facebook\.|fb\.me|fb\.com/.test(refHost)) { t.utm_source = 'meta'; t.utm_medium = 'social'; }
+        else if (/youtube\.|youtu\.be/.test(refHost)) { t.utm_source = 'youtube'; t.utm_medium = 'social'; }
+        else if (/whatsapp|wa\.me|l\.wl\.co/.test(refHost)) { t.utm_source = 'whatsapp'; t.utm_medium = 'social'; }
+        else { t.utm_source = refHost.slice(0, 60); t.utm_medium = 'referral'; }
+      }
+    }
+    var isNewTouch = !!(get('utm_source') || t.gclid || t.fbclid || t.ref_code || refHost);
+    var now = Date.now();
+    var read = function (k) { try { var o = JSON.parse(localStorage.getItem(k) || 'null'); return o && o.exp > now ? o : null; } catch (e) { return null; } };
+    var first = read(KEY_FIRST);
+    if (!first) {
+      first = Object.assign({}, t, { utm_source: t.utm_source || 'direct', utm_medium: t.utm_medium || 'none', exp: now + DAYS * 864e5 });
+      localStorage.setItem(KEY_FIRST, JSON.stringify(first));
+    }
+    if (isNewTouch || !read(KEY_LAST)) {
+      var last = Object.assign({}, t, { utm_source: t.utm_source || 'direct', utm_medium: t.utm_medium || 'none', exp: now + DAYS * 864e5 });
+      localStorage.setItem(KEY_LAST, JSON.stringify(last));
+    }
+  } catch (e) { /* tracking must never break the shop */ }
+  // Fields to attach to an order / prebooking / vendor or rider application.
+  window.graspionAttribution = function () {
+    try {
+      var now = Date.now();
+      var f = JSON.parse(localStorage.getItem('gr_attr_first') || 'null'), l = JSON.parse(localStorage.getItem('gr_attr_last') || 'null');
+      if (f && f.exp <= now) f = null; if (l && l.exp <= now) l = null;
+      l = l || f || {};
+      var w = Math.min(screen.width, screen.height);
+      var device = /iPad|Tablet/i.test(navigator.userAgent) || (w >= 600 && w < 1024 && (navigator.maxTouchPoints || 0) > 0) ? 'tablet' : (/Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop');
+      return {
+        utm_source: l.utm_source || null, utm_medium: l.utm_medium || null, utm_campaign: l.utm_campaign || null,
+        utm_content: l.utm_content || null, utm_term: l.utm_term || null, gclid: l.gclid || null, fbclid: l.fbclid || null,
+        ref_code: l.ref_code || null, referrer: l.referrer || null, landing_page: l.landing_page || null,
+        first_touch_source: f ? f.utm_source : null,
+        first_touch: f ? { source: f.utm_source, medium: f.utm_medium, campaign: f.utm_campaign || null, content: f.utm_content || null, ref_code: f.ref_code || null, landing_page: f.landing_page || null, at: f.at } : null,
+        device: device
+      };
+    } catch (e) { return {}; }
+  };
+})();
+</script>
+
 <title>Graspion Rider App</title>
 <link rel="manifest" href="manifest-rider.json">
 <link rel="icon" href="icon-rider.png" type="image/png">
@@ -712,7 +783,7 @@ btn.textContent = '⏳ Submitting...';
 const res = await fetch(SUPABASE_URL + '/rest/v1/rider_applications', {
 method: 'POST',
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-body: JSON.stringify({
+body: JSON.stringify(Object.assign({}, (window.graspionAttribution ? window.graspionAttribution() : {}), {
 name: name, email: email, phone: phone,
 auth_user_id: signupData.user.id,
 bike_number: document.getElementById('rAppBike').value.trim() || null,
@@ -720,7 +791,7 @@ address: document.getElementById('rAppAddress').value.trim() || null,
 pincode: document.getElementById('rAppPincode').value.trim() || null,
 driving_license_image: licenseImg, vehicle_rc_image: rcImg, id_proof_image: idImg,
 status: 'pending'
-})
+}))
 });
 if (!res.ok) {
 const errText = await res.text();
