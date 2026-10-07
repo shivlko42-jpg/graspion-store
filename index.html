@@ -4047,6 +4047,11 @@ const returnStatusLabels = { pending: '⏳ Return Requested', approved: '✅ Ret
 let returnHtml = '';
 if (existingReturn) {
 returnHtml = '<div style="margin-top:8px; background:#fef3c7; padding:8px 10px; border-radius:8px; font-size:12.5px; color:#92400e;">' + (returnStatusLabels[existingReturn.approval_status] || existingReturn.approval_status) + '</div>';
+} else if (['pending','confirmed','preparing'].indexOf(o.status) !== -1 && !o.rider_id) {
+returnHtml = '<button data-cancelorder="' + o.id + '" data-paid="' + (o.payment_status === 'paid' && String(o.payment_method || '').toLowerCase().indexOf('cod') === -1 ? '1' : '0') + '" data-amount="' + o.total_amount + '" style="margin-top:8px; background:#fff; color:#b91c1c; border:1.5px solid #fca5a5; padding:8px 12px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer;">✕ Cancel Order</button>';
+} else if (o.status === 'cancelled') {
+returnHtml = '<div style="margin-top:8px; background:#f3f4f6; padding:8px 10px; border-radius:8px; font-size:12.5px; color:#374151;">' + (o.cancelled_by === 'customer' ? 'You cancelled this order' : 'This order was cancelled') + (o.cancellation_reason ? ' · ' + String(o.cancellation_reason).replace(/</g, '&lt;') : '') +
+  (o.payment_status === 'refunded' ? '<br><b style="color:#15803d;">Refund of ₹' + o.total_amount + ' started to your original payment method (usually 5–7 working days).</b>' : (o.payment_status === 'refund_pending' ? '<br><b style="color:#b45309;">Refund of ₹' + o.total_amount + ' is being processed by our team.</b>' : '')) + '</div>';
 } else if (o.status === 'delivered' && o.return_deadline && new Date(o.return_deadline) > new Date()) {
 returnHtml = '<button data-requestreturn="' + o.id + '" style="margin-top:8px; background:#fee2e2; color:#dc2626; border:none; padding:8px 12px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer;">↩ Request Return</button>';
 }
@@ -4071,6 +4076,9 @@ btn.addEventListener('click', function() { generateCustomerInvoice(btn.getAttrib
 });
 document.querySelectorAll('[data-requestreturn]').forEach(function(btn) {
 btn.addEventListener('click', function() { openReturnModal(btn.getAttribute('data-requestreturn')); });
+});
+document.querySelectorAll('[data-cancelorder]').forEach(function(btn) {
+btn.addEventListener('click', function() { openCancelOrderModal(btn.getAttribute('data-cancelorder'), btn.getAttribute('data-paid') === '1', btn.getAttribute('data-amount')); });
 });
 document.querySelectorAll('[data-tracklive]').forEach(function(btn) {
 btn.addEventListener('click', function() { openTrackLiveModal(btn.getAttribute('data-tracklive')); });
@@ -5331,6 +5339,38 @@ window.addEventListener('load', function() {
     if (hadControllerBefore && !refreshedOnce) { refreshedOnce = true; window.location.reload(); }
   });
 });
+}
+
+// ===== Customer cancels an order before it ships =====
+function openCancelOrderModal(orderId, paid, amount) {
+  const reasons = ['Ordered by mistake', 'Found a better price elsewhere', 'Delivery is taking too long', 'Want to change items or address', 'No longer needed', 'Other'];
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed; inset:0; background:rgba(15,10,30,0.6); z-index:400; display:flex; align-items:flex-end; justify-content:center;';
+  wrap.innerHTML = '<div style="background:#fff; width:100%; max-width:480px; border-radius:20px 20px 0 0; padding:20px 18px calc(18px + env(safe-area-inset-bottom,0px)); max-height:90vh; overflow-y:auto;">' +
+    '<div style="font-size:17px; font-weight:800; color:#1f2937;">Cancel this order?</div>' +
+    '<div style="font-size:13px; color:#374151; margin:4px 0 12px;">' + (paid ? 'Your ₹' + amount + ' will be refunded to the same payment method (usually 5–7 working days).' : 'Nothing has been charged for this order.') + '</div>' +
+    '<div style="font-size:13px; font-weight:700; color:#1f2937; margin-bottom:6px;">Why are you cancelling?</div>' +
+    reasons.map(function(r, i) { return '<label style="display:flex; align-items:center; gap:10px; padding:10px 12px; border:1.5px solid #e5e7eb; border-radius:10px; margin-bottom:6px; font-size:14px; color:#1f2937; cursor:pointer;"><input type="radio" name="cxReason" value="' + r + '"' + (i === 0 ? ' checked' : '') + '>' + r + '</label>'; }).join('') +
+    '<textarea id="cxNote" rows="2" placeholder="Anything else? (optional)" style="width:100%; box-sizing:border-box; margin-top:4px; padding:10px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; color:#1f2937;"></textarea>' +
+    '<div id="cxErr" style="color:#b91c1c; font-size:13px; margin-top:6px;"></div>' +
+    '<div style="display:flex; gap:8px; margin-top:12px;"><button id="cxKeep" style="flex:1; padding:12px; border-radius:12px; border:1.5px solid #d1d5db; background:#fff; color:#1f2937; font-weight:700; font-size:14px; cursor:pointer;">Keep order</button>' +
+    '<button id="cxGo" style="flex:1; padding:12px; border-radius:12px; border:none; background:#dc2626; color:#fff; font-weight:800; font-size:14px; cursor:pointer;">Cancel order</button></div></div>';
+  document.body.appendChild(wrap);
+  const close = function() { wrap.remove(); };
+  wrap.addEventListener('click', function(e) { if (e.target === wrap) close(); });
+  wrap.querySelector('#cxKeep').addEventListener('click', close);
+  wrap.querySelector('#cxGo').addEventListener('click', async function() {
+    const btn = this; btn.disabled = true; btn.textContent = 'Cancelling...';
+    const reason = (wrap.querySelector('input[name="cxReason"]:checked') || {}).value || 'Other';
+    try {
+      const res = await fetch(SUPABASE_URL + '/functions/v1/customer-cancel-order', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }, body: JSON.stringify({ order_id: orderId, reason: reason, note: wrap.querySelector('#cxNote').value.trim() }) });
+      const d = await res.json();
+      if (!res.ok || !d.ok) { wrap.querySelector('#cxErr').textContent = d.error || 'Could not cancel. Please try again.'; btn.disabled = false; btn.textContent = 'Cancel order'; return; }
+      close();
+      alert('✅ Order cancelled.' + (d.refund ? (d.refund.status === 'processed' ? '\n\nRefund of ₹' + d.refund.amount + ' has started to your original payment method (usually 5–7 working days).' : '\n\nYour refund of ₹' + d.refund.amount + ' is being processed by our team.') : ''));
+      if (typeof renderMyOrdersFiltered === 'function') renderMyOrdersFiltered(); else if (typeof loadMyOrders === 'function') loadMyOrders();
+    } catch (e) { wrap.querySelector('#cxErr').textContent = 'Network error. Please try again.'; btn.disabled = false; btn.textContent = 'Cancel order'; }
+  });
 }
 </script>
 
