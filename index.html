@@ -2583,7 +2583,7 @@ if (hasInstant) deliveryEstimateHtml += '<div class="co-item-row"><span>⚡ Inst
 estimateEntries.forEach(function(vId) {
 const est = deliveryEstimates[vId];
 if (est.serviceable === false) deliveryEstimateHtml += '<div class="co-item-row" style="color:#dc2626;"><span>📦 Standard item</span><b>⚠️ Not deliverable to this pincode</b></div>';
-else if (est.estimated_delivery_days) deliveryEstimateHtml += '<div class="co-item-row"><span>📦 Standard item (' + (est.courier_name || 'Courier') + ')</span><b>' + est.estimated_delivery_days + '</b></div>';
+else if (est.estimated_delivery_days) deliveryEstimateHtml += '<div class="co-item-row"><span>📦 Delivery</span><b>' + est.estimated_delivery_days + '</b></div>';
 });
 const t = cartTotals();
 const effectiveRate = t.subtotal > 0 ? (t.gstAmount / t.subtotal * 100) : 0;
@@ -3931,7 +3931,7 @@ async function renderMyPrebookings() {
           const rows = rr.ok ? await rr.json() : [];
           if (rows[0] && rows[0].rider_name) {
             const r = rows[0];
-            riderHtml = '<div style="margin-top:8px; background:#F1F8ED; padding:8px 10px; border-radius:8px; font-size:12.5px;">🚴 <b>' + r.rider_name + '</b>' + (r.bike_number ? ' · ' + r.bike_number : '') + (r.rider_phone && outForDelivery ? ' · <a href="tel:' + r.rider_phone + '" style="color:#7c3aed; font-weight:700;">📞 Call</a>' : '') + '</div>';
+            riderHtml = '<div style="margin-top:8px; background:#F1F8ED; padding:8px 10px; border-radius:8px; font-size:12.5px;">🛵 <span style="font-size:11px; font-weight:800; color:#c2410c; letter-spacing:0.5px;">ROUTIX</span> <b>' + r.rider_name + '</b>' + (r.bike_number ? ' · ' + r.bike_number : '') + (r.rider_phone && outForDelivery ? ' · <a href="tel:' + r.rider_phone + '" style="color:#7c3aed; font-weight:700;">📞 Call</a>' : '') + '</div>';
             if (outForDelivery) riderHtml += '<button data-tracklive="' + b.id + '" style="margin-top:6px; width:100%; background:#7c3aed; color:#fff; border:none; padding:8px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">🗺️ Track Live Location</button>';
           }
         } catch (e) { /* rider info is optional */ }
@@ -4012,7 +4012,7 @@ fetch(SUPABASE_URL + '/rest/v1/order_status_history?order_id=eq.' + o.id + '&sel
 let riderHtml = '';
 if (riderResult[0] && riderResult[0].rider_name) {
 const r = riderResult[0];
-riderHtml = '<div style="margin-top:6px; background:#F1F8ED; padding:8px 10px; border-radius:8px; font-size:12.5px;">🚴 <b>' + r.rider_name + '</b>' + (r.bike_number ? ' · ' + r.bike_number : '') + (r.rider_phone ? ' · <a href="tel:' + r.rider_phone + '" style="color:#7c3aed; font-weight:700;">📞 Call</a>' : '') + '</div>';
+riderHtml = '<div style="margin-top:6px; background:#F1F8ED; padding:8px 10px; border-radius:8px; font-size:12.5px;">🛵 <span style="font-size:11px; font-weight:800; color:#c2410c; letter-spacing:0.5px;">ROUTIX</span> <b>' + r.rider_name + '</b>' + (r.bike_number ? ' · ' + r.bike_number : '') + (r.rider_phone ? ' · <a href="tel:' + r.rider_phone + '" style="color:#7c3aed; font-weight:700;">📞 Call</a>' : '') + '</div>';
 if (o.status === 'shipped') {
 riderHtml += '<button data-tracklive="' + o.id + '" style="margin-top:6px; width:100%; background:#7c3aed; color:#fff; border:none; padding:8px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">🗺️ Track Live Location</button>';
 }
@@ -4730,7 +4730,7 @@ if (!trackLiveMapInstance) {
 await loadLeaflet();
 trackLiveMapInstance = L.map('trackLiveMap').setView([loc.current_lat, loc.current_lng], 15);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(trackLiveMapInstance);
-trackLiveMarker = L.marker([loc.current_lat, loc.current_lng]).addTo(trackLiveMapInstance).bindPopup('Your delivery partner').openPopup();
+trackLiveMarker = L.marker([loc.current_lat, loc.current_lng]).addTo(trackLiveMapInstance).bindPopup('Your Routix delivery partner').openPopup();
 } else {
 trackLiveMapInstance.setView([loc.current_lat, loc.current_lng], 15);
 trackLiveMarker.setLatLng([loc.current_lat, loc.current_lng]);
