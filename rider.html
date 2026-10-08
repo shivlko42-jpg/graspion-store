@@ -910,7 +910,7 @@ async function loadRoutixBookings() {
     const map = function(a) { return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(a); };
     let act = '';
     if (b.status === 'open') act = '<button data-rbaccept="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#ea580c; color:#fff; font-size:16px; font-weight:800;">Accept · earn ' + rbMoney(b.rider_pay) + '</button>';
-    else if (mine && b.status === 'assigned') act = '<button data-rbpicked="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#d97706; color:#fff; font-size:16px; font-weight:800;">I have picked up the parcel</button>';
+    else if (mine && b.status === 'assigned') act = (Number(b.collect_at_pickup) > 0 ? '<div style="background:#fef3c7; color:#92400e; border-radius:10px; padding:10px; font-size:15px; font-weight:800; margin-bottom:8px;">Collect ' + rbMoney(b.collect_at_pickup) + ' from the sender</div>' : '') + '<button data-rbpicked="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#d97706; color:#fff; font-size:16px; font-weight:800;">I have picked up the parcel</button>';
     else if (mine && b.status === 'picked') act = (Number(b.collect_at_drop) > 0 ? '<div style="background:#fef3c7; color:#92400e; border-radius:10px; padding:10px; font-size:15px; font-weight:800; margin-bottom:8px;">Collect ' + rbMoney(b.collect_at_drop) + ' from the receiver</div>' : '') +
       '<input data-rbotp="' + b.id + '" inputmode="numeric" maxlength="4" placeholder="Receiver OTP" aria-label="Receiver OTP" style="width:100%; box-sizing:border-box; padding:14px; border-radius:12px; border:2px solid #a78bfa; background:#fff; color:#111827; font-size:22px; font-weight:800; letter-spacing:6px; text-align:center; margin-bottom:8px;">' +
       '<button data-rbdeliver="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#15803d; color:#fff; font-size:16px; font-weight:800;">Mark delivered</button>';
@@ -920,7 +920,7 @@ async function loadRoutixBookings() {
       '<div style="margin-top:4px; font-size:14.5px;"><b>Drop:</b> ' + rbEsc(b.drop_name) + ', ' + rbEsc(b.drop_address) + (mine ? ' <a href="' + tel(b.drop_phone) + '">📞</a> <a target="_blank" rel="noopener" href="' + map(b.drop_address) + '">🗺️</a>' : '') + '</div>' +
       (b.item_desc ? '<div style="font-size:14px; color:#374151; margin-top:4px;">Item: ' + rbEsc(b.item_desc) + '</div>' : '') +
       (b.notes ? '<div style="font-size:14px; color:#374151;">Note: ' + rbEsc(b.notes) + '</div>' : '') +
-      '<div style="font-size:14px; color:#374151; margin:4px 0 10px;">You earn <b>' + rbMoney(b.rider_pay) + '</b>' + (Number(b.collect_at_drop) > 0 ? ' · collect <b>' + rbMoney(b.collect_at_drop) + '</b> at drop' : ' · nothing to collect') + '</div>' + act + '</div>';
+      '<div style="font-size:14px; color:#374151; margin:4px 0 10px;">You earn <b>' + rbMoney(b.rider_pay) + '</b>' + (Number(b.collect_at_pickup) > 0 ? ' · collect <b>' + rbMoney(b.collect_at_pickup) + '</b> at pickup' : '') + (Number(b.collect_at_drop) > 0 ? ' · collect <b>' + rbMoney(b.collect_at_drop) + '</b> at drop' : '') + (!Number(b.collect_at_pickup) && !Number(b.collect_at_drop) ? ' · nothing to collect' : '') + '</div>' + act + '</div>';
   }).join('');
 }
 document.addEventListener('click', async function(e) {

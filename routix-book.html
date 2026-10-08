@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="only light">
+<title>Routix — send a parcel across Lucknow</title>
+<meta name="description" content="Book a bike delivery in Lucknow in under a minute. See the price before you book, track your rider, pay at pickup or delivery.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root { color-scheme: only light; --asphalt: #1C1917; --road: #44403C; --paper: #FAFAF9; --line: #E7E5E4; --routix: #EA580C; --routix-dark: #9A3412; --done: #15803D; --stop: #B91C1C; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--asphalt); font-family: 'Barlow', system-ui, sans-serif; font-size: 16px; line-height: 1.45; }
+button, input, select, textarea { font-family: inherit; font-size: 16px; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--routix); outline-offset: 2px; }
+.top { background: var(--asphalt); color: #fff; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; display: flex; justify-content: space-between; align-items: center; }
+.brand { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 800; font-size: 26px; letter-spacing: 0.5px; }
+.brand span { color: var(--routix); }
+.top a { color: #fff; font-weight: 600; font-size: 14px; text-decoration: none; border: 1.5px solid #57534E; border-radius: 10px; padding: 7px 11px; }
+#map { height: 42vh; min-height: 260px; background: #E7E5E4; }
+.hero { padding: 18px 16px 4px; max-width: 640px; margin: 0 auto; }
+.hero h1 { font-family: 'Barlow Semi Condensed', sans-serif; font-size: 30px; line-height: 1.05; margin: 0 0 6px; }
+.hero p { margin: 0; color: var(--road); }
+main { max-width: 640px; margin: 0 auto; padding: 8px 16px calc(120px + env(safe-area-inset-bottom, 0px)); }
+.step { background: #fff; border: 1.5px solid var(--line); border-radius: 16px; padding: 14px; margin-top: 12px; }
+.step[aria-current="step"] { border-color: var(--routix); box-shadow: 0 0 0 3px #FFEDD5; }
+.step h2 { margin: 0 0 10px; display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; }
+.num { width: 28px; height: 28px; border-radius: 50%; background: var(--asphalt); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; flex-shrink: 0; }
+.step.done .num { background: var(--done); }
+.step .summary { font-size: 14.5px; color: var(--road); }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+label.f { display: block; font-size: 14px; font-weight: 600; color: var(--road); margin-bottom: 8px; }
+label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; padding: 12px; border: 1.5px solid #D6D3D1; border-radius: 10px; background: #fff; color: var(--asphalt); }
+.full { grid-column: 1 / -1; }
+.search { position: relative; }
+.sugg { position: absolute; left: 0; right: 0; top: 100%; z-index: 1000; background: #fff; border: 1.5px solid #D6D3D1; border-radius: 10px; margin-top: 4px; max-height: 240px; overflow-y: auto; }
+.sugg button { display: block; width: 100%; text-align: left; background: #fff; border: none; border-bottom: 1px solid var(--line); padding: 10px 12px; font-size: 14.5px; color: var(--asphalt); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
+.btn { border: 1.5px solid #D6D3D1; background: #fff; color: var(--asphalt); border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 15px; }
+.picked { font-size: 14px; color: var(--done); font-weight: 600; margin-bottom: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.chip { border: 1.5px solid #D6D3D1; background: #fff; border-radius: 999px; padding: 9px 14px; font-weight: 600; font-size: 15px; color: var(--asphalt); }
+.chip[aria-pressed="true"] { background: var(--asphalt); color: #fff; border-color: var(--asphalt); }
+.next { width: 100%; height: 50px; border: none; border-radius: 12px; background: var(--asphalt); color: #fff; font-size: 16px; font-weight: 700; margin-top: 4px; }
+.pay { display: grid; gap: 8px; margin-bottom: 10px; }
+.pay label { display: flex; gap: 10px; align-items: center; border: 1.5px solid #D6D3D1; border-radius: 12px; padding: 12px; font-weight: 600; }
+.pay label:has(input:checked) { border-color: var(--routix); background: #FFF7ED; }
+.rules { font-size: 13.5px; color: var(--road); margin-top: 10px; }
+/* the price bar: the one bold thing on the page */
+.bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1200; background: var(--asphalt); color: #fff; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+.bar .in { max-width: 640px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.price { font-family: 'Barlow Semi Condensed', sans-serif; font-size: 36px; font-weight: 800; line-height: 1; }
+.price small { display: block; font-family: 'Barlow', sans-serif; font-size: 13.5px; font-weight: 500; color: #D6D3D1; }
+.book { height: 52px; padding: 0 22px; border: none; border-radius: 12px; background: var(--routix); color: #fff; font-size: 17px; font-weight: 700; white-space: nowrap; }
+.book:disabled { background: #57534E; color: #A8A29E; }
+.err { color: var(--stop); font-size: 14.5px; font-weight: 600; min-height: 20px; margin-top: 6px; }
+/* done + track */
+.ticket { background: #fff; border: 1.5px solid var(--line); border-radius: 18px; padding: 18px; margin-top: 14px; }
+.otp { display: flex; align-items: center; justify-content: space-between; background: #FFF7ED; border-radius: 14px; padding: 14px; margin: 12px 0; }
+.otp b { font-family: 'Barlow Semi Condensed', sans-serif; font-size: 40px; letter-spacing: 8px; }
+.timeline { list-style: none; padding: 0; margin: 14px 0 0; }
+.timeline li { position: relative; padding: 0 0 16px 30px; color: #A8A29E; font-weight: 600; }
+.timeline li::before { content: ''; position: absolute; left: 6px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: #D6D3D1; }
+.timeline li::after { content: ''; position: absolute; left: 11px; top: 18px; bottom: 2px; border-left: 2px dashed #D6D3D1; }
+.timeline li:last-child::after { display: none; }
+.timeline li.on { color: var(--asphalt); }
+.timeline li.on::before { background: var(--done); }
+.timeline li.now::before { background: var(--routix); box-shadow: 0 0 0 4px #FFEDD5; }
+.timeline small { display: block; font-weight: 500; color: var(--road); }
+.wa { display: block; text-align: center; text-decoration: none; background: #DCFCE7; border: 1.5px solid #86EFAC; color: #14532D; border-radius: 12px; padding: 13px; font-weight: 700; }
+.mine { margin-top: 18px; }
+.mine a { display: block; padding: 10px 0; border-bottom: 1px solid var(--line); color: var(--asphalt); text-decoration: none; font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top"><div class="brand">ROUTI<span>X</span></div><a href="https://wa.me/918004873819" target="_blank" rel="noopener">Help on WhatsApp</a></header>
+<div id="map" role="application" aria-label="Map: tap to set the pickup or drop point"></div>
+
+<div id="bookView">
+  <div class="hero">
+    <h1>Send a parcel across Lucknow</h1>
+    <p>Bike delivery, price shown before you book. Pay the rider in cash or UPI.</p>
+  </div>
+  <main>
+    <section class="step" id="s1" aria-current="step">
+      <h2><span class="num">1</span>Pick up from</h2>
+      <div class="search"><label class="f">Search area or landmark<input id="q1" placeholder="e.g. Indira Nagar Sector 14" autocomplete="off"></label><div class="sugg" id="sg1" hidden></div></div>
+      <div class="row"><button class="btn" type="button" id="loc1">Use my location</button><span class="summary" style="align-self:center;">or tap the map</span></div>
+      <div class="picked" id="pk1" aria-live="polite"></div>
+      <div class="grid2">
+        <label class="f">Your name<input id="pn" autocomplete="name"></label>
+        <label class="f">Your mobile<input id="pp" inputmode="tel" maxlength="14" autocomplete="tel"></label>
+        <label class="f full">House / shop no., floor<input id="pa" placeholder="e.g. B-12, first floor, near temple"></label>
+      </div>
+      <button class="next" type="button" data-next="2">Next: where to deliver</button>
+    </section>
+
+    <section class="step" id="s2">
+      <h2><span class="num">2</span>Deliver to</h2>
+      <div id="b2">
+        <div class="search"><label class="f">Search area or landmark<input id="q2" placeholder="e.g. Vipul Khand, Gomti Nagar" autocomplete="off"></label><div class="sugg" id="sg2" hidden></div></div>
+        <p class="summary" style="margin:0 0 8px;">Or tap the map. You can drag the pins to the exact spot.</p>
+        <div class="picked" id="pk2" aria-live="polite"></div>
+        <div class="grid2">
+          <label class="f">Receiver name<input id="dn"></label>
+          <label class="f">Receiver mobile<input id="dp" inputmode="tel" maxlength="14"></label>
+          <label class="f full">House / shop no., floor<input id="da" placeholder="e.g. 3/45, second floor"></label>
+        </div>
+        <button class="next" type="button" data-next="3">Next: what are you sending</button>
+      </div>
+    </section>
+
+    <section class="step" id="s3">
+      <h2><span class="num">3</span>What are you sending?</h2>
+      <div id="b3">
+        <div class="chips" id="itemChips" role="group" aria-label="Item type">
+          <button class="chip" type="button" aria-pressed="true">Documents</button><button class="chip" type="button" aria-pressed="false">Food / tiffin</button>
+          <button class="chip" type="button" aria-pressed="false">Medicines</button><button class="chip" type="button" aria-pressed="false">Clothes</button>
+          <button class="chip" type="button" aria-pressed="false">Electronics</button><button class="chip" type="button" aria-pressed="false">Other</button>
+        </div>
+        <div style="font-size:14px; font-weight:600; color:#44403C; margin-bottom:6px;">How heavy?</div>
+        <div class="chips" id="kgChips" role="group" aria-label="Weight">
+          <button class="chip" type="button" data-kg="1" aria-pressed="true">Up to 1 kg</button><button class="chip" type="button" data-kg="5" aria-pressed="false">1–5 kg</button>
+          <button class="chip" type="button" data-kg="10" aria-pressed="false">5–10 kg</button><button class="chip" type="button" data-kg="20" aria-pressed="false">10–20 kg</button>
+        </div>
+        <label class="f">Note for the rider (optional)<textarea id="nt" rows="2" placeholder="Call before reaching, fragile, gate code…"></textarea></label>
+        <button class="next" type="button" data-next="4">Next: payment</button>
+      </div>
+    </section>
+
+    <section class="step" id="s4">
+      <h2><span class="num">4</span>Who pays the rider?</h2>
+      <div id="b4">
+        <div class="pay" role="radiogroup" aria-label="Who pays">
+          <label><input type="radio" name="pm" value="collect_at_pickup" checked> I pay at pickup (cash or UPI)</label>
+          <label><input type="radio" name="pm" value="collect_at_drop"> The receiver pays at delivery</label>
+        </div>
+        <div class="summary" id="sumText"></div>
+        <div class="rules">We don't carry cash, jewellery, liquor, prescription medicines without a prescription, or anything illegal or dangerous. Parcels up to 20 kg that fit on a bike, within 25 km.</div>
+      </div>
+    </section>
+    <div class="err" id="err" role="alert"></div>
+  </main>
+</div>
+
+<div id="doneView" hidden><main style="padding-bottom:40px;"><div id="doneBox"></div></main></div>
+
+<div class="bar" id="bar"><div class="in"><div class="price" id="price">₹—<small>Choose pickup and drop to see the price</small></div><button class="book" id="bookBtn" type="button" disabled>Book now</button></div></div>
+
+<script>
+const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
+const $ = function(id) { return document.getElementById(id); };
+const rs = function(v) { return '₹' + Math.round(Number(v || 0)).toLocaleString('en-IN'); };
+const esc = function(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+async function rpc(name, body) {
+  const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  const d = await r.json().catch(function() { return null; });
+  if (!r.ok) throw new Error((d && (d.message || d.error)) || 'Network error');
+  return d;
+}
+
+// ---------- map ----------
+const LKO = [26.8467, 80.9462];
+const map = L.map('map', { zoomControl: true }).setView(LKO, 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+const pinIcon = function(color) { return L.divIcon({ className: '', iconSize: [30, 30], iconAnchor: [15, 30], html: '<svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z" fill="' + color + '" stroke="#fff" stroke-width="1.5"/><circle cx="12" cy="10" r="2.6" fill="#fff"/></svg>' }); };
+const pts = { 1: null, 2: null }, markers = { 1: null, 2: null };
+let line = null, activeStep = 1, kg = 1, item = 'Documents', lastQuote = null;
+function setPoint(which, lat, lng, label) {
+  pts[which] = { lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)), label: label || '' };
+  if (!markers[which]) {
+    markers[which] = L.marker([lat, lng], { draggable: true, icon: pinIcon(which === 1 ? '#EA580C' : '#1C1917') }).addTo(map);
+    markers[which].on('dragend', function(ev) { const p = ev.target.getLatLng(); setPoint(which, p.lat, p.lng, pts[which].label); });
+  } else markers[which].setLatLng([lat, lng]);
+  $('pk' + which).textContent = (which === 1 ? 'Pickup' : 'Drop') + ' pin set' + (label ? ': ' + label.split(',').slice(0, 3).join(',') : '');
+  if (pts[1] && pts[2]) {
+    if (line) line.setLatLngs([[pts[1].lat, pts[1].lng], [pts[2].lat, pts[2].lng]]);
+    else line = L.polyline([[pts[1].lat, pts[1].lng], [pts[2].lat, pts[2].lng]], { color: '#EA580C', weight: 4, dashArray: '8 8' }).addTo(map);
+    map.fitBounds(line.getBounds(), { padding: [40, 40] });
+  } else map.setView([lat, lng], 15);
+  refreshQuote();
+}
+map.on('click', function(e) { const w = (activeStep >= 2 && pts[1]) ? 2 : 1; setPoint(w, e.latlng.lat, e.latlng.lng, ''); reverse(w, e.latlng.lat, e.latlng.lng); });
+async function reverse(which, lat, lng) {
+  try { const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=17&lat=' + lat + '&lon=' + lng); const d = await r.json(); if (d && d.display_name) { pts[which].label = d.display_name; $('pk' + which).textContent = (which === 1 ? 'Pickup' : 'Drop') + ' pin set: ' + d.display_name.split(',').slice(0, 3).join(','); } } catch (e) {}
+}
+// search (Lucknow first)
+function wireSearch(which) {
+  let t = null; const inp = $('q' + which), box = $('sg' + which);
+  inp.addEventListener('input', function() {
+    clearTimeout(t);
+    const q = inp.value.trim(); if (q.length < 3) { box.hidden = true; return; }
+    t = setTimeout(async function() {
+      try {
+        const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=in&viewbox=80.75,27.05,81.15,26.65&bounded=0&q=' + encodeURIComponent(q + ', Lucknow'));
+        const list = await r.json();
+        box.innerHTML = list.length ? list.map(function(x, i) { return '<button type="button" data-i="' + i + '">' + esc(x.display_name.split(',').slice(0, 4).join(',')) + '</button>'; }).join('') : '<button type="button" disabled>No match — try a nearby landmark or tap the map</button>';
+        box.hidden = false;
+        box.querySelectorAll('[data-i]').forEach(function(b) { b.addEventListener('click', function() { const x = list[Number(b.getAttribute('data-i'))]; setPoint(which, Number(x.lat), Number(x.lon), x.display_name); box.hidden = true; inp.value = x.display_name.split(',').slice(0, 3).join(','); }); });
+      } catch (e) { box.hidden = true; }
+    }, 600);
+  });
+  document.addEventListener('click', function(e) { if (!box.contains(e.target) && e.target !== inp) box.hidden = true; });
+}
+wireSearch(1); wireSearch(2);
+$('loc1').addEventListener('click', function() {
+  if (!navigator.geolocation) { $('err').textContent = 'Location is not available on this phone. Search or tap the map instead.'; return; }
+  $('loc1').textContent = 'Finding you…';
+  navigator.geolocation.getCurrentPosition(function(p) { $('loc1').textContent = 'Use my location'; setPoint(1, p.coords.latitude, p.coords.longitude, ''); reverse(1, p.coords.latitude, p.coords.longitude); },
+    function() { $('loc1').textContent = 'Use my location'; $('err').textContent = 'Could not get your location. Search or tap the map instead.'; }, { enableHighAccuracy: true, timeout: 10000 });
+});
+
+// ---------- steps ----------
+function goStep(n) {
+  activeStep = n;
+  for (let i = 1; i <= 4; i++) { const s = $('s' + i); s.setAttribute('aria-current', i === n ? 'step' : 'false'); }
+  $('s' + n).scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function checkStep(n) {
+  const phone = function(v) { return v.replace(/\D/g, '').slice(-10).length === 10; };
+  if (n === 1 && (!pts[1] || !$('pn').value.trim() || !phone($('pp').value) || !$('pa').value.trim())) return 'Set the pickup pin, and add your name, 10-digit mobile and house / shop details.';
+  if (n === 2 && (!pts[2] || !$('dn').value.trim() || !phone($('dp').value) || !$('da').value.trim())) return 'Set the drop pin, and add the receiver name, 10-digit mobile and house / shop details.';
+  return '';
+}
+document.querySelectorAll('[data-next]').forEach(function(b) { b.addEventListener('click', function() {
+  const to = Number(b.getAttribute('data-next')), msg = checkStep(to - 1);
+  $('err').textContent = msg; if (msg) return;
+  $('s' + (to - 1)).classList.add('done'); goStep(to); updateSummary();
+}); });
+function chipGroup(id, onPick) { $(id).querySelectorAll('.chip').forEach(function(c) { c.addEventListener('click', function() { $(id).querySelectorAll('.chip').forEach(function(x) { x.setAttribute('aria-pressed', x === c ? 'true' : 'false'); }); onPick(c); }); }); }
+chipGroup('itemChips', function(c) { item = c.textContent; updateSummary(); });
+chipGroup('kgChips', function(c) { kg = Number(c.getAttribute('data-kg')); refreshQuote(); });
+document.querySelectorAll('input[name="pm"]').forEach(function(r) { r.addEventListener('change', updateSummary); });
+function updateSummary() {
+  const pm = document.querySelector('input[name="pm"]:checked').value;
+  $('sumText').textContent = lastQuote && lastQuote.ok ? item + ', up to ' + kg + ' kg, about ' + lastQuote.km + ' km. ' + (pm === 'collect_at_pickup' ? 'Pay ' + rs(lastQuote.charge) + ' to the rider at pickup.' : 'The receiver pays ' + rs(lastQuote.charge) + ' at delivery.') : '';
+}
+
+// ---------- price ----------
+let qt = null;
+function refreshQuote() {
+  clearTimeout(qt);
+  qt = setTimeout(async function() {
+    if (!pts[1] || !pts[2]) return;
+    try {
+      const q = lastQuote = await rpc('routix_web_quote', { p_pickup_lat: pts[1].lat, p_pickup_lng: pts[1].lng, p_drop_lat: pts[2].lat, p_drop_lng: pts[2].lng, p_kg: kg });
+      if (!q.ok) { $('price').innerHTML = '₹—<small>' + esc(q.error) + '</small>'; $('bookBtn').disabled = true; return; }
+      $('price').innerHTML = rs(q.charge) + '<small>about ' + q.km + ' km by bike</small>';
+      $('bookBtn').disabled = false; updateSummary();
+    } catch (e) { $('price').innerHTML = '₹—<small>Could not get the price. Check your internet.</small>'; }
+  }, 300);
+}
+
+// ---------- book ----------
+$('bookBtn').addEventListener('click', async function() {
+  for (let i = 1; i <= 2; i++) { const m = checkStep(i); if (m) { $('err').textContent = m; goStep(i); return; } }
+  const btn = $('bookBtn'); btn.disabled = true; btn.textContent = 'Booking…'; $('err').textContent = '';
+  try {
+    const d = await rpc('routix_web_book', { p: {
+      pickup_name: $('pn').value, pickup_phone: $('pp').value, pickup_address: $('pa').value + (pts[1].label ? ', ' + pts[1].label.split(',').slice(0, 3).join(',') : ''), pickup_lat: pts[1].lat, pickup_lng: pts[1].lng,
+      drop_name: $('dn').value, drop_phone: $('dp').value, drop_address: $('da').value + (pts[2].label ? ', ' + pts[2].label.split(',').slice(0, 3).join(',') : ''), drop_lat: pts[2].lat, drop_lng: pts[2].lng,
+      item_desc: item, weight_kg: kg, notes: $('nt').value, payment_mode: document.querySelector('input[name="pm"]:checked').value } });
+    if (!d.ok) { $('err').textContent = d.error || 'Could not book'; return; }
+    try { const mine = JSON.parse(localStorage.getItem('routix_mine') || '[]'); mine.unshift({ t: d.track_token, no: d.booking_no, at: Date.now() }); localStorage.setItem('routix_mine', JSON.stringify(mine.slice(0, 10))); } catch (e) {}
+    location.href = location.pathname + '?t=' + d.track_token + '&new=1';
+  } catch (e) { $('err').textContent = e.message; }
+  finally { btn.disabled = false; btn.textContent = 'Book now'; }
+});
+
+// ---------- tracking ----------
+async function showTracking(token, isNew) {
+  $('bookView').hidden = true; $('bar').hidden = true; $('doneView').hidden = false; $('map').style.display = 'none';
+  let b;
+  try { b = await rpc('routix_web_track', { p_token: token }); } catch (e) { $('doneBox').innerHTML = '<div class="ticket">Could not load your booking. Check your internet and refresh.</div>'; return; }
+  if (!b.ok) { $('doneBox').innerHTML = '<div class="ticket">Booking not found. <a href="' + location.pathname + '">Book a new delivery</a></div>'; return; }
+  const order = ['requested', 'open', 'assigned', 'picked', 'delivered'];
+  const at = order.indexOf(b.status);
+  const t = function(v) { return v ? new Date(v).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''; };
+  const steps = [
+    ['Booking received', 'We will call you shortly to confirm', b.created_at],
+    ['Confirmed', 'Looking for a nearby rider', b.confirmed_at],
+    ['Rider on the way to pickup', b.rider_name ? b.rider_name + (b.rider_bike ? ', ' + b.rider_bike : '') : '', b.assigned_at],
+    ['Picked up', 'On the way to ' + b.drop_name, b.picked_at],
+    ['Delivered', '', b.delivered_at]];
+  const share = 'https://wa.me/?text=' + encodeURIComponent('Routix delivery ' + b.booking_no + ' is coming to you. Tell the rider this OTP only when you get the parcel: ' + b.drop_otp + '\nTrack: ' + location.href.split('&')[0]);
+  $('doneBox').innerHTML = '<div class="ticket">' +
+    (isNew ? '<div style="font-family:Barlow Semi Condensed,sans-serif; font-size:28px; font-weight:800;">Booked!</div>' : '') +
+    '<div style="font-size:15px; color:#44403C;">' + esc(b.booking_no) + ' · ' + rs(b.charge) + (b.payment_mode === 'collect_at_pickup' ? ' to pay at pickup' : ' to pay at delivery') + ' · ' + b.distance_km + ' km</div>' +
+    (b.status === 'cancelled' ? '<p style="color:#B91C1C; font-weight:700;">This booking was cancelled.' + (b.cancel_reason ? ' ' + esc(b.cancel_reason) : '') + '</p>' :
+    '<div class="otp"><span>Delivery OTP<br><small style="color:#44403C;">Send it to the receiver</small></span><b>' + esc(b.drop_otp) + '</b></div>' +
+    '<a class="wa" target="_blank" rel="noopener" href="' + share + '">Send OTP to receiver on WhatsApp</a>' +
+    '<ol class="timeline">' + steps.map(function(s, i) { return '<li class="' + (i <= at ? 'on' : '') + (i === at ? ' now' : '') + '">' + s[0] + (i <= at && s[2] ? ' · ' + t(s[2]) : '') + (i <= at && s[1] ? '<small>' + esc(s[1]) + '</small>' : '') + '</li>'; }).join('') + '</ol>' +
+    (b.rider_phone ? '<a class="btn" style="display:block; text-align:center; text-decoration:none;" href="tel:' + esc(b.rider_phone) + '">Call rider ' + esc(b.rider_name || '') + '</a>' : '') +
+    (at <= 1 ? '<button class="btn" type="button" id="cxBtn" style="width:100%; margin-top:8px; color:#B91C1C; border-color:#FECACA;">Cancel booking</button>' : '')) +
+    '<a class="btn" style="display:block; text-align:center; text-decoration:none; margin-top:8px;" href="' + location.pathname + '">Book another delivery</a></div>' + mineHtml(token);
+  const cx = $('cxBtn');
+  if (cx) cx.addEventListener('click', async function() {
+    if (!confirm('Cancel this booking?')) return;
+    const d = await rpc('routix_web_cancel', { p_token: token }).catch(function(e) { return { ok: false, error: e.message }; });
+    if (!d.ok) alert(d.error); showTracking(token, false);
+  });
+  if (b.status !== 'delivered' && b.status !== 'cancelled') setTimeout(function() { if (document.visibilityState === 'visible') showTracking(token, false); else setTimeout(function() { showTracking(token, false); }, 20000); }, 20000);
+}
+function mineHtml(current) {
+  try {
+    const mine = JSON.parse(localStorage.getItem('routix_mine') || '[]').filter(function(m) { return m.t !== current; });
+    return mine.length ? '<div class="mine"><b>Your other bookings</b>' + mine.map(function(m) { return '<a href="?t=' + m.t + '">' + esc(m.no) + ' · ' + new Date(m.at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + '</a>'; }).join('') + '</div>' : '';
+  } catch (e) { return ''; }
+}
+const params = new URLSearchParams(location.search);
+if (params.get('t')) showTracking(params.get('t'), params.get('new') === '1');
+</script>
+</body>
+</html>

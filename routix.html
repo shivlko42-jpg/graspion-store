@@ -166,7 +166,8 @@ label.f textarea { resize: vertical; }
     <section aria-labelledby="listH">
       <h2 id="listH" style="font-family:'Barlow Semi Condensed',sans-serif; font-size:22px; margin:0 0 10px;">Bookings</h2>
       <div class="tabs" role="tablist" aria-label="Booking status">
-        <button class="tab" role="tab" data-st="open" aria-selected="true">Waiting</button>
+        <button class="tab" role="tab" data-st="requested" aria-selected="true">New requests <span id="reqCount"></span></button>
+        <button class="tab" role="tab" data-st="open" aria-selected="false">Waiting</button>
         <button class="tab" role="tab" data-st="running" aria-selected="false">On the way</button>
         <button class="tab" role="tab" data-st="delivered" aria-selected="false">Delivered</button>
         <button class="tab" role="tab" data-st="cancelled" aria-selected="false">Cancelled</button>
@@ -180,7 +181,7 @@ label.f textarea { resize: vertical; }
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-let token = null, riders = [], allBookings = [], currentTab = 'open';
+let token = null, riders = [], allBookings = [], currentTab = 'requested';
 const $ = function(id) { return document.getElementById(id); };
 const rs = function(v) { return '₹' + Math.round(Number(v || 0)).toLocaleString('en-IN'); };
 const esc = function(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
@@ -222,7 +223,7 @@ async function loadDashboard() {
   try {
     const d = await rpc('routix_dashboard');
     riders = d.riders || [];
-    $('stOpen').textContent = d.open; $('stRun').textContent = d.running; $('stDone').textContent = d.today_delivered; $('stCash').textContent = rs(d.goods_cash_to_return);
+    $('stOpen').textContent = d.open + d.requested; $('reqCount').textContent = d.requested ? '(' + d.requested + ')' : ''; $('stRun').textContent = d.running; $('stDone').textContent = d.today_delivered; $('stCash').textContent = rs(d.goods_cash_to_return);
     $('stMonth').textContent = 'This month: ' + d.month_jobs + ' deliveries, income ' + rs(d.month_income) + ', paid to riders ' + rs(d.month_rider_pay) + '. Riders online now: ' + d.riders_online + '.';
   } catch (e) { $('stMonth').textContent = 'Could not load numbers: ' + e.message; }
 }
@@ -291,17 +292,18 @@ async function loadBookings() {
 function renderBookings() {
   const want = currentTab === 'running' ? ['assigned', 'picked'] : [currentTab];
   const list = allBookings.filter(function(b) { return want.indexOf(b.status) !== -1; });
-  const words = { open: 'Waiting for a rider', assigned: 'Rider going to pick up', picked: 'Picked up, on the way', delivered: 'Delivered', cancelled: 'Cancelled' };
-  const modes = { collect_at_drop: 'charge collected at drop', paid_at_booking: 'charge already paid', client_account: 'billed to sender monthly' };
-  if (!list.length) { $('bookingList').innerHTML = '<div class="empty">' + (currentTab === 'open' ? 'No bookings waiting. New ones from the form above appear here.' : 'Nothing here yet.') + '</div>'; return; }
+  const words = { requested: 'New from website — call to confirm', open: 'Waiting for a rider', assigned: 'Rider going to pick up', picked: 'Picked up, on the way', delivered: 'Delivered', cancelled: 'Cancelled' };
+  const modes = { collect_at_pickup: 'charge collected at pickup', collect_at_drop: 'charge collected at drop', paid_at_booking: 'charge already paid', client_account: 'billed to sender monthly' };
+  if (!list.length) { $('bookingList').innerHTML = '<div class="empty">' + (currentTab === 'requested' ? 'No new website bookings. Share graspion.in/routix-book.html with customers.' : currentTab === 'open' ? 'No bookings waiting. New ones from the form above appear here.' : 'Nothing here yet.') + '</div>'; return; }
   $('bookingList').innerHTML = list.map(function(b) {
     const riderOpts = riders.map(function(r) { return '<option value="' + r.id + '"' + (r.id === b.rider_id ? ' selected' : '') + '>' + esc(r.name) + (r.online ? ' (online)' : '') + '</option>'; }).join('');
     let actions = '';
-    if (b.status === 'open' || b.status === 'assigned') actions += '<select class="btn" data-assign="' + b.id + '" aria-label="Give to rider"><option value="">Give to rider…</option>' + riderOpts + '</select>';
+    if (b.status === 'requested') actions += '<a class="btn" href="tel:' + esc(b.pickup_phone) + '">Call sender</a><button class="btn" style="background:#EA580C; color:#fff; border-color:#EA580C;" data-confirm="' + b.id + '" type="button">Confirm for riders</button>';
+    if (b.status === 'requested' || b.status === 'open' || b.status === 'assigned') actions += '<select class="btn" data-assign="' + b.id + '" aria-label="Give to rider"><option value="">Give to rider…</option>' + riderOpts + '</select>';
     if (b.status !== 'delivered' && b.status !== 'cancelled') actions += '<a class="btn wa" target="_blank" rel="noopener" href="' + waLink(b) + '">OTP to receiver</a><button class="btn stop" data-cancel="' + b.id + '" type="button">Cancel</button>';
     if (b.status === 'delivered' && Number(b.goods_cod) > 0 && !b.goods_cod_returned_at) actions += '<button class="btn" data-goodsback="' + b.id + '" type="button">Mark ' + rs(b.goods_cod) + ' handed to sender</button>';
     return '<article class="ticket">' +
-      '<div class="head"><span class="no">' + esc(b.booking_no) + '</span><span class="pill s-' + b.status + '">' + words[b.status] + (b.rider_name ? ': ' + esc(b.rider_name) : '') + '</span></div>' +
+      '<div class="head"><span class="no">' + esc(b.booking_no) + (b.source === 'web' ? ' <small style="font-size:13px; color:#9A3412;">website</small>' : '') + '</span><span class="pill s-' + b.status + '">' + words[b.status] + (b.rider_name ? ': ' + esc(b.rider_name) : '') + '</span></div>' +
       '<div class="route"><div class="end"><b>' + esc(b.pickup_name) + '</b><span>' + esc(b.pickup_address) + '</span></div><div class="km">' + b.distance_km + ' km</div><div class="end" style="text-align:right;"><b>' + esc(b.drop_name) + '</b><span>' + esc(b.drop_address) + '</span></div></div>' +
       '<div class="facts">' + rs(b.charge) + ', ' + modes[b.payment_mode] + (Number(b.goods_cod) > 0 ? ', plus goods cash ' + rs(b.goods_cod) + (b.goods_cod_returned_at ? ' (handed back)' : '') : '') + '. Rider earns ' + rs(b.rider_pay) + '.' + (b.item_desc ? ' Item: ' + esc(b.item_desc) + ', ' + b.weight_kg + ' kg.' : '') + (b.cancel_reason ? ' Reason: ' + esc(b.cancel_reason) : '') + '</div>' +
       (actions ? '<div class="actions">' + actions + '</div>' : '') + '</article>';
@@ -318,6 +320,8 @@ document.addEventListener('change', async function(e) {
   refreshAll();
 });
 document.addEventListener('click', async function(e) {
+  const cf = e.target.closest && e.target.closest('[data-confirm]');
+  if (cf) { try { const d = await rpc('routix_booking_confirm', { p_id: cf.getAttribute('data-confirm') }); toast(d.ok ? 'Confirmed — riders can see it now' : 'Could not confirm'); } catch (err) { toast(err.message); } refreshAll(); return; }
   const c = e.target.closest && e.target.closest('[data-cancel]'), g = e.target.closest && e.target.closest('[data-goodsback]');
   if (c) {
     const why = prompt('Why is this booking cancelled?'); if (why === null) return;
