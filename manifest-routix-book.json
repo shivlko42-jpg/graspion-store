@@ -1,7 +1,7 @@
 {
-  "name": "Routix \u2014 send a parcel",
+  "name": "Routix — send a parcel",
   "short_name": "Routix",
-  "description": "Book a bike delivery across Lucknow",
+  "description": "Routix hai na, pahuncha denge. Bike delivery across Lucknow.",
   "start_url": "/routix-book.html?source=app",
   "scope": "/routix-book.html",
   "display": "standalone",

@@ -1,7 +1,7 @@
 {
   "name": "Routix Rider",
   "short_name": "Routix",
-  "description": "Routix delivery partner app (delivering for Graspion)",
+  "description": "Apni bike, apna route, apni kamai. Routix Rider app.",
   "start_url": "/rider.html",
   "scope": "/",
   "display": "standalone",
