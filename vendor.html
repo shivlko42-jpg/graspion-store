@@ -601,6 +601,13 @@ window.addEventListener('load', function() {
         <div class="radio-option selected" id="returnYes" data-return="true"><span class="ro-icon">✅</span>Returnable</div>
         <div class="radio-option" id="returnNo" data-return="false"><span class="ro-icon">🚫</span>Non-Returnable</div>
       </div>
+      <label for="pCancelPolicy" style="font-size:11px; font-weight:700; color:#374151; margin:12px 0 6px; display:block;">Can the customer cancel this item?</label>
+      <select class="form-input" id="pCancelPolicy" style="margin-bottom:4px;">
+        <option value="until_shipped">Yes — until it is shipped (normal items)</option>
+        <option value="before_accept">Only before I accept the order (fresh food, sweets, made to order)</option>
+        <option value="no_cancel">No — cannot be cancelled (custom / personalised / bulk)</option>
+      </select>
+      <div style="font-size:11px; color:#4b5563; margin-bottom:6px;">Shown to the customer on the product page before they order.</div>
       <label style="font-size:11px; font-weight:700; color:#374151; margin:12px 0 8px; display:block;">Payment options for this item</label>
       <div class="radio-row">
         <div class="radio-option selected" id="codYes" data-cod="true"><span class="ro-icon">💵</span>COD + Prepaid</div>
@@ -1808,6 +1815,7 @@ function renderProducts() {
       document.getElementById('pReorderLevel').value = p.reorder_level != null ? p.reorder_level : 10;
       document.getElementById('pMaxStockLevel').value = p.max_stock_level || '';
       setReturnable(p.is_returnable !== false);
+      if (document.getElementById('pCancelPolicy')) document.getElementById('pCancelPolicy').value = p.cancel_policy || 'until_shipped';
       setCod(p.cod_allowed !== false);
       if (p.image_data) { document.getElementById('photoPreview').src = p.image_data; document.getElementById('photoPreview').style.display = 'block'; uploadedPhotoBase64 = p.image_data; }
       if (currentVendor.vendor_type === 'dark_store' && currentVendor.warehouse_id) {
@@ -1955,7 +1963,7 @@ const giftWrapBadge = o.gift_wrap ? '<span style="display:inline-block; backgrou
       (o.status !== 'cancelled' ? '<button class="mini-btn" data-printlabel="' + o.id + '" style="background:#f3f1f8;color:#4b5563;margin-top:8px;margin-right:6px;">🏷️ Print Shipping Label</button>' : '') +
       ((o.status !== 'cancelled' && (o.payment_status === 'paid' || ['preparing','shipped','out_for_delivery','delivered'].indexOf(o.status) !== -1)) ? '<button class="mini-btn" data-vendorinvoice="' + o.id + '" style="background:#ede9fe;color:#5b21b6;margin-top:8px;margin-right:6px;">🧾 Print Bill (put in box)</button>' : '') +
       '') +
-      (awaitingAccept || rejectedByMe ? '' : (o.status !== 'delivered' && o.status !== 'cancelled' ? '<button class="mini-btn" data-cancelid="' + o.id + '" style="background:#fee2e2;color:#dc2626;margin-top:8px;">✕ Cancel Order</button>' : (o.status === 'cancelled' ? '<div style="font-size:11px;color:#dc2626;font-weight:700;margin-top:8px;">✕ Cancelled</div>' : ''))) +
+      (awaitingAccept || rejectedByMe ? '' : (['pending','confirmed','preparing'].indexOf(o.status) !== -1 && !o.rider_id ? '<button class="mini-btn" data-cancelid="' + o.id + '" style="background:#fee2e2;color:#dc2626;margin-top:8px;">✕ Cancel Order</button>' : (o.status === 'cancelled' ? '<div style="font-size:11px;color:#dc2626;font-weight:700;margin-top:8px;">✕ Cancelled</div>' : ''))) +
     '</div>';
   }).join('');
 
@@ -2006,20 +2014,17 @@ const giftWrapBadge = o.gift_wrap ? '<span style="display:inline-block; backgrou
   });
   document.querySelectorAll('[data-cancelid]').forEach(function(btn) {
     btn.addEventListener('click', async function() {
-      const reason = prompt('Please provide a reason for cancelling this order:');
+      const reason = prompt('Why are you cancelling this order? (the customer will see this)');
       if (!reason || !reason.trim()) { return; }
+      if (!confirm('Cancel this order? If the customer paid online, the money goes back to them automatically. Frequent cancellations lower your shop rating.')) return;
       const orderId = btn.getAttribute('data-cancelid');
-      btn.textContent = '⏳';
-      await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId, {
-        method: 'PATCH',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'cancelled', cancellation_reason: reason.trim(), cancelled_by: 'vendor' })
-      });
-      fetch(SUPABASE_URL + '/rest/v1/notifications', {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipient_type: 'customer', channel: 'sms', template_key: 'order_cancelled', payload: { order_id: orderId }, status: 'pending' })
-      });
+      btn.textContent = '⏳'; btn.disabled = true;
+      try {
+        const res = await fetch(SUPABASE_URL + '/functions/v1/customer-cancel-order', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }, body: JSON.stringify({ order_id: orderId, reason: reason.trim() }) });
+        const d = await res.json();
+        if (!res.ok || !d.ok) { alert(d.error || 'Could not cancel'); btn.disabled = false; btn.textContent = '✕ Cancel Order'; return; }
+        alert('Order cancelled.' + (d.refund ? ' Customer refund: ' + (d.refund.status === 'processed' ? 'started automatically.' : 'will be handled by Graspion.') : ''));
+      } catch (e) { alert('Network error: ' + e.message); }
       loadVendorData();
     });
   });
@@ -2465,23 +2470,27 @@ async function loadVendorPrebookings() {
     const empty = document.getElementById('prebookingEmpty');
     if (bookings.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
     empty.style.display = 'none';
-    list.innerHTML = bookings.map(function(b) {
+    const unpaidPb = function(b) { return b.status === 'pending' && Number(b.advance_amount || 0) > 0 && !b.advance_paid; };
+    const sortedPb = bookings.slice().sort(function(x, y) { return (unpaidPb(x) ? 1 : 0) - (unpaidPb(y) ? 1 : 0); });
+    list.innerHTML = sortedPb.map(function(b) {
       const product = vendorProducts.find(function(p) { return p.id === b.product_id; });
       const typeLabel = b.booking_type === 'sample' ? '🧪 Sample Request' : '📦 Bulk Pre-Order';
       let statusButtons = '';
       if (b.status !== 'cancelled' && b.status !== 'delivered') {
         const currentIdx = PB_STATUS_STEPS.indexOf(b.status);
         const nextStatus = PB_STATUS_STEPS[currentIdx + 1];
-        if (nextStatus) statusButtons += '<button data-pbadvance="' + b.id + '" data-nextstatus="' + nextStatus + '" style="background:#7c3aed; color:#fff; border:none; padding:6px 12px; border-radius:8px; font-size:10.5px; font-weight:700; margin-right:6px;">Mark ' + PB_STATUS_LABELS[nextStatus] + '</button>';
-        statusButtons += '<button data-pbcancel="' + b.id + '" style="background:#fee2e2; color:#dc2626; border:none; padding:6px 12px; border-radius:8px; font-size:10.5px; font-weight:700;">Cancel</button>';
+        if (unpaidPb(b)) statusButtons += '<span style="display:inline-block; background:#fef3c7; color:#92400e; font-size:12.5px; font-weight:700; padding:7px 10px; border-radius:8px; margin-right:6px;">⏳ Waiting for the customer\'s advance — nothing to make yet</span>';
+        else if (nextStatus) statusButtons += '<button data-pbadvance="' + b.id + '" data-nextstatus="' + nextStatus + '" style="background:#7c3aed; color:#fff; border:none; padding:9px 14px; border-radius:10px; font-size:13.5px; font-weight:700; margin-right:6px;">Mark ' + PB_STATUS_LABELS[nextStatus] + '</button>';
+        statusButtons += '<button data-pbcancel="' + b.id + '" style="background:#fee2e2; color:#dc2626; border:none; padding:9px 14px; border-radius:10px; font-size:13.5px; font-weight:700;">Cancel</button>';
       }
       return '<div style="border:1px solid #f0eef7; border-radius:12px; padding:12px; margin-bottom:10px;">' +
-        '<div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><div style="font-size:11px; font-weight:700; color:#7c3aed;">' + typeLabel + '</div><div style="font-size:12.5px; font-weight:700; margin-top:2px;">' + (product ? product.name : 'Product') + (b.variant_details ? ' <span style="color:#7c3aed;">(' + b.variant_details + ' pack)</span>' : '') + ' × ' + b.quantity + '</div></div><span style="font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px; background:#f3f1f8; color:#4b5563;">' + PB_STATUS_LABELS[b.status] + '</span></div>' +
-        '<div style="font-size:10.5px; color:#374151; margin-top:6px;">👤 ' + (b.customer_name || '-') + ' · 📞 ' + (b.customer_phone || '-') + '</div>' +
-        (b.customer_address ? '<div style="font-size:10px; color:#4b5563; margin-top:2px;">📍 ' + b.customer_address + '</div>' : '') +
-        (b.customization_notes ? '<div style="font-size:10.5px; margin-top:6px; background:#faf9fd; padding:6px 8px; border-radius:6px;">📝 ' + b.customization_notes + '</div>' : '') +
-        (b.preferred_delivery_date ? '<div style="font-size:10.5px; font-weight:700; color:#dc2626; margin-top:6px;">📅 Needed by: ' + new Date(b.preferred_delivery_date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '</div>' : '') +
-        '<div style="font-size:10.5px; margin-top:8px; line-height:1.7;">Full: ₹' + (b.full_amount || 0) + ' · Advance: ₹' + b.advance_amount + ' ' + (b.advance_paid ? '✅ Paid' : '⏳ Pending') +
+        '<div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><div style="font-size:12.5px; font-weight:800; color:#7c3aed;">' + typeLabel + '</div><div style="font-size:15px; font-weight:800; margin-top:2px;">' + (product ? product.name : 'Product') + (b.variant_details ? ' <span style="color:#7c3aed;">(' + b.variant_details + ' pack)</span>' : '') + ' × ' + b.quantity + '</div></div><span style="font-size:12.5px; font-weight:700; padding:3px 8px; border-radius:6px; background:#f3f1f8; color:#4b5563;">' + PB_STATUS_LABELS[b.status] + '</span></div>' +
+        '<div style="font-size:13px; color:#374151; margin-top:6px;">👤 ' + (b.customer_name || '-') + ' · 📞 ' + (b.customer_phone || '-') + '</div>' +
+        (b.customer_address ? '<div style="font-size:12.5px; color:#4b5563; margin-top:2px;">📍 ' + b.customer_address + '</div>' : '') +
+        (b.customization_notes ? '<div style="font-size:13px; margin-top:6px; background:#faf9fd; padding:6px 8px; border-radius:6px;">📝 ' + b.customization_notes + '</div>' : '') +
+        (b.preferred_delivery_date ? '<div style="font-size:13px; font-weight:700; color:#dc2626; margin-top:6px;">📅 Needed by: ' + new Date(b.preferred_delivery_date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + '</div>' : '') +
+        (b.booking_type !== 'sample' && Number(b.quantity || 0) > 0 ? (function() { const unit = Math.round(Number(b.full_amount || 0) / Number(b.quantity)); const normal = product ? Number(product.selling_price || product.price || 0) : 0; return '<div style="font-size:14px; font-weight:800; color:#1f1638; margin-top:8px;">Qty: ' + b.quantity + ' ' + ((product && product.preorder_unit) || '') + ' × ₹' + unit.toLocaleString('en-IN') + ' = ₹' + Number(b.full_amount || 0).toLocaleString('en-IN') + (normal && unit < normal ? ' <span style="font-size:12px; background:#dcfce7; color:#15803d; padding:2px 8px; border-radius:999px;">bulk price</span>' : '') + '</div>'; })() : '') +
+        '<div style="font-size:13px; margin-top:8px; line-height:1.7;">Full: ₹' + (b.full_amount || 0) + ' · Advance: ₹' + b.advance_amount + ' ' + (b.advance_paid ? '✅ Paid' : '⏳ Pending') +
           (b.status === 'delivered' ? ' · Balance: ₹' + (b.balance_collected || 0) + ' ✅ Collected by rider' + (b.delivered_at ? ' (' + new Date(b.delivered_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ')' : '') : (b.status !== 'cancelled' ? ' · Balance due: ₹' + Math.max(Number(b.full_amount || 0) - (b.advance_paid ? Number(b.advance_amount || 0) : 0), 0) : '')) +
           '<br><b style="color:#15803d;">Received so far: ₹' + prebookingReceived(b) + '</b>' + (b.status === 'ready' && b.rider_id ? ' · 🚴 Out for delivery' : '') + '</div>' +
         (statusButtons ? '<div style="margin-top:10px;">' + statusButtons + '</div>' : '') +
@@ -2718,7 +2727,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
         old_price: oldPrice ? Number(oldPrice) : null, stock: Number(stock), sale_unit: document.getElementById('pSaleUnit').value || 'pcs', pincode: pincode,
         hsn_code: hsn, gst_percent: Number(gst),
         seo_title: seo.title, seo_description: seo.description,
-        image_data: uploadedPhotoBase64 || null, features: features, is_returnable: selectedReturnable,
+        image_data: uploadedPhotoBase64 || null, features: features, is_returnable: selectedReturnable, cancel_policy: (document.getElementById('pCancelPolicy') || {}).value || 'until_shipped',
         short_description: document.getElementById('pShortDescription').value.trim() || null,
         long_description: document.getElementById('pLongDescription').value.trim() || null,
         cod_allowed: selectedCod, additional_images: extraPhotosBase64.length > 0 ? extraPhotosBase64 : [],
@@ -2849,6 +2858,7 @@ document.getElementById('addProductBtn').addEventListener('click', async functio
     ['pName','pIcon','pPrice','pOldPrice','pStock','pPincode','pHsn','pFeatures','pBrand','pGtin','pWeightGrams','pLengthCm','pWidthCm','pHeightCm','pSku','pItemCode','pShortName','pManufacturer','pModelNumber','pPartNumber','pBarcode','pTags','pWarrantyPeriod','pWhatsIncluded','pCareInstructions','pSafetyInfo','pInstallationInfo','pCostPrice','pWholesalePrice','pDealerPrice','pMinSellingPrice','pSpecialPrice','pDiscountValue','pCgst','pSgst','pIgst','pMinStockLevel','pReorderLevel','pMaxStockLevel','pImageAlt','pDocFile','pPublishAt','pPurchasePrice','pLeadTime','pPreorderLeadTime','pBookingDeadline','pDeliveryStart','pRack','pShelf','pBin'].forEach(function(id) { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('pStatus').value = 'active';
     document.getElementById('pSaleUnit').value = 'pcs';
+    if (document.getElementById('pCancelPolicy')) document.getElementById('pCancelPolicy').value = 'until_shipped';
     setPriceTiersForm([]);
     document.getElementById('pPublishAtGroup').style.display = 'none';
     document.getElementById('pChannelWebsite').checked = true;
@@ -3890,6 +3900,32 @@ document.addEventListener('change', function(e) {
   if (!e.target.matches || !e.target.matches('[data-pickorder]')) return;
   const n = document.querySelectorAll('[data-pickorder]:checked').length; const b = document.getElementById('acceptSelectedBtn'); if (b) b.textContent = 'Accept selected (' + n + ')';
 });
+
+// ===== New bulk booking alert (paid advance) =====
+(function watchNewBookings() {
+  let known = null;
+  async function check() {
+    if (!currentVendor || document.visibilityState !== 'visible') return;
+    try {
+      const r = await fetch(SUPABASE_URL + '/rest/v1/prebookings?vendor_id=eq.' + currentVendor.id + '&or=(advance_paid.eq.true,advance_amount.eq.0)&select=id&order=created_at.desc&limit=50', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken } });
+      if (!r.ok) return;
+      const ids = (await r.json()).map(function(x) { return x.id; });
+      if (known === null) { known = ids; return; }
+      const fresh = ids.filter(function(id) { return known.indexOf(id) === -1; });
+      known = ids;
+      if (!fresh.length) return;
+      try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); [0, 0.2, 0.4].forEach(function(t) { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 660; g.gain.value = 0.15; o.connect(g); g.connect(ctx.destination); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.15); }); } catch (e) {}
+      try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+      const t = document.createElement('div'); t.textContent = '📦 ' + fresh.length + ' new bulk booking' + (fresh.length > 1 ? 's' : '') + ' (advance paid)!';
+      t.style.cssText = 'position:fixed; left:50%; top:16px; transform:translateX(-50%); background:#7c3aed; color:#fff; padding:12px 18px; border-radius:12px; font-size:15px; font-weight:800; z-index:99999;';
+      document.body.appendChild(t); setTimeout(function() { t.remove(); }, 6000);
+      if (typeof loadVendorPrebookings === 'function') loadVendorPrebookings();
+    } catch (e) {}
+  }
+  setInterval(check, 60000);
+  document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') check(); });
+  setTimeout(check, 6000);
+})();
 </script>
 
 </body>

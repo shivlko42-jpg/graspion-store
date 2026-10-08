@@ -458,6 +458,20 @@ Continue with Google
 <div class="empty-state" id="payoutEmpty" style="display:none;">No payout data yet</div>
 </div>
 
+<div class="panel" data-section="reports" id="mktPanel">
+<h3>📣 Marketing Report <span style="font-size:12px; font-weight:600; color:#6b7280;">· where orders and sign-ups come from</span></h3>
+<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0 12px;">
+<select id="mktPeriod" class="form-input" style="width:auto;"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="3650">All time</option></select>
+<select id="mktTouch" class="form-input" style="width:auto;"><option value="last">Credit: last ad/link (default)</option><option value="first">Credit: first time they found us</option></select>
+<label style="font-size:12.5px;">Meta spend ₹ <input id="mktSpendMeta" type="number" min="0" class="form-input" style="width:100px; display:inline-block;"></label>
+<label style="font-size:12.5px;">Google spend ₹ <input id="mktSpendGoogle" type="number" min="0" class="form-input" style="width:100px; display:inline-block;"></label>
+<button id="mktRun" class="login-btn" style="width:auto; padding:8px 16px;">Show</button>
+<button id="mktCsv" style="background:#f3f4f6; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer;">⬇ CSV</button>
+</div>
+<div id="mktSummary" style="font-size:13px; margin-bottom:8px;"></div>
+<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:13px;" id="mktTable"></table></div>
+<div style="font-size:11.5px; color:#4b5563; margin-top:8px;">Tip: give every ad link UTM tags, e.g. graspion.in/?utm_source=meta&amp;utm_medium=cpc&amp;utm_campaign=vendor_recruit_oct. Orders without tags show as "direct" or by the site they came from.</div>
+</div>
 <div class="panel" data-section="reports">
 <h3>📈 Business Reports <span style="font-size:10px;color:#9ca3af;font-weight:400;">(Super Admin only)</span></h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">GMV, commission earned, orders, and new vendors — grouped by quarter or year.</p>
@@ -4691,6 +4705,41 @@ async function loadRoutixSummary() {
 }
 document.addEventListener('click', function(e) { const it = e.target.closest && e.target.closest('[data-page="delivery"]'); if (it) setTimeout(loadRoutixSummary, 300); });
 setTimeout(loadRoutixSummary, 4000);
+
+// ===== Marketing report =====
+let mktRows = [];
+async function loadMarketingReport() {
+  const days = Number(document.getElementById('mktPeriod').value || 30);
+  const touch = document.getElementById('mktTouch').value || 'last';
+  const to = new Date(Date.now() + 864e5), from = new Date(Date.now() - days * 864e5);
+  const spendMeta = Number(document.getElementById('mktSpendMeta').value || 0), spendGoogle = Number(document.getElementById('mktSpendGoogle').value || 0);
+  try { localStorage.setItem('gr_mkt_spend', JSON.stringify({ m: spendMeta, g: spendGoogle })); } catch (e) {}
+  const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/admin_marketing_report', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_from: from.toISOString(), p_to: to.toISOString(), p_touch: touch }) });
+  mktRows = r.ok ? await r.json() : [];
+  const sum = function(src, k) { return mktRows.filter(function(x) { return !src || src.indexOf(x.source) !== -1; }).reduce(function(t, x) { return t + Number(x[k] || 0); }, 0); };
+  const metaSrc = ['meta', 'facebook', 'instagram'], googleSrc = ['google'];
+  const line = function(name, src, spend) {
+    const o = sum(src, 'orders'), rev = sum(src, 'revenue'), sg = sum(src, 'vendor_signups') + sum(src, 'rider_signups');
+    return '<div style="display:inline-block; background:#f5f3ff; border-radius:10px; padding:8px 12px; margin:0 8px 8px 0;"><b>' + name + '</b>: ' + o + ' orders · ₹' + Math.round(rev).toLocaleString('en-IN') + ' · ' + sg + ' sign-ups' +
+      (spend ? ' · spend ₹' + spend.toLocaleString('en-IN') + ' → <b>₹' + (o ? Math.round(spend / o) : '—') + '/order</b>, <b>₹' + (sg ? Math.round(spend / sg) : '—') + '/sign-up</b>, ROAS <b>' + (spend ? (rev / spend).toFixed(1) : '—') + '×</b>' : '') + '</div>';
+  };
+  document.getElementById('mktSummary').innerHTML = line('All sources', null, 0) + line('Meta', metaSrc, spendMeta) + line('Google', googleSrc, spendGoogle);
+  const th = function(t) { return '<th style="text-align:left; padding:8px; border-bottom:2px solid #e5e7eb; white-space:nowrap;">' + t + '</th>'; };
+  const td = function(t) { return '<td style="padding:8px; border-bottom:1px solid #f0eef7; white-space:nowrap;">' + t + '</td>'; };
+  document.getElementById('mktTable').innerHTML = '<tr>' + ['Source', 'Medium', 'Campaign', 'Orders', 'Revenue', 'Delivered', 'Cancelled', 'Vendor sign-ups', 'Rider sign-ups'].map(th).join('') + '</tr>' +
+    (mktRows.length ? mktRows.map(function(x) { return '<tr>' + [x.source, x.medium, x.campaign, x.orders, '₹' + Math.round(x.revenue).toLocaleString('en-IN'), x.delivered, x.cancelled, x.vendor_signups, x.rider_signups].map(function(v) { return td(String(v).replace(/</g, '&lt;')); }).join('') + '</tr>'; }).join('') : '<tr><td colspan="9" style="padding:12px; color:#6b7280;">No orders or sign-ups in this period yet.</td></tr>');
+}
+(function initMarketing() {
+  try { const sp = JSON.parse(localStorage.getItem('gr_mkt_spend') || '{}'); if (sp.m) document.getElementById('mktSpendMeta').value = sp.m; if (sp.g) document.getElementById('mktSpendGoogle').value = sp.g; } catch (e) {}
+  const run = document.getElementById('mktRun'); if (run) run.addEventListener('click', loadMarketingReport);
+  const csv = document.getElementById('mktCsv');
+  if (csv) csv.addEventListener('click', function() {
+    const head = ['source', 'medium', 'campaign', 'orders', 'revenue', 'delivered', 'cancelled', 'vendor_signups', 'rider_signups'];
+    const body = mktRows.map(function(x) { return head.map(function(h) { return '"' + String(x[h] == null ? '' : x[h]).replace(/"/g, '""') + '"'; }).join(','); });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([head.join(',') + '\n' + body.join('\n')], { type: 'text/csv' })); a.download = 'graspion-marketing-report.csv'; a.click();
+  });
+  document.addEventListener('click', function(e) { const it = e.target.closest && e.target.closest('[data-page="reports"]'); if (it) setTimeout(loadMarketingReport, 300); });
+})();
 </script>
 </body>
 </html>
