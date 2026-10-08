@@ -498,6 +498,13 @@ Continue with Google
 <div class="panel" data-section="delivery">
 <h3>🛵 Routix Riders <span style="font-size:12px; font-weight:600; color:#6b7280;">· delivery partners (Graspion is Routix's first client)</span></h3>
 <div id="routixJobsSummary" style="font-size:13px; color:#1f2937; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:10px 12px; margin-bottom:12px;">Loading Routix deliveries…</div>
+<div style="background:#fff; border:1.5px solid #fed7aa; border-radius:12px; padding:12px 14px; margin-bottom:14px;">
+<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;"><b style="font-size:14px;">🤝 Routix ↔ Graspion account</b>
+<button id="routixMakeStmt" style="background:#ea580c; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:800; cursor:pointer;">Make statement for new deliveries</button></div>
+<div style="font-size:12.5px; color:#374151; margin:4px 0 8px;">Routix works like a separate delivery company: Graspion pays Routix per delivery (rider pay + Routix fee); COD cash collected by Routix riders belongs to Graspion. One statement nets both.</div>
+<div id="routixUnbilled" style="font-size:13px;"></div>
+<div id="routixStatements" style="margin-top:10px; overflow-x:auto;"></div>
+</div>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Add riders here so they can log into the Rider App and receive deliveries.</p>
 <div class="form-grid">
 <input class="form-input" id="riderName" placeholder="Rider full name">
@@ -4740,6 +4747,50 @@ async function loadMarketingReport() {
   });
   document.addEventListener('click', function(e) { const it = e.target.closest && e.target.closest('[data-page="reports"]'); if (it) setTimeout(loadMarketingReport, 300); });
 })();
+
+// ===== Routix <-> Graspion statements =====
+async function loadRoutixAccount() {
+  const ub = document.getElementById('routixUnbilled'); if (!ub) return;
+  const h = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken };
+  try {
+    const [jr, sr] = await Promise.all([
+      fetch(SUPABASE_URL + '/rest/v1/routix_jobs?statement_id=is.null&select=client_charge,cod_amount,rider_pay', { headers: h }),
+      fetch(SUPABASE_URL + '/rest/v1/routix_statements?select=*&order=created_at.desc&limit=24', { headers: h })
+    ]);
+    const jobs = jr.ok ? await jr.json() : [], st = sr.ok ? await sr.json() : [];
+    const sum = function(k) { return jobs.reduce(function(t, x) { return t + Number(x[k] || 0); }, 0); };
+    const charges = sum('client_charge'), cod = sum('cod_amount'), net = charges - cod, margin = charges - sum('rider_pay');
+    const money = function(v) { return '₹' + Math.round(Math.abs(v)).toLocaleString('en-IN'); };
+    ub.innerHTML = '<b>Not yet billed:</b> ' + jobs.length + ' deliveries · Graspion owes Routix ' + money(charges) + ' (Routix fee ' + money(margin) + ') · COD with Routix ' + money(cod) +
+      ' → <b style="color:' + (net >= 0 ? '#c2410c' : '#15803d') + ';">' + (net >= 0 ? 'Graspion pays Routix ' : 'Routix pays Graspion ') + money(net) + '</b>';
+    document.getElementById('routixStatements').innerHTML = st.length ? '<table style="width:100%; border-collapse:collapse; font-size:12.5px;"><tr>' + ['Statement', 'Deliveries', 'Delivery charges', 'COD', 'Net', 'Status', ''].map(function(t) { return '<th style="text-align:left; padding:6px; border-bottom:2px solid #fed7aa; white-space:nowrap;">' + t + '</th>'; }).join('') + '</tr>' +
+      st.map(function(x) {
+        const n = Number(x.net_amount || 0);
+        return '<tr>' + [x.statement_no, x.jobs_count, money(x.delivery_charges), money(x.cod_collected), (n >= 0 ? 'Graspion → Routix ' : 'Routix → Graspion ') + money(n),
+          x.status === 'settled' ? '✅ Settled' + (x.payment_ref ? ' · ' + String(x.payment_ref).replace(/</g, '&lt;') : '') : '⏳ Pending',
+          x.status === 'settled' ? '' : '<button data-routixsettle="' + x.id + '" style="background:#16a34a; color:#fff; border:none; padding:5px 10px; border-radius:6px; font-weight:700; cursor:pointer;">Mark settled</button>'
+        ].map(function(v) { return '<td style="padding:6px; border-bottom:1px solid #f3f4f6; white-space:nowrap;">' + v + '</td>'; }).join('') + '</tr>';
+      }).join('') + '</table>' : '<div style="font-size:12.5px; color:#6b7280;">No statements yet.</div>';
+  } catch (e) { ub.textContent = 'Could not load Routix account.'; }
+}
+document.addEventListener('click', async function(e) {
+  const hdr = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' };
+  if (e.target.id === 'routixMakeStmt') {
+    if (!confirm('Make a Routix statement for all deliveries not billed yet?')) return;
+    const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/routix_create_statement', { method: 'POST', headers: hdr, body: JSON.stringify({ p_client_code: 'graspion' }) });
+    const d = await r.json().catch(function() { return {}; });
+    if (!r.ok || !d.ok) { alert((d && (d.error || d.message)) || 'Could not make statement'); return; }
+    alert('Statement ' + d.statement_no + ' made: ' + d.jobs + ' deliveries.'); loadRoutixAccount();
+  }
+  const st = e.target.closest && e.target.closest('[data-routixsettle]');
+  if (st) {
+    const ref = prompt('Payment reference (UPI / bank / cash note):'); if (ref === null) return;
+    const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/routix_settle_statement', { method: 'POST', headers: hdr, body: JSON.stringify({ p_id: st.getAttribute('data-routixsettle'), p_ref: ref }) });
+    if (r.ok) loadRoutixAccount(); else alert('Could not update');
+  }
+  const pg = e.target.closest && e.target.closest('[data-page="delivery"]'); if (pg) setTimeout(loadRoutixAccount, 300);
+});
+setTimeout(loadRoutixAccount, 4500);
 </script>
 </body>
 </html>
