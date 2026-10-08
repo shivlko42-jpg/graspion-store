@@ -245,6 +245,10 @@ Continue with Google
   <button id="walletWithdrawBtn" style="margin-top:10px; width:100%; height:46px; border:none; border-radius:12px; background:#ea580c; color:#fff; font-size:15px; font-weight:800;">Withdraw earnings</button>
   <div id="walletPending" style="font-size:13px; font-weight:700; color:#92400e; margin-top:6px;"></div>
 </div>
+<div id="routixBookingsWrap" style="display:none;">
+<div class="section-label">📦 ROUTIX BOOKINGS</div>
+<div id="routixBookingList"></div>
+</div>
 <div class="section-label">🚴 ORDERS TO DELIVER</div>
 <div id="orderList"></div>
 </div>
@@ -457,6 +461,7 @@ document.getElementById('logoutBtn').addEventListener('click', async function() 
 
 async function loadOrders() {
 try { loadWallet(); } catch (e) {}
+try { loadRoutixBookings(); } catch (e) {}
   const list = document.getElementById('orderList');
   try {
     // Active orders for this rider (in progress)
@@ -885,6 +890,52 @@ document.getElementById('walletOpenBtn').addEventListener('click', async functio
   });
 });
 setInterval(function() { if (document.visibilityState === 'visible') loadWallet(); }, 60000);
+
+// ===== Routix direct bookings (pickup → drop, booked by Routix office) =====
+const rbMoney = function(v) { return '₹' + Math.round(Number(v || 0)).toLocaleString('en-IN'); };
+const rbEsc = function(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+async function rbCall(fn, body) {
+  const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  return r.json().catch(function() { return {}; });
+}
+async function loadRoutixBookings() {
+  if (!currentRider) return;
+  const list = await rbCall('rider_routix_bookings');
+  const wrap = document.getElementById('routixBookingsWrap'), box = document.getElementById('routixBookingList');
+  if (!Array.isArray(list) || !list.length) { wrap.style.display = 'none'; box.innerHTML = ''; return; }
+  wrap.style.display = 'block';
+  box.innerHTML = list.map(function(b) {
+    const mine = b.rider_id === currentRider.id;
+    const tel = function(p) { return 'tel:' + String(p || '').replace(/\D/g, '').slice(-10); };
+    const map = function(a) { return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(a); };
+    let act = '';
+    if (b.status === 'open') act = '<button data-rbaccept="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#ea580c; color:#fff; font-size:16px; font-weight:800;">Accept · earn ' + rbMoney(b.rider_pay) + '</button>';
+    else if (mine && b.status === 'assigned') act = '<button data-rbpicked="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#d97706; color:#fff; font-size:16px; font-weight:800;">I have picked up the parcel</button>';
+    else if (mine && b.status === 'picked') act = (Number(b.collect_at_drop) > 0 ? '<div style="background:#fef3c7; color:#92400e; border-radius:10px; padding:10px; font-size:15px; font-weight:800; margin-bottom:8px;">Collect ' + rbMoney(b.collect_at_drop) + ' from the receiver</div>' : '') +
+      '<input data-rbotp="' + b.id + '" inputmode="numeric" maxlength="4" placeholder="Receiver OTP" aria-label="Receiver OTP" style="width:100%; box-sizing:border-box; padding:14px; border-radius:12px; border:2px solid #a78bfa; background:#fff; color:#111827; font-size:22px; font-weight:800; letter-spacing:6px; text-align:center; margin-bottom:8px;">' +
+      '<button data-rbdeliver="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#15803d; color:#fff; font-size:16px; font-weight:800;">Mark delivered</button>';
+    return '<div style="background:#fff; color:#111827; border-radius:16px; padding:14px; margin:0 16px 12px; border-left:6px solid ' + (b.status === 'open' ? '#ea580c' : '#d97706') + ';">' +
+      '<div style="display:flex; justify-content:space-between; gap:8px;"><b style="font-size:15px;">ROUTIX ' + rbEsc(b.booking_no) + '</b><span style="font-size:14px; font-weight:800; color:#9a3412;">' + b.distance_km + ' km · ' + b.weight_kg + ' kg</span></div>' +
+      '<div style="margin-top:8px; font-size:14.5px;"><b>Pick up:</b> ' + rbEsc(b.pickup_name) + ', ' + rbEsc(b.pickup_address) + (mine ? ' <a href="' + tel(b.pickup_phone) + '">📞</a> <a target="_blank" rel="noopener" href="' + map(b.pickup_address) + '">🗺️</a>' : '') + '</div>' +
+      '<div style="margin-top:4px; font-size:14.5px;"><b>Drop:</b> ' + rbEsc(b.drop_name) + ', ' + rbEsc(b.drop_address) + (mine ? ' <a href="' + tel(b.drop_phone) + '">📞</a> <a target="_blank" rel="noopener" href="' + map(b.drop_address) + '">🗺️</a>' : '') + '</div>' +
+      (b.item_desc ? '<div style="font-size:14px; color:#374151; margin-top:4px;">Item: ' + rbEsc(b.item_desc) + '</div>' : '') +
+      (b.notes ? '<div style="font-size:14px; color:#374151;">Note: ' + rbEsc(b.notes) + '</div>' : '') +
+      '<div style="font-size:14px; color:#374151; margin:4px 0 10px;">You earn <b>' + rbMoney(b.rider_pay) + '</b>' + (Number(b.collect_at_drop) > 0 ? ' · collect <b>' + rbMoney(b.collect_at_drop) + '</b> at drop' : ' · nothing to collect') + '</div>' + act + '</div>';
+  }).join('');
+}
+document.addEventListener('click', async function(e) {
+  const a = e.target.closest && e.target.closest('[data-rbaccept]'), p = e.target.closest && e.target.closest('[data-rbpicked]'), d = e.target.closest && e.target.closest('[data-rbdeliver]');
+  if (!a && !p && !d) return;
+  const btn = a || p || d; btn.disabled = true;
+  let res;
+  if (a) res = await rbCall('rider_routix_accept', { p_id: a.getAttribute('data-rbaccept') });
+  if (p) res = await rbCall('rider_routix_picked', { p_id: p.getAttribute('data-rbpicked') });
+  if (d) { const id = d.getAttribute('data-rbdeliver'); const otp = (document.querySelector('[data-rbotp="' + id + '"]') || {}).value || ''; res = await rbCall('rider_routix_deliver', { p_id: id, p_otp: otp.trim() }); }
+  if (!res || !res.ok) { alert((res && (res.error || res.message)) || 'Could not update'); btn.disabled = false; return; }
+  if (d) alert('✅ Delivered!' + (Number(res.collect) > 0 ? ' Keep ' + rbMoney(res.collect) + ' safe and deposit it at the office.' : ''));
+  loadRoutixBookings(); try { loadWallet(); } catch (err) {}
+});
+setInterval(function() { if (document.visibilityState === 'visible') loadRoutixBookings(); }, 30000);
 </script>
 
 </body>
