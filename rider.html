@@ -157,7 +157,7 @@ window.addEventListener('load', function() {
 
 <div class="login-overlay" id="setPasswordOverlay" style="display:none;">
 <div class="login-box">
-<div style="text-align:center; margin-bottom:16px;"><div style="font-size:30px; font-weight:900; letter-spacing:2px; color:#fff;">ROUTIX</div><div style="font-size:12.5px; color:#fed7aa; font-weight:600;">Delivery partner app · delivering for Graspion</div></div>
+<div style="text-align:center; margin-bottom:16px;"><div style="font-size:30px; font-weight:900; letter-spacing:2px; color:#fff;">ROUTIX</div><div style="font-size:12.5px; color:#fed7aa; font-weight:600;">Delivery partner app · delivering for Graspion</div></div><a href="routix-book.html" style="display:block; text-align:center; margin:-6px 0 14px; color:#fff; font-size:14px; font-weight:700; text-decoration:underline;">Want to send a parcel? Book a delivery →</a>
 <div class="login-sub">🎉 Welcome! Set your password to finish setting up your account.</div>
 <input type="password" id="newPassword" placeholder="Create a password" class="login-select">
 <input type="password" id="newPasswordConfirm" placeholder="Confirm password" class="login-select">
@@ -168,7 +168,7 @@ window.addEventListener('load', function() {
 
 <div class="login-overlay" id="loginOverlay">
 <div class="login-box">
-<div style="text-align:center; margin-bottom:16px;"><div style="font-size:30px; font-weight:900; letter-spacing:2px; color:#fff;">ROUTIX</div><div style="font-size:12.5px; color:#fed7aa; font-weight:600;">Delivery partner app · delivering for Graspion</div></div>
+<div style="text-align:center; margin-bottom:16px;"><div style="font-size:30px; font-weight:900; letter-spacing:2px; color:#fff;">ROUTIX</div><div style="font-size:12.5px; color:#fed7aa; font-weight:600;">Delivery partner app · delivering for Graspion</div></div><a href="routix-book.html" style="display:block; text-align:center; margin:-6px 0 14px; color:#fff; font-size:14px; font-weight:700; text-decoration:underline;">Want to send a parcel? Book a delivery →</a>
 <button id="riderGoogleBtn" style="width:100%; background:#fff; color:#1e1b3a; border:1.5px solid #e5e7eb; padding:12px; border-radius:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px;">
 <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.5l-6.5-5.5C29.4 34.7 26.8 36 24 36c-5.3 0-9.7-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.6l6.5 5.5C41 35.9 44 30.5 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
 Continue with Google
@@ -244,6 +244,15 @@ Continue with Google
   <div id="walletCashText" style="font-size:12.5px; color:#374151; margin-top:4px;"></div>
   <button id="walletWithdrawBtn" style="margin-top:10px; width:100%; height:46px; border:none; border-radius:12px; background:#ea580c; color:#fff; font-size:15px; font-weight:800;">Withdraw earnings</button>
   <div id="walletPending" style="font-size:13px; font-weight:700; color:#92400e; margin-top:6px;"></div>
+</div>
+<div id="shareCard" style="margin:12px 16px 4px; background:#1c1917; border:1.5px solid #ea580c; border-radius:18px; padding:14px 16px; color:#fff;">
+  <b style="font-size:15px;">🤝 Bring customers, earn more</b>
+  <div id="shareStats" style="font-size:13.5px; color:#fed7aa; margin:4px 0 10px;">Share your Routix booking link with shops and people you meet.</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+    <button id="shareWaBtn" style="height:44px; border:none; border-radius:12px; background:#25d366; color:#0b2e17; font-weight:800; font-size:14px;">Share on WhatsApp</button>
+    <button id="shareQrBtn" style="height:44px; border:none; border-radius:12px; background:#fff; color:#1c1917; font-weight:800; font-size:14px;">Show QR</button>
+  </div>
+  <button id="spotBookBtn" style="margin-top:8px; width:100%; height:46px; border:none; border-radius:12px; background:#ea580c; color:#fff; font-weight:800; font-size:15px;">📦 Book for a customer here</button>
 </div>
 <div id="routixBookingsWrap" style="display:none;">
 <div class="section-label">📦 ROUTIX BOOKINGS</div>
@@ -462,6 +471,7 @@ document.getElementById('logoutBtn').addEventListener('click', async function() 
 async function loadOrders() {
 try { loadWallet(); } catch (e) {}
 try { loadRoutixBookings(); } catch (e) {}
+try { if (!refInfo) loadReferral(); } catch (e) {}
   const list = document.getElementById('orderList');
   try {
     // Active orders for this rider (in progress)
@@ -915,7 +925,7 @@ async function loadRoutixBookings() {
       '<input data-rbotp="' + b.id + '" inputmode="numeric" maxlength="4" placeholder="Receiver OTP" aria-label="Receiver OTP" style="width:100%; box-sizing:border-box; padding:14px; border-radius:12px; border:2px solid #a78bfa; background:#fff; color:#111827; font-size:22px; font-weight:800; letter-spacing:6px; text-align:center; margin-bottom:8px;">' +
       '<button data-rbdeliver="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#15803d; color:#fff; font-size:16px; font-weight:800;">Mark delivered</button>';
     return '<div style="background:#fff; color:#111827; border-radius:16px; padding:14px; margin:0 16px 12px; border-left:6px solid ' + (b.status === 'open' ? '#ea580c' : '#d97706') + ';">' +
-      '<div style="display:flex; justify-content:space-between; gap:8px;"><b style="font-size:15px;">ROUTIX ' + rbEsc(b.booking_no) + '</b><span style="font-size:14px; font-weight:800; color:#9a3412;">' + b.distance_km + ' km · ' + b.weight_kg + ' kg</span></div>' +
+      (b.from_my_link ? '<div style="display:inline-block; background:#dcfce7; color:#14532d; font-size:12.5px; font-weight:800; padding:3px 9px; border-radius:999px; margin-bottom:6px;">Your customer · bonus on delivery</div>' : '') + '<div style="display:flex; justify-content:space-between; gap:8px;"><b style="font-size:15px;">ROUTIX ' + rbEsc(b.booking_no) + '</b><span style="font-size:14px; font-weight:800; color:#9a3412;">' + b.distance_km + ' km · ' + b.weight_kg + ' kg</span></div>' +
       '<div style="margin-top:8px; font-size:14.5px;"><b>Pick up:</b> ' + rbEsc(b.pickup_name) + ', ' + rbEsc(b.pickup_address) + (mine ? ' <a href="' + tel(b.pickup_phone) + '">📞</a> <a target="_blank" rel="noopener" href="' + map(b.pickup_address) + '">🗺️</a>' : '') + '</div>' +
       '<div style="margin-top:4px; font-size:14.5px;"><b>Drop:</b> ' + rbEsc(b.drop_name) + ', ' + rbEsc(b.drop_address) + (mine ? ' <a href="' + tel(b.drop_phone) + '">📞</a> <a target="_blank" rel="noopener" href="' + map(b.drop_address) + '">🗺️</a>' : '') + '</div>' +
       (b.item_desc ? '<div style="font-size:14px; color:#374151; margin-top:4px;">Item: ' + rbEsc(b.item_desc) + '</div>' : '') +
@@ -936,6 +946,49 @@ document.addEventListener('click', async function(e) {
   loadRoutixBookings(); try { loadWallet(); } catch (err) {}
 });
 setInterval(function() { if (document.visibilityState === 'visible') loadRoutixBookings(); }, 30000);
+
+// ===== Share & Earn: rider's own booking link, QR, on-the-spot booking =====
+let refInfo = null;
+const BOOK_URL = location.origin + '/routix-book.html';
+async function loadReferral() {
+  if (!currentRider) return;
+  try {
+    const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/rider_referral_stats', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: '{}' });
+    const d = refInfo = await r.json();
+    if (!d || !d.ok) return;
+    document.getElementById('shareStats').textContent = 'Your code ' + d.ref_code + ' · ' + d.bookings + ' customers from your link · ₹' + Math.round(d.bonus) + ' bonus earned (₹' + Math.round(d.bonus_each || 0) + ' per delivery). You get first chance to deliver them.';
+  } catch (e) {}
+}
+function myLink() { return BOOK_URL + '?ref=' + encodeURIComponent((refInfo && refInfo.ref_code) || ''); }
+document.getElementById('shareWaBtn').addEventListener('click', function() {
+  const msg = 'Lucknow mein parcel bhejna hai? Routix bike delivery — ghar/dukaan se uthayenge, pahuncha denge. Daam pehle dikhta hai, rider ko cash/UPI dein.\nBook karein: ' + myLink();
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+});
+document.getElementById('shareQrBtn').addEventListener('click', function() {
+  const show = function() {
+    const w = document.createElement('div');
+    w.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;';
+    w.innerHTML = '<div style="background:#fff; color:#1c1917; border-radius:20px; padding:22px; text-align:center; max-width:340px; width:100%;"><div style="font-size:26px; font-weight:900; letter-spacing:2px;">ROUTI<span style="color:#ea580c;">X</span></div><div style="font-size:15px; margin:4px 0 14px;">Scan to send a parcel</div><div id="qrBox" style="display:flex; justify-content:center;"></div><div style="font-size:14px; margin-top:12px; font-weight:700;">Rider: ' + ((currentRider && currentRider.name) || '') + ' · ' + ((refInfo && refInfo.ref_code) || '') + '</div><button id="qrClose" style="margin-top:14px; width:100%; height:44px; border:none; border-radius:12px; background:#1c1917; color:#fff; font-weight:800;">Close</button></div>';
+    document.body.appendChild(w);
+    new QRCode(w.querySelector('#qrBox'), { text: myLink(), width: 220, height: 220 });
+    w.querySelector('#qrClose').addEventListener('click', function() { w.remove(); });
+  };
+  if (window.QRCode) return show();
+  const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; sc.onload = show; sc.onerror = function() { alert('Could not load the QR code. Check internet.'); }; document.head.appendChild(sc);
+});
+document.getElementById('spotBookBtn').addEventListener('click', async function() {
+  const btn = this; btn.disabled = true; btn.textContent = 'Getting your location…';
+  const open = async function(lat, lng) {
+    try {
+      const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/rider_spot_token', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: '{}' });
+      const d = await r.json();
+      if (!d.ok) { alert(d.error || 'Could not start'); return; }
+      location.href = BOOK_URL + '?ref=' + encodeURIComponent(d.ref_code) + '&spot=' + d.token + (lat ? '&lat=' + lat + '&lng=' + lng : '');
+    } finally { btn.disabled = false; btn.textContent = '📦 Book for a customer here'; }
+  };
+  if (!navigator.geolocation) return open(null, null);
+  navigator.geolocation.getCurrentPosition(function(p) { open(p.coords.latitude.toFixed(6), p.coords.longitude.toFixed(6)); }, function() { open(null, null); }, { enableHighAccuracy: true, timeout: 8000 });
+});
 </script>
 
 </body>

@@ -10,6 +10,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="manifest" href="manifest-routix-book.json">
+<meta name="theme-color" content="#1C1917">
 <style>
 :root { color-scheme: only light; --asphalt: #1C1917; --road: #44403C; --paper: #FAFAF9; --line: #E7E5E4; --routix: #EA580C; --routix-dark: #9A3412; --done: #15803D; --stop: #B91C1C; }
 * { box-sizing: border-box; }
@@ -78,7 +80,8 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
 </style>
 </head>
 <body>
-<header class="top"><div class="brand">ROUTI<span>X</span></div><a href="https://wa.me/918004873819" target="_blank" rel="noopener">Help on WhatsApp</a></header>
+<header class="top"><div class="brand">ROUTI<span>X</span></div><div style="display:flex; gap:6px;"><a href="rider.html">Rider login</a><a href="https://wa.me/918004873819" target="_blank" rel="noopener">Help</a></div></header>
+<div id="spotBanner" hidden style="background:#ea580c; color:#fff; padding:10px 16px; font-weight:700; font-size:15px;"></div>
 <div id="map" role="application" aria-label="Map: tap to set the pickup or drop point"></div>
 
 <div id="bookView">
@@ -155,6 +158,7 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
 <script>
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
+const params = new URLSearchParams(location.search);
 const $ = function(id) { return document.getElementById(id); };
 const rs = function(v) { return '₹' + Math.round(Number(v || 0)).toLocaleString('en-IN'); };
 const esc = function(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
@@ -265,10 +269,10 @@ $('bookBtn').addEventListener('click', async function() {
     const d = await rpc('routix_web_book', { p: {
       pickup_name: $('pn').value, pickup_phone: $('pp').value, pickup_address: $('pa').value + (pts[1].label ? ', ' + pts[1].label.split(',').slice(0, 3).join(',') : ''), pickup_lat: pts[1].lat, pickup_lng: pts[1].lng,
       drop_name: $('dn').value, drop_phone: $('dp').value, drop_address: $('da').value + (pts[2].label ? ', ' + pts[2].label.split(',').slice(0, 3).join(',') : ''), drop_lat: pts[2].lat, drop_lng: pts[2].lng,
-      item_desc: item, weight_kg: kg, notes: $('nt').value, payment_mode: document.querySelector('input[name="pm"]:checked').value } });
+      item_desc: item, weight_kg: kg, notes: $('nt').value, payment_mode: document.querySelector('input[name="pm"]:checked').value, ref: params.get('ref') || '', spot_token: params.get('spot') || '' } });
     if (!d.ok) { $('err').textContent = d.error || 'Could not book'; return; }
     try { const mine = JSON.parse(localStorage.getItem('routix_mine') || '[]'); mine.unshift({ t: d.track_token, no: d.booking_no, at: Date.now() }); localStorage.setItem('routix_mine', JSON.stringify(mine.slice(0, 10))); } catch (e) {}
-    location.href = location.pathname + '?t=' + d.track_token + '&new=1';
+    location.href = location.pathname + '?t=' + d.track_token + '&new=1' + (d.with_rider ? '&with=' + encodeURIComponent(d.with_rider) : '');
   } catch (e) { $('err').textContent = e.message; }
   finally { btn.disabled = false; btn.textContent = 'Book now'; }
 });
@@ -290,7 +294,7 @@ async function showTracking(token, isNew) {
     ['Delivered', '', b.delivered_at]];
   const share = 'https://wa.me/?text=' + encodeURIComponent('Routix delivery ' + b.booking_no + ' is coming to you. Tell the rider this OTP only when you get the parcel: ' + b.drop_otp + '\nTrack: ' + location.href.split('&')[0]);
   $('doneBox').innerHTML = '<div class="ticket">' +
-    (isNew ? '<div style="font-family:Barlow Semi Condensed,sans-serif; font-size:28px; font-weight:800;">Booked!</div>' : '') +
+    (isNew ? '<div style="font-family:Barlow Semi Condensed,sans-serif; font-size:28px; font-weight:800;">Booked!</div>' + (params.get('with') ? '<div style="font-weight:700; color:#15803D;">Rider ' + esc(params.get('with')) + ' will take your parcel now.</div>' : '') : '') +
     '<div style="font-size:15px; color:#44403C;">' + esc(b.booking_no) + ' · ' + rs(b.charge) + (b.payment_mode === 'collect_at_pickup' ? ' to pay at pickup' : ' to pay at delivery') + ' · ' + b.distance_km + ' km</div>' +
     (b.status === 'cancelled' ? '<p style="color:#B91C1C; font-weight:700;">This booking was cancelled.' + (b.cancel_reason ? ' ' + esc(b.cancel_reason) : '') + '</p>' :
     '<div class="otp"><span>Delivery OTP<br><small style="color:#44403C;">Send it to the receiver</small></span><b>' + esc(b.drop_otp) + '</b></div>' +
@@ -313,8 +317,12 @@ function mineHtml(current) {
     return mine.length ? '<div class="mine"><b>Your other bookings</b>' + mine.map(function(m) { return '<a href="?t=' + m.t + '">' + esc(m.no) + ' · ' + new Date(m.at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + '</a>'; }).join('') + '</div>' : '';
   } catch (e) { return ''; }
 }
-const params = new URLSearchParams(location.search);
 if (params.get('t')) showTracking(params.get('t'), params.get('new') === '1');
+else {
+  // came from a rider: on-the-spot booking (rider is here) or a rider's shared link
+  if (params.get('spot')) { $('spotBanner').hidden = false; $('spotBanner').textContent = 'Your rider is right here — fill the drop details and hand over the parcel.'; }
+  if (params.get('lat') && params.get('lng')) { const la = Number(params.get('lat')), ln = Number(params.get('lng')); if (la && ln) { setPoint(1, la, ln, ''); reverse(1, la, ln); } }
+}
 </script>
 </body>
 </html>
