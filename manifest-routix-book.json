@@ -2,8 +2,8 @@
   "name": "Routix \u2014 send a parcel",
   "short_name": "Routix",
   "description": "Book a bike delivery across Lucknow",
-  "start_url": "/routix-book.html",
-  "scope": "/",
+  "start_url": "/routix-book.html?source=app",
+  "scope": "/routix-book.html",
   "display": "standalone",
   "background_color": "#1C1917",
   "theme_color": "#1C1917",
@@ -14,5 +14,6 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "id": "/routix-book.html"
 }

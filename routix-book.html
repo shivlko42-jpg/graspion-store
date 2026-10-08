@@ -12,6 +12,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="manifest" href="manifest-routix-book.json">
 <meta name="theme-color" content="#1C1917">
+<link rel="apple-touch-icon" href="icon-rider.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Routix">
 <style>
 :root { color-scheme: only light; --asphalt: #1C1917; --road: #44403C; --paper: #FAFAF9; --line: #E7E5E4; --routix: #EA580C; --routix-dark: #9A3412; --done: #15803D; --stop: #B91C1C; }
 * { box-sizing: border-box; }
@@ -77,6 +80,17 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
 .mine { margin-top: 18px; }
 .mine a { display: block; padding: 10px 0; border-bottom: 1px solid var(--line); color: var(--asphalt); text-decoration: none; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* install + location sheets */
+.sheet-bg { position: fixed; inset: 0; background: rgba(28,25,23,0.55); z-index: 2000; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: #fff; width: 100%; max-width: 520px; border-radius: 22px 22px 0 0; padding: 22px 18px calc(18px + env(safe-area-inset-bottom, 0px)); }
+.sheet .ic { width: 64px; height: 64px; border-radius: 16px; background: var(--asphalt); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 800; font-size: 20px; }
+.sheet .ic span { color: var(--routix); }
+.sheet h3 { margin: 12px 0 4px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 24px; }
+.sheet ul { margin: 8px 0 14px; padding-left: 20px; color: var(--road); }
+.sheet .go { width: 100%; height: 52px; border: none; border-radius: 12px; background: var(--routix); color: #fff; font-size: 17px; font-weight: 700; }
+.sheet .later { width: 100%; height: 44px; border: none; background: none; color: var(--road); font-weight: 600; margin-top: 4px; }
+.install-chip { position: fixed; right: 12px; top: calc(70px + env(safe-area-inset-top, 0px)); z-index: 1100; background: var(--routix); color: #fff; border: none; border-radius: 999px; padding: 9px 14px; font-weight: 700; font-size: 14px; box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
+@media (prefers-reduced-motion: no-preference) { .sheet { animation: up .25s ease-out; } @keyframes up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } } }
 </style>
 </head>
 <body>
@@ -303,6 +317,7 @@ async function showTracking(token, isNew) {
     (b.rider_phone ? '<a class="btn" style="display:block; text-align:center; text-decoration:none;" href="tel:' + esc(b.rider_phone) + '">Call rider ' + esc(b.rider_name || '') + '</a>' : '') +
     (at <= 1 ? '<button class="btn" type="button" id="cxBtn" style="width:100%; margin-top:8px; color:#B91C1C; border-color:#FECACA;">Cancel booking</button>' : '')) +
     '<a class="btn" style="display:block; text-align:center; text-decoration:none; margin-top:8px;" href="' + location.pathname + '">Book another delivery</a></div>' + mineHtml(token);
+  if (isNew) setTimeout(function() { openInstallSheet(true, true); }, 1500);
   const cx = $('cxBtn');
   if (cx) cx.addEventListener('click', async function() {
     if (!confirm('Cancel this booking?')) return;
@@ -323,6 +338,61 @@ else {
   if (params.get('spot')) { $('spotBanner').hidden = false; $('spotBanner').textContent = 'Your rider is right here — fill the drop details and hand over the parcel.'; }
   if (params.get('lat') && params.get('lng')) { const la = Number(params.get('lat')), ln = Number(params.get('lng')); if (la && ln) { setPoint(1, la, ln, ''); reverse(1, la, ln); } }
 }
+
+// ===== Install the Routix app (strong but polite) + location for pickup =====
+let installEvt = null;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(function() {});
+window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); installEvt = e; showInstallChip(); });
+window.addEventListener('appinstalled', function() { try { localStorage.setItem('routix_installed', '1'); } catch (e) {} const c = document.getElementById('installChip'); if (c) c.remove(); });
+function installSnoozed() { try { return Date.now() < Number(localStorage.getItem('routix_install_snooze') || 0) || localStorage.getItem('routix_installed') === '1'; } catch (e) { return false; } }
+function showInstallChip() {
+  if (isStandalone || document.getElementById('installChip')) return;
+  const c = document.createElement('button'); c.id = 'installChip'; c.className = 'install-chip'; c.type = 'button'; c.textContent = '⬇ Install app';
+  c.addEventListener('click', function() { openInstallSheet(true); });
+  document.body.appendChild(c);
+}
+function openInstallSheet(force, afterBooking) {
+  if (isStandalone || (!force && installSnoozed()) || document.getElementById('installSheet')) return;
+  if (!installEvt && !isIOS) return; // browser can't install right now
+  const w = document.createElement('div'); w.className = 'sheet-bg'; w.id = 'installSheet';
+  w.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="insH"><div class="ic">R<span>X</span></div>' +
+    '<h3 id="insH">' + (afterBooking ? 'Track this delivery from your home screen' : 'Get the Routix app') + '</h3>' +
+    '<ul><li>Book a parcel in 2 taps next time</li><li>See your rider and delivery OTP any time</li><li>Free, small, no app store needed</li></ul>' +
+    (isIOS && !installEvt ? '<p style="margin:0 0 12px; font-weight:600;">On iPhone: tap the Share button <span aria-hidden="true">⬆</span> below, then "Add to Home Screen".</p><button class="go" type="button" id="insLater">Got it</button>' :
+      '<button class="go" type="button" id="insGo">Install Routix</button><button class="later" type="button" id="insLater">Not now</button>') + '</div>';
+  document.body.appendChild(w);
+  const close = function() { w.remove(); try { localStorage.setItem('routix_install_snooze', String(Date.now() + 3 * 864e5)); } catch (e) {} };
+  w.querySelector('#insLater').addEventListener('click', close);
+  w.addEventListener('click', function(e) { if (e.target === w) close(); });
+  const go = w.querySelector('#insGo');
+  if (go) go.addEventListener('click', async function() { w.remove(); if (!installEvt) return; installEvt.prompt(); const r = await installEvt.userChoice; installEvt = null; if (r.outcome !== 'accepted') { try { localStorage.setItem('routix_install_snooze', String(Date.now() + 3 * 864e5)); } catch (e) {} } });
+}
+// first visit: offer install after a few seconds (not while typing)
+setTimeout(function() { const a = document.activeElement; if (!a || (a.tagName !== 'INPUT' && a.tagName !== 'TEXTAREA')) openInstallSheet(false); }, 6000);
+if (isIOS && !isStandalone) showInstallChip();
+
+// Location: if already allowed, set the pickup pin quietly; otherwise ask once with a friendly card
+function locateForPickup(silent) {
+  if (!navigator.geolocation || pts[1]) return;
+  navigator.geolocation.getCurrentPosition(function(p) { if (!pts[1]) { setPoint(1, p.coords.latitude, p.coords.longitude, ''); reverse(1, p.coords.latitude, p.coords.longitude); } },
+    function() { if (!silent) $('err').textContent = 'Location is off. Search your pickup place or tap the map.'; }, { enableHighAccuracy: true, timeout: 10000 });
+}
+(async function askLocation() {
+  if (params.get('t') || params.get('lat')) return;
+  let state = 'prompt';
+  try { if (navigator.permissions) state = (await navigator.permissions.query({ name: 'geolocation' })).state; } catch (e) {}
+  if (state === 'granted') return locateForPickup(true);
+  if (state === 'denied') return;
+  try { if (localStorage.getItem('routix_loc_asked') === '1') return; } catch (e) {}
+  const w = document.createElement('div'); w.className = 'sheet-bg';
+  w.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="locH"><h3 id="locH">Pick up from where you are?</h3><p style="margin:0 0 14px; color:#44403C;">Allow location and we put the pickup pin at your door. You can still move it.</p><button class="go" type="button" id="locGo">Allow location</button><button class="later" type="button" id="locNo">I\'ll choose on the map</button></div>';
+  document.body.appendChild(w);
+  const done = function() { w.remove(); try { localStorage.setItem('routix_loc_asked', '1'); } catch (e) {} };
+  w.querySelector('#locGo').addEventListener('click', function() { done(); locateForPickup(false); });
+  w.querySelector('#locNo').addEventListener('click', done);
+})();
 </script>
 </body>
 </html>
