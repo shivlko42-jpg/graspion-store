@@ -930,6 +930,9 @@ async function loadRoutixBookings() {
     let act = '';
     if (b.status === 'open') act = '<button data-rbaccept="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#ea580c; color:#fff; font-size:16px; font-weight:800;">Accept · earn ' + rbMoney(b.rider_pay) + '</button>';
     else if (mine && b.status === 'assigned') act = (Number(b.collect_at_pickup) > 0 ? '<div style="background:#fef3c7; color:#92400e; border-radius:10px; padding:10px; font-size:15px; font-weight:800; margin-bottom:8px;">Collect ' + rbMoney(b.collect_at_pickup) + ' from the sender</div>' : '') + '<button data-rbpicked="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#d97706; color:#fff; font-size:16px; font-weight:800;">I have picked up the parcel</button>';
+    else if (mine && b.status === 'returning') act = '<div style="background:#ede9fe; color:#5b21b6; border-radius:10px; padding:10px; font-size:15px; font-weight:800; margin-bottom:8px;">🔁 Delivered — now take the reply / receipt back to ' + rbEsc(b.pickup_name) + '</div>' +
+      '<input data-rbretotp="' + b.id + '" inputmode="numeric" maxlength="4" placeholder="Sender\'s OTP" aria-label="Sender OTP" style="width:100%; box-sizing:border-box; padding:14px; border-radius:12px; border:2px solid #a78bfa; background:#fff; color:#111827; font-size:22px; font-weight:800; letter-spacing:6px; text-align:center; margin-bottom:8px;">' +
+      '<button data-rbreturned="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#5b21b6; color:#fff; font-size:16px; font-weight:800;">Returned to sender — finish</button>';
     else if (mine && b.status === 'picked') act = (Number(b.collect_at_drop) > 0 ? '<div style="background:#fef3c7; color:#92400e; border-radius:10px; padding:10px; font-size:15px; font-weight:800; margin-bottom:8px;">Collect ' + rbMoney(b.collect_at_drop) + ' from the receiver</div>' : '') +
       '<input data-rbotp="' + b.id + '" inputmode="numeric" maxlength="4" placeholder="Receiver OTP" aria-label="Receiver OTP" style="width:100%; box-sizing:border-box; padding:14px; border-radius:12px; border:2px solid #a78bfa; background:#fff; color:#111827; font-size:22px; font-weight:800; letter-spacing:6px; text-align:center; margin-bottom:8px;">' +
       '<button data-rbdeliver="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#15803d; color:#fff; font-size:16px; font-weight:800;">Mark delivered</button>';
@@ -946,14 +949,23 @@ async function loadRoutixBookings() {
   }).join('');
 }
 document.addEventListener('click', async function(e) {
-  const a = e.target.closest && e.target.closest('[data-rbaccept]'), p = e.target.closest && e.target.closest('[data-rbpicked]'), d = e.target.closest && e.target.closest('[data-rbdeliver]');
-  if (!a && !p && !d) return;
-  const btn = a || p || d; btn.disabled = true;
+  const a = e.target.closest && e.target.closest('[data-rbaccept]'), p = e.target.closest && e.target.closest('[data-rbpicked]'), d = e.target.closest && e.target.closest('[data-rbdeliver]'), rt = e.target.closest && e.target.closest('[data-rbreturned]');
+  if (!a && !p && !d && !rt) return;
+  const btn = a || p || d || rt; btn.disabled = true;
+  if (rt) {
+    const rid = rt.getAttribute('data-rbreturned'); const otp = (document.querySelector('[data-rbretotp="' + rid + '"]') || {}).value || '';
+    const res2 = await rbCall('rider_routix_returned', { p_id: rid, p_otp: otp.trim() });
+    if (!res2 || !res2.ok) { alert((res2 && (res2.error || res2.message)) || 'Could not finish'); btn.disabled = false; return; }
+    alert('✅ Return trip finished. Earnings added to your wallet.');
+    loadRoutixBookings(); try { loadWallet(); } catch (err) {}
+    return;
+  }
   let res;
   if (a) res = await rbCall('rider_routix_accept', { p_id: a.getAttribute('data-rbaccept') });
   if (p) res = await rbCall('rider_routix_picked', { p_id: p.getAttribute('data-rbpicked') });
   if (d) { const id = d.getAttribute('data-rbdeliver'); const otp = (document.querySelector('[data-rbotp="' + id + '"]') || {}).value || ''; res = await rbCall('rider_routix_deliver', { p_id: id, p_otp: otp.trim() }); }
   if (!res || !res.ok) { alert((res && (res.error || res.message)) || 'Could not update'); btn.disabled = false; return; }
+  if (d && res.returning) { alert('✅ Delivered. Now take the reply back to the sender and ask for their OTP.' + (Number(res.collect) > 0 ? ' Keep ' + rbMoney(res.collect) + ' safe.' : '')); loadRoutixBookings(); return; }
   if (d) alert('✅ Delivered!' + (Number(res.collect) > 0 ? ' Keep ' + rbMoney(res.collect) + ' safe and deposit it at the office.' : ''));
   loadRoutixBookings(); try { loadWallet(); } catch (err) {}
 });

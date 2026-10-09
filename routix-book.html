@@ -334,6 +334,7 @@ async function showTracking(token, isNew) {
     (b.status === 'cancelled' ? '<p style="color:#B91C1C; font-weight:700;">This booking was cancelled.' + (b.cancel_reason ? ' ' + esc(b.cancel_reason) : '') + '</p>' :
     '<div class="otp"><span>Delivery OTP<br><small style="color:#44403C;">Send it to the receiver</small></span><b>' + esc(b.drop_otp) + '</b></div>' +
     '<a class="wa" target="_blank" rel="noopener" href="' + share + '">Send OTP to receiver on WhatsApp</a>' +
+    (b.return_trip && b.return_otp ? '<div class="otp" style="background:#EDE9FE;"><span>Return OTP<br><small style="color:#44403C;">Give it to the rider when they bring the reply back</small></span><b>' + esc(b.return_otp) + '</b></div>' : '') +
     '<ol class="timeline">' + steps.map(function(s, i) { return '<li class="' + (i <= at ? 'on' : '') + (i === at ? ' now' : '') + '">' + s[0] + (i <= at && s[2] ? ' · ' + t(s[2]) : '') + (i <= at && s[1] ? '<small>' + esc(s[1]) + '</small>' : '') + '</li>'; }).join('') + '</ol>' +
     (b.rider_phone ? '<a class="btn" style="display:block; text-align:center; text-decoration:none;" href="tel:' + esc(b.rider_phone) + '">Call rider ' + esc(b.rider_name || '') + '</a>' : '') +
     (at <= 1 ? '<button class="btn" type="button" id="cxBtn" style="width:100%; margin-top:8px; color:#B91C1C; border-color:#FECACA;">Cancel booking</button>' : '')) +

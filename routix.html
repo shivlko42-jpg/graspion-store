@@ -304,9 +304,9 @@ async function loadBookings() {
   renderBookings();
 }
 function renderBookings() {
-  const want = currentTab === 'running' ? ['assigned', 'picked'] : [currentTab];
+  const want = currentTab === 'running' ? ['assigned', 'picked', 'returning'] : [currentTab];
   const list = allBookings.filter(function(b) { return want.indexOf(b.status) !== -1; });
-  const words = { requested: 'New from website — call to confirm', open: 'Waiting for a rider', assigned: 'Rider going to pick up', picked: 'Picked up, on the way', delivered: 'Delivered', cancelled: 'Cancelled' };
+  const words = { returning: 'Delivered, coming back to sender', requested: 'New from website — call to confirm', open: 'Waiting for a rider', assigned: 'Rider going to pick up', picked: 'Picked up, on the way', delivered: 'Delivered', cancelled: 'Cancelled' };
   const modes = { collect_at_pickup: 'charge collected at pickup', collect_at_drop: 'charge collected at drop', paid_at_booking: 'charge already paid', client_account: 'billed to sender monthly' };
   if (!list.length) { $('bookingList').innerHTML = '<div class="empty">' + (currentTab === 'requested' ? 'No new website bookings. Share graspion.in/routix-book.html with customers.' : currentTab === 'open' ? 'No bookings waiting. New ones from the form above appear here.' : 'Nothing here yet.') + '</div>'; return; }
   $('bookingList').innerHTML = list.map(function(b) {

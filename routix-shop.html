@@ -125,12 +125,13 @@ function render() {
 }
 function bookingsHtml() {
   if (!info.bookings.length) return '<p class="hint">Your parcels will show here.</p>';
-  const words = { requested: 'Booked', open: 'Finding rider', assigned: 'Rider coming', picked: 'On the way', delivered: 'Delivered', cancelled: 'Cancelled' };
+  const words = { requested: 'Booked', open: 'Finding rider', assigned: 'Rider coming', picked: 'On the way', returning: 'Coming back to you', delivered: 'Delivered', cancelled: 'Cancelled' };
   return info.bookings.map(function(b) {
     const share = 'https://wa.me/91' + String(b.drop_phone).slice(-10) + '?text=' + encodeURIComponent('Routix hai na, pahuncha denge! Your parcel from ' + info.name + ' is on its way. Tell the rider this OTP only when you get it: ' + b.drop_otp + '. Track: ' + location.origin + '/routix-book.html?t=' + b.track_token);
     return '<div class="ticket"><div class="row"><b>' + esc(b.drop_name) + '</b><span class="pill ' + b.status + '">' + words[b.status] + (b.rider ? ' · ' + esc(b.rider) : '') + '</span></div>' +
       '<div class="small">' + esc(b.booking_no) + ' · ' + rs(b.charge) + (b.payment_mode === 'client_account' ? ' on khaata' : ' from receiver') + (Number(b.goods_cod) ? ' · goods cash ' + rs(b.goods_cod) + (b.goods_back ? ' (received)' : '') : '') + (b.return_trip ? ' · return trip' : '') + (b.scheduled_at ? ' · pickup ' + new Date(b.scheduled_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '') + '</div>' +
-      (b.status !== 'delivered' && b.status !== 'cancelled' ? '<a class="wa" target="_blank" rel="noopener" href="' + share + '">Send OTP ' + esc(b.drop_otp) + ' to customer</a>' : '') + '</div>';
+      (b.status !== 'delivered' && b.status !== 'cancelled' ? '<a class="wa" target="_blank" rel="noopener" href="' + share + '">Send OTP ' + esc(b.drop_otp) + ' to customer</a>' : '') +
+      (b.return_trip && b.return_otp && b.status !== 'delivered' && b.status !== 'cancelled' ? '<div class="small" style="margin-top:6px; font-weight:700; color:#5b21b6;">🔁 Return OTP: <b style="font-size:16px; letter-spacing:3px;">' + esc(b.return_otp) + '</b> — tell the rider only when they bring the reply back to you</div>' : '') + '</div>';
   }).join('');
 }
 
