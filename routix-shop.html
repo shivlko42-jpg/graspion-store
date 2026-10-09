@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="only light">
+<meta name="robots" content="noindex">
+<title>Routix Khaata — your shop's delivery account</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@700;800&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#1C1917">
+<style>
+:root { color-scheme: only light; --asphalt: #1C1917; --road: #44403C; --paper: #FAFAF9; --line: #E7E5E4; --routix: #EA580C; --routix-dark: #9A3412; --done: #15803D; --stop: #B91C1C; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--asphalt); font-family: 'Barlow', system-ui, sans-serif; font-size: 16px; line-height: 1.45; }
+button, input, select, textarea { font-family: inherit; font-size: 16px; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--routix); outline-offset: 2px; }
+.top { background: var(--asphalt); color: #fff; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 16px; }
+.top .in { max-width: 680px; margin: 0 auto; }
+.brand { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 800; font-size: 15px; letter-spacing: 1px; color: #D6D3D1; }
+.brand span { color: var(--routix); }
+.shop { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 800; font-size: 28px; line-height: 1.1; margin-top: 2px; }
+.tagline { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 700; font-size: 14px; color: #FED7AA; }
+main { max-width: 680px; margin: 0 auto; padding: 14px 16px 48px; }
+/* khaata strip */
+.strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: -2px 0 14px; }
+.tile { background: #fff; border: 1.5px solid var(--line); border-radius: 14px; padding: 12px; }
+.tile b { display: block; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 28px; line-height: 1.05; }
+.tile small { color: var(--road); font-size: 13.5px; }
+.tile.cash { border-color: #86EFAC; background: #F0FDF4; } .tile.cash b { color: var(--done); }
+.tile.due b { color: var(--routix-dark); }
+.limit { height: 6px; background: #F5F5F4; border-radius: 999px; overflow: hidden; margin-top: 6px; } .limit i { display: block; height: 6px; background: var(--routix); }
+.panel { background: #fff; border: 1.5px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+.panel h2 { margin: 0 0 4px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 22px; font-weight: 800; }
+.hint { font-size: 14px; color: var(--road); margin: 0 0 12px; }
+.from { display: flex; gap: 10px; align-items: flex-start; background: #FFF7ED; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; font-size: 14.5px; }
+.from .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--routix); margin-top: 4px; flex-shrink: 0; }
+.drop { border: 1.5px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 10px; position: relative; }
+.drop h3 { margin: 0 0 8px; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+.drop h3 button { background: none; border: none; color: var(--stop); font-weight: 600; font-size: 14px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+label.f { display: block; font-size: 14px; font-weight: 600; color: var(--road); margin-bottom: 8px; }
+label.f input, label.f select { display: block; width: 100%; margin-top: 4px; padding: 11px 12px; border: 1.5px solid #D6D3D1; border-radius: 10px; background: #fff; color: var(--asphalt); }
+.full { grid-column: 1 / -1; }
+.search { position: relative; }
+.sugg { position: absolute; left: 0; right: 0; top: 100%; z-index: 30; background: #fff; border: 1.5px solid #D6D3D1; border-radius: 10px; margin-top: 4px; max-height: 220px; overflow-y: auto; }
+.sugg button { display: block; width: 100%; text-align: left; background: #fff; border: none; border-bottom: 1px solid var(--line); padding: 10px 12px; font-size: 14.5px; color: var(--asphalt); }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14.5px; font-weight: 600; margin: 2px 0 6px; }
+.dprice { font-size: 14.5px; font-weight: 700; color: var(--routix-dark); }
+.add { width: 100%; border: 1.5px dashed #D6D3D1; background: #fff; border-radius: 12px; padding: 12px; font-weight: 700; color: var(--asphalt); }
+.when { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+.when label { flex: 1; min-width: 130px; display: flex; gap: 8px; align-items: center; border: 1.5px solid #D6D3D1; border-radius: 12px; padding: 11px; font-weight: 600; }
+.when label:has(input:checked) { border-color: var(--routix); background: #FFF7ED; }
+.total { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--asphalt); color: #fff; border-radius: 14px; padding: 12px 14px; margin-top: 10px; }
+.total .p { font-family: 'Barlow Semi Condensed', sans-serif; font-size: 30px; font-weight: 800; line-height: 1; }
+.total small { display: block; color: #D6D3D1; font-size: 13px; }
+.book { height: 50px; padding: 0 20px; border: none; border-radius: 12px; background: var(--routix); color: #fff; font-size: 17px; font-weight: 700; }
+.book:disabled { background: #57534E; color: #A8A29E; }
+.err { color: var(--stop); font-weight: 600; font-size: 14.5px; min-height: 20px; margin-top: 8px; }
+.ticket { border-bottom: 1px solid var(--line); padding: 10px 0; }
+.ticket .row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.pill { font-size: 12.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #F5F5F4; color: var(--road); white-space: nowrap; }
+.pill.open, .pill.assigned, .pill.picked { background: #FEF3C7; color: #92400E; } .pill.delivered { background: #DCFCE7; color: var(--done); } .pill.cancelled { background: #F5F5F4; }
+.small { font-size: 13.5px; color: var(--road); }
+.wa { display: inline-block; text-decoration: none; background: #DCFCE7; border: 1.5px solid #86EFAC; color: #14532D; border-radius: 10px; padding: 7px 10px; font-weight: 700; font-size: 14px; margin-top: 6px; }
+.center { text-align: center; padding: 60px 20px; }
+</style>
+</head>
+<body>
+<header class="top"><div class="in"><div class="brand">ROUTI<span>X</span> KHAATA</div><div class="shop" id="shopName">…</div><div class="tagline">Routix hai na, pahuncha denge.</div></div></header>
+<main id="app">
+  <div class="center" id="loading">Loading your khaata…</div>
+</main>
+<script>
+const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
+const TOKEN = new URLSearchParams(location.search).get('k') || '';
+const $ = function(id) { return document.getElementById(id); };
+const rs = function(v) { return '₹' + Math.round(Number(v || 0)).toLocaleString('en-IN'); };
+const esc = function(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+async function rpc(name, body) {
+  const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  const d = await r.json().catch(function() { return null; });
+  if (!r.ok) throw new Error((d && (d.message || d.error)) || 'Network error');
+  return d;
+}
+let info = null, drops = [], dropSeq = 0;
+
+async function load() {
+  if (!TOKEN) { $('app').innerHTML = '<div class="center">Open the khaata link Routix sent you on WhatsApp.</div>'; return; }
+  try { info = await rpc('shop_portal_info', { p_token: TOKEN }); } catch (e) { $('app').innerHTML = '<div class="center">Could not open your khaata. Check internet and refresh.</div>'; return; }
+  if (!info.ok) { $('app').innerHTML = '<div class="center">' + esc(info.error) + '</div>'; $('shopName').textContent = 'Routix'; return; }
+  $('shopName').textContent = info.name;
+  document.title = info.name + ' — Routix Khaata';
+  render();
+}
+function render() {
+  const used = Math.min(100, Math.round(Number(info.khaata_due) / Number(info.credit_limit || 1) * 100));
+  $('app').innerHTML =
+    '<section class="strip" aria-label="Your khaata today">' +
+      '<div class="tile cash"><b>' + rs(info.cash_to_get_today) + '</b><small>your goods cash to get back today' + (Number(info.cash_on_the_way) ? ' · ' + rs(info.cash_on_the_way) + ' still on the way' : '') + '</small></div>' +
+      '<div class="tile due"><b>' + rs(info.khaata_due) + '</b><small>delivery charges on your khaata (limit ' + rs(info.credit_limit) + ')</small><div class="limit"><i style="width:' + used + '%"></i></div></div>' +
+      '<div class="tile"><b>' + info.today_deliveries + '</b><small>parcels booked today</small></div>' +
+      '<div class="tile"><b>' + info.month_deliveries + '</b><small>delivered this month' + (info.preferred_rider ? ' · your rider ' + esc(info.preferred_rider) : '') + '</small></div>' +
+    '</section>' +
+    '<section class="panel" aria-labelledby="sendH"><h2 id="sendH">Send parcels</h2><p class="hint">Add one or many customers. Your rider picks all of them up together.</p>' +
+      '<div class="from"><span class="dot" aria-hidden="true"></span><div><b>Pick up from your shop</b><br><span class="small">' + esc(info.address) + '</span></div></div>' +
+      '<div id="drops"></div>' +
+      '<button class="add" type="button" id="addDrop">+ Add another customer</button>' +
+      '<div class="when" role="radiogroup" aria-label="Pickup time"><label><input type="radio" name="when" value="now" checked> Pick up now</label><label><input type="radio" name="when" value="later"> Later</label></div>' +
+      '<label class="f" id="laterBox" hidden>Pickup time<input type="datetime-local" id="laterAt"></label>' +
+      '<div class="total"><div><div class="p" id="totalP">₹0</div><small id="totalS">choose the delivery places</small></div><button class="book" id="bookBtn" type="button" disabled>Book</button></div>' +
+      '<div class="err" id="err" role="alert"></div>' +
+    '</section>' +
+    '<section class="panel" aria-labelledby="recentH"><h2 id="recentH">Your deliveries</h2>' + bookingsHtml() + '</section>' +
+    (info.bills && info.bills.length ? '<section class="panel" aria-labelledby="billH"><h2 id="billH">Bills</h2>' + info.bills.map(function(b) { return '<div class="ticket"><div class="row"><b>' + esc(b.no) + '</b><span class="pill ' + (b.status === 'settled' ? 'delivered' : 'open') + '">' + (b.status === 'settled' ? 'Paid' : 'To pay') + '</span></div><div class="small">' + b.deliveries + ' deliveries · ' + rs(b.amount) + ' · ' + new Date(b.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + '</div></div>'; }).join('') + '</section>' : '') +
+    '<p class="small" style="text-align:center;">Need help? <a href="https://wa.me/918004873819" target="_blank" rel="noopener">WhatsApp Routix</a></p>';
+  drops = []; addDrop();
+  $('addDrop').addEventListener('click', function() { if (drops.length >= 10) return; addDrop(); });
+  document.querySelectorAll('input[name="when"]').forEach(function(r) { r.addEventListener('change', function() { $('laterBox').hidden = document.querySelector('input[name="when"]:checked').value !== 'later'; }); });
+  $('bookBtn').addEventListener('click', book);
+}
+function bookingsHtml() {
+  if (!info.bookings.length) return '<p class="hint">Your parcels will show here.</p>';
+  const words = { requested: 'Booked', open: 'Finding rider', assigned: 'Rider coming', picked: 'On the way', delivered: 'Delivered', cancelled: 'Cancelled' };
+  return info.bookings.map(function(b) {
+    const share = 'https://wa.me/91' + String(b.drop_phone).slice(-10) + '?text=' + encodeURIComponent('Routix hai na, pahuncha denge! Your parcel from ' + info.name + ' is on its way. Tell the rider this OTP only when you get it: ' + b.drop_otp + '. Track: ' + location.origin + '/routix-book.html?t=' + b.track_token);
+    return '<div class="ticket"><div class="row"><b>' + esc(b.drop_name) + '</b><span class="pill ' + b.status + '">' + words[b.status] + (b.rider ? ' · ' + esc(b.rider) : '') + '</span></div>' +
+      '<div class="small">' + esc(b.booking_no) + ' · ' + rs(b.charge) + (b.payment_mode === 'client_account' ? ' on khaata' : ' from receiver') + (Number(b.goods_cod) ? ' · goods cash ' + rs(b.goods_cod) + (b.goods_back ? ' (received)' : '') : '') + (b.return_trip ? ' · return trip' : '') + (b.scheduled_at ? ' · pickup ' + new Date(b.scheduled_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '') + '</div>' +
+      (b.status !== 'delivered' && b.status !== 'cancelled' ? '<a class="wa" target="_blank" rel="noopener" href="' + share + '">Send OTP ' + esc(b.drop_otp) + ' to customer</a>' : '') + '</div>';
+  }).join('');
+}
+
+// ---------- drops ----------
+function addDrop() {
+  const id = ++dropSeq, d = { id: id, lat: null, lng: null, place: '', price: null };
+  drops.push(d);
+  const el = document.createElement('div'); el.className = 'drop'; el.id = 'drop' + id;
+  el.innerHTML = '<h3>Customer ' + drops.length + (drops.length > 1 ? '<button type="button" data-rm="' + id + '">Remove</button>' : '') + '</h3>' +
+    '<div class="grid2"><label class="f">Name<input data-k="drop_name"></label><label class="f">Mobile<input data-k="drop_phone" inputmode="tel" maxlength="14"></label></div>' +
+    '<div class="search"><label class="f">Area / landmark<input data-k="place" placeholder="Search, e.g. Vipul Khand" autocomplete="off"></label><div class="sugg" hidden></div></div>' +
+    '<label class="f">House no., floor<input data-k="house"></label>' +
+    '<div class="grid2"><label class="f">Weight<select data-k="weight_kg"><option value="1">Up to 1 kg</option><option value="5">1–5 kg</option><option value="10">5–10 kg</option><option value="20">10–20 kg</option></select></label>' +
+    '<label class="f">Delivery charge<select data-k="payment_mode"><option value="client_account">Add to my khaata</option><option value="collect_at_drop">Customer pays rider</option></select></label>' +
+    '<label class="f">Goods cash to collect (₹)<input data-k="goods_cod" type="number" min="0" placeholder="0 if paid"></label>' +
+    '<label class="f">Item<input data-k="item_desc" placeholder="e.g. medicines"></label></div>' +
+    '<label class="check"><input type="checkbox" data-k="return_trip"> Bring something back to my shop (return trip)</label>' +
+    '<div class="dprice" aria-live="polite">Choose the area to see the price</div>';
+  $('drops').appendChild(el);
+  const inp = el.querySelector('[data-k="place"]'), box = el.querySelector('.sugg'); let t = null;
+  inp.addEventListener('input', function() {
+    d.lat = null; refreshTotal(); clearTimeout(t);
+    const q = inp.value.trim(); if (q.length < 3) { box.hidden = true; return; }
+    t = setTimeout(async function() {
+      try {
+        const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=in&viewbox=80.75,27.05,81.15,26.65&bounded=0&q=' + encodeURIComponent(q + ', Lucknow'));
+        const list = await r.json();
+        box.innerHTML = list.length ? list.map(function(x, i) { return '<button type="button" data-i="' + i + '">' + esc(x.display_name.split(',').slice(0, 4).join(',')) + '</button>'; }).join('') : '<button type="button" disabled>No match — try a nearby landmark</button>';
+        box.hidden = false;
+        box.querySelectorAll('[data-i]').forEach(function(b) { b.addEventListener('click', function() { const x = list[Number(b.getAttribute('data-i'))]; d.lat = Number(x.lat); d.lng = Number(x.lon); d.place = x.display_name.split(',').slice(0, 3).join(','); inp.value = d.place; box.hidden = true; quote(d); }); });
+      } catch (e) { box.hidden = true; }
+    }, 600);
+  });
+  el.querySelectorAll('[data-k="weight_kg"],[data-k="return_trip"],[data-k="payment_mode"]').forEach(function(x) { x.addEventListener('change', function() { quote(d); }); });
+  const rm = el.querySelector('[data-rm]');
+  if (rm) rm.addEventListener('click', function() { drops = drops.filter(function(x) { return x.id !== id; }); el.remove(); refreshTotal(); });
+}
+function val(d, k) { const el = document.querySelector('#drop' + d.id + ' [data-k="' + k + '"]'); return el ? (el.type === 'checkbox' ? el.checked : el.value.trim()) : ''; }
+async function quote(d) {
+  const out = document.querySelector('#drop' + d.id + ' .dprice');
+  if (d.lat == null) { out.textContent = 'Choose the area to see the price'; d.price = null; refreshTotal(); return; }
+  try {
+    const q = await rpc('shop_portal_quote', { p_token: TOKEN, p_drop_lat: d.lat, p_drop_lng: d.lng, p_kg: Number(val(d, 'weight_kg')), p_return: !!val(d, 'return_trip') });
+    if (!q.ok) { out.textContent = q.error; d.price = null; } else { d.price = q.charge; out.textContent = rs(q.charge) + ' · about ' + q.km + ' km' + (val(d, 'payment_mode') === 'client_account' ? ' · on your khaata' : ' · customer pays'); }
+  } catch (e) { out.textContent = e.message; d.price = null; }
+  refreshTotal();
+}
+function refreshTotal() {
+  const ready = drops.filter(function(d) { return d.price != null; });
+  const onKhaata = ready.filter(function(d) { return val(d, 'payment_mode') === 'client_account'; }).reduce(function(t, d) { return t + d.price; }, 0);
+  const total = ready.reduce(function(t, d) { return t + d.price; }, 0);
+  $('totalP').textContent = rs(total);
+  $('totalS').textContent = drops.length + (drops.length > 1 ? ' customers' : ' customer') + (onKhaata ? ' · ' + rs(onKhaata) + ' on khaata' : '');
+  $('bookBtn').disabled = !drops.length || ready.length !== drops.length;
+}
+
+// ---------- book ----------
+async function book() {
+  $('err').textContent = '';
+  const later = document.querySelector('input[name="when"]:checked').value === 'later';
+  if (later && !$('laterAt').value) { $('err').textContent = 'Choose the pickup time.'; return; }
+  const payload = { drops: drops.map(function(d) { return {
+    drop_name: val(d, 'drop_name'), drop_phone: val(d, 'drop_phone'), drop_address: (val(d, 'house') ? val(d, 'house') + ', ' : '') + d.place,
+    drop_lat: d.lat, drop_lng: d.lng, weight_kg: val(d, 'weight_kg'), payment_mode: val(d, 'payment_mode'), goods_cod: val(d, 'goods_cod'),
+    item_desc: val(d, 'item_desc'), return_trip: !!val(d, 'return_trip') }; }),
+    scheduled_at: later ? new Date($('laterAt').value).toISOString() : '' };
+  const btn = $('bookBtn'); btn.disabled = true; btn.textContent = 'Booking…';
+  try {
+    const r = await rpc('shop_portal_book', { p_token: TOKEN, p: payload });
+    if (!r.ok) { $('err').textContent = r.error; return; }
+    info = await rpc('shop_portal_info', { p_token: TOKEN });
+    render();
+    const msg = document.createElement('div');
+    msg.setAttribute('role', 'status');
+    msg.style.cssText = 'background:#F0FDF4; border:1.5px solid #86EFAC; border-radius:14px; padding:12px 14px; margin-bottom:14px; font-weight:600;';
+    msg.innerHTML = '✅ ' + r.bookings.length + (r.bookings.length > 1 ? ' parcels booked' : ' parcel booked') + (later ? ' for later' : ' — rider is being called') + '. Send each customer their OTP below.';
+    $('app').insertBefore(msg, $('app').firstChild);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (e) { $('err').textContent = e.message; }
+  finally { const b = $('bookBtn'); if (b) { b.textContent = 'Book'; } }
+}
+load();
+setInterval(async function() { if (document.visibilityState !== 'visible' || !info || !info.ok) return; try { const fresh = await rpc('shop_portal_info', { p_token: TOKEN }); if (fresh.ok) { info.bookings = fresh.bookings; info.cash_to_get_today = fresh.cash_to_get_today; const sec = $('recentH'); if (sec) sec.parentElement.innerHTML = '<h2 id="recentH">Your deliveries</h2>' + bookingsHtml(); } } catch (e) {} }, 30000);
+</script>
+</body>
+</html>

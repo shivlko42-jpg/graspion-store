@@ -118,6 +118,12 @@ label.f textarea { resize: vertical; }
       <div class="money" id="stMonth"></div>
     </section>
 
+    <section class="panel" aria-labelledby="shopsH">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><h2 id="shopsH">🏪 Shops on Routix Khaata</h2><button class="btn" type="button" id="addShopBtn">+ Add shop</button></div>
+      <p class="hint">Regular shops get their own booking link, a monthly bill and the same rider. Their goods cash goes back the same day.</p>
+      <div id="shopList"></div>
+    </section>
+
     <section class="panel" aria-labelledby="newH">
       <h2 id="newH">Book a delivery</h2>
       <p class="hint">For a call or WhatsApp request. Online Routix riders see it straight away in their app, or you can give it to one rider below.</p>
@@ -218,7 +224,7 @@ $('logoutBtn').addEventListener('click', async function() { await sb.auth.signOu
 sb.auth.onAuthStateChange(function(ev, s) { if (s) token = s.access_token; });
 
 // ---------- dashboard ----------
-async function refreshAll() { await Promise.all([loadDashboard(), loadBookings()]); }
+async function refreshAll() { await Promise.all([loadDashboard(), loadBookings()]); loadShops(); }
 async function loadDashboard() {
   try {
     const d = await rpc('routix_dashboard');
@@ -303,7 +309,7 @@ function renderBookings() {
     if (b.status !== 'delivered' && b.status !== 'cancelled') actions += '<a class="btn wa" target="_blank" rel="noopener" href="' + waLink(b) + '">OTP to receiver</a><button class="btn stop" data-cancel="' + b.id + '" type="button">Cancel</button>';
     if (b.status === 'delivered' && Number(b.goods_cod) > 0 && !b.goods_cod_returned_at) actions += '<button class="btn" data-goodsback="' + b.id + '" type="button">Mark ' + rs(b.goods_cod) + ' handed to sender</button>';
     return '<article class="ticket">' +
-      '<div class="head"><span class="no">' + esc(b.booking_no) + (b.source === 'web' ? ' <small style="font-size:13px; color:#9A3412;">website</small>' : (b.source === 'rider_spot' ? ' <small style="font-size:13px; color:#9A3412;">booked by rider on the spot</small>' : '')) + (b.ref_rider_name ? ' <small style="font-size:13px; color:#15803D;">customer of ' + esc(b.ref_rider_name) + '</small>' : '') + '</span><span class="pill s-' + b.status + '">' + words[b.status] + (b.rider_name ? ': ' + esc(b.rider_name) : '') + '</span></div>' +
+      '<div class="head"><span class="no">' + esc(b.booking_no) + (b.source === 'web' ? ' <small style="font-size:13px; color:#9A3412;">website</small>' : (b.source === 'rider_spot' ? ' <small style="font-size:13px; color:#9A3412;">booked by rider on the spot</small>' : (b.source === 'shop' ? ' <small style="font-size:13px; color:#9A3412;">khaata: ' + esc(b.pickup_name) + '</small>' : ''))) + (b.ref_rider_name ? ' <small style="font-size:13px; color:#15803D;">customer of ' + esc(b.ref_rider_name) + '</small>' : '') + '</span><span class="pill s-' + b.status + '">' + words[b.status] + (b.rider_name ? ': ' + esc(b.rider_name) : '') + '</span></div>' +
       '<div class="route"><div class="end"><b>' + esc(b.pickup_name) + '</b><span>' + esc(b.pickup_address) + '</span></div><div class="km">' + b.distance_km + ' km</div><div class="end" style="text-align:right;"><b>' + esc(b.drop_name) + '</b><span>' + esc(b.drop_address) + '</span></div></div>' +
       '<div class="facts">' + rs(b.charge) + ', ' + modes[b.payment_mode] + (Number(b.goods_cod) > 0 ? ', plus goods cash ' + rs(b.goods_cod) + (b.goods_cod_returned_at ? ' (handed back)' : '') : '') + '. Rider earns ' + rs(b.rider_pay) + '.' + (b.item_desc ? ' Item: ' + esc(b.item_desc) + ', ' + b.weight_kg + ' kg.' : '') + (b.cancel_reason ? ' Reason: ' + esc(b.cancel_reason) : '') + '</div>' +
       (actions ? '<div class="actions">' + actions + '</div>' : '') + '</article>';
@@ -332,6 +338,69 @@ document.addEventListener('click', async function(e) {
     try { const d = await rpc('routix_mark_goods_cod_returned', { p_id: g.getAttribute('data-goodsback'), p_ref: ref }); toast(d.ok ? 'Marked as handed back' : 'Could not update'); } catch (err) { toast(err.message); }
     refreshAll();
   }
+});
+
+// ===== Routix Khaata: shops =====
+let shops = [];
+async function loadShops() {
+  try { shops = await rpc('routix_clients_list') || []; } catch (e) { $('shopList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
+  if (!shops.length) { $('shopList').innerHTML = '<div class="empty">No shops yet. Add the first one — a medical store, kirana or bakery that sends parcels often.</div>'; return; }
+  $('shopList').innerHTML = shops.map(function(c) {
+    const link = location.origin + '/routix-shop.html?k=' + c.portal_token;
+    const wa = 'https://wa.me/91' + String(c.contact_phone).slice(-10) + '?text=' + encodeURIComponent('Namaste ' + c.name + '! Aapka Routix Khaata taiyaar hai. Isi link se parcel book karein, delivery charge mahine ke bill mein judega, aur saamaan ka cash usi din wapas milega:\n' + link + '\nRoutix hai na, pahuncha denge!');
+    return '<article class="ticket"><div class="head"><span class="no">' + esc(c.name) + '</span><span class="pill ' + (c.status === 'active' ? 's-delivered' : 's-cancelled') + '">' + (c.status === 'active' ? 'Active' : 'Paused') + '</span></div>' +
+      '<div class="facts">' + esc(c.address) + ' · ' + esc(c.contact_phone) + (c.preferred_rider ? ' · rider ' + esc(c.preferred_rider) : '') + '</div>' +
+      '<div class="facts" style="margin-top:4px;">This month <b>' + c.month_deliveries + '</b> delivered · to bill <b>' + rs(c.unbilled) + '</b> of ' + rs(c.credit_limit) + ' limit' + (Number(c.cash_to_return) ? ' · <b style="color:#B91C1C;">goods cash to hand back ' + rs(c.cash_to_return) + '</b>' : '') + '</div>' +
+      '<div class="actions"><a class="btn wa" target="_blank" rel="noopener" href="' + wa + '">Send khaata link</a><button class="btn" type="button" data-copy="' + esc(link) + '">Copy link</button><button class="btn" type="button" data-editshop="' + c.id + '">Edit</button>' +
+      (Number(c.unbilled) ? '<button class="btn" type="button" data-billshop="' + c.id + '">Make bill ' + rs(c.unbilled) + '</button>' : '') + '</div></article>';
+  }).join('');
+}
+function parseLatLng(t) {
+  t = String(t || '');
+  const m = t.match(/@(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || t.match(/[?&](?:q|query|ll)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || t.match(/^\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\s*$/);
+  return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
+}
+function openShopSheet(c) {
+  c = c || {};
+  const w = document.createElement('div');
+  w.setAttribute('role', 'dialog'); w.setAttribute('aria-modal', 'true'); w.setAttribute('aria-label', c.id ? 'Edit shop' : 'Add shop');
+  w.style.cssText = 'position:fixed; inset:0; background:rgba(28,25,23,0.55); z-index:40; display:flex; align-items:flex-end; justify-content:center;';
+  const riderOpts = '<option value="">Any rider</option>' + riders.map(function(r) { return '<option value="' + r.id + '"' + (r.id === c.preferred_rider_id ? ' selected' : '') + '>' + esc(r.name) + '</option>'; }).join('');
+  w.innerHTML = '<div style="background:#fff; width:100%; max-width:560px; max-height:92vh; overflow-y:auto; border-radius:20px 20px 0 0; padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));">' +
+    '<div style="font-family:Barlow Semi Condensed,sans-serif; font-size:22px; font-weight:800; margin-bottom:10px;">' + (c.id ? 'Edit shop' : 'Add a shop to Routix Khaata') + '</div>' +
+    '<div class="grid2"><label class="f">Shop name<input id="shName" value="' + esc(c.name || '') + '"></label><label class="f">Owner mobile<input id="shPhone" inputmode="tel" value="' + esc(c.contact_phone || '') + '"></label>' +
+    '<label class="f full">Address (pickup)<input id="shAddr" value="' + esc(c.address || '') + '"></label><label class="f">Pincode<input id="shPin" inputmode="numeric" maxlength="6" value="' + esc(c.pincode || '') + '"></label>' +
+    '<label class="f">Khaata limit (₹)<input id="shLimit" type="number" min="0" value="' + (c.credit_limit || 5000) + '"></label>' +
+    '<label class="f full">Shop location — paste a Google Maps link, or use your location while standing at the shop<input id="shLoc" placeholder="https://maps.google.com/… or 26.87, 80.99" value="' + (c.pickup_lat ? c.pickup_lat + ', ' + c.pickup_lng : '') + '"></label></div>' +
+    '<button class="btn" type="button" id="shHere" style="margin-bottom:10px;">📍 I am at the shop — use my location</button>' +
+    '<label class="f">Their regular rider (gets their parcels first)<select id="shRider">' + riderOpts + '</select></label>' +
+    (c.id ? '<label class="f">Status<select id="shStatus"><option value="active"' + (c.status === 'active' ? ' selected' : '') + '>Active</option><option value="paused"' + (c.status !== 'active' ? ' selected' : '') + '>Paused</option></select></label>' : '') +
+    '<div class="err-text" id="shErr" role="alert"></div>' +
+    '<div style="display:flex; gap:8px;"><button class="btn" type="button" id="shCancel" style="flex:1;">Cancel</button><button class="primary" type="button" id="shSave" style="flex:2;">' + (c.id ? 'Save' : 'Add shop') + '</button></div></div>';
+  document.body.appendChild(w);
+  w.querySelector('#shCancel').addEventListener('click', function() { w.remove(); });
+  w.querySelector('#shHere').addEventListener('click', function() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(function(p) { w.querySelector('#shLoc').value = p.coords.latitude.toFixed(6) + ', ' + p.coords.longitude.toFixed(6); }, function() { w.querySelector('#shErr').textContent = 'Could not get location — paste a Google Maps link instead.'; }, { enableHighAccuracy: true, timeout: 10000 });
+  });
+  w.querySelector('#shSave').addEventListener('click', async function() {
+    const ll = parseLatLng(w.querySelector('#shLoc').value);
+    if (!ll) { w.querySelector('#shErr').textContent = 'Set the shop location: paste a Google Maps link (with the pin) or use your location at the shop.'; return; }
+    try {
+      const d = await rpc('routix_client_save', { p: { id: c.id || '', name: w.querySelector('#shName').value, contact_phone: w.querySelector('#shPhone').value, address: w.querySelector('#shAddr').value,
+        pincode: w.querySelector('#shPin').value, pickup_lat: ll.lat, pickup_lng: ll.lng, preferred_rider_id: w.querySelector('#shRider').value, credit_limit: w.querySelector('#shLimit').value,
+        status: w.querySelector('#shStatus') ? w.querySelector('#shStatus').value : '' } });
+      if (!d.ok) { w.querySelector('#shErr').textContent = d.error || 'Could not save'; return; }
+      w.remove(); toast(c.id ? 'Shop saved' : 'Shop added — now send them their khaata link'); loadShops();
+    } catch (err) { w.querySelector('#shErr').textContent = err.message; }
+  });
+}
+$('addShopBtn').addEventListener('click', function() { openShopSheet(null); });
+document.addEventListener('click', async function(e) {
+  const cp = e.target.closest && e.target.closest('[data-copy]'), ed = e.target.closest && e.target.closest('[data-editshop]'), bl = e.target.closest && e.target.closest('[data-billshop]');
+  if (cp) { try { await navigator.clipboard.writeText(cp.getAttribute('data-copy')); toast('Link copied'); } catch (err) { prompt('Copy this link:', cp.getAttribute('data-copy')); } }
+  if (ed) openShopSheet(shops.find(function(x) { return x.id === ed.getAttribute('data-editshop'); }));
+  if (bl) { if (!confirm('Make the monthly bill for all delivered parcels on this khaata?')) return; try { const d = await rpc('routix_create_shop_bill', { p_client_id: bl.getAttribute('data-billshop') }); toast(d.ok ? 'Bill ' + d.statement_no + ': ' + rs(d.amount) + ' for ' + d.deliveries + ' deliveries' : d.error); } catch (err) { toast(err.message); } loadShops(); }
 });
 boot();
 </script>
