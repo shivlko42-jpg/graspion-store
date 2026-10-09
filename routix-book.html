@@ -179,7 +179,7 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
           <label><input type="radio" name="svc" value="express" checked> <span>⚡ <b>Express</b> — rider comes now <b id="pxExp" style="float:right;"></b></span></label>
           <label><input type="radio" name="svc" value="saver"> <span>🚌 <b>Saathi Saver</b> — next run <b id="saverSlot"></b>, save 30% <b id="pxSav" style="float:right;"></b></span></label>
         </div>
-        <label class="check" style="display:flex; gap:8px; align-items:flex-start; font-weight:600; margin:6px 0;"><input type="checkbox" id="bima" style="margin-top:3px;"> <span style="flex:1;">🛡️ <b>Parcel Bima</b> <span id="bimaFee"></span> — covers loss or damage up to the value you enter</span></label>
+        <label class="check" style="display:flex; gap:8px; align-items:flex-start; font-weight:600; margin:6px 0;"><input type="checkbox" id="bima" style="margin-top:3px;"> <span style="flex:1;">🛡️ <b>Parcel Suraksha</b> <span id="bimaFee"></span> — Routix pays back if your parcel is lost or damaged, up to the value you enter. <a href="routix-suraksha.html" target="_blank" rel="noopener">Rules</a></span></label>
         <label class="f" id="bimaBox" hidden>Value of the parcel (₹)<input type="number" id="bimaVal" min="1" placeholder="e.g. 2000"></label>
         <label class="f">🎁 Gift note for the receiver (optional)<textarea id="gift" rows="2" maxlength="200" placeholder="e.g. Happy Diwali! Love, Neha"></textarea></label>
 
@@ -298,7 +298,7 @@ function updateSummary() {
     $('saverSlot').textContent = lastQuote.saver_slot ? new Date(lastQuote.saver_slot).toLocaleString('en-IN', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—';
     $('bimaFee').textContent = '(+' + rs(lastQuote.insurance_fee) + ')';
     const tot = chosenTotal(), saver = document.querySelector('input[name="svc"]:checked').value === 'saver';
-    $('price').innerHTML = rs(tot) + '<small>' + (saver ? 'Saathi Saver · ' : 'Express · ') + 'about ' + lastQuote.km + ' km' + ($('bima').checked ? ' · with Bima' : '') + '</small>';
+    $('price').innerHTML = rs(tot) + '<small>' + (saver ? 'Saathi Saver · ' : 'Express · ') + 'about ' + lastQuote.km + ' km' + ($('bima').checked ? ' · with Suraksha' : '') + '</small>';
   }
   $('sumText').textContent = lastQuote && lastQuote.ok ? item + ', up to ' + kg + ' kg, about ' + lastQuote.km + ' km. ' + (pm === 'collect_at_pickup' ? 'Pay ' + rs(chosenTotal()) + ' to the rider at pickup.' : 'The receiver pays ' + rs(chosenTotal()) + ' at delivery.') : '';
 }
@@ -362,7 +362,8 @@ async function showTracking(token, isNew) {
     (b.rider_phone ? '<a class="btn" style="display:block; text-align:center; text-decoration:none;" href="tel:' + esc(b.rider_phone) + '">Call rider ' + esc(b.rider_name || '') + '</a>' : '') +
     (at <= 1 ? '<button class="btn" type="button" id="cxBtn" style="width:100%; margin-top:8px; color:#B91C1C; border-color:#FECACA;">Cancel booking</button>' : '')) +
     (b.service_type === 'saver' && b.scheduled_at && at < 3 ? '<p style="margin:10px 0 0; font-weight:600;">🚌 Saathi Saver run: pickup around ' + new Date(b.scheduled_at).toLocaleString('en-IN', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) + '</p>' : '') +
-    (b.insured ? '<p style="margin:6px 0 0; font-weight:600;">🛡️ Parcel Bima on — value ' + rs(b.declared_value) + '</p>' : '') +
+    (b.insured ? '<p style="margin:6px 0 0; font-weight:600;">🛡️ Parcel Suraksha on — value ' + rs(b.declared_value) + ' · <a href="routix-suraksha.html" target="_blank" rel="noopener">rules</a></p>' : '') +
+    (b.insured && ['picked','returning','delivered'].indexOf(b.status) !== -1 ? '<div id="claimBox" style="margin-top:12px;"></div>' : '') +
     (b.gift_message ? '<p style="margin:6px 0 0;">🎁 Gift note: <i>' + esc(b.gift_message) + '</i></p>' : '') +
     (b.proof_photo_url ? '<p style="margin:10px 0 4px; font-weight:700;">📷 Delivery photo</p><img src="' + esc(b.proof_photo_url) + '" alt="Photo taken by the rider at delivery" style="width:100%; border-radius:12px;">' : '') +
     (b.status === 'delivered' && !b.rating ? '<div style="margin-top:12px; padding:12px; border:1.5px solid #E7E5E4; border-radius:12px;"><b>How was your delivery?</b><div id="stars" style="font-size:32px; margin:6px 0;" role="radiogroup" aria-label="Rating">' + [1,2,3,4,5].map(function(n) { return '<button type="button" data-star="' + n + '" aria-label="' + n + ' star" style="background:none; border:none; font-size:32px; padding:0 2px; cursor:pointer;">☆</button>'; }).join('') + '</div><input id="rateNote" placeholder="Anything to tell us? (optional)" style="width:100%; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px;"><button class="btn" type="button" id="rateBtn" style="width:100%; margin-top:8px;">Send rating</button></div>' : (b.rating ? '<p style="margin-top:10px;">Your rating: ' + '★'.repeat(b.rating) + '☆'.repeat(5 - b.rating) + ' — thank you!</p>' : '')) +
@@ -372,6 +373,7 @@ async function showTracking(token, isNew) {
   const rb = $('rateBtn');
   if (rb) rb.addEventListener('click', async function() { if (!stars) { alert('Tap the stars first'); return; } const d = await rpc('routix_web_rate', { p_token: token, p_rating: stars, p_note: $('rateNote').value }).catch(function(e) { return { ok: false, error: e.message }; }); if (!d.ok) alert(d.error); showTracking(token, false); });
   if (isNew) setTimeout(function() { openInstallSheet(true, true); }, 1500);
+  if (b.insured) renderClaimBox(token, b);
   const cx = $('cxBtn');
   if (cx) cx.addEventListener('click', async function() {
     if (!confirm('Cancel this booking?')) return;
@@ -463,6 +465,33 @@ document.getElementById('goTrack').addEventListener('click', function() {
   w.querySelector('#trClose').addEventListener('click', function() { w.remove(); });
   w.addEventListener('click', function(e) { if (e.target === w) w.remove(); });
 });
+
+// ===== Parcel Suraksha claim =====
+async function renderClaimBox(token, b) {
+  const box = document.getElementById('claimBox'); if (!box) return;
+  let claims = [];
+  try { claims = await rpc('routix_web_claim_status', { p_token: token }) || []; } catch (e) {}
+  const words = { submitted: 'Received — we will reply within 3 working days', approved: 'Approved', rejected: 'Not approved', paid: 'Paid' };
+  if (claims.length) {
+    box.innerHTML = '<div style="border:1.5px solid #E7E5E4; border-radius:12px; padding:12px;"><b>🛡️ Your Suraksha claim</b>' + claims.map(function(c) {
+      return '<p style="margin:6px 0 0;">' + rs(c.amount) + ' claimed · <b>' + words[c.status] + '</b>' + (c.approved_amount ? ' · ' + rs(c.approved_amount) + ' approved' : '') + (c.note ? '<br><span style="color:#44403C;">' + esc(c.note) + '</span>' : '') + '</p>';
+    }).join('') + '</div>';
+    if (claims.some(function(c) { return c.status === 'submitted' || c.status === 'approved'; })) return;
+  }
+  const wa = 'https://wa.me/918004873819?text=' + encodeURIComponent('Parcel Suraksha claim for ' + b.booking_no + ' — sending photos and bill here.');
+  box.insertAdjacentHTML('beforeend', '<details style="border:1.5px solid #FECACA; border-radius:12px; padding:12px; margin-top:8px;"><summary style="font-weight:700; cursor:pointer;">⚠️ Report a problem (lost or damaged)</summary>' +
+    '<label class="f" style="margin-top:10px;">What happened?<select id="clType" style="display:block; width:100%; margin-top:4px; padding:11px; border:1.5px solid #D6D3D1; border-radius:10px; background:#fff;"><option value="damaged">Parcel damaged</option><option value="missing_item">Item missing</option><option value="lost">Parcel lost</option></select></label>' +
+    '<label class="f">Tell us briefly<textarea id="clDesc" rows="2"></textarea></label>' +
+    '<label class="f">Amount you are claiming (₹, up to ' + rs(b.declared_value) + ')<input id="clAmt" type="number" min="1" max="' + Number(b.declared_value || 0) + '"></label>' +
+    '<a class="wa" target="_blank" rel="noopener" href="' + wa + '" style="margin-bottom:8px;">📷 Send photos & bill on WhatsApp</a>' +
+    '<button class="btn" type="button" id="clSend" style="width:100%;">Submit claim</button><p style="font-size:13px; color:#44403C; margin:6px 0 0;">Within 24 hours of delivery. <a href="routix-suraksha.html" target="_blank" rel="noopener">See rules</a></p></details>');
+  document.getElementById('clSend').addEventListener('click', async function() {
+    const d = await rpc('routix_web_claim', { p_token: token, p_type: document.getElementById('clType').value, p_description: document.getElementById('clDesc').value, p_amount: Number(document.getElementById('clAmt').value || 0) }).catch(function(e) { return { ok: false, error: e.message }; });
+    if (!d.ok) { alert(d.error); return; }
+    alert('✅ Claim received. Please send photos and the bill on WhatsApp. We will reply within 3 working days.');
+    renderClaimBox(token, b);
+  });
+}
 </script>
 </body>
 </html>

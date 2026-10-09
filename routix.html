@@ -120,6 +120,13 @@ label.f textarea { resize: vertical; }
       <div class="money" id="stMonth"></div>
     </section>
 
+    <section class="panel" aria-labelledby="clH">
+      <h2 id="clH">🛡️ Parcel Suraksha claims</h2>
+      <p class="hint">Routix's own guarantee (not insurance). Check the photos the customer sends on WhatsApp and the rider's delivery photo, then decide.</p>
+      <div id="claimFund" class="facts" style="margin-bottom:8px;"></div>
+      <div id="claimList"></div>
+    </section>
+
     <section class="panel" aria-labelledby="lbH">
       <h2 id="lbH">🏆 Rider of the Month</h2>
       <p class="hint">Deliveries this month plus customer ratings. Reward the best rider with a bonus from the Riders list.</p>
@@ -238,7 +245,7 @@ $('logoutBtn').addEventListener('click', async function() { await sb.auth.signOu
 sb.auth.onAuthStateChange(function(ev, s) { if (s) token = s.access_token; });
 
 // ---------- dashboard ----------
-async function refreshAll() { await Promise.all([loadDashboard(), loadBookings()]); loadShops(); loadLeaderboard(); }
+async function refreshAll() { await Promise.all([loadDashboard(), loadBookings()]); loadShops(); loadLeaderboard(); loadClaims(); }
 async function loadDashboard() {
   try {
     const d = await rpc('routix_dashboard');
@@ -325,7 +332,7 @@ function renderBookings() {
     return '<article class="ticket">' +
       '<div class="head"><span class="no">' + esc(b.booking_no) + (b.source === 'web' ? ' <small style="font-size:13px; color:#9A3412;">website</small>' : (b.source === 'rider_spot' ? ' <small style="font-size:13px; color:#9A3412;">booked by rider on the spot</small>' : (b.source === 'shop' ? ' <small style="font-size:13px; color:#9A3412;">khaata: ' + esc(b.pickup_name) + '</small>' : ''))) + (b.ref_rider_name ? ' <small style="font-size:13px; color:#15803D;">customer of ' + esc(b.ref_rider_name) + '</small>' : '') + '</span><span class="pill s-' + b.status + '">' + words[b.status] + (b.rider_name ? ': ' + esc(b.rider_name) : '') + '</span></div>' +
       '<div class="route"><div class="end"><b>' + esc(b.pickup_name) + '</b><span>' + esc(b.pickup_address) + '</span></div><div class="km">' + b.distance_km + ' km</div><div class="end" style="text-align:right;"><b>' + esc(b.drop_name) + '</b><span>' + esc(b.drop_address) + '</span></div></div>' +
-      ((b.service_type === 'saver' ? '🚌 Saver ' : '') + (b.insured ? '🛡️ Bima ' : '') + (b.gift_message ? '🎁 Gift ' : '') + (b.rating ? '★'.repeat(b.rating) + ' ' : '') + (b.proof_photo_url ? '<a href="' + esc(b.proof_photo_url) + '" target="_blank" rel="noopener">📷 photo</a>' : '') ? '<div class="facts" style="font-weight:700;">' + (b.service_type === 'saver' ? '🚌 Saver ' : '') + (b.insured ? '🛡️ Bima ' : '') + (b.gift_message ? '🎁 Gift ' : '') + (b.rating ? '★'.repeat(b.rating) + ' ' : '') + (b.proof_photo_url ? '<a href="' + esc(b.proof_photo_url) + '" target="_blank" rel="noopener">📷 photo</a>' : '') + '</div>' : '') +
+      ((b.service_type === 'saver' ? '🚌 Saver ' : '') + (b.insured ? '🛡️ Suraksha ' : '') + (b.gift_message ? '🎁 Gift ' : '') + (b.rating ? '★'.repeat(b.rating) + ' ' : '') + (b.proof_photo_url ? '<a href="' + esc(b.proof_photo_url) + '" target="_blank" rel="noopener">📷 photo</a>' : '') ? '<div class="facts" style="font-weight:700;">' + (b.service_type === 'saver' ? '🚌 Saver ' : '') + (b.insured ? '🛡️ Suraksha ' : '') + (b.gift_message ? '🎁 Gift ' : '') + (b.rating ? '★'.repeat(b.rating) + ' ' : '') + (b.proof_photo_url ? '<a href="' + esc(b.proof_photo_url) + '" target="_blank" rel="noopener">📷 photo</a>' : '') + '</div>' : '') +
       '<div class="facts">' + rs(b.charge) + ', ' + modes[b.payment_mode] + (Number(b.goods_cod) > 0 ? ', plus goods cash ' + rs(b.goods_cod) + (b.goods_cod_returned_at ? ' (handed back)' : '') : '') + '. Rider earns ' + rs(b.rider_pay) + '.' + (b.item_desc ? ' Item: ' + esc(b.item_desc) + ', ' + b.weight_kg + ' kg.' : '') + (b.cancel_reason ? ' Reason: ' + esc(b.cancel_reason) : '') + '</div>' +
       (actions ? '<div class="actions">' + actions + '</div>' : '') + '</article>';
   }).join('');
@@ -452,6 +459,32 @@ async function loadLeaderboard() {
   } catch (e) { $('leaderboard').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }
 }
 
+
+// ===== Suraksha claims =====
+async function loadClaims() {
+  try {
+    const d = await rpc('routix_claims_list');
+    $('claimFund').innerHTML = 'Suraksha fees collected <b>' + rs(d.fund_collected) + '</b> · paid out <b>' + rs(d.paid_out) + '</b>';
+    const words = { lost: 'Lost', damaged: 'Damaged', missing_item: 'Item missing' };
+    $('claimList').innerHTML = d.claims.length ? d.claims.map(function(c) {
+      let act = '';
+      if (c.status === 'submitted') act = '<button class="btn" type="button" data-claimok="' + c.id + '" data-max="' + c.amount + '">Approve</button><button class="btn stop" type="button" data-claimno="' + c.id + '">Reject</button>';
+      if (c.status === 'approved') act = '<button class="btn" type="button" data-claimpaid="' + c.id + '">Mark paid ' + rs(c.approved_amount) + '</button>';
+      return '<article class="ticket"><div class="head"><span class="no">' + esc(c.booking_no) + ' · ' + words[c.type] + '</span><span class="pill ' + (c.status === 'paid' ? 's-delivered' : c.status === 'rejected' ? 's-cancelled' : 's-open') + '">' + c.status + '</span></div>' +
+        '<div class="facts">' + rs(c.amount) + ' claimed of ' + rs(c.declared_value) + ' declared · ' + esc(c.sender) + ' (' + esc(c.sender_phone) + ') → ' + esc(c.receiver) + (c.rider ? ' · rider ' + esc(c.rider) : '') + '</div>' +
+        '<div class="facts">"' + esc(c.description) + '"' + (c.proof_photo_url ? ' · <a href="' + esc(c.proof_photo_url) + '" target="_blank" rel="noopener">rider\'s delivery photo</a>' : ' · no delivery photo') + (c.note ? '<br>Decision: ' + esc(c.note) : '') + '</div>' +
+        (act ? '<div class="actions">' + act + '</div>' : '') + '</article>';
+    }).join('') : '<div class="empty">No claims. 🙏</div>';
+  } catch (e) { $('claimList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }
+}
+document.addEventListener('click', async function(e) {
+  const ok = e.target.closest && e.target.closest('[data-claimok]'), no = e.target.closest && e.target.closest('[data-claimno]'), pd = e.target.closest && e.target.closest('[data-claimpaid]');
+  try {
+    if (ok) { const amt = prompt('Approve how much? (up to ₹' + ok.getAttribute('data-max') + ')', ok.getAttribute('data-max')); if (amt === null) return; const note = prompt('Note for the customer:', 'Checked photos — approved') || ''; const d = await rpc('routix_claim_decide', { p_id: ok.getAttribute('data-claimok'), p_approve: true, p_amount: Number(amt), p_note: note }); toast(d.ok ? 'Approved' : d.error); loadClaims(); }
+    if (no) { const note = prompt('Why is it not approved? (customer will see this)'); if (!note) return; const d = await rpc('routix_claim_decide', { p_id: no.getAttribute('data-claimno'), p_approve: false, p_amount: 0, p_note: note }); toast(d.ok ? 'Rejected' : d.error); loadClaims(); }
+    if (pd) { const ref = prompt('UPI / bank reference:'); if (ref === null) return; const d = await rpc('routix_claim_paid', { p_id: pd.getAttribute('data-claimpaid'), p_ref: ref }); toast(d.ok ? 'Marked paid' : 'Could not update'); loadClaims(); }
+  } catch (err) { toast(err.message); }
+});
 boot();
 </script>
 </body>
