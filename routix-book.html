@@ -12,7 +12,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="manifest" href="manifest-routix-book.json">
 <meta name="theme-color" content="#1C1917">
-<link rel="apple-touch-icon" href="icon-rider.png">
+<link rel="icon" href="routix-icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="routix-icon-512.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Routix">
 <style>
@@ -24,7 +25,8 @@ button { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--routix); outline-offset: 2px; }
 .top { background: var(--asphalt); color: #fff; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; display: flex; justify-content: space-between; align-items: center; }
 .brand { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 800; font-size: 26px; letter-spacing: 0.5px; }
-.brand span { color: var(--routix); }
+.brand span { color: #EF4444; }
+.brand { display: flex; align-items: center; gap: 8px; }
 .brand-wrap { display: flex; flex-direction: column; line-height: 1; }
 .tagline { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 700; font-size: 13.5px; color: #FED7AA; letter-spacing: 0.3px; margin-top: 3px; white-space: nowrap; }
 .hero .promise { display: inline-block; font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 800; font-size: 19px; color: var(--routix-dark); background: #FFEDD5; border-radius: 8px; padding: 3px 10px; margin-bottom: 8px; }
@@ -82,6 +84,13 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
 .wa { display: block; text-align: center; text-decoration: none; background: #DCFCE7; border: 1.5px solid #86EFAC; color: #14532D; border-radius: 12px; padding: 13px; font-weight: 700; }
 .mine { margin-top: 18px; }
 .mine a { display: block; padding: 10px 0; border-bottom: 1px solid var(--line); color: var(--asphalt); text-decoration: none; font-weight: 600; }
+.home { max-width: 640px; margin: 0 auto; padding: 14px 16px 0; }
+.send { width: 100%; display: grid; grid-template-columns: 1fr auto; text-align: left; border: none; border-radius: 18px; padding: 18px; background: var(--routix); color: #fff; box-shadow: 0 10px 24px rgba(234,88,12,0.35); }
+.send .big { font-family: 'Barlow Semi Condensed', sans-serif; font-size: 30px; font-weight: 800; line-height: 1.05; }
+.send .sub { grid-column: 1; font-size: 14.5px; opacity: 0.95; margin-top: 4px; }
+.send .go { grid-column: 2; grid-row: 1 / span 2; align-self: center; width: 46px; height: 46px; border-radius: 50%; background: #fff; color: var(--routix-dark); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; }
+.quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.quick a, .quick button { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 54px; padding: 8px; border: 1.5px solid var(--line); border-radius: 14px; background: #fff; color: var(--asphalt); font-weight: 700; font-size: 13.5px; text-decoration: none; line-height: 1.2; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 /* install + location sheets */
 .sheet-bg { position: fixed; inset: 0; background: rgba(28,25,23,0.55); z-index: 2000; display: flex; align-items: flex-end; justify-content: center; }
@@ -97,11 +106,19 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
 </style>
 </head>
 <body>
-<header class="top"><div class="brand-wrap"><div class="brand">ROUTI<span>X</span></div><div class="tagline">Routix hai na, pahuncha denge.</div></div><div style="display:flex; gap:6px;"><a href="rider.html">Rider</a><a href="https://wa.me/918004873819" target="_blank" rel="noopener">Help</a></div></header>
+<header class="top"><div class="brand-wrap"><div class="brand"><svg width="24" height="27" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><em style="font-style:normal; white-space:nowrap;">ROUTI<span>X</span></em></div><div class="tagline">Routix hai na, pahuncha denge.</div></div><div style="display:flex; gap:6px;"><a href="rider.html">Rider</a><a href="https://wa.me/918004873819" target="_blank" rel="noopener">Help</a></div></header>
 <div id="spotBanner" hidden style="background:#ea580c; color:#fff; padding:10px 16px; font-weight:700; font-size:15px;"></div>
 <div id="map" role="application" aria-label="Map: tap to set the pickup or drop point"></div>
 
 <div id="bookView">
+  <section class="home" aria-label="What would you like to do?">
+    <button class="send" type="button" id="goBook"><span class="big">📦 Parcel bhejo</span><span class="sub">Pick-up from your door · price before you book</span><span class="go" aria-hidden="true">→</span></button>
+    <div class="quick">
+      <button type="button" id="goTrack">🔎 Mera parcel kahan hai?</button>
+      <a href="https://wa.me/918004873819?text=Namaste%20Routix%2C%20meri%20dukaan%20ke%20liye%20Khaata%20chahiye." target="_blank" rel="noopener">🏪 Dukaan ke liye Khaata</a>
+      <a href="rider.html">🛵 Rider bano</a>
+    </div>
+  </section>
   <div class="hero">
     <h1>Send a parcel across Lucknow</h1>
     <p>Bike delivery, price shown before you book. Pay the rider in cash or UPI. <b>No surge</b> — same price in rain and festivals.</p>
@@ -361,7 +378,7 @@ function openInstallSheet(force, afterBooking) {
   if (isStandalone || (!force && installSnoozed()) || document.getElementById('installSheet')) return;
   if (!installEvt && !isIOS) return; // browser can't install right now
   const w = document.createElement('div'); w.className = 'sheet-bg'; w.id = 'installSheet';
-  w.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="insH"><div class="ic">R<span>X</span></div>' +
+  w.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="insH"><div class="ic"><svg width="34" height="38" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>' +
     '<h3 id="insH">' + (afterBooking ? 'Track this delivery from your home screen' : 'Get the Routix app') + '</h3><div style="font-family:Barlow Semi Condensed,sans-serif; font-weight:800; color:#9A3412; font-size:17px;">Routix hai na, pahuncha denge.</div>' +
     '<ul><li>Book a parcel in 2 taps next time</li><li>See your rider and delivery OTP any time</li><li>Free, small, no app store needed</li></ul>' +
     (isIOS && !installEvt ? '<p style="margin:0 0 12px; font-weight:600;">On iPhone: tap the Share button <span aria-hidden="true">⬆</span> below, then "Add to Home Screen".</p><button class="go" type="button" id="insLater">Got it</button>' :
@@ -397,6 +414,22 @@ function locateForPickup(silent) {
   w.querySelector('#locGo').addEventListener('click', function() { done(); locateForPickup(false); });
   w.querySelector('#locNo').addEventListener('click', done);
 })();
+
+// ===== Home band: booking first =====
+document.getElementById('goBook').addEventListener('click', function() { goStep(1); setTimeout(function() { const q = document.getElementById('q1'); if (q && !pts[1]) q.focus(); }, 400); });
+document.getElementById('goTrack').addEventListener('click', function() {
+  let mine = [];
+  try { mine = JSON.parse(localStorage.getItem('routix_mine') || '[]'); } catch (e) {}
+  if (mine.length === 1) { location.href = location.pathname + '?t=' + mine[0].t; return; }
+  const w = document.createElement('div'); w.className = 'sheet-bg';
+  w.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="trH"><h3 id="trH">Your parcels</h3>' +
+    (mine.length ? mine.map(function(m) { return '<a href="?t=' + m.t + '" style="display:block; padding:12px 0; border-bottom:1px solid #E7E5E4; color:#1C1917; font-weight:700; text-decoration:none;">' + esc(m.no) + ' · ' + new Date(m.at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' →</a>'; }).join('') :
+      '<p style="color:#44403C;">No parcels booked from this phone yet. If someone sent you a tracking link on WhatsApp, open that link.</p>') +
+    '<button class="later" type="button" id="trClose">Close</button></div>';
+  document.body.appendChild(w);
+  w.querySelector('#trClose').addEventListener('click', function() { w.remove(); });
+  w.addEventListener('click', function(e) { if (e.target === w) w.remove(); });
+});
 </script>
 </body>
 </html>

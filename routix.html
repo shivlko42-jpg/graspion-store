@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="only light">
 <meta name="robots" content="noindex">
+<link rel="icon" href="routix-icon.svg" type="image/svg+xml">
 <title>Routix Control — bookings and dispatch</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Semi+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
@@ -23,7 +24,8 @@ button { cursor: pointer; }
 header.top { background: var(--asphalt); color: #fff; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 14px; }
 header.top .in { max-width: 720px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .brand { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 800; font-size: 26px; letter-spacing: 0.5px; }
-.brand span { color: var(--routix); }
+.brand span { color: #EF4444; }
+.brand { display: flex; align-items: center; gap: 8px; }
 .who { font-size: 14px; color: #D6D3D1; }
 .ghost { background: transparent; color: #fff; border: 1.5px solid #57534E; border-radius: 10px; padding: 7px 12px; font-weight: 600; font-size: 14px; }
 /* Today board: the road strip */
@@ -85,7 +87,7 @@ label.f textarea { resize: vertical; }
 /* Login */
 .login { max-width: 420px; margin: 60px auto; background: #fff; border: 1.5px solid var(--line); border-radius: 18px; padding: 24px; }
 .login h1 { font-family: 'Barlow Semi Condensed', sans-serif; font-size: 34px; margin: 0; }
-.login h1 span { color: var(--routix); }
+.login h1 span { color: #DC2626; }
 .err-text { color: var(--stop); font-size: 14px; min-height: 20px; margin-top: 8px; }
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--asphalt); color: #fff; padding: 12px 18px; border-radius: 12px; font-weight: 600; z-index: 50; max-width: 92vw; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
@@ -94,7 +96,7 @@ label.f textarea { resize: vertical; }
 <body>
 
 <div id="loginView" class="login" hidden>
-  <h1>ROUTI<span>X</span></h1>
+  <h1 style="display:flex; align-items:center; gap:10px;"><svg width="34" height="38" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><em style="font-style:normal; white-space:nowrap;">ROUTI<span>X</span></em></h1>
   <p class="hint">Bookings and dispatch for Routix delivery partners. Sign in with your Routix or admin account.</p>
   <button class="primary" id="googleBtn" type="button">Sign in with Google</button>
   <div style="margin:14px 0 6px; font-size:14px; color:#44403C;">or with email</div>
@@ -105,7 +107,7 @@ label.f textarea { resize: vertical; }
 </div>
 
 <div id="appView" hidden>
-  <header class="top"><div class="in"><div><div class="brand">ROUTI<span>X</span> Control</div><div style="font-family:'Barlow Semi Condensed',sans-serif; font-weight:700; font-size:13.5px; color:#FED7AA;">Routix hai na, pahuncha denge.</div><div class="who" id="whoAmI"></div></div><button class="ghost" id="logoutBtn" type="button">Sign out</button></div></header>
+  <header class="top"><div class="in"><div><div class="brand"><svg width="24" height="27" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><em style="font-style:normal; white-space:nowrap;">ROUTI<span>X</span></em>&nbsp;Control</div><div style="font-family:'Barlow Semi Condensed',sans-serif; font-weight:700; font-size:13.5px; color:#FED7AA;">Routix hai na, pahuncha denge.</div><div class="who" id="whoAmI"></div></div><button class="ghost" id="logoutBtn" type="button">Sign out</button></div></header>
   <main class="wrap">
     <section class="board" aria-labelledby="todayH">
       <h2 id="todayH">Today on the road</h2>
