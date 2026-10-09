@@ -2589,13 +2589,13 @@ if (etaLocalVids.length) {
   const localEta = hr < 18 ? 'Today' : 'Tomorrow';
   etaLocalVids.forEach(function(vId) {
     const v = vendors.find(function(vv) { return vv.id === vId; }) || {};
-    deliveryEstimateHtml += '<div class="co-item-row"><span>🛵 ' + (etaLocalVids.length > 1 && v.name ? v.name : 'Local delivery') + '</span><b>' + localEta + ' · by our local rider</b></div>';
+    deliveryEstimateHtml += '<div class="co-item-row"><span>🛵 Routix local delivery' + (etaLocalVids.length > 1 && v.name ? ' · ' + v.name : '') + '</span><b>' + localEta + '</b></div>';
   });
 }
 estimateEntries.forEach(function(vId) {
 const est = deliveryEstimates[vId];
 if (est.serviceable === false) deliveryEstimateHtml += '<div class="co-item-row" style="color:#dc2626;"><span>📦 Standard item</span><b>⚠️ Not deliverable to this pincode</b></div>';
-else if (est.estimated_delivery_days) deliveryEstimateHtml += '<div class="co-item-row"><span>📦 Delivery</span><b>' + est.estimated_delivery_days + '</b></div>';
+else if (est.estimated_delivery_days) deliveryEstimateHtml += '<div class="co-item-row"><span>📦 All-India courier (Shiprocket)</span><b>' + est.estimated_delivery_days + '</b></div>';
 });
 const t = cartTotals();
 const effectiveRate = t.subtotal > 0 ? (t.gstAmount / t.subtotal * 100) : 0;
@@ -4009,7 +4009,7 @@ if (shipment && o.delivery_type !== 'instant' && o.status !== 'cancelled') {
 const awbNo = shipment.awb_number;
 const tUrl = awbNo ? 'https://shiprocket.co/tracking/' + encodeURIComponent(awbNo) : null;
 trackHtml = '<div style="margin-top:8px; background:#f5f3ff; border:1px solid #e4dcfb; border-radius:10px; padding:10px 12px;">' +
-'<div style="font-size:12.5px; font-weight:700; color:#5b21b6;">🚚 Courier shipment</div>' +
+'<div style="font-size:12.5px; font-weight:700; color:#5b21b6;">📦 All-India courier · via Shiprocket</div>' +
 (awbNo
   ? '<div style="font-size:12.5px; color:#1f2937; margin-top:4px; line-height:1.7;">' + (shipment.courier_name ? 'Courier: <b>' + shipment.courier_name + '</b><br>' : '') + 'Tracking no. (AWB): <b style="letter-spacing:0.5px;">' + awbNo + '</b></div>' +
     (o.status !== 'delivered' ? '<a href="' + tUrl + '" target="_blank" rel="noopener" style="display:block; text-align:center; margin-top:8px; background:#7c3aed; color:#fff; text-decoration:none; padding:9px; border-radius:8px; font-size:13px; font-weight:700;">📍 Track Shipment</a>' : '')
@@ -5028,6 +5028,7 @@ variantSelectorHtml +
 })() +
 '<div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; font-size:10.5px;">' +
 (p.returnable ? '<button id="pdReturnableTag" class="prod-tag" style="border:none; background:none; padding:0; font:inherit; color:inherit; cursor:pointer;">✅ Returnable <span style="font-size:8px; color:#7c3aed;">▾ tap for policy</span></button>' : '<button id="pdReturnableTag" class="prod-tag" style="border:none; background:none; padding:0; font:inherit; color:inherit; cursor:pointer;">🚫 Non-Returnable <span style="font-size:8px; color:#7c3aed;">▾ tap for details</span></button>') +
+(p.pincode === 'ALL' ? '<span class="prod-tag">📦 All-India courier (Shiprocket)</span>' : '<span class="prod-tag">🛵 Routix local delivery</span>') +
 (p.cancelPolicy === 'no_cancel' ? '<span class="prod-tag" style="color:#b91c1c;">⛔ Cannot be cancelled once ordered</span>' : (p.cancelPolicy === 'before_accept' ? '<span class="prod-tag" style="color:#b45309;">⏱ Cancel only before the shop accepts</span>' : '')) +
 (p.codAllowed === false ? '<span class="prod-tag">💳 Prepaid Only</span>' : '<span class="prod-tag">💵 COD Available</span>') +
 '</div>' +

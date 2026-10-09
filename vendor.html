@@ -1959,7 +1959,7 @@ const giftWrapBadge = o.gift_wrap ? '<span style="display:inline-block; backgrou
       (awaitingAccept ? acceptBoxHtml(o, itemsHtml) : (rejectedByMe ? '<div style="margin:8px 0; background:#f3f4f6; border-radius:10px; padding:10px 12px; font-size:13px; color:#374151;"><b>You rejected this order</b>' + (o.vendor_reject_reason ? ' · ' + String(o.vendor_reject_reason).replace(/</g, '&lt;') : '') + '<br>Graspion is arranging it through another shop — nothing for you to do.</div>' : '')) +
       (awaitingAccept || rejectedByMe ? '' : '<div class="pipeline">' + stepsHtml + '</div>' +
       ((o.status === 'shipped' || o.status === 'out_for_delivery') && o.delivery_type !== 'instant' && !o.rider_id ? '<button class="mini-btn" data-courierlabel="' + o.id + '" style="background:#fef3c7;color:#92400e;margin-top:8px;margin-right:6px;">🏷️ Courier Label (stick on box)</button>' : '') +
-      (showShipBtn && !o.rider_id ? '<div data-delopts="' + o.id + '" style="margin-top:8px;"><button class="mini-btn" data-shipid="' + o.id + '" style="background:#dbeafe;color:#1d4ed8;margin-right:6px;">📦 Ship via Shiprocket</button></div>' : '') +
+      (showShipBtn && !o.rider_id ? '<div data-delopts="' + o.id + '" style="margin-top:8px;"><button class="mini-btn" data-shipid="' + o.id + '" style="background:#dbeafe;color:#1d4ed8;margin-right:6px;">📦 All-India courier (Shiprocket)</button></div>' : '') +
       (o.status !== 'cancelled' ? '<button class="mini-btn" data-printlabel="' + o.id + '" style="background:#f3f1f8;color:#4b5563;margin-top:8px;margin-right:6px;">🏷️ Print Shipping Label</button>' : '') +
       ((o.status !== 'cancelled' && (o.payment_status === 'paid' || ['preparing','shipped','out_for_delivery','delivered'].indexOf(o.status) !== -1)) ? '<button class="mini-btn" data-vendorinvoice="' + o.id + '" style="background:#ede9fe;color:#5b21b6;margin-top:8px;margin-right:6px;">🧾 Print Bill (put in box)</button>' : '') +
       '') +
@@ -1986,7 +1986,7 @@ const giftWrapBadge = o.gift_wrap ? '<span style="display:inline-block; backgrou
       // the "Ship via Shiprocket" button disappears once status=shipped,
       // permanently blocking a real shipment from ever being booked.
       if (newStatus === 'shipped' && order && order.delivery_type === 'standard') {
-        alert('For Pan-India orders, please use the "📦 Ship via Shiprocket" button below to book the actual courier — this also generates the tracking number your customer will see. Marking it Shipped here without booking would leave the order with no real tracking.');
+        alert('For Pan-India orders, please use the "📦 All-India courier (Shiprocket)" button below to book the actual courier — this also generates the tracking number your customer will see. Marking it Shipped here without booking would leave the order with no real tracking.');
         return;
       }
       const patchBody = { status: newStatus };
@@ -3698,7 +3698,7 @@ async function bookShiprocketFor(btn) {
     const data = await res.json();
     if (!res.ok || !data.success) {
       alert('Could not book shipment:\n' + (data.error || 'Unknown error') + (data.details ? '\n' + JSON.stringify(data.details) : ''));
-      btn.textContent = '📦 Ship via Shiprocket';
+      btn.textContent = '📦 All-India courier (Shiprocket)';
       btn.disabled = false;
       return;
     }
@@ -3709,7 +3709,7 @@ async function bookShiprocketFor(btn) {
     loadVendorData();
   } catch (err) {
     alert('Network error while booking shipment: ' + err.message);
-    btn.textContent = '📦 Ship via Shiprocket';
+    btn.textContent = '📦 All-India courier (Shiprocket)';
     btn.disabled = false;
   }
 }
@@ -3720,12 +3720,12 @@ async function renderDeliveryOptions(box) {
     const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/vendor_order_delivery_options', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_order_id: orderId }) });
     if (!r.ok) return; // keep the plain courier button
     const d = await r.json();
-    const shipBtn = '<button class="mini-btn" data-shipid="' + orderId + '" style="background:#dbeafe;color:#1d4ed8;margin-right:6px;">📦 Ship via Shiprocket</button>';
+    const shipBtn = '<button class="mini-btn" data-shipid="' + orderId + '" style="background:#dbeafe;color:#1d4ed8;margin-right:6px;">📦 All-India courier (Shiprocket)</button>';
     if (d.local_ok) {
       const opts = d.riders.map(function(x) { return '<option value="' + x.id + '">' + x.name + (x.online ? ' (online)' : ' (offline)') + '</option>'; }).join('');
       box.innerHTML = '<div style="background:#ecfdf5; border:1.5px solid #86efac; border-radius:12px; padding:10px 12px;">' +
-        '<div style="font-size:13px; font-weight:800; color:#14532d;">🛵 Nearby customer' + (d.km != null ? ' · ' + (d.estimated ? '≈' : '') + d.km + ' km' : '') + ' — send with your rider</div>' +
-        '<div style="font-size:12px; color:#166534; margin:4px 0 8px;">Mark <b>Ready to Ship</b> and any linked rider can accept it, or give it to one rider now:</div>' +
+        '<div style="font-size:13px; font-weight:800; color:#14532d;">🛵 Routix local delivery' + (d.km != null ? ' · ' + (d.estimated ? '≈' : '') + d.km + ' km' : '') + ' — a Routix rider picks it up from your shop</div>' +
+        '<div style="font-size:12px; color:#166534; margin:4px 0 8px;">Mark <b>Ready to Ship</b> and any linked Routix rider can accept it, or give it to one rider now:</div>' +
         '<div style="display:flex; gap:6px; flex-wrap:wrap;"><select data-riderpick="' + orderId + '" style="flex:1; min-width:150px; padding:8px; border-radius:8px; border:1px solid #86efac; font-size:13px; color:#111827; background:#fff;">' + opts + '</select>' +
         '<button class="mini-btn" data-giverider="' + orderId + '" style="background:#16a34a; color:#fff;">Give to rider</button></div>' +
         '<div style="margin-top:8px;"><a href="#" data-showcourier="' + orderId + '" style="font-size:12px; color:#1d4ed8;">Send by courier instead</a><span data-courierbox="' + orderId + '" style="display:none; margin-left:6px;">' + shipBtn + '</span></div></div>';
@@ -3742,7 +3742,7 @@ async function renderDeliveryOptions(box) {
       });
     } else {
       const why = { too_far: 'Customer is outside your local delivery range', min_order: 'Below the minimum order for this distance', shop_no_local_delivery: '', no_rider: 'No rider linked to your shop yet' }[d.reason] || '';
-      box.innerHTML = shipBtn + (why ? '<div style="font-size:11.5px; color:#374151; margin-top:4px;">📦 ' + why + ' — send by courier.</div>' : '');
+      box.innerHTML = shipBtn + (why ? '<div style="font-size:11.5px; color:#374151; margin-top:4px;">📦 ' + why + ' — send by All-India courier (Shiprocket).</div>' : '');
     }
     box.querySelectorAll('[data-shipid]').forEach(function(btn) { btn.addEventListener('click', function() { bookShiprocketFor(btn); }); });
   } catch (e) { /* keep default button */ }
