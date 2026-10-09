@@ -120,6 +120,12 @@ label.f textarea { resize: vertical; }
       <div class="money" id="stMonth"></div>
     </section>
 
+    <section class="panel" aria-labelledby="ridersH">
+      <h2 id="ridersH">🛵 Riders</h2>
+      <p class="hint">Riders log in with their mobile number and a 6-digit PIN. Set or reset a PIN here and send it to them on WhatsApp.</p>
+      <div id="riderList"></div>
+    </section>
+
     <section class="panel" aria-labelledby="shopsH">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><h2 id="shopsH">🏪 Shops on Routix Khaata</h2><button class="btn" type="button" id="addShopBtn">+ Add shop</button></div>
       <p class="hint">Regular shops get their own booking link, a monthly bill and the same rider. Their goods cash goes back the same day.</p>
@@ -230,7 +236,7 @@ async function refreshAll() { await Promise.all([loadDashboard(), loadBookings()
 async function loadDashboard() {
   try {
     const d = await rpc('routix_dashboard');
-    riders = d.riders || [];
+    riders = d.riders || []; renderRiders();
     $('stOpen').textContent = d.open + d.requested; $('reqCount').textContent = d.requested ? '(' + d.requested + ')' : ''; $('stRun').textContent = d.running; $('stDone').textContent = d.today_delivered; $('stCash').textContent = rs(d.goods_cash_to_return);
     $('stMonth').textContent = 'This month: ' + d.month_jobs + ' deliveries, income ' + rs(d.month_income) + ', paid to riders ' + rs(d.month_rider_pay) + '. Riders online now: ' + d.riders_online + '.';
   } catch (e) { $('stMonth').textContent = 'Could not load numbers: ' + e.message; }
@@ -403,6 +409,33 @@ document.addEventListener('click', async function(e) {
   if (cp) { try { await navigator.clipboard.writeText(cp.getAttribute('data-copy')); toast('Link copied'); } catch (err) { prompt('Copy this link:', cp.getAttribute('data-copy')); } }
   if (ed) openShopSheet(shops.find(function(x) { return x.id === ed.getAttribute('data-editshop'); }));
   if (bl) { if (!confirm('Make the monthly bill for all delivered parcels on this khaata?')) return; try { const d = await rpc('routix_create_shop_bill', { p_client_id: bl.getAttribute('data-billshop') }); toast(d.ok ? 'Bill ' + d.statement_no + ': ' + rs(d.amount) + ' for ' + d.deliveries + ' deliveries' : d.error); } catch (err) { toast(err.message); } loadShops(); }
+});
+
+// ===== Riders: PIN login =====
+function renderRiders() {
+  const box = $('riderList'); if (!box) return;
+  if (!riders.length) { box.innerHTML = '<div class="empty">No active riders yet.</div>'; return; }
+  box.innerHTML = riders.map(function(r) {
+    return '<article class="ticket" style="padding:10px 14px;"><div class="head"><span class="no">' + esc(r.name) + '</span><span class="pill ' + (r.online ? 's-delivered' : 's-cancelled') + '">' + (r.online ? 'Online' : 'Offline') + '</span></div>' +
+      '<div class="facts">' + esc(r.phone || 'no mobile saved') + (r.ref_code ? ' · code ' + esc(r.ref_code) : '') + ' · ' + (r.pin_set ? 'PIN login ready' : '<b style="color:#B91C1C;">PIN not set</b>') + '</div>' +
+      '<div class="actions"><button class="btn" type="button" data-setpin="' + r.id + '">' + (r.pin_set ? 'Reset PIN' : 'Set PIN') + '</button></div></article>';
+  }).join('');
+}
+document.addEventListener('click', async function(e) {
+  const b = e.target.closest && e.target.closest('[data-setpin]'); if (!b) return;
+  const r = riders.find(function(x) { return x.id === b.getAttribute('data-setpin'); }) || {};
+  const auto = String(Math.floor(100000 + Math.random() * 900000));
+  const pin = prompt('6-digit PIN for ' + (r.name || 'rider') + ' (you can keep this one):', auto); if (pin === null) return;
+  b.disabled = true;
+  try {
+    const res = await fetch(SUPABASE_URL + '/functions/v1/routix-rider-pin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ action: 'set', rider_id: r.id, pin: pin.trim() }) });
+    const d = await res.json();
+    if (!res.ok || !d.ok) { toast(d.error || 'Could not set PIN'); return; }
+    const msg = 'Namaste ' + r.name + '! Routix Rider app mein login:\nMobile: ' + d.phone + '\nPIN: ' + pin.trim() + '\nApp: ' + location.origin + '/rider.html\nApni bike, apna route, apni kamai.';
+    if (confirm('PIN set for ' + r.name + '. Send it to them on WhatsApp now?')) window.open('https://wa.me/91' + d.phone + '?text=' + encodeURIComponent(msg), '_blank');
+    loadDashboard();
+  } catch (err) { toast(err.message); }
+  finally { b.disabled = false; }
 });
 boot();
 </script>
