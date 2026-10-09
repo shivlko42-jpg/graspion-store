@@ -57,8 +57,9 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
 .chip[aria-pressed="true"] { background: var(--asphalt); color: #fff; border-color: var(--asphalt); }
 .next { width: 100%; height: 50px; border: none; border-radius: 12px; background: var(--asphalt); color: #fff; font-size: 16px; font-weight: 700; margin-top: 4px; }
 .pay { display: grid; gap: 8px; margin-bottom: 10px; }
-.pay label { display: flex; gap: 10px; align-items: center; border: 1.5px solid #D6D3D1; border-radius: 12px; padding: 12px; font-weight: 600; }
+.pay label { display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid #D6D3D1; border-radius: 12px; padding: 12px; font-weight: 600; }
 .pay label:has(input:checked) { border-color: var(--routix); background: #FFF7ED; }
+.pay label span { flex: 1; }
 .rules { font-size: 13.5px; color: var(--road); margin-top: 10px; }
 /* the price bar: the one bold thing on the page */
 .bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1200; background: var(--asphalt); color: #fff; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
@@ -122,7 +123,7 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
   <div class="hero">
     <h1>Send a parcel across Lucknow</h1>
     <p>Bike delivery, price shown before you book. Pay the rider in cash or UPI. <b>No surge</b> — same price in rain and festivals.</p>
-    <a href="https://wa.me/918004873819?text=Namaste%20Routix%2C%20mujhe%20parcel%20bhejna%20hai.%20Pickup%3A%20%20%20Drop%3A%20" id="waBook" target="_blank" rel="noopener" style="display:inline-block; margin-top:8px; background:#DCFCE7; border:1.5px solid #86EFAC; color:#14532D; border-radius:10px; padding:8px 12px; font-weight:700; text-decoration:none;">Prefer WhatsApp? Book by message</a>
+    <a href="https://wa.me/918004873819?text=Namaste%20Routix%2C%20mujhe%20parcel%20bhejna%20hai.%20Pickup%3A%20%20%20Drop%3A%20" id="waBook" target="_blank" rel="noopener" style="display:inline-block; margin-top:8px; background:#DCFCE7; border:1.5px solid #86EFAC; color:#14532D; border-radius:10px; padding:8px 12px; font-weight:700; text-decoration:none;">Prefer WhatsApp? Book by message or 🎤 voice note</a>
   </div>
   <main>
     <section class="step" id="s1" aria-current="step">
@@ -172,8 +173,16 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
     </section>
 
     <section class="step" id="s4">
-      <h2><span class="num">4</span>Who pays the rider?</h2>
+      <h2><span class="num">4</span>Delivery options & payment</h2>
       <div id="b4">
+        <div class="pay" role="radiogroup" aria-label="Delivery speed">
+          <label><input type="radio" name="svc" value="express" checked> <span>⚡ <b>Express</b> — rider comes now <b id="pxExp" style="float:right;"></b></span></label>
+          <label><input type="radio" name="svc" value="saver"> <span>🚌 <b>Saathi Saver</b> — next run <b id="saverSlot"></b>, save 30% <b id="pxSav" style="float:right;"></b></span></label>
+        </div>
+        <label class="check" style="display:flex; gap:8px; align-items:flex-start; font-weight:600; margin:6px 0;"><input type="checkbox" id="bima" style="margin-top:3px;"> <span style="flex:1;">🛡️ <b>Parcel Bima</b> <span id="bimaFee"></span> — covers loss or damage up to the value you enter</span></label>
+        <label class="f" id="bimaBox" hidden>Value of the parcel (₹)<input type="number" id="bimaVal" min="1" placeholder="e.g. 2000"></label>
+        <label class="f">🎁 Gift note for the receiver (optional)<textarea id="gift" rows="2" maxlength="200" placeholder="e.g. Happy Diwali! Love, Neha"></textarea></label>
+        <label class="check" style="display:flex; gap:8px; align-items:center; font-weight:600; margin:0 0 10px;"><input type="checkbox" id="womanRider"> 👩 I prefer a woman rider (we try first; may take longer)</label>
         <div class="pay" role="radiogroup" aria-label="Who pays">
           <label><input type="radio" name="pm" value="collect_at_pickup" checked> I pay at pickup (cash or UPI)</label>
           <label><input type="radio" name="pm" value="collect_at_drop"> The receiver pays at delivery</label>
@@ -275,10 +284,23 @@ document.querySelectorAll('[data-next]').forEach(function(b) { b.addEventListene
 function chipGroup(id, onPick) { $(id).querySelectorAll('.chip').forEach(function(c) { c.addEventListener('click', function() { $(id).querySelectorAll('.chip').forEach(function(x) { x.setAttribute('aria-pressed', x === c ? 'true' : 'false'); }); onPick(c); }); }); }
 chipGroup('itemChips', function(c) { item = c.textContent; updateSummary(); });
 chipGroup('kgChips', function(c) { kg = Number(c.getAttribute('data-kg')); refreshQuote(); });
-document.querySelectorAll('input[name="pm"]').forEach(function(r) { r.addEventListener('change', updateSummary); });
+document.querySelectorAll('input[name="pm"], input[name="svc"]').forEach(function(r) { r.addEventListener('change', updateSummary); });
+$('bima').addEventListener('change', function() { $('bimaBox').hidden = !this.checked; updateSummary(); });
+function chosenTotal() {
+  if (!lastQuote || !lastQuote.ok) return null;
+  const saver = document.querySelector('input[name="svc"]:checked').value === 'saver';
+  return (saver ? lastQuote.saver_charge : lastQuote.charge) + ($('bima').checked ? Number(lastQuote.insurance_fee || 0) : 0);
+}
 function updateSummary() {
   const pm = document.querySelector('input[name="pm"]:checked').value;
-  $('sumText').textContent = lastQuote && lastQuote.ok ? item + ', up to ' + kg + ' kg, about ' + lastQuote.km + ' km. ' + (pm === 'collect_at_pickup' ? 'Pay ' + rs(lastQuote.charge) + ' to the rider at pickup.' : 'The receiver pays ' + rs(lastQuote.charge) + ' at delivery.') : '';
+  if (lastQuote && lastQuote.ok) {
+    $('pxExp').textContent = rs(lastQuote.charge); $('pxSav').textContent = rs(lastQuote.saver_charge);
+    $('saverSlot').textContent = lastQuote.saver_slot ? new Date(lastQuote.saver_slot).toLocaleString('en-IN', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—';
+    $('bimaFee').textContent = '(+' + rs(lastQuote.insurance_fee) + ')';
+    const tot = chosenTotal(), saver = document.querySelector('input[name="svc"]:checked').value === 'saver';
+    $('price').innerHTML = rs(tot) + '<small>' + (saver ? 'Saathi Saver · ' : 'Express · ') + 'about ' + lastQuote.km + ' km' + ($('bima').checked ? ' · with Bima' : '') + '</small>';
+  }
+  $('sumText').textContent = lastQuote && lastQuote.ok ? item + ', up to ' + kg + ' kg, about ' + lastQuote.km + ' km. ' + (pm === 'collect_at_pickup' ? 'Pay ' + rs(chosenTotal()) + ' to the rider at pickup.' : 'The receiver pays ' + rs(chosenTotal()) + ' at delivery.') : '';
 }
 
 // ---------- price ----------
@@ -290,7 +312,6 @@ function refreshQuote() {
     try {
       const q = lastQuote = await rpc('routix_web_quote', { p_pickup_lat: pts[1].lat, p_pickup_lng: pts[1].lng, p_drop_lat: pts[2].lat, p_drop_lng: pts[2].lng, p_kg: kg });
       if (!q.ok) { $('price').innerHTML = '₹—<small>' + esc(q.error) + '</small>'; $('bookBtn').disabled = true; return; }
-      $('price').innerHTML = rs(q.charge) + '<small>about ' + q.km + ' km by bike</small>';
       $('bookBtn').disabled = false; updateSummary();
     } catch (e) { $('price').innerHTML = '₹—<small>Could not get the price. Check your internet.</small>'; }
   }, 300);
@@ -304,7 +325,9 @@ $('bookBtn').addEventListener('click', async function() {
     const d = await rpc('routix_web_book', { p: {
       pickup_name: $('pn').value, pickup_phone: $('pp').value, pickup_address: $('pa').value + (pts[1].label ? ', ' + pts[1].label.split(',').slice(0, 3).join(',') : ''), pickup_lat: pts[1].lat, pickup_lng: pts[1].lng,
       drop_name: $('dn').value, drop_phone: $('dp').value, drop_address: $('da').value + (pts[2].label ? ', ' + pts[2].label.split(',').slice(0, 3).join(',') : ''), drop_lat: pts[2].lat, drop_lng: pts[2].lng,
-      item_desc: item, weight_kg: kg, notes: $('nt').value, payment_mode: document.querySelector('input[name="pm"]:checked').value, ref: params.get('ref') || '', spot_token: params.get('spot') || '' } });
+      item_desc: item, weight_kg: kg, notes: $('nt').value, payment_mode: document.querySelector('input[name="pm"]:checked').value, ref: params.get('ref') || '', spot_token: params.get('spot') || '',
+      service_type: document.querySelector('input[name="svc"]:checked').value, insured: $('bima').checked, declared_value: $('bimaVal').value,
+      gift_message: $('gift').value, women_rider: $('womanRider').checked } });
     if (!d.ok) { $('err').textContent = d.error || 'Could not book'; return; }
     try { const mine = JSON.parse(localStorage.getItem('routix_mine') || '[]'); mine.unshift({ t: d.track_token, no: d.booking_no, at: Date.now() }); localStorage.setItem('routix_mine', JSON.stringify(mine.slice(0, 10))); } catch (e) {}
     location.href = location.pathname + '?t=' + d.track_token + '&new=1' + (d.with_rider ? '&with=' + encodeURIComponent(d.with_rider) : '');
@@ -338,7 +361,16 @@ async function showTracking(token, isNew) {
     '<ol class="timeline">' + steps.map(function(s, i) { return '<li class="' + (i <= at ? 'on' : '') + (i === at ? ' now' : '') + '">' + s[0] + (i <= at && s[2] ? ' · ' + t(s[2]) : '') + (i <= at && s[1] ? '<small>' + esc(s[1]) + '</small>' : '') + '</li>'; }).join('') + '</ol>' +
     (b.rider_phone ? '<a class="btn" style="display:block; text-align:center; text-decoration:none;" href="tel:' + esc(b.rider_phone) + '">Call rider ' + esc(b.rider_name || '') + '</a>' : '') +
     (at <= 1 ? '<button class="btn" type="button" id="cxBtn" style="width:100%; margin-top:8px; color:#B91C1C; border-color:#FECACA;">Cancel booking</button>' : '')) +
+    (b.service_type === 'saver' && b.scheduled_at && at < 3 ? '<p style="margin:10px 0 0; font-weight:600;">🚌 Saathi Saver run: pickup around ' + new Date(b.scheduled_at).toLocaleString('en-IN', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) + '</p>' : '') +
+    (b.insured ? '<p style="margin:6px 0 0; font-weight:600;">🛡️ Parcel Bima on — value ' + rs(b.declared_value) + '</p>' : '') +
+    (b.gift_message ? '<p style="margin:6px 0 0;">🎁 Gift note: <i>' + esc(b.gift_message) + '</i></p>' : '') +
+    (b.proof_photo_url ? '<p style="margin:10px 0 4px; font-weight:700;">📷 Delivery photo</p><img src="' + esc(b.proof_photo_url) + '" alt="Photo taken by the rider at delivery" style="width:100%; border-radius:12px;">' : '') +
+    (b.status === 'delivered' && !b.rating ? '<div style="margin-top:12px; padding:12px; border:1.5px solid #E7E5E4; border-radius:12px;"><b>How was your delivery?</b><div id="stars" style="font-size:32px; margin:6px 0;" role="radiogroup" aria-label="Rating">' + [1,2,3,4,5].map(function(n) { return '<button type="button" data-star="' + n + '" aria-label="' + n + ' star" style="background:none; border:none; font-size:32px; padding:0 2px; cursor:pointer;">☆</button>'; }).join('') + '</div><input id="rateNote" placeholder="Anything to tell us? (optional)" style="width:100%; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px;"><button class="btn" type="button" id="rateBtn" style="width:100%; margin-top:8px;">Send rating</button></div>' : (b.rating ? '<p style="margin-top:10px;">Your rating: ' + '★'.repeat(b.rating) + '☆'.repeat(5 - b.rating) + ' — thank you!</p>' : '')) +
     '<a class="btn" style="display:block; text-align:center; text-decoration:none; margin-top:8px;" href="' + location.pathname + '">Book another delivery</a></div>' + mineHtml(token);
+  let stars = 0;
+  document.querySelectorAll('[data-star]').forEach(function(s) { s.addEventListener('click', function() { stars = Number(s.getAttribute('data-star')); document.querySelectorAll('[data-star]').forEach(function(x) { x.textContent = Number(x.getAttribute('data-star')) <= stars ? '★' : '☆'; x.style.color = Number(x.getAttribute('data-star')) <= stars ? '#EA580C' : ''; }); }); });
+  const rb = $('rateBtn');
+  if (rb) rb.addEventListener('click', async function() { if (!stars) { alert('Tap the stars first'); return; } const d = await rpc('routix_web_rate', { p_token: token, p_rating: stars, p_note: $('rateNote').value }).catch(function(e) { return { ok: false, error: e.message }; }); if (!d.ok) alert(d.error); showTracking(token, false); });
   if (isNew) setTimeout(function() { openInstallSheet(true, true); }, 1500);
   const cx = $('cxBtn');
   if (cx) cx.addEventListener('click', async function() {
