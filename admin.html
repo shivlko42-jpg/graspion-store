@@ -496,31 +496,15 @@ Continue with Google
 </div>
 
 <div class="panel" data-section="delivery">
-<h3>🛵 Routix Riders <span style="font-size:12px; font-weight:600; color:#6b7280;">· delivery partners (Graspion is Routix's first client)</span></h3>
-<div id="routixJobsSummary" style="font-size:13px; color:#1f2937; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:10px 12px; margin-bottom:12px;">Loading Routix deliveries…</div>
-<div style="background:#fff; border:1.5px solid #fed7aa; border-radius:12px; padding:12px 14px; margin-bottom:14px;">
-<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;"><b style="font-size:14px;">🤝 Routix ↔ Graspion account</b>
-<button id="routixMakeStmt" style="background:#ea580c; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:800; cursor:pointer;">Make statement for new deliveries</button></div>
-<div style="font-size:12.5px; color:#374151; margin:4px 0 8px;">Routix works like a separate delivery company: Graspion pays Routix per delivery (rider pay + Routix fee); COD cash collected by Routix riders belongs to Graspion. One statement nets both.</div>
-<div id="routixUnbilled" style="font-size:13px;"></div>
+<h3>🛵 Delivery partner: Routix</h3>
+<p style="font-size:13px; color:#374151; margin:4px 0 12px; line-height:1.5;">Graspion's local deliveries are done by <b>Routix</b>, a separate delivery company. Riders, their applications, PINs, wallets, payouts and cash are all managed in <b>Routix Control</b>. Graspion is Routix's client: Routix bills Graspion per delivery and returns the COD cash its riders collect.</p>
+<a href="routix.html" target="_blank" rel="noopener" style="display:inline-block; background:#ea580c; color:#fff; text-decoration:none; padding:11px 18px; border-radius:10px; font-weight:800;">Open Routix Control →</a>
+<div style="margin-top:16px; background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:12px 14px;">
+<b style="font-size:14px;">🤝 Graspion's account with Routix</b>
+<div id="routixUnbilled" style="font-size:13px; margin-top:6px;"></div>
 <div id="routixStatements" style="margin-top:10px; overflow-x:auto;"></div>
+<div style="font-size:12px; color:#4b5563; margin-top:6px;">Statements are made and settled by Routix. To give a Graspion order to a rider, use the rider box on that order in Orders.</div>
 </div>
-<div style="background:#fff; border:1.5px solid #c7d2fe; border-radius:12px; padding:12px 14px; margin-bottom:14px;">
-<b style="font-size:14px;">💰 Rider wallets &amp; withdrawals</b>
-<div style="font-size:12.5px; color:#374151; margin:4px 0 8px;">Every delivery adds earnings, COD cash is shown as owed until deposited. Pay withdrawal requests by UPI, then mark paid (the rider's passbook updates itself).</div>
-<div id="payoutRequests"></div>
-<div id="riderWallets" style="margin-top:10px; overflow-x:auto;"></div>
-</div>
-<p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Add riders here so they can log into the Rider App and receive deliveries.</p>
-<div class="form-grid">
-<input class="form-input" id="riderName" placeholder="Rider full name">
-<input class="form-input" id="riderPhone" placeholder="Phone number">
-<input class="form-input" id="riderBike" placeholder="Bike number">
-<input class="form-input" id="riderPincode" placeholder="Service pincode">
-<select class="form-input" id="riderWarehouse"><option value="">— No dark store (pan-India only) —</option></select>
-</div>
-<button class="login-btn" id="riderAddBtn" style="margin-top:10px;">+ Add Rider</button>
-<div id="deliveryList" style="margin-top:16px;"></div>
 </div>
 
 <div class="panel" data-section="ads">
@@ -839,7 +823,7 @@ Continue with Google
 
 <details class="panel" data-section="applications">
 <summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">🚴 Rider Applications ▾</h3></summary>
-<div id="riderAppsList"></div>
+<p style="font-size:13px; color:#374151; margin-top:8px;">Rider applications are now handled by Routix. <a href="routix.html#applications" target="_blank" rel="noopener" style="color:#ea580c; font-weight:800;">Open Routix Control → New riders</a></p>
 <div class="empty-state" id="riderAppsEmpty" style="display:none;">No pending rider applications</div>
 </details>
 
@@ -2496,6 +2480,7 @@ loadAllData();
 }
 function renderDeliveryPartners() {
 const list = document.getElementById('deliveryList');
+if (!list) { const dsWhSelect0 = document.getElementById('dsWarehouse'); if (dsWhSelect0 && dsWhSelect0.options.length <= 1 && typeof allWarehouses !== 'undefined') dsWhSelect0.innerHTML = '<option value="">— Select warehouse —</option>' + allWarehouses.map(function(w) { return '<option value="' + w.id + '">' + w.name + '</option>'; }).join(''); return; }
 const activeOrders = allOrders.filter(function(o) { return o.status === 'shipped'; }).length;
 const whSelect = document.getElementById('riderWarehouse');
 if (whSelect) {
@@ -3476,7 +3461,7 @@ errEl.textContent = 'Error: ' + err.message;
 btn.disabled = false; btn.textContent = '+ Create Dark Store Login';
 }
 });
-document.getElementById('riderAddBtn').addEventListener('click', async function() {
+if (document.getElementById('riderAddBtn')) document.getElementById('riderAddBtn').addEventListener('click', async function() {
 const name = document.getElementById('riderName').value.trim();
 const phone = document.getElementById('riderPhone').value.trim();
 const bike = document.getElementById('riderBike').value.trim();
@@ -3755,6 +3740,7 @@ loadAndRenderApplications();
 }
 function renderRiderApps(apps) {
 const list = document.getElementById('riderAppsList');
+if (!list) return;
 const empty = document.getElementById('riderAppsEmpty');
 if (!list) return;
 if (apps.length === 0) { empty.style.display = 'block'; list.innerHTML = ''; return; }
@@ -4774,7 +4760,7 @@ async function loadRoutixAccount() {
         const n = Number(x.net_amount || 0);
         return '<tr>' + [x.statement_no, x.jobs_count, money(x.delivery_charges), money(x.cod_collected), (n >= 0 ? 'Graspion → Routix ' : 'Routix → Graspion ') + money(n),
           x.status === 'settled' ? '✅ Settled' + (x.payment_ref ? ' · ' + String(x.payment_ref).replace(/</g, '&lt;') : '') : '⏳ Pending',
-          x.status === 'settled' ? '' : '<button data-routixsettle="' + x.id + '" style="background:#16a34a; color:#fff; border:none; padding:5px 10px; border-radius:6px; font-weight:700; cursor:pointer;">Mark settled</button>'
+          x.status === 'settled' || true ? '' : '<button data-routixsettle="' + x.id + '" style="background:#16a34a; color:#fff; border:none; padding:5px 10px; border-radius:6px; font-weight:700; cursor:pointer;">Mark settled</button>'
         ].map(function(v) { return '<td style="padding:6px; border-bottom:1px solid #f3f4f6; white-space:nowrap;">' + v + '</td>'; }).join('') + '</tr>';
       }).join('') + '</table>' : '<div style="font-size:12.5px; color:#6b7280;">No statements yet.</div>';
   } catch (e) { ub.textContent = 'Could not load Routix account.'; }

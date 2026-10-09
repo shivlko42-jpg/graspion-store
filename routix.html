@@ -91,6 +91,25 @@ label.f textarea { resize: vertical; }
 .err-text { color: var(--stop); font-size: 14px; min-height: 20px; margin-top: 8px; }
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--asphalt); color: #fff; padding: 12px 18px; border-radius: 12px; font-weight: 600; z-index: 50; max-width: 92vw; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* sidebar layout */
+.shell { display: block; }
+.side { position: sticky; top: 0; z-index: 20; display: flex; gap: 6px; overflow-x: auto; background: #FAFAF9; border-bottom: 1.5px solid var(--line); padding: 10px 12px; }
+.side button { flex: 0 0 auto; border: 1.5px solid var(--line); background: #fff; color: var(--asphalt); border-radius: 999px; padding: 9px 14px; font-weight: 700; font-size: 14.5px; white-space: nowrap; }
+.side button[aria-current="page"] { background: var(--asphalt); color: #fff; border-color: var(--asphalt); }
+.side .badge:not(:empty) { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: #DC2626; color: #fff; font-size: 12px; line-height: 20px; text-align: center; }
+@media (min-width: 900px) {
+  .shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); max-width: 1180px; margin: 0 auto; gap: 18px; padding: 0 16px; }
+  .side { flex-direction: column; position: sticky; top: 12px; align-self: start; border: 1.5px solid var(--line); border-radius: 16px; margin-top: 16px; background: #fff; padding: 10px; }
+  .side button { border: none; border-radius: 10px; text-align: left; padding: 11px 12px; }
+  .shell .wrap { max-width: none; padding: 0 0 40px; }
+}
+[data-sec][hidden] { display: none !important; }
+.rcard { border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; background: #fff; }
+.rcard .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.rcard details { margin-top: 8px; }
+.rcard summary { cursor: pointer; font-weight: 700; color: var(--routix-dark); }
+.chk { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; margin-bottom: 4px; }
 </style>
 </head>
 <body>
@@ -108,8 +127,19 @@ label.f textarea { resize: vertical; }
 
 <div id="appView" hidden>
   <header class="top"><div class="in"><div><div class="brand"><svg width="24" height="27" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><em style="font-style:normal; white-space:nowrap;">ROUTI<span>X</span></em>&nbsp;Control</div><div style="font-family:'Barlow Semi Condensed',sans-serif; font-weight:700; font-size:13.5px; color:#FED7AA;">Routix hai na, pahuncha denge.</div><div class="who" id="whoAmI"></div></div><button class="ghost" id="logoutBtn" type="button">Sign out</button></div></header>
+<div class="shell">
+  <nav class="side" aria-label="Routix Control sections">
+    <button type="button" data-go="overview" aria-current="page">📊 Overview</button>
+    <button type="button" data-go="bookings">📦 Bookings <span class="badge" id="navReq"></span></button>
+    <button type="button" data-go="riders">🛵 Riders</button>
+    <button type="button" data-go="applications">📝 New riders <span class="badge" id="navApps"></span></button>
+    <button type="button" data-go="money">💰 Rider money</button>
+    <button type="button" data-go="shops">🏪 Shops (Khaata)</button>
+    <button type="button" data-go="claims">🛡️ Suraksha claims</button>
+    <button type="button" data-go="graspion">🤝 Graspion account</button>
+  </nav>
   <main class="wrap">
-    <section class="board" aria-labelledby="todayH">
+    <section class="board" data-sec="overview" aria-labelledby="todayH">
       <h2 id="todayH">Today on the road</h2>
       <div class="stats">
         <div class="stat open"><b id="stOpen">0</b><small>waiting for a rider</small></div>
@@ -120,32 +150,32 @@ label.f textarea { resize: vertical; }
       <div class="money" id="stMonth"></div>
     </section>
 
-    <section class="panel" aria-labelledby="clH">
+    <section class="panel" data-sec="claims" aria-labelledby="clH">
       <h2 id="clH">🛡️ Parcel Suraksha claims</h2>
       <p class="hint">Routix's own guarantee (not insurance). Check the photos the customer sends on WhatsApp and the rider's delivery photo, then decide.</p>
       <div id="claimFund" class="facts" style="margin-bottom:8px;"></div>
       <div id="claimList"></div>
     </section>
 
-    <section class="panel" aria-labelledby="lbH">
+    <section class="panel" data-sec="overview" aria-labelledby="lbH">
       <h2 id="lbH">🏆 Rider of the Month</h2>
       <p class="hint">Deliveries this month plus customer ratings. Reward the best rider with a bonus from the Riders list.</p>
       <div id="leaderboard"></div>
     </section>
 
-    <section class="panel" aria-labelledby="ridersH">
+    <section class="panel" data-sec="riders" aria-labelledby="ridersH">
       <h2 id="ridersH">🛵 Riders</h2>
       <p class="hint">Riders log in with their mobile number and a 6-digit PIN. Set or reset a PIN here and send it to them on WhatsApp.</p>
       <div id="riderList"></div>
     </section>
 
-    <section class="panel" aria-labelledby="shopsH">
+    <section class="panel" data-sec="shops" aria-labelledby="shopsH">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><h2 id="shopsH">🏪 Shops on Routix Khaata</h2><button class="btn" type="button" id="addShopBtn">+ Add shop</button></div>
       <p class="hint">Regular shops get their own booking link, a monthly bill and the same rider. Their goods cash goes back the same day.</p>
       <div id="shopList"></div>
     </section>
 
-    <section class="panel" aria-labelledby="newH">
+    <section class="panel" data-sec="bookings" aria-labelledby="newH">
       <h2 id="newH">Book a delivery</h2>
       <p class="hint">For a call or WhatsApp request. Online Routix riders see it straight away in their app, or you can give it to one rider below.</p>
       <form id="bookForm" autocomplete="off">
@@ -190,7 +220,7 @@ label.f textarea { resize: vertical; }
       </form>
     </section>
 
-    <section aria-labelledby="listH">
+    <section data-sec="bookings" aria-labelledby="listH">
       <h2 id="listH" style="font-family:'Barlow Semi Condensed',sans-serif; font-size:22px; margin:0 0 10px;">Bookings</h2>
       <div class="tabs" role="tablist" aria-label="Booking status">
         <button class="tab" role="tab" data-st="requested" aria-selected="true">New requests <span id="reqCount"></span></button>
@@ -201,7 +231,39 @@ label.f textarea { resize: vertical; }
       </div>
       <div id="bookingList"></div>
     </section>
+    <section class="panel" data-sec="applications" aria-labelledby="appsH">
+      <h2 id="appsH">📝 New rider applications</h2>
+      <p class="hint">Check the documents, call the rider, then approve. Approved riders log in with their mobile + PIN straight away.</p>
+      <div id="appList"><div class="empty">Loading…</div></div>
+    </section>
+
+    <section class="panel" data-sec="riders" aria-labelledby="addRiderH">
+      <h2 id="addRiderH">➕ Add a rider yourself</h2>
+      <div class="grid2"><label class="f">Full name<input id="arName"></label><label class="f">Mobile<input id="arPhone" inputmode="tel" maxlength="14"></label>
+      <label class="f">Bike number<input id="arBike"></label><label class="f">Area pincode<input id="arPin" inputmode="numeric" maxlength="6"></label></div>
+      <button class="primary" type="button" id="arAdd">Add rider (then set PIN)</button>
+    </section>
+
+    <section class="panel" data-sec="money" aria-labelledby="payH">
+      <h2 id="payH">💸 Withdrawal requests</h2>
+      <p class="hint">Pay by UPI, then mark paid with the UTR. The rider's passbook updates itself.</p>
+      <div id="payoutRequests"><div class="empty">Loading…</div></div>
+    </section>
+    <section class="panel" data-sec="money" aria-labelledby="walH">
+      <h2 id="walH">👛 Rider wallets &amp; cash</h2>
+      <p class="hint">Cash in hand = COD the rider collected and has not deposited yet. Record deposits here.</p>
+      <div id="riderWallets"><div class="empty">Loading…</div></div>
+    </section>
+
+    <section class="panel" data-sec="graspion" aria-labelledby="gaH">
+      <h2 id="gaH">🤝 Graspion account (client)</h2>
+      <p class="hint">Graspion is a client of Routix: it pays Routix per delivery (rider pay + Routix fee). COD cash Routix riders collect for Graspion is owed back to Graspion. One statement nets both.</p>
+      <div id="gaUnbilled"></div>
+      <button class="primary" type="button" id="gaMake" style="margin:10px 0;">Make statement for new deliveries</button>
+      <div id="gaStatements"></div>
+    </section>
   </main>
+</div>
 </div>
 
 <script>
@@ -232,6 +294,8 @@ async function boot() {
   $('whoAmI').textContent = data.session.user.email || '';
   $('loginView').hidden = true; $('appView').hidden = false;
   refreshAll();
+  goSec((location.hash || '#overview').slice(1) || 'overview');
+  loadApplications();
   setInterval(function() { if (document.visibilityState === 'visible') refreshAll(); }, 30000);
 }
 $('googleBtn').addEventListener('click', function() { sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } }); });
@@ -250,7 +314,7 @@ async function loadDashboard() {
   try {
     const d = await rpc('routix_dashboard');
     riders = d.riders || []; renderRiders();
-    $('stOpen').textContent = d.open + d.requested; $('reqCount').textContent = d.requested ? '(' + d.requested + ')' : ''; $('stRun').textContent = d.running; $('stDone').textContent = d.today_delivered; $('stCash').textContent = rs(d.goods_cash_to_return);
+    $('stOpen').textContent = d.open + d.requested; $('reqCount').textContent = d.requested ? '(' + d.requested + ')' : ''; $('navReq').textContent = d.requested ? d.requested : ''; $('stRun').textContent = d.running; $('stDone').textContent = d.today_delivered; $('stCash').textContent = rs(d.goods_cash_to_return);
     $('stMonth').textContent = 'This month: ' + d.month_jobs + ' deliveries, income ' + rs(d.month_income) + ', paid to riders ' + rs(d.month_rider_pay) + '. Riders online now: ' + d.riders_online + '.';
   } catch (e) { $('stMonth').textContent = 'Could not load numbers: ' + e.message; }
 }
@@ -426,15 +490,7 @@ document.addEventListener('click', async function(e) {
 });
 
 // ===== Riders: PIN login =====
-function renderRiders() {
-  const box = $('riderList'); if (!box) return;
-  if (!riders.length) { box.innerHTML = '<div class="empty">No active riders yet.</div>'; return; }
-  box.innerHTML = riders.map(function(r) {
-    return '<article class="ticket" style="padding:10px 14px;"><div class="head"><span class="no">' + esc(r.name) + '</span><span class="pill ' + (r.online ? 's-delivered' : 's-cancelled') + '">' + (r.online ? 'Online' : 'Offline') + '</span></div>' +
-      '<div class="facts">' + esc(r.phone || 'no mobile saved') + (r.ref_code ? ' · code ' + esc(r.ref_code) : '') + ' · ' + (r.pin_set ? 'PIN login ready' : '<b style="color:#B91C1C;">PIN not set</b>') + '</div>' +
-      '<div class="actions"><button class="btn" type="button" data-setpin="' + r.id + '">' + (r.pin_set ? 'Reset PIN' : 'Set PIN') + '</button></div></article>';
-  }).join('');
-}
+function renderRiders() { if (!$('riderList')) return; if (document.querySelector('[data-sec="riders"]:not([hidden])')) loadRidersFull(); }
 document.addEventListener('click', async function(e) {
   const b = e.target.closest && e.target.closest('[data-setpin]'); if (!b) return;
   const r = riders.find(function(x) { return x.id === b.getAttribute('data-setpin'); }) || {};
@@ -484,6 +540,185 @@ document.addEventListener('click', async function(e) {
     if (no) { const note = prompt('Why is it not approved? (customer will see this)'); if (!note) return; const d = await rpc('routix_claim_decide', { p_id: no.getAttribute('data-claimno'), p_approve: false, p_amount: 0, p_note: note }); toast(d.ok ? 'Rejected' : d.error); loadClaims(); }
     if (pd) { const ref = prompt('UPI / bank reference:'); if (ref === null) return; const d = await rpc('routix_claim_paid', { p_id: pd.getAttribute('data-claimpaid'), p_ref: ref }); toast(d.ok ? 'Marked paid' : 'Could not update'); loadClaims(); }
   } catch (err) { toast(err.message); }
+});
+
+// ===================== Routix Control: sections =====================
+function goSec(sec) {
+  document.querySelectorAll('[data-sec]').forEach(function(el) { el.hidden = el.getAttribute('data-sec') !== sec; });
+  document.querySelectorAll('[data-go]').forEach(function(b) { if (b.getAttribute('data-go') === sec) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  try { history.replaceState(null, '', '#' + sec); } catch (e) {}
+  if (sec === 'riders') loadRidersFull();
+  if (sec === 'applications') loadApplications();
+  if (sec === 'money') loadMoney();
+  if (sec === 'graspion') loadGraspionAccount();
+  window.scrollTo({ top: 0 });
+}
+document.querySelectorAll('[data-go]').forEach(function(b) { b.addEventListener('click', function() { goSec(b.getAttribute('data-go')); }); });
+const RHDR = function() { return { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }; };
+async function rget(path) { const r = await fetch(SUPABASE_URL + '/rest/v1/' + path, { headers: RHDR() }); if (!r.ok) throw new Error(await r.text()); return r.json(); }
+
+// ---------- Riders (full manager) ----------
+let fullRiders = [], allVendorsR = [], riderLinks = [], warehousesR = [];
+async function loadRidersFull() {
+  const box = $('riderList'); if (!box) return;
+  try {
+    [fullRiders, allVendorsR, riderLinks, warehousesR] = await Promise.all([
+      rget('riders?select=*&order=name'), rget('vendors?select=id,name,pincode,status&order=name'),
+      rget('rider_vendor_links?select=rider_id,vendor_id'), rget('warehouses?select=id,name').catch(function() { return []; })]);
+  } catch (e) { box.innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
+  const dash = {}; (riders || []).forEach(function(r) { dash[r.id] = r; });
+  box.innerHTML = fullRiders.length ? fullRiders.map(function(r) {
+    const active = r.status !== 'inactive' && r.status !== 'blocked';
+    const linked = riderLinks.filter(function(l) { return l.rider_id === r.id; }).map(function(l) { return l.vendor_id; });
+    const vend = allVendorsR.slice().sort(function(a, b) { return ((r.pincode && a.pincode === r.pincode) ? 0 : 1) - ((r.pincode && b.pincode === r.pincode) ? 0 : 1) || String(a.name).localeCompare(String(b.name)); });
+    const d = dash[r.id] || {};
+    return '<article class="rcard"><div class="row"><b style="font-size:16px;">' + esc(r.name) + (r.bike_number ? ' · ' + esc(r.bike_number) : '') + '</b>' +
+      '<span class="pill ' + (active ? (d.online ? 's-delivered' : 's-open') : 's-cancelled') + '">' + (active ? (d.online ? 'Online' : 'Active') : 'Inactive') + '</span></div>' +
+      '<div class="facts">' + esc(r.phone || 'no mobile') + ' · pincode ' + esc(r.pincode || '-') + (r.ref_code ? ' · code ' + esc(r.ref_code) : '') + ' · ' + (r.pin_set_at ? 'PIN login ready' : '<b style="color:#B91C1C;">PIN not set</b>') + '</div>' +
+      '<div class="actions"><button class="btn" type="button" data-setpin="' + r.id + '">' + (r.pin_set_at ? 'Reset PIN' : 'Set PIN') + '</button>' +
+      '<button class="btn' + (active ? ' stop' : '') + '" type="button" data-rtoggle="' + r.id + '" data-active="' + active + '">' + (active ? 'Deactivate' : 'Activate') + '</button></div>' +
+      '<details><summary>Details, documents &amp; linked Graspion shops</summary>' +
+        '<div class="facts" style="margin:8px 0;">Address: ' + esc(r.address || '-') + '<br>Documents: ' +
+          (r.driving_license_image ? '<a href="' + esc(r.driving_license_image) + '" target="_blank" rel="noopener">Licence</a> ' : '') +
+          (r.vehicle_rc_image ? '<a href="' + esc(r.vehicle_rc_image) + '" target="_blank" rel="noopener">RC</a> ' : '') +
+          (r.id_proof_image ? '<a href="' + esc(r.id_proof_image) + '" target="_blank" rel="noopener">ID</a>' : '') +
+          (!r.driving_license_image && !r.vehicle_rc_image && !r.id_proof_image ? 'none uploaded' : '') + '</div>' +
+        '<div class="grid2"><label class="f">Area pincode<input data-rpin="' + r.id + '" value="' + esc(r.pincode || '') + '"></label>' +
+        '<label class="f">Dark store<select data-rwh="' + r.id + '"><option value="">— none —</option>' + warehousesR.map(function(w) { return '<option value="' + w.id + '"' + (r.warehouse_id === w.id ? ' selected' : '') + '>' + esc(w.name) + '</option>'; }).join('') + '</select></label></div>' +
+        '<div style="font-weight:700; margin:6px 0;">Graspion shops this rider delivers for (local orders)</div>' +
+        '<div style="max-height:220px; overflow-y:auto;">' + vend.map(function(v) { return '<label class="chk"><input type="checkbox" data-rlink="' + r.id + '" value="' + v.id + '"' + (linked.indexOf(v.id) !== -1 ? ' checked' : '') + '> ' + esc(v.name) + (v.pincode ? ' · ' + esc(v.pincode) : '') + '</label>'; }).join('') + '</div>' +
+        '<button class="btn" type="button" data-rsave="' + r.id + '" style="margin-top:8px;">💾 Save area &amp; shops</button>' +
+      '</details></article>';
+  }).join('') : '<div class="empty">No riders yet. Approve applications or add one below.</div>';
+}
+document.addEventListener('click', async function(e) {
+  const t = e.target.closest && e.target.closest('[data-rtoggle]'), sv = e.target.closest && e.target.closest('[data-rsave]');
+  if (t) {
+    const active = t.getAttribute('data-active') === 'true';
+    if (active && !confirm('Deactivate this rider? They will stop getting deliveries.')) return;
+    try { const r = await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + t.getAttribute('data-rtoggle'), { method: 'PATCH', headers: RHDR(), body: JSON.stringify({ status: active ? 'inactive' : 'active' }) }); if (!r.ok) throw new Error(await r.text()); toast(active ? 'Rider deactivated' : 'Rider activated'); } catch (err) { toast(err.message); }
+    loadRidersFull(); loadDashboard();
+  }
+  if (sv) {
+    const id = sv.getAttribute('data-rsave');
+    const pin = (document.querySelector('[data-rpin="' + id + '"]') || {}).value || '';
+    const wh = (document.querySelector('[data-rwh="' + id + '"]') || {}).value || null;
+    const vids = Array.prototype.map.call(document.querySelectorAll('[data-rlink="' + id + '"]:checked'), function(c) { return c.value; });
+    sv.disabled = true;
+    try {
+      const a = await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + id, { method: 'PATCH', headers: RHDR(), body: JSON.stringify({ pincode: pin.trim() || null, warehouse_id: wh, assigned_vendor_id: vids[0] || null }) });
+      const b = await fetch(SUPABASE_URL + '/rest/v1/rider_vendor_links?rider_id=eq.' + id, { method: 'DELETE', headers: RHDR() });
+      let c = { ok: true }; if (vids.length) c = await fetch(SUPABASE_URL + '/rest/v1/rider_vendor_links', { method: 'POST', headers: RHDR(), body: JSON.stringify(vids.map(function(v) { return { rider_id: id, vendor_id: v }; })) });
+      if (!a.ok || !b.ok || !c.ok) throw new Error('Could not save');
+      toast('Saved');
+    } catch (err) { toast(err.message); }
+    sv.disabled = false; loadRidersFull();
+  }
+});
+$('arAdd').addEventListener('click', async function() {
+  const name = $('arName').value.trim(), phone = $('arPhone').value.replace(/\D/g, '').slice(-10);
+  if (!name || phone.length !== 10) { toast('Enter name and 10-digit mobile'); return; }
+  try {
+    const r = await fetch(SUPABASE_URL + '/rest/v1/riders', { method: 'POST', headers: Object.assign(RHDR(), { Prefer: 'return=representation' }), body: JSON.stringify({ name: name, phone: phone, bike_number: $('arBike').value.trim() || null, pincode: $('arPin').value.trim() || null, status: 'active' }) });
+    if (!r.ok) throw new Error(await r.text());
+    ['arName','arPhone','arBike','arPin'].forEach(function(id) { $(id).value = ''; });
+    toast('Rider added — now tap "Set PIN" on their card');
+    await loadDashboard(); loadRidersFull();
+  } catch (err) { toast(err.message); }
+});
+
+// ---------- New rider applications ----------
+async function loadApplications() {
+  const box = $('appList'); if (!box) return;
+  let apps = [];
+  try { apps = await rget('rider_applications?status=eq.pending&select=*&order=created_at.asc'); } catch (e) { box.innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
+  $('navApps').textContent = apps.length ? apps.length : '';
+  box.innerHTML = apps.length ? apps.map(function(a) {
+    return '<article class="rcard"><div class="row"><b style="font-size:16px;">' + esc(a.name) + '</b><span class="small facts">' + new Date(a.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + '</span></div>' +
+      '<div class="facts">📞 ' + esc(a.phone || '-') + ' · pincode ' + esc(a.pincode || '-') + (a.bike_number ? ' · bike ' + esc(a.bike_number) : '') + (a.pin_login ? ' · will log in with mobile + PIN' : '') + '</div>' +
+      (a.address ? '<div class="facts">' + esc(a.address) + '</div>' : '') + (a.message ? '<div class="facts">“' + esc(a.message) + '”</div>' : '') +
+      '<div class="facts">Documents: ' + (a.driving_license_image ? '<a href="' + esc(a.driving_license_image) + '" target="_blank" rel="noopener">Licence</a> ' : '') + (a.vehicle_rc_image ? '<a href="' + esc(a.vehicle_rc_image) + '" target="_blank" rel="noopener">RC</a> ' : '') + (a.id_proof_image ? '<a href="' + esc(a.id_proof_image) + '" target="_blank" rel="noopener">ID</a>' : '') + (!a.driving_license_image && !a.vehicle_rc_image && !a.id_proof_image ? '<b style="color:#B91C1C;">none uploaded</b>' : '') + '</div>' +
+      '<div class="actions"><a class="btn" href="tel:' + esc(String(a.phone || '').replace(/\D/g, '').slice(-10)) + '">📞 Call</a><button class="btn" type="button" style="background:#15803D; color:#fff; border-color:#15803D;" data-appok="' + a.id + '">✓ Approve</button><button class="btn stop" type="button" data-appno="' + a.id + '">✕ Reject</button></div></article>';
+  }).join('') : '<div class="empty">No new applications. Share the rider form: graspion.in/rider.html → "Apply here".</div>';
+}
+document.addEventListener('click', async function(e) {
+  const ok = e.target.closest && e.target.closest('[data-appok]'), no = e.target.closest && e.target.closest('[data-appno]');
+  if (!ok && !no) return;
+  if (no && !confirm('Reject this application?')) return;
+  const btn = ok || no; btn.disabled = true;
+  try {
+    const r = await fetch(SUPABASE_URL + '/functions/v1/approve-rider-application', { method: 'POST', headers: RHDR(), body: JSON.stringify({ application_id: btn.getAttribute(ok ? 'data-appok' : 'data-appno'), action: ok ? 'approve' : 'reject' }) });
+    const d = await r.json().catch(function() { return {}; });
+    if (!r.ok || d.error) throw new Error(d.error || 'Could not update');
+    toast(ok ? 'Approved — the rider can log in with mobile + PIN now' : 'Application rejected');
+  } catch (err) { toast(err.message); btn.disabled = false; return; }
+  loadApplications(); loadDashboard();
+});
+
+// ---------- Rider money: payouts, wallets, cash ----------
+async function loadMoney() {
+  const pr = $('payoutRequests'), wl = $('riderWallets'); if (!pr) return;
+  let reqs = [], ents = [], rs2 = [];
+  try { [reqs, ents, rs2] = await Promise.all([rget('rider_payout_requests?status=eq.requested&select=*,riders(name,phone)&order=requested_at.asc'), rget('rider_wallet_entries?select=rider_id,entry_type,amount'), rget('riders?select=id,name,upi_id,status&order=name')]); }
+  catch (e) { pr.innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; return; }
+  pr.innerHTML = reqs.length ? reqs.map(function(q) {
+    return '<article class="rcard"><div class="row"><b>' + esc((q.riders && q.riders.name) || 'Rider') + ' wants ' + rs(q.amount) + '</b><span class="facts">' + new Date(q.requested_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + '</span></div>' +
+      '<div class="facts">UPI: <b>' + esc(q.upi_id || '-') + '</b></div><div class="actions"><button class="btn" type="button" style="background:#15803D; color:#fff; border-color:#15803D;" data-payreq="' + q.id + '">Paid</button><button class="btn stop" type="button" data-rejreq="' + q.id + '">Reject</button></div></article>';
+  }).join('') : '<div class="empty">No withdrawal requests right now.</div>';
+  wl.innerHTML = rs2.map(function(r) {
+    const mine = ents.filter(function(x) { return x.rider_id === r.id; });
+    const bal = mine.reduce(function(t, x) { return t + Number(x.amount || 0); }, 0);
+    const cash = -mine.filter(function(x) { return x.entry_type === 'cod_collected'; }).reduce(function(t, x) { return t + Number(x.amount || 0); }, 0) - mine.filter(function(x) { return x.entry_type === 'cash_deposited'; }).reduce(function(t, x) { return t + Number(x.amount || 0); }, 0);
+    return '<article class="rcard"><div class="row"><b>' + esc(r.name) + '</b><b style="color:' + (bal >= 0 ? '#15803D' : '#B91C1C') + ';">' + (bal >= 0 ? 'Routix owes ' : 'Owes Routix ') + rs(Math.abs(bal)) + '</b></div>' +
+      '<div class="facts">Cash in hand ' + rs(Math.max(cash, 0)) + (r.upi_id ? ' · UPI ' + esc(r.upi_id) : '') + '</div>' +
+      '<div class="actions"><button class="btn" type="button" data-cashin="' + r.id + '">🏢 Cash deposited</button><button class="btn" type="button" data-wadj="' + r.id + '" data-type="bonus">+ Bonus</button><button class="btn stop" type="button" data-wadj="' + r.id + '" data-type="penalty">− Penalty</button></div></article>';
+  }).join('') || '<div class="empty">No riders yet.</div>';
+}
+document.addEventListener('click', async function(e) {
+  const pay = e.target.closest && e.target.closest('[data-payreq]'), rej = e.target.closest && e.target.closest('[data-rejreq]'), adj = e.target.closest && e.target.closest('[data-wadj]'), cin = e.target.closest && e.target.closest('[data-cashin]');
+  try {
+    if (pay || rej) {
+      const ref = prompt(pay ? 'UPI transaction / UTR number:' : 'Reason (the rider will see it):'); if (ref === null) return;
+      const d = await rpc('routix_payout_decide', { p_request_id: (pay || rej).getAttribute(pay ? 'data-payreq' : 'data-rejreq'), p_paid: !!pay, p_ref: ref });
+      toast(d.ok ? (pay ? 'Marked paid' : 'Rejected') : (d.error || 'Could not update'));
+    } else if (adj) {
+      const type = adj.getAttribute('data-type'); const amt = prompt((type === 'bonus' ? 'Bonus' : 'Penalty') + ' amount (₹):'); if (!amt) return;
+      const note = prompt('Reason (the rider will see it):') || '';
+      const d = await rpc('routix_wallet_adjust', { p_rider_id: adj.getAttribute('data-wadj'), p_type: type, p_amount: Number(amt), p_note: note });
+      toast(d.ok ? 'Added to passbook' : (d.error || 'Could not update'));
+    } else if (cin) {
+      const amt = prompt('How much cash did this rider deposit? (₹)'); if (!amt) return;
+      await rpc('record_rider_cash_remittance', { p_rider_id: cin.getAttribute('data-cashin'), p_amount: Number(amt) });
+      toast('Cash deposit recorded');
+    } else return;
+  } catch (err) { toast(err.message); }
+  loadMoney();
+});
+
+// ---------- Graspion account (client statements) ----------
+async function loadGraspionAccount() {
+  const ub = $('gaUnbilled'); if (!ub) return;
+  try {
+    const [jobs, st] = await Promise.all([rget('routix_jobs?statement_id=is.null&select=client_charge,cod_amount,rider_pay,routix_clients!inner(code)&routix_clients.code=eq.graspion'), rget('routix_statements?select=*,routix_clients!inner(code)&routix_clients.code=eq.graspion&order=created_at.desc&limit=24')]);
+    const sum = function(k) { return jobs.reduce(function(t, x) { return t + Number(x[k] || 0); }, 0); };
+    const ch = sum('client_charge'), cod = sum('cod_amount'), net = ch - cod;
+    ub.innerHTML = '<div class="facts" style="font-size:15px;"><b>Not yet billed:</b> ' + jobs.length + ' Graspion deliveries · Graspion owes Routix ' + rs(ch) + ' · COD with Routix ' + rs(cod) + ' → <b style="color:' + (net >= 0 ? '#9A3412' : '#15803D') + ';">' + (net >= 0 ? 'Graspion pays Routix ' : 'Routix pays Graspion ') + rs(Math.abs(net)) + '</b></div>';
+    $('gaStatements').innerHTML = st.length ? st.map(function(x) { const n = Number(x.net_amount || 0);
+      return '<article class="rcard"><div class="row"><b>' + esc(x.statement_no) + '</b><span class="pill ' + (x.status === 'settled' ? 's-delivered' : 's-open') + '">' + (x.status === 'settled' ? 'Settled' : 'Pending') + '</span></div>' +
+        '<div class="facts">' + x.jobs_count + ' deliveries · charges ' + rs(x.delivery_charges) + ' · COD ' + rs(x.cod_collected) + ' · ' + (n >= 0 ? 'Graspion → Routix ' : 'Routix → Graspion ') + rs(Math.abs(n)) + (x.payment_ref ? ' · ref ' + esc(x.payment_ref) : '') + '</div>' +
+        (x.status === 'settled' ? '' : '<div class="actions"><button class="btn" type="button" data-gsettle="' + x.id + '">Mark settled</button></div>') + '</article>'; }).join('') : '<div class="empty">No statements yet.</div>';
+  } catch (e) { ub.innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }
+}
+$('gaMake').addEventListener('click', async function() {
+  if (!confirm('Make a statement for all Graspion deliveries not billed yet?')) return;
+  try { const d = await rpc('routix_create_statement', { p_client_code: 'graspion' }); toast(d.ok ? 'Statement ' + d.statement_no + ' made' : d.error); } catch (err) { toast(err.message); }
+  loadGraspionAccount();
+});
+document.addEventListener('click', async function(e) {
+  const g = e.target.closest && e.target.closest('[data-gsettle]'); if (!g) return;
+  const ref = prompt('Payment reference (UPI / bank / cash note):'); if (ref === null) return;
+  try { await rpc('routix_settle_statement', { p_id: g.getAttribute('data-gsettle'), p_ref: ref }); toast('Settled'); } catch (err) { toast(err.message); }
+  loadGraspionAccount();
 });
 boot();
 </script>
