@@ -182,7 +182,7 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
         <label class="check" style="display:flex; gap:8px; align-items:flex-start; font-weight:600; margin:6px 0;"><input type="checkbox" id="bima" style="margin-top:3px;"> <span style="flex:1;">🛡️ <b>Parcel Bima</b> <span id="bimaFee"></span> — covers loss or damage up to the value you enter</span></label>
         <label class="f" id="bimaBox" hidden>Value of the parcel (₹)<input type="number" id="bimaVal" min="1" placeholder="e.g. 2000"></label>
         <label class="f">🎁 Gift note for the receiver (optional)<textarea id="gift" rows="2" maxlength="200" placeholder="e.g. Happy Diwali! Love, Neha"></textarea></label>
-        <label class="check" style="display:flex; gap:8px; align-items:center; font-weight:600; margin:0 0 10px;"><input type="checkbox" id="womanRider"> 👩 I prefer a woman rider (we try first; may take longer)</label>
+
         <div class="pay" role="radiogroup" aria-label="Who pays">
           <label><input type="radio" name="pm" value="collect_at_pickup" checked> I pay at pickup (cash or UPI)</label>
           <label><input type="radio" name="pm" value="collect_at_drop"> The receiver pays at delivery</label>
@@ -327,7 +327,7 @@ $('bookBtn').addEventListener('click', async function() {
       drop_name: $('dn').value, drop_phone: $('dp').value, drop_address: $('da').value + (pts[2].label ? ', ' + pts[2].label.split(',').slice(0, 3).join(',') : ''), drop_lat: pts[2].lat, drop_lng: pts[2].lng,
       item_desc: item, weight_kg: kg, notes: $('nt').value, payment_mode: document.querySelector('input[name="pm"]:checked').value, ref: params.get('ref') || '', spot_token: params.get('spot') || '',
       service_type: document.querySelector('input[name="svc"]:checked').value, insured: $('bima').checked, declared_value: $('bimaVal').value,
-      gift_message: $('gift').value, women_rider: $('womanRider').checked } });
+      gift_message: $('gift').value } });
     if (!d.ok) { $('err').textContent = d.error || 'Could not book'; return; }
     try { const mine = JSON.parse(localStorage.getItem('routix_mine') || '[]'); mine.unshift({ t: d.track_token, no: d.booking_no, at: Date.now() }); localStorage.setItem('routix_mine', JSON.stringify(mine.slice(0, 10))); } catch (e) {}
     location.href = location.pathname + '?t=' + d.track_token + '&new=1' + (d.with_rider ? '&with=' + encodeURIComponent(d.with_rider) : '');

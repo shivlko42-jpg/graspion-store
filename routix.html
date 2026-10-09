@@ -325,7 +325,7 @@ function renderBookings() {
     return '<article class="ticket">' +
       '<div class="head"><span class="no">' + esc(b.booking_no) + (b.source === 'web' ? ' <small style="font-size:13px; color:#9A3412;">website</small>' : (b.source === 'rider_spot' ? ' <small style="font-size:13px; color:#9A3412;">booked by rider on the spot</small>' : (b.source === 'shop' ? ' <small style="font-size:13px; color:#9A3412;">khaata: ' + esc(b.pickup_name) + '</small>' : ''))) + (b.ref_rider_name ? ' <small style="font-size:13px; color:#15803D;">customer of ' + esc(b.ref_rider_name) + '</small>' : '') + '</span><span class="pill s-' + b.status + '">' + words[b.status] + (b.rider_name ? ': ' + esc(b.rider_name) : '') + '</span></div>' +
       '<div class="route"><div class="end"><b>' + esc(b.pickup_name) + '</b><span>' + esc(b.pickup_address) + '</span></div><div class="km">' + b.distance_km + ' km</div><div class="end" style="text-align:right;"><b>' + esc(b.drop_name) + '</b><span>' + esc(b.drop_address) + '</span></div></div>' +
-      ((b.service_type === 'saver' ? '🚌 Saver ' : '') + (b.insured ? '🛡️ Bima ' : '') + (b.gift_message ? '🎁 Gift ' : '') + (b.women_rider_pref ? '👩 Woman rider ' : '') + (b.rating ? '★'.repeat(b.rating) + ' ' : '') + (b.proof_photo_url ? '<a href="' + esc(b.proof_photo_url) + '" target="_blank" rel="noopener">📷 photo</a>' : '') ? '<div class="facts" style="font-weight:700;">' + (b.service_type === 'saver' ? '🚌 Saver ' : '') + (b.insured ? '🛡️ Bima ' : '') + (b.gift_message ? '🎁 Gift ' : '') + (b.women_rider_pref ? '👩 Woman rider ' : '') + (b.rating ? '★'.repeat(b.rating) + ' ' : '') + (b.proof_photo_url ? '<a href="' + esc(b.proof_photo_url) + '" target="_blank" rel="noopener">📷 photo</a>' : '') + '</div>' : '') +
+      ((b.service_type === 'saver' ? '🚌 Saver ' : '') + (b.insured ? '🛡️ Bima ' : '') + (b.gift_message ? '🎁 Gift ' : '') + (b.rating ? '★'.repeat(b.rating) + ' ' : '') + (b.proof_photo_url ? '<a href="' + esc(b.proof_photo_url) + '" target="_blank" rel="noopener">📷 photo</a>' : '') ? '<div class="facts" style="font-weight:700;">' + (b.service_type === 'saver' ? '🚌 Saver ' : '') + (b.insured ? '🛡️ Bima ' : '') + (b.gift_message ? '🎁 Gift ' : '') + (b.rating ? '★'.repeat(b.rating) + ' ' : '') + (b.proof_photo_url ? '<a href="' + esc(b.proof_photo_url) + '" target="_blank" rel="noopener">📷 photo</a>' : '') + '</div>' : '') +
       '<div class="facts">' + rs(b.charge) + ', ' + modes[b.payment_mode] + (Number(b.goods_cod) > 0 ? ', plus goods cash ' + rs(b.goods_cod) + (b.goods_cod_returned_at ? ' (handed back)' : '') : '') + '. Rider earns ' + rs(b.rider_pay) + '.' + (b.item_desc ? ' Item: ' + esc(b.item_desc) + ', ' + b.weight_kg + ' kg.' : '') + (b.cancel_reason ? ' Reason: ' + esc(b.cancel_reason) : '') + '</div>' +
       (actions ? '<div class="actions">' + actions + '</div>' : '') + '</article>';
   }).join('');
@@ -425,8 +425,7 @@ function renderRiders() {
   box.innerHTML = riders.map(function(r) {
     return '<article class="ticket" style="padding:10px 14px;"><div class="head"><span class="no">' + esc(r.name) + '</span><span class="pill ' + (r.online ? 's-delivered' : 's-cancelled') + '">' + (r.online ? 'Online' : 'Offline') + '</span></div>' +
       '<div class="facts">' + esc(r.phone || 'no mobile saved') + (r.ref_code ? ' · code ' + esc(r.ref_code) : '') + ' · ' + (r.pin_set ? 'PIN login ready' : '<b style="color:#B91C1C;">PIN not set</b>') + '</div>' +
-      '<div class="actions"><button class="btn" type="button" data-setpin="' + r.id + '">' + (r.pin_set ? 'Reset PIN' : 'Set PIN') + '</button>' +
-      '<button class="btn" type="button" data-gender="' + r.id + '" data-to="' + (r.gender === 'female' ? 'male' : 'female') + '">' + (r.gender === 'female' ? '👩 Woman rider ✓' : 'Mark as woman rider') + '</button></div></article>';
+      '<div class="actions"><button class="btn" type="button" data-setpin="' + r.id + '">' + (r.pin_set ? 'Reset PIN' : 'Set PIN') + '</button></div></article>';
   }).join('');
 }
 document.addEventListener('click', async function(e) {
@@ -453,11 +452,6 @@ async function loadLeaderboard() {
   } catch (e) { $('leaderboard').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }
 }
 
-document.addEventListener('click', async function(e) {
-  const g = e.target.closest && e.target.closest('[data-gender]'); if (!g) return;
-  try { await rpc('routix_rider_set_gender', { p_rider: g.getAttribute('data-gender'), p_gender: g.getAttribute('data-to') }); } catch (err) { toast(err.message); }
-  loadDashboard();
-});
 boot();
 </script>
 </body>
