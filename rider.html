@@ -132,6 +132,16 @@ body { background:#0f1117; color:#fff; max-width:420px; margin:0 auto; min-heigh
 .empty { text-align:center; padding:40px 24px; color:#e5e7eb; font-size:16px; font-weight:600; line-height:1.5; }
 #pinCode::placeholder { letter-spacing: 0; font-size: 16px; font-weight: 600; }
 #pinPhone::placeholder { font-size: 16px; font-weight: 600; }
+
+.ra-label { display:block; font-size:14px; font-weight:700; color:#f3f4f6; margin:10px 0 4px; }
+.ra-hint { font-weight:600; color:#fdba74; font-size:12.5px; }
+.ra-input { display:block; width:100%; box-sizing:border-box; padding:12px 14px; border-radius:12px; border:2px solid #a78bfa; background:#ffffff; color:#111827; font-size:16px; font-weight:600; font-family:inherit; }
+.ra-input::placeholder { color:#6b7280; font-weight:500; opacity:1; }
+.ra-input:focus { outline:none; border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,0.35); }
+.ra-pin { letter-spacing:6px; text-align:center; font-size:20px; font-weight:800; }
+.ra-pin::placeholder { letter-spacing:2px; }
+.ra-file { display:block; background:#0f1117; border:1.5px dashed #6b7280; border-radius:12px; padding:10px 12px; margin-bottom:8px; font-size:14px; font-weight:700; color:#f3f4f6; }
+.ra-file input { display:block; margin-top:6px; font-size:13px; color:#e5e7eb; width:100%; }
 </style>
 </head>
 <body>
@@ -191,27 +201,33 @@ Continue with Google
 </div>
 </div>
 
-<div class="modal-overlay" id="riderApplyModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300; align-items:center; justify-content:center; padding:20px;">
-<div style="max-width:380px; width:100%; background:#181b25; border-radius:20px; padding:24px; max-height:85vh; overflow-y:auto; color:#fff;">
-<h3 style="margin-bottom:4px;">🚴 Apply to Become a Rider</h3>
-<p style="font-size:13px; color:#cbd5e1; margin-bottom:14px;">Our team will review your application and email you your login once approved.</p>
-<input id="rAppName" placeholder="Your full name" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
-<input id="rAppEmail" type="email" placeholder="Email" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
-<input id="rAppPassword" type="password" placeholder="Create a password (for your login once approved)" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
-<input id="rAppPhone" placeholder="Phone number" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
-<input id="rAppBike" placeholder="Bike number (optional)" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
-<input id="rAppPincode" placeholder="Your area pincode" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff;">
-<textarea id="rAppAddress" placeholder="Your full address" style="width:100%; padding:11px; margin-bottom:8px; border-radius:10px; border:1px solid #333; background:#0f1117; color:#fff; min-height:50px; font-family:inherit;"></textarea>
-<label style="font-size:13px; font-weight:700; color:#cbd5e1; display:block; margin-bottom:4px;">📎 KYC Documents</label>
-<label style="font-size:12.5px; color:#d1d5db; display:block; margin-bottom:2px;">Driving License</label>
-<input type="file" accept="image/*" id="rAppLicenseFile" style="width:100%; margin-bottom:8px; font-size:11px; color:#fff;">
-<label style="font-size:12.5px; color:#d1d5db; display:block; margin-bottom:2px;">Vehicle RC (bike registration)</label>
-<input type="file" accept="image/*" id="rAppRcFile" style="width:100%; margin-bottom:8px; font-size:11px; color:#fff;">
-<label style="font-size:12.5px; color:#d1d5db; display:block; margin-bottom:2px;">ID Proof (Aadhar/other)</label>
-<input type="file" accept="image/*" id="rAppIdFile" style="width:100%; margin-bottom:8px; font-size:11px; color:#fff;">
-<div id="riderApplyError" style="color:#f87171; font-size:11px; margin-bottom:8px;"></div>
-<button id="submitRiderAppBtn" class="login-btn" style="width:100%;">Submit Application</button>
-<button id="closeRiderApplyBtn" style="width:100%; background:none; border:none; color:#cbd5e1; padding:10px; margin-top:4px; cursor:pointer;">Cancel</button>
+<div class="modal-overlay" id="riderApplyModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:300; align-items:center; justify-content:center; padding:16px;">
+<div style="max-width:400px; width:100%; background:#181b25; border-radius:20px; padding:22px 20px; max-height:90vh; overflow-y:auto; color:#fff;">
+<h3 style="margin:0 0 4px; font-size:21px;">🛵 Become a Routix Rider</h3>
+<p style="font-size:14px; color:#e5e7eb; margin:0 0 14px; line-height:1.45;">Apni bike, apna route, apni kamai. Fill this in — the Routix office will call you after checking. Then log in with your <b>mobile number + PIN</b>.</p>
+<label class="ra-label" for="rAppName">Full name *</label>
+<input id="rAppName" class="ra-input" autocomplete="name" placeholder="e.g. Ramesh Kumar">
+<label class="ra-label" for="rAppPhone">Mobile number * <span class="ra-hint">(this is your login)</span></label>
+<input id="rAppPhone" class="ra-input" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="10-digit mobile">
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+<div><label class="ra-label" for="rAppPin">Create 6-digit PIN *</label><input id="rAppPin" class="ra-input ra-pin" type="password" inputmode="numeric" maxlength="6" placeholder="••••••"></div>
+<div><label class="ra-label" for="rAppPin2">PIN again *</label><input id="rAppPin2" class="ra-input ra-pin" type="password" inputmode="numeric" maxlength="6" placeholder="••••••"></div>
+</div>
+<label class="ra-label" for="rAppPincode">Area pincode *</label>
+<input id="rAppPincode" class="ra-input" inputmode="numeric" maxlength="6" placeholder="e.g. 226016">
+<label class="ra-label" for="rAppAddress">Full address</label>
+<textarea id="rAppAddress" class="ra-input" rows="2" placeholder="House no., street, area"></textarea>
+<label class="ra-label" for="rAppBike">Bike number</label>
+<input id="rAppBike" class="ra-input" placeholder="e.g. UP 32 AB 1234">
+<label class="ra-label" for="rAppEmail">Email <span class="ra-hint">(optional)</span></label>
+<input id="rAppEmail" class="ra-input" type="email" autocomplete="email" placeholder="Leave empty if you don't use email">
+<div style="margin:14px 0 6px; font-size:15px; font-weight:800;">📎 Documents (photo from your phone)</div>
+<label class="ra-file">Driving License<input type="file" accept="image/*" id="rAppLicenseFile"></label>
+<label class="ra-file">Bike RC (registration)<input type="file" accept="image/*" id="rAppRcFile"></label>
+<label class="ra-file">Aadhaar / ID proof<input type="file" accept="image/*" id="rAppIdFile"></label>
+<div id="riderApplyError" role="alert" style="color:#fca5a5; font-size:14px; font-weight:700; margin:8px 0;"></div>
+<button id="submitRiderAppBtn" class="login-btn" style="width:100%; background:#ea580c;">Submit application</button>
+<button id="closeRiderApplyBtn" style="width:100%; background:none; border:none; color:#e5e7eb; padding:12px; margin-top:4px; cursor:pointer; font-size:15px;">Cancel</button>
 </div>
 </div>
 
@@ -794,51 +810,46 @@ reader.readAsDataURL(input.files[0]);
 }
 document.getElementById('submitRiderAppBtn').addEventListener('click', async function(){
 const name = document.getElementById('rAppName').value.trim();
+const phone = document.getElementById('rAppPhone').value.replace(/\D/g, '').slice(-10);
+const pin = document.getElementById('rAppPin').value.replace(/\D/g, '');
+const pin2 = document.getElementById('rAppPin2').value.replace(/\D/g, '');
 const email = document.getElementById('rAppEmail').value.trim();
-const password = document.getElementById('rAppPassword').value;
-const phone = document.getElementById('rAppPhone').value.trim();
+const pincode = document.getElementById('rAppPincode').value.trim();
 const errEl = document.getElementById('riderApplyError');
 errEl.textContent = '';
-if (!name || !email || !phone) { errEl.textContent = 'Please fill in name, email and phone.'; return; }
-if (!password || password.length < 6) { errEl.textContent = 'Please create a password (at least 6 characters).'; return; }
+if (!name) { errEl.textContent = 'Please enter your name.'; return; }
+if (phone.length !== 10) { errEl.textContent = 'Please enter your 10-digit mobile number.'; return; }
+if (pin.length !== 6) { errEl.textContent = 'Create a 6-digit PIN (numbers only).'; return; }
+if (pin !== pin2) { errEl.textContent = 'The two PINs are different. Type the same PIN twice.'; return; }
+if (!/^\d{6}$/.test(pincode)) { errEl.textContent = 'Please enter your 6-digit area pincode.'; return; }
 const btn = document.getElementById('submitRiderAppBtn');
-btn.textContent = '⏳ Creating your account...';
-btn.disabled = true;
+btn.textContent = '⏳ Creating your login...'; btn.disabled = true;
 try {
-const tempClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
-const { data: signupData, error: signupError } = await tempClient.auth.signUp({ email: email, password: password });
-if (signupError || !signupData.user) {
-errEl.textContent = 'Could not create account: ' + (signupError ? signupError.message : 'Unknown error');
-btn.textContent = 'Submit Application'; btn.disabled = false;
-return;
-}
-const licenseImg = await fileToBase64('rAppLicenseFile');
-const rcImg = await fileToBase64('rAppRcFile');
-const idImg = await fileToBase64('rAppIdFile');
-btn.textContent = '⏳ Submitting...';
-const res = await fetch(SUPABASE_URL + '/rest/v1/rider_applications', {
-method: 'POST',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-body: JSON.stringify(Object.assign({}, (window.graspionAttribution ? window.graspionAttribution() : {}), {
-name: name, email: email, phone: phone,
-auth_user_id: signupData.user.id,
-bike_number: document.getElementById('rAppBike').value.trim() || null,
-address: document.getElementById('rAppAddress').value.trim() || null,
-pincode: document.getElementById('rAppPincode').value.trim() || null,
-driving_license_image: licenseImg, vehicle_rc_image: rcImg, id_proof_image: idImg,
-status: 'pending'
-}))
-});
-if (!res.ok) {
-const errText = await res.text();
-errEl.textContent = 'Could not submit: ' + errText;
-btn.textContent = 'Submit Application'; btn.disabled = false;
-return;
-}
-document.getElementById('riderApplyModal').innerHTML = '<div style="max-width:340px; width:100%; background:#181b25; border-radius:20px; padding:30px; text-align:center; color:#fff;"><div style="font-size:48px; margin-bottom:10px;">✅</div><h3>Application Submitted!</h3><p style="font-size:12px; color:#cbd5e1; margin-top:8px;">Our team will review it. Once approved, log in anytime using the email and password you just created.</p><button onclick="document.getElementById(\'riderApplyModal\').style.display=\'none\';" class="login-btn" style="margin-top:16px;">Close</button></div>';
+  const reg = await fetch(SUPABASE_URL + '/functions/v1/routix-rider-pin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }, body: JSON.stringify({ action: 'register', name: name, phone: phone, pin: pin, email: email }) });
+  const r = await reg.json();
+  if (!reg.ok || !r.ok) { errEl.textContent = r.error || 'Could not create your login.'; btn.textContent = 'Submit application'; btn.disabled = false; return; }
+  const licenseImg = await fileToBase64('rAppLicenseFile');
+  const rcImg = await fileToBase64('rAppRcFile');
+  const idImg = await fileToBase64('rAppIdFile');
+  btn.textContent = '⏳ Submitting...';
+  const res = await fetch(SUPABASE_URL + '/rest/v1/rider_applications', {
+    method: 'POST',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({}, (window.graspionAttribution ? window.graspionAttribution() : {}), {
+      name: name, email: r.login_email, phone: phone, auth_user_id: r.user_id, pin_login: true,
+      bike_number: document.getElementById('rAppBike').value.trim() || null,
+      address: document.getElementById('rAppAddress').value.trim() || null,
+      pincode: pincode,
+      driving_license_image: licenseImg, vehicle_rc_image: rcImg, id_proof_image: idImg,
+      status: 'pending'
+    }))
+  });
+  if (!res.ok) { errEl.textContent = 'Could not submit: ' + (await res.text()); btn.textContent = 'Submit application'; btn.disabled = false; return; }
+  try { localStorage.setItem('routix_rider_phone', phone); } catch (e) {}
+  document.getElementById('riderApplyModal').innerHTML = '<div style="max-width:360px; width:100%; background:#181b25; border-radius:20px; padding:28px 22px; text-align:center; color:#fff;"><div style="font-size:44px;">✅</div><div style="font-size:20px; font-weight:900; margin:8px 0;">Application sent!</div><div style="font-size:15px; color:#e5e7eb; line-height:1.5;">The Routix office will check your documents and call you on <b>' + phone + '</b>.<br><br>After approval, log in with <b>this mobile number + your PIN</b>.</div><button onclick="location.reload()" class="login-btn" style="width:100%; margin-top:16px; background:#ea580c;">OK</button></div>';
 } catch (err) {
-errEl.textContent = 'Network error: ' + err.message;
-btn.textContent = 'Submit Application'; btn.disabled = false;
+  errEl.textContent = 'Network error: ' + err.message;
+  btn.textContent = 'Submit application'; btn.disabled = false;
 }
 });
 if ('serviceWorker' in navigator) {
