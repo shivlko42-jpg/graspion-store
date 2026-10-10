@@ -385,19 +385,25 @@ function maybeShowRiderInstallNudge() {
 // is actually logged in and moving, throttled to once every ~20 seconds so
 // it doesn't spam the database. Customers only ever see this for their OWN
 // active delivery (enforced by the rider_live_location view, not just the UI).
-let lastLocationSendAt = 0;
+let lastLocationSendAt = 0, locWatchId = null;
 function startLocationTracking() {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.watchPosition(function(pos) {
+  if (!navigator.geolocation || locWatchId !== null) return;
+  const sendLoc = function(pos, force) {
     const now = Date.now();
-    if (now - lastLocationSendAt < 20000) return; // throttle to every 20s
+    if (!force && now - lastLocationSendAt < (window.rbActiveJob ? 10000 : 20000)) return; // every 10s on a Routix job (customer sees you live), else 20s
     lastLocationSendAt = now;
     fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + currentRider.id, {
       method: 'PATCH',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({ current_lat: pos.coords.latitude, current_lng: pos.coords.longitude, location_updated_at: new Date().toISOString() })
     }).catch(function() { /* silent — location tracking is best-effort, never blocks core delivery flow */ });
-  }, function() { /* location permission denied or unavailable — tracking just won't show for this rider, everything else still works */ }, { enableHighAccuracy: true, maximumAge: 15000 });
+  };
+  locWatchId = navigator.geolocation.watchPosition(function(pos) { sendLoc(pos, false); }, function() { /* location permission denied or unavailable — tracking just won't show for this rider, everything else still works */ }, { enableHighAccuracy: true, maximumAge: 15000 });
+  // heartbeat: while standing at a shop the phone may not report movement — keep the customer's map fresh
+  setInterval(function() {
+    if (!window.rbActiveJob || Date.now() - lastLocationSendAt < 45000) return;
+    navigator.geolocation.getCurrentPosition(function(pos) { sendLoc(pos, true); }, function() {}, { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 });
+  }, 30000);
 }
 
 async function loginAsRider(session) {
@@ -993,24 +999,28 @@ async function loadRoutixBookings() {
   const wrap = document.getElementById('routixBookingsWrap'), box = document.getElementById('routixBookingList');
   if (!Array.isArray(list) || !list.length) { wrap.style.display = 'none'; box.innerHTML = ''; return; }
   wrap.style.display = 'block';
+  window.rbActiveJob = list.some(function(b) { return b.rider_id === currentRider.id && ['assigned', 'picked', 'returning'].indexOf(b.status) !== -1; });
+  if (window.rbActiveJob) startLocationTracking();
   box.innerHTML = list.map(function(b) {
     const mine = b.rider_id === currentRider.id;
     const tel = function(p) { return 'tel:' + String(p || '').replace(/\D/g, '').slice(-10); };
     const map = function(a) { return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(a); };
+    const nav = function(lat, lng, a) { return lat != null && lng != null ? 'https://www.google.com/maps/dir/?api=1&destination=' + Number(lat) + ',' + Number(lng) + '&travelmode=two-wheeler' : map(a); };
+    const navBtn = function(lat, lng, a, label) { return '<a target="_blank" rel="noopener" href="' + nav(lat, lng, a) + '" style="display:block; text-align:center; text-decoration:none; height:46px; line-height:46px; border-radius:12px; background:#1c1917; color:#fff; font-size:15.5px; font-weight:800; margin-bottom:8px;">🧭 ' + label + (lat != null ? ' (exact pin)' : '') + '</a>'; };
     let act = '';
     if (b.status === 'open') act = '<button data-rbaccept="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#ea580c; color:#fff; font-size:16px; font-weight:800;">Accept · earn ' + rbMoney(b.rider_pay) + '</button>';
-    else if (mine && b.status === 'assigned') act = rbPayBox(b, 'pickup') + '<button data-rbpicked="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#d97706; color:#fff; font-size:16px; font-weight:800;">I have picked up the parcel</button>';
-    else if (mine && b.status === 'returning') act = '<div style="background:#ede9fe; color:#5b21b6; border-radius:10px; padding:10px; font-size:15px; font-weight:800; margin-bottom:8px;">🔁 Delivered — now take the reply / receipt back to ' + rbEsc(b.pickup_name) + '</div>' +
+    else if (mine && b.status === 'assigned') act = navBtn(b.pickup_lat, b.pickup_lng, b.pickup_address, 'Navigate to pickup') + rbPayBox(b, 'pickup') + '<button data-rbpicked="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#d97706; color:#fff; font-size:16px; font-weight:800;">I have picked up the parcel</button>';
+    else if (mine && b.status === 'returning') act = navBtn(b.pickup_lat, b.pickup_lng, b.pickup_address, 'Navigate back to sender') + '<div style="background:#ede9fe; color:#5b21b6; border-radius:10px; padding:10px; font-size:15px; font-weight:800; margin-bottom:8px;">🔁 Delivered — now take the reply / receipt back to ' + rbEsc(b.pickup_name) + '</div>' +
       '<input data-rbretotp="' + b.id + '" inputmode="numeric" maxlength="4" placeholder="Sender\'s OTP" aria-label="Sender OTP" style="width:100%; box-sizing:border-box; padding:14px; border-radius:12px; border:2px solid #a78bfa; background:#fff; color:#111827; font-size:22px; font-weight:800; letter-spacing:6px; text-align:center; margin-bottom:8px;">' +
       '<button data-rbreturned="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#5b21b6; color:#fff; font-size:16px; font-weight:800;">Returned to sender — finish</button>';
-    else if (mine && b.status === 'picked') act = rbPayBox(b, 'drop') +
+    else if (mine && b.status === 'picked') act = navBtn(b.drop_lat, b.drop_lng, b.drop_address, 'Navigate to drop') + rbPayBox(b, 'drop') +
       '<input data-rbotp="' + b.id + '" inputmode="numeric" maxlength="4" placeholder="Receiver OTP" aria-label="Receiver OTP" style="width:100%; box-sizing:border-box; padding:14px; border-radius:12px; border:2px solid #a78bfa; background:#fff; color:#111827; font-size:22px; font-weight:800; letter-spacing:6px; text-align:center; margin-bottom:8px;">' +
       '<label style="display:block; font-size:13.5px; color:#374151; font-weight:700; margin-bottom:8px;">📷 Photo of the parcel at the door ' + (b.insured ? '(needed for Suraksha)' : '(optional)') + '<input type="file" accept="image/*" capture="environment" data-rbphoto="' + b.id + '" style="display:block; margin-top:4px; font-size:13px;"></label>' +
       '<button data-rbdeliver="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#15803d; color:#fff; font-size:16px; font-weight:800;">Mark delivered</button>';
     return '<div style="background:#fff; color:#111827; border-radius:16px; padding:14px; margin:0 16px 12px; border-left:6px solid ' + (b.status === 'open' ? '#ea580c' : '#d97706') + ';">' +
       (b.from_my_link ? '<div style="display:inline-block; background:#dcfce7; color:#14532d; font-size:12.5px; font-weight:800; padding:3px 9px; border-radius:999px; margin-bottom:6px;">Your customer · bonus on delivery</div>' : '') + '<div style="display:flex; justify-content:space-between; gap:8px;"><b style="font-size:15px;">ROUTIX ' + rbEsc(b.booking_no) + '</b><span style="font-size:14px; font-weight:800; color:#9a3412;">' + b.distance_km + ' km · ' + b.weight_kg + ' kg</span></div>' +
-      '<div style="margin-top:8px; font-size:14.5px;"><b>Pick up:</b> ' + rbEsc(b.pickup_name) + ', ' + rbEsc(b.pickup_address) + (mine ? ' <a href="' + tel(b.pickup_phone) + '">📞</a> <a target="_blank" rel="noopener" href="' + map(b.pickup_address) + '">🗺️</a>' : '') + '</div>' +
-      '<div style="margin-top:4px; font-size:14.5px;"><b>Drop:</b> ' + rbEsc(b.drop_name) + ', ' + rbEsc(b.drop_address) + (mine ? ' <a href="' + tel(b.drop_phone) + '">📞</a> <a target="_blank" rel="noopener" href="' + map(b.drop_address) + '">🗺️</a>' : '') + '</div>' +
+      '<div style="margin-top:8px; font-size:14.5px;"><b>Pick up:</b> ' + rbEsc(b.pickup_name) + ', ' + rbEsc(b.pickup_address) + (mine ? ' <a href="' + tel(b.pickup_phone) + '">📞</a> <a target="_blank" rel="noopener" href="' + nav(b.pickup_lat, b.pickup_lng, b.pickup_address) + '">🗺️</a>' : '') + '</div>' +
+      '<div style="margin-top:4px; font-size:14.5px;"><b>Drop:</b> ' + rbEsc(b.drop_name) + ', ' + rbEsc(b.drop_address) + (mine ? ' <a href="' + tel(b.drop_phone) + '">📞</a> <a target="_blank" rel="noopener" href="' + nav(b.drop_lat, b.drop_lng, b.drop_address) + '">🗺️</a>' : '') + '</div>' +
       (b.service_type === 'saver' && b.scheduled_at ? '<div style="font-size:14px; color:#1d4ed8; font-weight:700; margin-top:4px;">🚌 Saathi Saver run — pick up around ' + new Date(b.scheduled_at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) + '</div>' : '') +
       (b.insured ? '<div style="font-size:14px; color:#b91c1c; font-weight:800; margin-top:4px;">🛡️ Parcel Suraksha (value ₹' + Math.round(b.declared_value || 0) + ') — handle with care, take a photo at delivery</div>' : '') +
       (b.gift_message ? '<div style="font-size:14px; color:#9a3412; margin-top:4px;">🎁 Gift note to tell the receiver: <i>' + rbEsc(b.gift_message) + '</i></div>' : '') +

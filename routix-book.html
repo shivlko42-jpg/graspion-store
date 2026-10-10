@@ -53,6 +53,16 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
 .btn { border: 1.5px solid #D6D3D1; background: #fff; color: var(--asphalt); border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 15px; }
 .picked { font-size: 14px; color: var(--done); font-weight: 600; margin-bottom: 8px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.places { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 10px; }
+.places:empty { display: none; }
+.places button { flex-shrink: 0; border: 1.5px solid #D6D3D1; background: #fff; border-radius: 999px; padding: 8px 12px; font-size: 14px; font-weight: 700; color: var(--asphalt); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.places button.sv { border-color: #FDBA74; background: #FFF7ED; }
+.savebtn { background: none; border: none; color: #C2410C; font-weight: 800; font-size: 14px; padding: 4px 0; text-decoration: underline; }
+.road { display: inline-block; background: #1C1917; color: #fff; border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 800; margin-left: 4px; vertical-align: middle; }
+#etaBar { margin: 0 0 12px; border-radius: 14px; padding: 12px 14px; font-weight: 700; font-size: 15.5px; line-height: 1.4; }
+#etaBar small { display: block; font-weight: 600; font-size: 12.5px; opacity: .8; margin-top: 2px; }
+.eta-live { background: #DCFCE7; color: #14532D; } .eta-wait { background: #FFF7ED; color: #7C2D12; } .eta-old { background: #FEF9C3; color: #713F12; }
+.rx-bike { width: 36px; height: 36px; border-radius: 50%; background: #1C1917; border: 3px solid #EA580C; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
 .chip { border: 1.5px solid #D6D3D1; background: #fff; border-radius: 999px; padding: 9px 14px; font-weight: 600; font-size: 15px; color: var(--asphalt); }
 .chip[aria-pressed="true"] { background: var(--asphalt); color: #fff; border-color: var(--asphalt); }
 .next { width: 100%; height: 50px; border: none; border-radius: 12px; background: var(--asphalt); color: #fff; font-size: 16px; font-weight: 700; margin-top: 4px; }
@@ -128,13 +138,14 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
   <main>
     <section class="step" id="s1" aria-current="step">
       <h2><span class="num">1</span>Pick up from</h2>
+      <div class="places" id="pl1" aria-label="Your saved places"></div>
       <div class="search"><label class="f">Search area or landmark<input id="q1" placeholder="e.g. Indira Nagar Sector 14" autocomplete="off"></label><div class="sugg" id="sg1" hidden></div></div>
       <div class="row"><button class="btn" type="button" id="loc1">Use my location</button><span class="summary" style="align-self:center;">or tap the map</span></div>
       <div class="picked" id="pk1" aria-live="polite"></div>
       <div class="grid2">
         <label class="f">Your name<input id="pn" autocomplete="name"></label>
         <label class="f">Your mobile<input id="pp" inputmode="tel" maxlength="14" autocomplete="tel"></label>
-        <label class="f full">House / shop no., floor<input id="pa" placeholder="e.g. B-12, first floor, near temple"></label>
+        <label class="f full">House / shop no., floor, landmark<input id="pa" placeholder="e.g. B-12, first floor, near Hanuman mandir"></label>
       </div>
       <button class="next" type="button" data-next="2">Next: where to deliver</button>
     </section>
@@ -142,13 +153,14 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
     <section class="step" id="s2">
       <h2><span class="num">2</span>Deliver to</h2>
       <div id="b2">
+        <div class="places" id="pl2" aria-label="Saved places"></div>
         <div class="search"><label class="f">Search area or landmark<input id="q2" placeholder="e.g. Vipul Khand, Gomti Nagar" autocomplete="off"></label><div class="sugg" id="sg2" hidden></div></div>
         <p class="summary" style="margin:0 0 8px;">Or tap the map. You can drag the pins to the exact spot.</p>
         <div class="picked" id="pk2" aria-live="polite"></div>
         <div class="grid2">
           <label class="f">Receiver name<input id="dn"></label>
           <label class="f">Receiver mobile<input id="dp" inputmode="tel" maxlength="14"></label>
-          <label class="f full">House / shop no., floor<input id="da" placeholder="e.g. 3/45, second floor"></label>
+          <label class="f full">House / shop no., floor, landmark<input id="da" placeholder="e.g. 3/45, second floor, opp. Bal Vidya school"></label>
         </div>
         <button class="next" type="button" data-next="3">Next: what are you sending</button>
       </div>
@@ -288,13 +300,15 @@ function setPoint(which, lat, lng, label) {
   if (pts[1] && pts[2]) {
     if (line) line.setLatLngs([[pts[1].lat, pts[1].lng], [pts[2].lat, pts[2].lng]]);
     else line = L.polyline([[pts[1].lat, pts[1].lng], [pts[2].lat, pts[2].lng]], { color: '#EA580C', weight: 4, dashArray: '8 8' }).addTo(map);
+    line.setStyle({ dashArray: '8 8', weight: 4 });
     map.fitBounds(line.getBounds(), { padding: [40, 40] });
-  } else map.setView([lat, lng], 15);
-  refreshQuote();
+    updateRoad();
+  } else { map.setView([lat, lng], 15); refreshQuote(); }
+  showSaveLink(which);
 }
 map.on('click', function(e) { const w = (activeStep >= 2 && pts[1]) ? 2 : 1; setPoint(w, e.latlng.lat, e.latlng.lng, ''); reverse(w, e.latlng.lat, e.latlng.lng); });
 async function reverse(which, lat, lng) {
-  try { const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=17&lat=' + lat + '&lon=' + lng); const d = await r.json(); if (d && d.display_name) { pts[which].label = d.display_name; $('pk' + which).textContent = (which === 1 ? 'Pickup' : 'Drop') + ' pin set: ' + d.display_name.split(',').slice(0, 3).join(','); } } catch (e) {}
+  try { const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=17&lat=' + lat + '&lon=' + lng); const d = await r.json(); if (d && d.display_name) { pts[which].label = d.display_name; $('pk' + which).textContent = (which === 1 ? 'Pickup' : 'Drop') + ' pin set: ' + d.display_name.split(',').slice(0, 3).join(','); showSaveLink(which); } } catch (e) {}
 }
 // search (Lucknow first)
 function wireSearch(which) {
@@ -356,11 +370,153 @@ function updateSummary() {
     $('saverSlot').textContent = lastQuote.saver_slot ? new Date(lastQuote.saver_slot).toLocaleString('en-IN', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—';
     $('bimaFee').textContent = '(+' + rs(lastQuote.insurance_fee) + ')';
     const tot = chosenTotal(), saver = document.querySelector('input[name="svc"]:checked').value === 'saver';
-    $('price').innerHTML = rs(tot) + '<small>' + (saver ? 'Saathi Saver · ' : 'Express · ') + 'about ' + lastQuote.km + ' km' + ($('bima').checked ? ' · with Suraksha' : '') + '</small>';
+    $('price').innerHTML = rs(tot) + '<small>' + (saver ? 'Saathi Saver · ' : 'Express · ') + kmText(lastQuote) + ($('bima').checked ? ' · with Suraksha' : '') + '</small>';
   }
-  $('sumText').textContent = lastQuote && lastQuote.ok ? item + ', up to ' + kg + ' kg, about ' + lastQuote.km + ' km. ' + (pm === 'collect_at_pickup' ? 'Pay ' + rs(chosenTotal()) + ' to the rider at pickup.' : 'The receiver pays ' + rs(chosenTotal()) + ' at delivery.') : '';
+  $('sumText').textContent = lastQuote && lastQuote.ok ? item + ', up to ' + kg + ' kg, ' + kmText(lastQuote) + '. ' + (pm === 'collect_at_pickup' ? 'Pay ' + rs(chosenTotal()) + ' to the rider at pickup.' : 'The receiver pays ' + rs(chosenTotal()) + ' at delivery.') : '';
 }
 
+// ===== Road route (free OSRM servers) — real road km for a fair price =====
+const RX_ROUTERS = ['https://router.project-osrm.org/route/v1/driving/', 'https://routing.openstreetmap.de/routed-car/route/v1/driving/'];
+const routeCache = {};
+async function roadRoute(a, b) {
+  const key = [a.lat, a.lng, b.lat, b.lng].map(function(v) { return Number(v).toFixed(5); }).join(',');
+  if (routeCache[key]) return routeCache[key];
+  for (let i = 0; i < RX_ROUTERS.length; i++) {
+    try {
+      const ctl = new AbortController(), tm = setTimeout(function() { ctl.abort(); }, 6000);
+      const r = await fetch(RX_ROUTERS[i] + Number(a.lng).toFixed(6) + ',' + Number(a.lat).toFixed(6) + ';' + Number(b.lng).toFixed(6) + ',' + Number(b.lat).toFixed(6) + '?overview=full&geometries=geojson&alternatives=false&steps=false', { signal: ctl.signal });
+      clearTimeout(tm);
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (!d || d.code !== 'Ok' || !d.routes || !d.routes[0]) continue;
+      const rt = d.routes[0];
+      routeCache[key] = { km: Math.round(rt.distance / 100) / 10, mins: Math.max(1, Math.round(rt.duration / 60)), coords: rt.geometry.coordinates.map(function(c) { return [c[1], c[0]]; }) };
+      return routeCache[key];
+    } catch (e) {}
+  }
+  return null;
+}
+function straightKm(a, b) {
+  const R = 6371, t = Math.PI / 180, dLat = (b.lat - a.lat) * t, dLng = (b.lng - a.lng) * t;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * t) * Math.cos(b.lat * t) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function kmText(q) { return q.km_source === 'road' ? q.km + ' km by road' : 'about ' + q.km + ' km'; }
+let road = null, roadSeq = 0;
+async function updateRoad() {
+  const seq = ++roadSeq; road = null;
+  $('price').innerHTML = '₹…<small>Finding the road route…</small>'; $('bookBtn').disabled = true;
+  const r = await roadRoute(pts[1], pts[2]);
+  if (seq !== roadSeq) return;
+  if (r) {
+    road = { km: r.km, mins: r.mins };
+    line.setLatLngs(r.coords); line.setStyle({ dashArray: null, weight: 5 });
+    map.fitBounds(line.getBounds(), { padding: [40, 40] });
+  }
+  refreshQuote();
+}
+
+// ===== Saved places + remember me (only on this phone) =====
+function loadJSON(k, d) { try { return JSON.parse(localStorage.getItem(k) || '') || d; } catch (e) { return d; } }
+function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function near(a, b) { return straightKm(a, b) < 0.05; }
+function renderPlaces() {
+  const saved = loadJSON('routix_places', []), recent = loadJSON('routix_recent', []);
+  [1, 2].forEach(function(w) {
+    const list = saved.map(function(p) { return { p: p, sv: true }; }).concat(recent.filter(function(r) { return !saved.some(function(s) { return near(s, r); }); }).slice(0, 4).map(function(p) { return { p: p, sv: false }; }));
+    $('pl' + w).innerHTML = list.map(function(x, i) { return '<button type="button" class="' + (x.sv ? 'sv' : '') + '" data-pl="' + i + '">' + (x.sv ? '⭐ ' + esc(x.p.name) : '🕘 ' + esc((x.p.detail ? x.p.detail + ', ' : '') + (x.p.label || '').split(',')[0])) + '</button>'; }).join('');
+    $('pl' + w).querySelectorAll('[data-pl]').forEach(function(btn) { btn.addEventListener('click', function() {
+      const p = list[Number(btn.getAttribute('data-pl'))].p;
+      setPoint(w, p.lat, p.lng, p.label || '');
+      if (p.detail) $(w === 1 ? 'pa' : 'da').value = p.detail;
+      if (w === 2 && p.person) { if (!$('dn').value) $('dn').value = p.person; if (!$('dp').value) $('dp').value = p.phone || ''; }
+    }); });
+  });
+}
+function showSaveLink(w) {
+  const pk = $('pk' + w); if (!pk || !pts[w]) return;
+  if (loadJSON('routix_places', []).some(function(s) { return near(s, pts[w]); })) return;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'savebtn'; b.textContent = '⭐ Save this place';
+  b.addEventListener('click', async function() {
+    const name = await rxPrompt('Name for this place (e.g. Ghar, Dukaan, Office):', w === 1 ? 'Ghar' : '', { maxlength: 20 });
+    if (!name || !name.trim()) return;
+    const saved = loadJSON('routix_places', []).filter(function(s) { return s.name.toLowerCase() !== name.trim().toLowerCase(); });
+    saved.unshift({ name: name.trim(), lat: pts[w].lat, lng: pts[w].lng, label: pts[w].label, detail: $(w === 1 ? 'pa' : 'da').value.trim() });
+    saveJSON('routix_places', saved.slice(0, 6)); b.remove(); renderPlaces();
+  });
+  pk.appendChild(document.createTextNode(' ')); pk.appendChild(b);
+}
+function rememberAfterBooking() {
+  saveJSON('routix_me', { name: $('pn').value.trim(), phone: $('pp').value.trim() });
+  let recent = loadJSON('routix_recent', []);
+  [[1, 'pa'], [2, 'da']].forEach(function(x) {
+    const p = pts[x[0]]; if (!p) return;
+    recent = recent.filter(function(r) { return !near(r, p); });
+    recent.unshift({ lat: p.lat, lng: p.lng, label: p.label, detail: $(x[1]).value.trim(), person: x[0] === 2 ? $('dn').value.trim() : '', phone: x[0] === 2 ? $('dp').value.trim() : '' });
+  });
+  saveJSON('routix_recent', recent.slice(0, 8));
+}
+(function() { const me = loadJSON('routix_me', null); if (me) { if (!$('pn').value) $('pn').value = me.name || ''; if (!$('pp').value) $('pp').value = me.phone || ''; } renderPlaces(); })();
+
+// ===== Live tracking on the map =====
+let trk = null;
+const bikeIcon = L.divIcon({ className: '', iconSize: [36, 36], iconAnchor: [18, 18], html: '<div class="rx-bike" aria-hidden="true">🛵</div>' });
+function ago(t) { const s = Math.max(0, Math.round((Date.now() - new Date(t).getTime()) / 1000)); return s < 60 ? s + ' sec ago' : Math.round(s / 60) + ' min ago'; }
+function etaBar() {
+  let e = $('etaBar');
+  if (!e) { e = document.createElement('div'); e.id = 'etaBar'; e.setAttribute('role', 'status'); e.setAttribute('aria-live', 'polite'); $('doneBox').parentNode.insertBefore(e, $('doneBox')); }
+  return e;
+}
+function trackMap(token, b) {
+  if (!b.pickup_lat || !b.drop_lat || b.status === 'cancelled') { $('map').style.display = 'none'; if ($('etaBar')) $('etaBar').hidden = true; stopTrack(); return; }
+  const P = { lat: Number(b.pickup_lat), lng: Number(b.pickup_lng) }, D = { lat: Number(b.drop_lat), lng: Number(b.drop_lng) };
+  if (!trk) {
+    [markers[1], markers[2], line].forEach(function(l) { if (l) map.removeLayer(l); });
+    $('map').style.display = '';
+    trk = { token: token, layer: L.layerGroup().addTo(map), rider: null, live: null, lastFrom: null, lastAt: 0, fitted: false, timer: null };
+    L.marker([P.lat, P.lng], { icon: pinIcon('#EA580C'), keyboard: false }).addTo(trk.layer).bindTooltip('Pickup');
+    L.marker([D.lat, D.lng], { icon: pinIcon('#1C1917'), keyboard: false }).addTo(trk.layer).bindTooltip('Drop');
+    trk.base = L.polyline([[P.lat, P.lng], [D.lat, D.lng]], { color: '#FDBA74', weight: 4, dashArray: '6 8' }).addTo(trk.layer);
+    setTimeout(function() { map.invalidateSize(); map.fitBounds(trk.base.getBounds(), { padding: [40, 40] }); }, 50);
+    roadRoute(P, D).then(function(r) { if (r && trk) { trk.base.setLatLngs(r.coords); trk.base.setStyle({ dashArray: null, weight: 5 }); } });
+  }
+  trk.b = b; trk.P = P; trk.D = D;
+  liveUpdate(b.status, b.rider_lat != null ? { lat: Number(b.rider_lat), lng: Number(b.rider_lng), at: b.rider_loc_at } : null);
+  const live = ['assigned', 'picked', 'returning'].indexOf(b.status) !== -1;
+  if (live && !trk.timer) trk.timer = setInterval(async function() {
+    if (document.visibilityState !== 'visible') return;
+    try { const d = await rpc('routix_web_rider_loc', { p_token: token }); if (d && d.ok) { if (!d.live) { stopTrack(); showTracking(token, false); return; } liveUpdate(d.status, d.lat != null ? { lat: Number(d.lat), lng: Number(d.lng), at: d.at } : null); } } catch (e) {}
+  }, 15000);
+  if (!live) stopTrack();
+}
+function stopTrack() { if (trk && trk.timer) { clearInterval(trk.timer); trk.timer = null; } }
+async function liveUpdate(status, loc) {
+  const e = etaBar(), b = trk.b, name = b.rider_name ? 'Rider ' + esc(b.rider_name.split(' ')[0]) : 'Rider';
+  e.hidden = false;
+  if (status === 'requested' || status === 'open') { e.className = 'eta-wait'; e.innerHTML = '⏳ Aapke paas ke rider ko dhoondh rahe hain…<small>Rider milte hi yahan live dikhega.</small>'; return; }
+  if (status === 'delivered') { e.className = 'eta-live'; e.innerHTML = '✅ Delivered' + (b.delivered_at ? ' at ' + new Date(b.delivered_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '') + '. Thank you for choosing Routix!'; if (trk.rider) { trk.layer.removeLayer(trk.rider); trk.rider = null; } if (trk.live) { trk.layer.removeLayer(trk.live); trk.live = null; } return; }
+  const target = status === 'picked' ? trk.D : trk.P, where = status === 'assigned' ? 'pickup par' : status === 'picked' ? (b.drop_name ? esc(b.drop_name.split(' ')[0]) + ' tak' : 'drop par') : 'wapas pickup par';
+  if (!loc || !loc.at || Date.now() - new Date(loc.at).getTime() > 5 * 60 * 1000) {
+    e.className = 'eta-old';
+    e.innerHTML = '📍 ' + name + ' ki live location abhi nahi mil rahi.<small>' + (loc && loc.at ? 'Last seen ' + ago(loc.at) + '. ' : '') + 'Phone ka net ya GPS band ho sakta hai — rider ko call kar sakte hain.</small>';
+    return;
+  }
+  if (!trk.rider) trk.rider = L.marker([loc.lat, loc.lng], { icon: bikeIcon, keyboard: false, zIndexOffset: 1000 }).addTo(trk.layer).bindTooltip(b.rider_name || 'Rider');
+  else trk.rider.setLatLng([loc.lat, loc.lng]);
+  let km, mins;
+  const moved = !trk.lastFrom || straightKm(trk.lastFrom, loc) > 0.15 || Date.now() - trk.lastAt > 60000;
+  if (moved) {
+    const r = await roadRoute(loc, target);
+    trk.lastFrom = loc; trk.lastAt = Date.now();
+    if (r) { trk.km = r.km; trk.mins = r.mins; if (trk.live) trk.live.setLatLngs(r.coords); else trk.live = L.polyline(r.coords, { color: '#EA580C', weight: 5 }).addTo(trk.layer); }
+    else { trk.km = Math.round(straightKm(loc, target) * 1.3 * 10) / 10; trk.mins = Math.max(1, Math.round(trk.km / 20 * 60)); if (trk.live) { trk.layer.removeLayer(trk.live); trk.live = null; } }
+  }
+  km = trk.km; mins = trk.mins;
+  if (!trk.fitted) { trk.fitted = true; map.fitBounds(L.latLngBounds([[loc.lat, loc.lng], [target.lat, target.lng]]), { padding: [50, 50], maxZoom: 16 }); }
+  e.className = 'eta-live';
+  e.innerHTML = km < 0.15 ? '🛵 ' + name + ' ' + where + ' pahunch gaye hain' + '<small>Updated ' + ago(loc.at) + '</small>'
+    : '🛵 ' + name + ' lagbhag <b>' + mins + ' min</b> mein ' + where + ' · ' + km + ' km baaki<small>Live · updated ' + ago(loc.at) + ' · har 15 second mein</small>';
+}
 // ---------- price ----------
 let qt = null;
 function refreshQuote() {
@@ -368,7 +524,10 @@ function refreshQuote() {
   qt = setTimeout(async function() {
     if (!pts[1] || !pts[2]) return;
     try {
-      const q = lastQuote = await rpc('routix_web_quote', { p_pickup_lat: pts[1].lat, p_pickup_lng: pts[1].lng, p_drop_lat: pts[2].lat, p_drop_lng: pts[2].lng, p_kg: kg });
+      let q;
+      try { q = await rpc('routix_web_quote_road', { p_pickup_lat: pts[1].lat, p_pickup_lng: pts[1].lng, p_drop_lat: pts[2].lat, p_drop_lng: pts[2].lng, p_kg: kg, p_road_km: road ? road.km : null }); }
+      catch (e1) { q = await rpc('routix_web_quote', { p_pickup_lat: pts[1].lat, p_pickup_lng: pts[1].lng, p_drop_lat: pts[2].lat, p_drop_lng: pts[2].lng, p_kg: kg }); }
+      lastQuote = q;
       if (!q.ok) { $('price').innerHTML = '₹—<small>' + esc(q.error) + '</small>'; $('bookBtn').disabled = true; return; }
       $('bookBtn').disabled = false; updateSummary();
     } catch (e) { $('price').innerHTML = '₹—<small>Could not get the price. Check your internet.</small>'; }
@@ -385,8 +544,9 @@ $('bookBtn').addEventListener('click', async function() {
       drop_name: $('dn').value, drop_phone: $('dp').value, drop_address: $('da').value + (pts[2].label ? ', ' + pts[2].label.split(',').slice(0, 3).join(',') : ''), drop_lat: pts[2].lat, drop_lng: pts[2].lng,
       item_desc: item, weight_kg: kg, notes: $('nt').value, payment_mode: document.querySelector('input[name="pm"]:checked').value, ref: params.get('ref') || '', spot_token: params.get('spot') || '',
       service_type: document.querySelector('input[name="svc"]:checked').value, insured: $('bima').checked, declared_value: $('bimaVal').value,
-      gift_message: $('gift').value } });
+      gift_message: $('gift').value, road_km: road ? road.km : '' } });
     if (!d.ok) { $('err').textContent = d.error || 'Could not book'; return; }
+    rememberAfterBooking();
     try { const mine = JSON.parse(localStorage.getItem('routix_mine') || '[]'); mine.unshift({ t: d.track_token, no: d.booking_no, at: Date.now() }); localStorage.setItem('routix_mine', JSON.stringify(mine.slice(0, 10))); } catch (e) {}
     location.href = location.pathname + '?t=' + d.track_token + '&new=1' + (d.with_rider ? '&with=' + encodeURIComponent(d.with_rider) : '');
   } catch (e) { $('err').textContent = e.message; }
@@ -395,7 +555,7 @@ $('bookBtn').addEventListener('click', async function() {
 
 // ---------- tracking ----------
 async function showTracking(token, isNew) {
-  $('bookView').hidden = true; $('bar').hidden = true; $('doneView').hidden = false; $('map').style.display = 'none';
+  $('bookView').hidden = true; $('bar').hidden = true; $('doneView').hidden = false; if (!trk) $('map').style.display = 'none';
   let b;
   try { b = await rpc('routix_web_track', { p_token: token }); } catch (e) { $('doneBox').innerHTML = '<div class="ticket">Could not load your booking. Check your internet and refresh.</div>'; return; }
   if (!b.ok) { $('doneBox').innerHTML = '<div class="ticket">Booking not found. <a href="' + location.pathname + '">Book a new delivery</a></div>'; return; }
@@ -411,7 +571,7 @@ async function showTracking(token, isNew) {
   const share = 'https://wa.me/?text=' + encodeURIComponent('Routix hai na, pahuncha denge! Delivery ' + b.booking_no + ' is coming to you. Tell the rider this OTP only when you get the parcel: ' + b.drop_otp + '\nTrack: ' + location.href.split('&')[0]);
   $('doneBox').innerHTML = '<div class="ticket">' +
     (isNew ? '<div style="font-family:Barlow Semi Condensed,sans-serif; font-size:28px; font-weight:800;">Booked!</div>' + (params.get('with') ? '<div style="font-weight:700; color:#15803D;">Rider ' + esc(params.get('with')) + ' will take your parcel now.</div>' : '') : '') +
-    '<div style="font-size:15px; color:#44403C;">' + esc(b.booking_no) + ' · ' + rs(b.charge) + (b.payment_mode === 'collect_at_pickup' ? ' to pay at pickup' : ' to pay at delivery') + ' · ' + b.distance_km + ' km</div>' +
+    '<div style="font-size:15px; color:#44403C;">' + esc(b.booking_no) + ' · ' + rs(b.charge) + (b.payment_mode === 'collect_at_pickup' ? ' to pay at pickup' : ' to pay at delivery') + ' · ' + b.distance_km + ' km' + (b.distance_source === 'road' ? ' by road' : '') + '</div>' +
     (b.status !== 'cancelled' ? '<div id="payBox"></div>' : '') +
     (b.status === 'cancelled' ? '<p style="color:#B91C1C; font-weight:700;">This booking was cancelled.' + (b.cancel_reason ? ' ' + esc(b.cancel_reason) : '') + '</p>' :
     '<div class="otp"><span>Delivery OTP<br><small style="color:#44403C;">Send it to the receiver</small></span><b>' + esc(b.drop_otp) + '</b></div>' +
@@ -434,6 +594,7 @@ async function showTracking(token, isNew) {
   if (isNew) setTimeout(function() { openInstallSheet(true, true); }, 1500);
   if (b.insured) renderClaimBox(token, b);
   if (b.status !== 'cancelled') renderPayBox(token);
+  trackMap(token, b);
   const cx = $('cxBtn');
   if (cx) cx.addEventListener('click', async function() {
     if (!await rxConfirm('Cancel this booking?')) return;
