@@ -1001,6 +1001,10 @@ async function loadRoutixBookings() {
   wrap.style.display = 'block';
   window.rbActiveJob = list.some(function(b) { return b.rider_id === currentRider.id && ['assigned', 'picked', 'returning'].indexOf(b.status) !== -1; });
   if (window.rbActiveJob) startLocationTracking();
+  // keep what the rider is typing (pickup code / OTP) when the list refreshes
+  const typed = {}, focusKey = document.activeElement && box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT' ? ['data-rbpcode', 'data-rbotp', 'data-rbretotp'].map(function(k) { return document.activeElement.getAttribute(k) ? k + '=' + document.activeElement.getAttribute(k) : ''; }).join('') : '';
+  box.querySelectorAll('input[data-rbpcode], input[data-rbotp], input[data-rbretotp]').forEach(function(i) { ['data-rbpcode', 'data-rbotp', 'data-rbretotp'].forEach(function(k) { if (i.getAttribute(k) && i.value) typed[k + '=' + i.getAttribute(k)] = i.value; }); });
+  setTimeout(function() { Object.keys(typed).concat(focusKey ? [focusKey] : []).forEach(function(key) { const kv = key.split('='); const el = box.querySelector('input[' + kv[0] + '="' + kv[1] + '"]'); if (el) { if (typed[key]) el.value = typed[key]; if (key === focusKey) el.focus(); } }); }, 0);
   box.innerHTML = list.map(function(b) {
     const mine = b.rider_id === currentRider.id;
     const tel = function(p) { return 'tel:' + String(p || '').replace(/\D/g, '').slice(-10); };
@@ -1009,7 +1013,7 @@ async function loadRoutixBookings() {
     const navBtn = function(lat, lng, a, label) { return '<a target="_blank" rel="noopener" href="' + nav(lat, lng, a) + '" style="display:block; text-align:center; text-decoration:none; height:46px; line-height:46px; border-radius:12px; background:#1c1917; color:#fff; font-size:15.5px; font-weight:800; margin-bottom:8px;">🧭 ' + label + (lat != null ? ' (exact pin)' : '') + '</a>'; };
     let act = '';
     if (b.status === 'open') act = '<button data-rbaccept="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#ea580c; color:#fff; font-size:16px; font-weight:800;">Accept · earn ' + rbMoney(b.rider_pay) + '</button>';
-    else if (mine && b.status === 'assigned') act = navBtn(b.pickup_lat, b.pickup_lng, b.pickup_address, 'Navigate to pickup') + rbPayBox(b, 'pickup') + '<button data-rbpicked="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#d97706; color:#fff; font-size:16px; font-weight:800;">I have picked up the parcel</button>';
+    else if (mine && b.status === 'assigned') act = navBtn(b.pickup_lat, b.pickup_lng, b.pickup_address, 'Navigate to pickup') + rbPayBox(b, 'pickup') + (b.needs_pickup_code ? '<input data-rbpcode="' + b.id + '" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="Pickup code from sender" aria-label="4-digit pickup code from the sender" style="width:100%; box-sizing:border-box; height:48px; border:2px solid #d97706; border-radius:12px; font-size:22px; font-weight:900; letter-spacing:6px; text-align:center; margin-bottom:8px;"><div style="font-size:12.5px; color:#92400e; margin:-4px 0 8px; font-weight:700;">Sender ke phone par 4 ank ka pickup code hai — parcel lete waqt poochhein.</div>' : '') + '<button data-rbpicked="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#d97706; color:#fff; font-size:16px; font-weight:800;">I have picked up the parcel</button>';
     else if (mine && b.status === 'returning') act = navBtn(b.pickup_lat, b.pickup_lng, b.pickup_address, 'Navigate back to sender') + '<div style="background:#ede9fe; color:#5b21b6; border-radius:10px; padding:10px; font-size:15px; font-weight:800; margin-bottom:8px;">🔁 Delivered — now take the reply / receipt back to ' + rbEsc(b.pickup_name) + '</div>' +
       '<input data-rbretotp="' + b.id + '" inputmode="numeric" maxlength="4" placeholder="Sender\'s OTP" aria-label="Sender OTP" style="width:100%; box-sizing:border-box; padding:14px; border-radius:12px; border:2px solid #a78bfa; background:#fff; color:#111827; font-size:22px; font-weight:800; letter-spacing:6px; text-align:center; margin-bottom:8px;">' +
       '<button data-rbreturned="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#5b21b6; color:#fff; font-size:16px; font-weight:800;">Returned to sender — finish</button>';
@@ -1046,7 +1050,15 @@ document.addEventListener('click', async function(e) {
   }
   let res;
   if (a) res = await rbCall('rider_routix_accept', { p_id: a.getAttribute('data-rbaccept') });
-  if (p) res = await rbCall('rider_routix_picked', { p_id: p.getAttribute('data-rbpicked') });
+  if (p) {
+    const pid = p.getAttribute('data-rbpicked'), ci = document.querySelector('[data-rbpcode="' + pid + '"]');
+    if (ci) {
+      const code = ci.value.replace(/\D/g, '');
+      if (code.length !== 4) { rxAlert('Sender se 4 ank ka pickup code poochh kar daaliye.'); btn.disabled = false; ci.focus(); return; }
+      const pos = await new Promise(function(ok) { if (!navigator.geolocation) return ok(null); navigator.geolocation.getCurrentPosition(function(x) { ok({ lat: x.coords.latitude, lng: x.coords.longitude }); }, function() { ok(null); }, { enableHighAccuracy: true, timeout: 4000, maximumAge: 60000 }); });
+      res = await rbCall('rider_routix_picked', { p_id: pid, p_code: code, p_lat: pos ? pos.lat : null, p_lng: pos ? pos.lng : null });
+    } else res = await rbCall('rider_routix_picked', { p_id: pid });
+  }
   if (d) {
     const id = d.getAttribute('data-rbdeliver'); const otp = (document.querySelector('[data-rbotp="' + id + '"]') || {}).value || '';
     const ph = document.querySelector('[data-rbphoto="' + id + '"]'); const file = ph && ph.files[0];

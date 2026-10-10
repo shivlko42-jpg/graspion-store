@@ -471,6 +471,7 @@ function renderBookings() {
     let actions = '';
     if (b.status === 'requested') actions += '<a class="btn" href="tel:' + esc(b.pickup_phone) + '">Call sender</a><button class="btn" style="background:#EA580C; color:#fff; border-color:#EA580C;" data-confirm="' + b.id + '" type="button">Confirm for riders</button>';
     if (b.status === 'requested' || b.status === 'open' || b.status === 'assigned') actions += '<select class="btn" data-assign="' + b.id + '" aria-label="Give to rider"><option value="">Give to rider…</option>' + riderOpts + '</select>';
+    if (b.pickup_code && ['requested', 'open', 'assigned'].indexOf(b.status) !== -1) actions += '<a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/91' + String(b.pickup_phone || '').slice(-10) + '?text=' + encodeURIComponent('Routix: your pickup code for ' + b.booking_no + ' is ' + b.pickup_code + '. Give it to the rider only when he takes your parcel.') + '">Pickup code ' + esc(b.pickup_code) + ' to sender</a>' + (Number(b.pickup_code_tries) >= 5 ? '<button class="btn" type="button" data-resettries="' + b.id + '">Unlock pickup code</button>' : '');
     if (b.status !== 'delivered' && b.status !== 'cancelled') actions += '<a class="btn wa" target="_blank" rel="noopener" href="' + waLink(b) + '">OTP to receiver</a><button class="btn stop" data-cancel="' + b.id + '" type="button">Cancel</button>';
     if (b.status === 'delivered' && Number(b.goods_cod) > 0 && !b.goods_cod_returned_at) actions += '<button class="btn" data-goodsback="' + b.id + '" type="button">Mark ' + rs(b.goods_cod) + ' handed to sender</button>';
     return '<article class="ticket">' +
@@ -622,6 +623,10 @@ document.addEventListener('click', async function(e) {
   } catch (err) { toast(err.message); }
 });
 
+document.addEventListener('click', async function(e) {
+  const r = e.target.closest && e.target.closest('[data-resettries]'); if (!r) return;
+  try { const d = await rpc('routix_reset_pickup_tries', { p_id: r.getAttribute('data-resettries') }); toast(d.ok ? 'Rider can try the code again' : 'Could not unlock'); } catch (err) { toast(err.message); }
+});
 // ===== UPI check (Routix QR payments) =====
 let upiTab = 'pending', upiSettingsFilled = false;
 async function loadUpi() {

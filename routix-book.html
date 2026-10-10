@@ -53,6 +53,7 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
 .btn { border: 1.5px solid #D6D3D1; background: #fff; color: var(--asphalt); border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 15px; }
 .picked { font-size: 14px; color: var(--done); font-weight: 600; margin-bottom: 8px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+[hidden] { display: none !important; }
 .places { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 10px; }
 .places:empty { display: none; }
 .places button { flex-shrink: 0; border: 1.5px solid #D6D3D1; background: #fff; border-radius: 999px; padding: 8px 12px; font-size: 14px; font-weight: 700; color: var(--asphalt); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -189,11 +190,11 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
       <div id="b4">
         <div class="pay" role="radiogroup" aria-label="Delivery speed">
           <label><input type="radio" name="svc" value="express" checked> <span>⚡ <b>Express</b> — rider comes now <b id="pxExp" style="float:right;"></b></span></label>
-          <label><input type="radio" name="svc" value="saver"> <span>🚌 <b>Saathi Saver</b> — next run <b id="saverSlot"></b>, save 30% <b id="pxSav" style="float:right;"></b></span></label>
+          <label><input type="radio" name="svc" value="saver"> <span>🚌 <b>Saathi Saver</b> — next run <b id="saverSlot">(time shows after you choose places)</b>, save 30% <b id="pxSav" style="float:right;"></b></span></label>
         </div>
         <label class="check" style="display:flex; gap:8px; align-items:flex-start; font-weight:600; margin:6px 0;"><input type="checkbox" id="bima" style="margin-top:3px;"> <span style="flex:1;">🛡️ <b>Parcel Suraksha</b> <span id="bimaFee"></span> — Routix pays back if your parcel is lost or damaged, up to the value you enter. <a href="routix-suraksha.html" target="_blank" rel="noopener">Rules</a></span></label>
         <label class="f" id="bimaBox" hidden>Value of the parcel (₹)<input type="number" id="bimaVal" min="1" placeholder="e.g. 2000"></label>
-        <label class="f">🎁 Gift note for the receiver (optional)<textarea id="gift" rows="2" maxlength="200" placeholder="e.g. Happy Diwali! Love, Neha"></textarea></label>
+        <label class="f">🎁 Gift note for the receiver (optional)<textarea id="gift" rows="2" maxlength="200" placeholder="e.g. Happy Diwali!"></textarea></label>
 
         <div class="pay" role="radiogroup" aria-label="Who pays">
           <label><input type="radio" name="pm" value="collect_at_pickup" checked> I pay at pickup (cash or UPI)</label>
@@ -574,6 +575,7 @@ async function showTracking(token, isNew) {
     '<div style="font-size:15px; color:#44403C;">' + esc(b.booking_no) + ' · ' + rs(b.charge) + (b.payment_mode === 'collect_at_pickup' ? ' to pay at pickup' : ' to pay at delivery') + ' · ' + b.distance_km + ' km' + (b.distance_source === 'road' ? ' by road' : '') + '</div>' +
     (b.status !== 'cancelled' ? '<div id="payBox"></div>' : '') +
     (b.status === 'cancelled' ? '<p style="color:#B91C1C; font-weight:700;">This booking was cancelled.' + (b.cancel_reason ? ' ' + esc(b.cancel_reason) : '') + '</p>' :
+    (b.pickup_code ? '<div class="otp" style="background:#ECFDF5; border-color:#86EFAC;"><span>📦 Pickup code<br><small style="color:#44403C;">Give it to the rider when he takes the parcel</small></span><b>' + esc(b.pickup_code) + '</b></div>' : '') +
     '<div class="otp"><span>Delivery OTP<br><small style="color:#44403C;">Send it to the receiver</small></span><b>' + esc(b.drop_otp) + '</b></div>' +
     '<a class="wa" target="_blank" rel="noopener" href="' + share + '">Send OTP to receiver on WhatsApp</a>' +
     (b.return_trip && b.return_otp ? '<div class="otp" style="background:#EDE9FE;"><span>Return OTP<br><small style="color:#44403C;">Give it to the rider when they bring the reply back</small></span><b>' + esc(b.return_otp) + '</b></div>' : '') +
@@ -628,15 +630,16 @@ async function renderPayBox(token) {
     '<div style="font-size:13.5px; color:#44403C; margin:2px 0 10px;">Paid to ' + esc(p.name || 'Routix') + '. No cash needed for the rider.</div>' +
     (mobile ? '<a href="' + link + '" style="display:block; text-align:center; text-decoration:none; background:#1C1917; color:#fff; font-weight:800; border-radius:12px; padding:13px; font-size:16px;">Open UPI app and pay ' + rs(p.amount) + '</a>' : '') +
     '<details style="margin-top:8px;"' + (mobile ? '' : ' open') + '><summary style="cursor:pointer; font-weight:700; font-size:14px;">' + (mobile ? 'Paying from another phone? Show QR' : 'Scan this QR with any UPI app') + '</summary><div id="payQr" style="display:flex; justify-content:center; background:#fff; border-radius:12px; padding:12px; margin-top:8px;"></div><div style="text-align:center; font-size:12.5px; color:#78716C;">' + esc(p.vpa) + '</div></details>' +
-    '<label style="display:block; font-size:13.5px; font-weight:700; margin-top:10px;">After paying, enter the 12-digit UTR / UPI Ref No. (it is in your UPI app)<input id="payUtr" inputmode="numeric" maxlength="14" placeholder="12 digits" style="display:block; width:100%; box-sizing:border-box; margin-top:4px; padding:12px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:17px; letter-spacing:2px;"></label>' +
-    '<button class="btn" type="button" id="payDone" style="width:100%; margin-top:8px;">I have paid</button>' +
+    '<button class="btn" type="button" id="payDone" style="width:100%; margin-top:10px;">✅ I have paid</button>' +
+    '<details style="margin-top:6px;"><summary style="cursor:pointer; font-size:13.5px; color:#57534E;">Add UPI reference number (optional)</summary><input id="payUtr" inputmode="numeric" maxlength="14" placeholder="UTR / UPI Ref No." aria-label="UPI reference number, optional" style="display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:12px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:16px; letter-spacing:1px;"></details>' +
     '<div id="payErr" role="alert" style="color:#B91C1C; font-size:13.5px; font-weight:700; margin-top:4px;"></div></div>';
   const qrBox = $('payQr');
   if (qrBox) payLoadQr(function() { if (window.QRCode) new QRCode(qrBox, { text: link, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M }); });
   $('payUtr').addEventListener('input', function() { $('payErr').textContent = ''; });
   $('payDone').addEventListener('click', async function() {
     const u = $('payUtr').value.replace(/\D/g, '');
-    if (u.length !== 12) { $('payErr').textContent = 'Enter the 12-digit UTR from your UPI app.'; return; }
+    if (u && u.length < 4) { $('payErr').textContent = 'The reference number looks too short — leave it empty if you are not sure.'; return; }
+    if (!(await rxConfirm('Have you paid ' + rs(p.amount) + ' to ' + (p.name || 'Routix') + ' in your UPI app? The rider will not ask for this money.', { yes: 'Haan, paid', no: 'Abhi nahi' }))) return;
     this.disabled = true;
     const d = await rpc('routix_web_upi_paid', { p_token: token, p_utr: u }).catch(function(e) { return { ok: false, error: e.message }; });
     if (!d.ok) { $('payErr').textContent = d.error || 'Could not save'; this.disabled = false; return; }
