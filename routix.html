@@ -134,6 +134,7 @@ label.f textarea { resize: vertical; }
     <button type="button" data-go="riders">🛵 Riders</button>
     <button type="button" data-go="applications">📝 New riders <span class="badge" id="navApps"></span></button>
     <button type="button" data-go="money">💰 Rider money</button>
+    <button type="button" data-go="upi">💳 UPI check <span class="badge" id="navUpi"></span></button>
     <button type="button" data-go="shops">🏪 Shops (Khaata)</button>
     <button type="button" data-go="claims">🛡️ Suraksha claims</button>
     <button type="button" data-go="graspion">🤝 Graspion account</button>
@@ -255,6 +256,26 @@ label.f textarea { resize: vertical; }
       <div id="riderWallets"><div class="empty">Loading…</div></div>
     </section>
 
+    <section class="panel" data-sec="upi" aria-labelledby="upiH">
+      <h2 id="upiH">💳 UPI check</h2>
+      <p class="hint">Payments customers made by scanning the Routix QR. Open your bank app, find the amount (and UTR if given), then tick ✅ or ❌. If you tick ❌ for a delivered booking the rider marked, that amount goes to the rider's "cash to deposit".</p>
+      <div id="upiSum" class="facts" style="margin-bottom:8px;"></div>
+      <div class="tabs" role="tablist" aria-label="UPI payments">
+        <button class="tab" type="button" role="tab" data-upitab="pending" aria-selected="true">To check</button>
+        <button class="tab" type="button" role="tab" data-upitab="verified" aria-selected="false">Received</button>
+        <button class="tab" type="button" role="tab" data-upitab="rejected" aria-selected="false">Not received</button>
+      </div>
+      <div id="upiList"><div class="empty">Loading…</div></div>
+      <details style="margin-top:14px;"><summary style="cursor:pointer; font-weight:700;">⚙️ QR settings (UPI ID and name)</summary>
+        <div style="display:grid; gap:8px; margin-top:8px; max-width:420px;">
+          <label class="facts">UPI ID (money comes here)<input id="upiVpa" style="display:block; width:100%; box-sizing:border-box; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"></label>
+          <label class="facts">Name shown on the QR screen<input id="upiName" maxlength="40" style="display:block; width:100%; box-sizing:border-box; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"></label>
+          <label class="chk"><input type="checkbox" id="upiOn"> UPI QR switched on for riders and customers</label>
+          <button class="btn" type="button" id="upiSave">Save QR settings</button>
+        </div>
+      </details>
+    </section>
+
     <section class="panel" data-sec="graspion" aria-labelledby="gaH">
       <h2 id="gaH">🤝 Graspion account (client)</h2>
       <p class="hint">Graspion is a client of Routix: it pays Routix per delivery (rider pay + Routix fee). COD cash Routix riders collect for Graspion is owed back to Graspion. One statement nets both.</p>
@@ -309,7 +330,7 @@ $('logoutBtn').addEventListener('click', async function() { await sb.auth.signOu
 sb.auth.onAuthStateChange(function(ev, s) { if (s) token = s.access_token; });
 
 // ---------- dashboard ----------
-async function refreshAll() { await Promise.all([loadDashboard(), loadBookings()]); loadShops(); loadLeaderboard(); loadClaims(); }
+async function refreshAll() { await Promise.all([loadDashboard(), loadBookings()]); loadShops(); loadLeaderboard(); loadClaims(); loadUpi(); }
 async function loadDashboard() {
   try {
     const d = await rpc('routix_dashboard');
@@ -542,6 +563,50 @@ document.addEventListener('click', async function(e) {
   } catch (err) { toast(err.message); }
 });
 
+// ===== UPI check (Routix QR payments) =====
+let upiTab = 'pending', upiSettingsFilled = false;
+async function loadUpi() {
+  try {
+    const d = await rpc('routix_upi_list', { p_status: upiTab });
+    $('navUpi').textContent = d.pending_count ? d.pending_count : '';
+    $('upiSum').innerHTML = 'To check: <b>' + d.pending_count + '</b> (' + rs(d.pending_total) + ') · Today by UPI: <b>' + d.today_count + '</b> payments, <b>' + rs(d.today_total) + '</b> — match this with your bank app.';
+    if (!upiSettingsFilled && d.info) { $('upiVpa').value = d.info.vpa || ''; $('upiName').value = d.info.name || ''; $('upiOn').checked = !!d.info.enabled; upiSettingsFilled = true; }
+    const who = { rider: 'Rider marked', customer: 'Customer paid online', office: 'Office' };
+    $('upiList').innerHTML = d.rows.length ? d.rows.map(function(u) {
+      const when = new Date(u.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      return '<article class="ticket"><div class="head"><span class="no">' + rs(u.amount) + ' · ' + esc(u.booking_no) + '</span><span class="pill ' + (u.status === 'verified' ? 's-delivered' : u.status === 'rejected' ? 's-cancelled' : 's-open') + '">' + (u.status === 'pending' ? 'to check' : u.status === 'verified' ? 'received' : 'not received') + '</span></div>' +
+        '<div class="facts">' + when + ' · ' + who[u.by] + (u.rider ? ' · rider ' + esc(u.rider) : '') + ' · from ' + esc(u.payer || '') + (u.payer_phone ? ' (' + esc(u.payer_phone) + ')' : '') + ' at ' + u.stage + '</div>' +
+        '<div class="facts">UTR: <b>' + (u.utr ? esc(u.utr) : '— not given (match by amount and time)') + '</b> · booking is ' + esc(u.booking_status) + (u.note ? '<br>Note: ' + esc(u.note) : '') + '</div>' +
+        (u.status === 'pending' ? '<div class="actions"><button class="btn wa" type="button" data-upiok="' + u.id + '">✅ Received in bank</button><button class="btn stop" type="button" data-upino="' + u.id + '" data-by="' + u.by + '" data-bs="' + esc(u.booking_status) + '">❌ Not received</button></div>' : '') + '</article>';
+    }).join('') : '<div class="empty">' + (upiTab === 'pending' ? 'Nothing to check. ✅' : 'Nothing here yet.') + '</div>';
+  } catch (e) { $('upiList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }
+}
+document.querySelectorAll('[data-upitab]').forEach(function(t) { t.addEventListener('click', function() {
+  upiTab = t.getAttribute('data-upitab');
+  document.querySelectorAll('[data-upitab]').forEach(function(x) { x.setAttribute('aria-selected', x === t ? 'true' : 'false'); });
+  loadUpi();
+}); });
+document.addEventListener('click', async function(e) {
+  const ok = e.target.closest && e.target.closest('[data-upiok]'), no = e.target.closest && e.target.closest('[data-upino]');
+  if (!ok && !no) return;
+  try {
+    if (ok) { const d = await rpc('routix_upi_decide', { p_id: ok.getAttribute('data-upiok'), p_ok: true, p_note: null }); toast(d.ok ? 'Marked received' : d.error); }
+    if (no) {
+      const riderPays = no.getAttribute('data-by') === 'rider' && no.getAttribute('data-bs') === 'delivered';
+      const note = prompt('Not in bank? Write a short note.' + (riderPays ? '\nThis amount will be added to the rider\'s cash to deposit.' : '\nCall the customer — they will see "payment not found".'), 'Not found in bank');
+      if (note === null) return;
+      const d = await rpc('routix_upi_decide', { p_id: no.getAttribute('data-upino'), p_ok: false, p_note: note }); toast(d.ok ? 'Marked not received' : d.error);
+    }
+    loadUpi();
+  } catch (err) { toast(err.message); }
+});
+$('upiSave').addEventListener('click', async function() {
+  try {
+    const d = await rpc('routix_upi_settings_save', { p_vpa: $('upiVpa').value.trim(), p_name: $('upiName').value.trim(), p_enabled: $('upiOn').checked });
+    toast(d.ok ? 'QR settings saved' : d.error);
+  } catch (err) { toast(err.message); }
+});
+
 // ===================== Routix Control: sections =====================
 function goSec(sec) {
   document.querySelectorAll('[data-sec]').forEach(function(el) { el.hidden = el.getAttribute('data-sec') !== sec; });
@@ -551,6 +616,7 @@ function goSec(sec) {
   if (sec === 'applications') loadApplications();
   if (sec === 'money') loadMoney();
   if (sec === 'graspion') loadGraspionAccount();
+  if (sec === 'upi') loadUpi();
   window.scrollTo({ top: 0 });
 }
 document.querySelectorAll('[data-go]').forEach(function(b) { b.addEventListener('click', function() { goSec(b.getAttribute('data-go')); }); });

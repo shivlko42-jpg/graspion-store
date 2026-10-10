@@ -941,11 +941,11 @@ async function loadRoutixBookings() {
     const map = function(a) { return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(a); };
     let act = '';
     if (b.status === 'open') act = '<button data-rbaccept="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#ea580c; color:#fff; font-size:16px; font-weight:800;">Accept · earn ' + rbMoney(b.rider_pay) + '</button>';
-    else if (mine && b.status === 'assigned') act = (Number(b.collect_at_pickup) > 0 ? '<div style="background:#fef3c7; color:#92400e; border-radius:10px; padding:10px; font-size:15px; font-weight:800; margin-bottom:8px;">Collect ' + rbMoney(b.collect_at_pickup) + ' from the sender</div>' : '') + '<button data-rbpicked="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#d97706; color:#fff; font-size:16px; font-weight:800;">I have picked up the parcel</button>';
+    else if (mine && b.status === 'assigned') act = rbPayBox(b, 'pickup') + '<button data-rbpicked="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#d97706; color:#fff; font-size:16px; font-weight:800;">I have picked up the parcel</button>';
     else if (mine && b.status === 'returning') act = '<div style="background:#ede9fe; color:#5b21b6; border-radius:10px; padding:10px; font-size:15px; font-weight:800; margin-bottom:8px;">🔁 Delivered — now take the reply / receipt back to ' + rbEsc(b.pickup_name) + '</div>' +
       '<input data-rbretotp="' + b.id + '" inputmode="numeric" maxlength="4" placeholder="Sender\'s OTP" aria-label="Sender OTP" style="width:100%; box-sizing:border-box; padding:14px; border-radius:12px; border:2px solid #a78bfa; background:#fff; color:#111827; font-size:22px; font-weight:800; letter-spacing:6px; text-align:center; margin-bottom:8px;">' +
       '<button data-rbreturned="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#5b21b6; color:#fff; font-size:16px; font-weight:800;">Returned to sender — finish</button>';
-    else if (mine && b.status === 'picked') act = (Number(b.collect_at_drop) > 0 ? '<div style="background:#fef3c7; color:#92400e; border-radius:10px; padding:10px; font-size:15px; font-weight:800; margin-bottom:8px;">Collect ' + rbMoney(b.collect_at_drop) + ' from the receiver</div>' : '') +
+    else if (mine && b.status === 'picked') act = rbPayBox(b, 'drop') +
       '<input data-rbotp="' + b.id + '" inputmode="numeric" maxlength="4" placeholder="Receiver OTP" aria-label="Receiver OTP" style="width:100%; box-sizing:border-box; padding:14px; border-radius:12px; border:2px solid #a78bfa; background:#fff; color:#111827; font-size:22px; font-weight:800; letter-spacing:6px; text-align:center; margin-bottom:8px;">' +
       '<label style="display:block; font-size:13.5px; color:#374151; font-weight:700; margin-bottom:8px;">📷 Photo of the parcel at the door ' + (b.insured ? '(needed for Suraksha)' : '(optional)') + '<input type="file" accept="image/*" capture="environment" data-rbphoto="' + b.id + '" style="display:block; margin-top:4px; font-size:13px;"></label>' +
       '<button data-rbdeliver="' + b.id + '" style="width:100%; height:48px; border:none; border-radius:12px; background:#15803d; color:#fff; font-size:16px; font-weight:800;">Mark delivered</button>';
@@ -993,10 +993,84 @@ document.addEventListener('click', async function(e) {
   }
   if (!res || !res.ok) { alert((res && (res.error || res.message)) || 'Could not update'); btn.disabled = false; return; }
   if (d && res.returning) { alert('✅ Delivered. Now take the reply back to the sender and ask for their OTP.' + (Number(res.collect) > 0 ? ' Keep ' + rbMoney(res.collect) + ' safe.' : '')); loadRoutixBookings(); return; }
-  if (d) alert('✅ Delivered!' + (Number(res.collect) > 0 ? ' Keep ' + rbMoney(res.collect) + ' safe and deposit it at the office.' : ''));
+  if (d) alert('✅ Delivered!' + (Number(res.collect) > 0 ? ' Keep ' + rbMoney(res.collect) + ' cash safe and deposit it at the office.' : ' No cash to deposit for this one.'));
   loadRoutixBookings(); try { loadWallet(); } catch (err) {}
 });
 setInterval(function() { if (document.visibilityState === 'visible') loadRoutixBookings(); }, 30000);
+
+// ===== Routix UPI QR (money goes straight to the Routix company account) =====
+let rbUpi = null;
+async function rbUpiInfo() { if (rbUpi) return rbUpi; try { const d = await rbCall('routix_upi_info'); if (d && d.vpa) rbUpi = d; } catch (e) {} return rbUpi; }
+function rbDue(b, stage) {
+  const total = Number(stage === 'pickup' ? b.collect_at_pickup : b.collect_at_drop) || 0;
+  const paid = Number(stage === 'pickup' ? b.upi_paid_pickup : b.upi_paid_drop) || 0;
+  return { total: total, paid: paid, due: Math.max(total - paid, 0) };
+}
+function rbPayBox(b, stage) {
+  const m = rbDue(b, stage);
+  if (m.total <= 0) return '';
+  const who = stage === 'pickup' ? 'sender' : 'receiver';
+  const mine = (b.upi_list || []).filter(function(u) { return u.stage === stage; });
+  const undo = mine.filter(function(u) { return u.by === 'rider' && u.status === 'pending'; }).map(function(u) { return ' <button data-rbupiundo="' + u.id + '" style="background:none; border:none; color:#166534; text-decoration:underline; font-size:13px; font-weight:700; padding:0;">Galti se dabaya? Undo</button>'; }).join('');
+  if (m.due <= 0) return '<div style="background:#dcfce7; color:#14532d; border-radius:10px; padding:10px; font-size:14.5px; font-weight:800; margin-bottom:8px;">✅ ' + rbMoney(m.paid) + ' UPI se mil gaya (' + who + ') — cash nahi lena.' + '<div style="font-size:12.5px; font-weight:600; margin-top:2px;">Office bank mein check karega.' + undo + '</div></div>';
+  return '<div style="background:#fef3c7; color:#92400e; border-radius:10px; padding:10px; margin-bottom:8px;">' +
+    '<div style="font-size:15px; font-weight:800;">Collect ' + rbMoney(m.due) + ' from the ' + who + '</div>' +
+    (m.paid > 0 ? '<div style="font-size:12.5px; font-weight:700; color:#166534;">' + rbMoney(m.paid) + ' already paid by UPI</div>' : '') +
+    '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">' +
+      '<button data-rbqr="' + b.id + '" data-stage="' + stage + '" data-amt="' + m.due + '" data-no="' + rbEsc(b.booking_no) + '" style="height:44px; border:none; border-radius:10px; background:#1c1917; color:#fff; font-size:15px; font-weight:800;">💳 UPI QR</button>' +
+      '<div style="height:44px; border:1.5px dashed #d97706; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800;">💵 or cash</div>' +
+    '</div></div>';
+}
+function rbLoadQrLib(cb) {
+  if (window.QRCode) return cb();
+  const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  sc.onload = cb; sc.onerror = function() { alert('Could not load the QR code. Check internet.'); }; document.head.appendChild(sc);
+}
+function rbUpiLink(info, amt, no) {
+  return 'upi://pay?pa=' + String(info.vpa).replace(/[^A-Za-z0-9._@-]/g, '') + '&pn=' + encodeURIComponent(info.name || 'Routix') +
+    '&am=' + Number(amt).toFixed(2) + '&cu=INR&tn=' + encodeURIComponent('Routix ' + no);
+}
+async function rbShowQr(id, stage, amt, no) {
+  const info = await rbUpiInfo();
+  if (!info || !info.enabled || !info.vpa) { alert('UPI is switched off right now. Please take cash.'); return; }
+  rbLoadQrLib(function() {
+    const w = document.createElement('div');
+    w.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px; overflow-y:auto;';
+    w.innerHTML = '<div style="background:#1c1917; color:#fafaf9; border-radius:20px; padding:18px; max-width:360px; width:100%;">' +
+      '<div style="display:flex; align-items:center; gap:10px;"><svg width="30" height="34" viewBox="0 0 46 52" aria-hidden="true"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      '<div><div style="font-size:22px; font-weight:900; letter-spacing:2px; line-height:1;">ROUTI<span style="color:#EF4444;">X</span></div><div style="font-size:12.5px; color:#d6d3d1;">by Grasp Infotech</div></div></div>' +
+      '<div style="font-size:13.5px; color:#d6d3d1; margin-top:12px;">Booking ' + rbEsc(no) + '</div>' +
+      '<div style="font-size:38px; font-weight:900; line-height:1.1;">' + rbMoney(amt) + '</div>' +
+      '<div style="background:#fff; border-radius:14px; padding:14px; margin-top:10px; display:flex; justify-content:center;" id="rbQrBox"></div>' +
+      '<div style="text-align:center; font-size:14px; margin-top:8px;">Kisi bhi UPI app se scan karein</div>' +
+      '<div style="text-align:center; font-size:12.5px; color:#a8a29e;">' + rbEsc(info.name || '') + ' · ' + rbEsc(info.vpa) + '</div>' +
+      '<div style="background:#422006; color:#fde68a; border-radius:10px; padding:9px 10px; font-size:13px; font-weight:700; margin-top:10px;">⚠️ Customer ke phone par green "Paid ' + rbMoney(amt) + '" screen apni aankh se dekhein. Sirf screenshot par bharosa na karein.</div>' +
+      '<label style="display:block; font-size:13px; color:#d6d3d1; margin-top:10px;">UTR / UPI ref no. (optional, last 4 bhi chalega)<input id="rbUtr" inputmode="numeric" maxlength="12" style="display:block; width:100%; box-sizing:border-box; margin-top:4px; padding:12px; border-radius:10px; border:none; background:#fff; color:#111827; font-size:18px; font-weight:800; letter-spacing:2px;"></label>' +
+      '<button id="rbUpiDone" style="margin-top:10px; width:100%; height:50px; border:none; border-radius:12px; background:#EA580C; color:#fff; font-size:16px; font-weight:900;">✅ Customer ne pay kar diya</button>' +
+      '<button id="rbUpiClose" style="margin-top:8px; width:100%; height:44px; border:1px solid #57534e; border-radius:12px; background:none; color:#d6d3d1; font-size:15px; font-weight:700;">Close — cash lunga</button></div>';
+    document.body.appendChild(w);
+    new QRCode(w.querySelector('#rbQrBox'), { text: rbUpiLink(info, amt, no), width: 230, height: 230, correctLevel: QRCode.CorrectLevel.M });
+    w.querySelector('#rbUpiClose').addEventListener('click', function() { w.remove(); });
+    w.querySelector('#rbUpiDone').addEventListener('click', async function() {
+      const btn = this; btn.disabled = true; btn.textContent = 'Saving…';
+      const res = await rbCall('rider_routix_upi', { p_id: id, p_stage: stage, p_utr: w.querySelector('#rbUtr').value.trim() || null });
+      if (!res || !res.ok) { alert((res && (res.error || res.message)) || 'Could not save'); btn.disabled = false; btn.textContent = '✅ Customer ne pay kar diya'; return; }
+      w.remove(); alert('✅ ' + rbMoney(res.amount) + ' UPI se mila. Is booking ka ye cash aapke paas nahi gina jayega.');
+      loadRoutixBookings(); try { loadWallet(); } catch (err) {}
+    });
+  });
+}
+document.addEventListener('click', async function(e) {
+  const q = e.target.closest && e.target.closest('[data-rbqr]'), u = e.target.closest && e.target.closest('[data-rbupiundo]');
+  if (q) rbShowQr(q.getAttribute('data-rbqr'), q.getAttribute('data-stage'), Number(q.getAttribute('data-amt')), q.getAttribute('data-no'));
+  if (u) {
+    if (!confirm('UPI mark hata dein? Fir ye amount cash mein lena hoga.')) return;
+    const res = await rbCall('rider_routix_upi_undo', { p_id: u.getAttribute('data-rbupiundo') });
+    if (!res || !res.ok) alert((res && res.error) || 'Cannot undo now');
+    loadRoutixBookings();
+  }
+});
+
 
 // ===== Share & Earn: rider's own booking link, QR, on-the-spot booking =====
 let refInfo = null;

@@ -354,6 +354,7 @@ async function showTracking(token, isNew) {
   $('doneBox').innerHTML = '<div class="ticket">' +
     (isNew ? '<div style="font-family:Barlow Semi Condensed,sans-serif; font-size:28px; font-weight:800;">Booked!</div>' + (params.get('with') ? '<div style="font-weight:700; color:#15803D;">Rider ' + esc(params.get('with')) + ' will take your parcel now.</div>' : '') : '') +
     '<div style="font-size:15px; color:#44403C;">' + esc(b.booking_no) + ' · ' + rs(b.charge) + (b.payment_mode === 'collect_at_pickup' ? ' to pay at pickup' : ' to pay at delivery') + ' · ' + b.distance_km + ' km</div>' +
+    (b.status !== 'cancelled' ? '<div id="payBox"></div>' : '') +
     (b.status === 'cancelled' ? '<p style="color:#B91C1C; font-weight:700;">This booking was cancelled.' + (b.cancel_reason ? ' ' + esc(b.cancel_reason) : '') + '</p>' :
     '<div class="otp"><span>Delivery OTP<br><small style="color:#44403C;">Send it to the receiver</small></span><b>' + esc(b.drop_otp) + '</b></div>' +
     '<a class="wa" target="_blank" rel="noopener" href="' + share + '">Send OTP to receiver on WhatsApp</a>' +
@@ -374,13 +375,54 @@ async function showTracking(token, isNew) {
   if (rb) rb.addEventListener('click', async function() { if (!stars) { alert('Tap the stars first'); return; } const d = await rpc('routix_web_rate', { p_token: token, p_rating: stars, p_note: $('rateNote').value }).catch(function(e) { return { ok: false, error: e.message }; }); if (!d.ok) alert(d.error); showTracking(token, false); });
   if (isNew) setTimeout(function() { openInstallSheet(true, true); }, 1500);
   if (b.insured) renderClaimBox(token, b);
+  if (b.status !== 'cancelled') renderPayBox(token);
   const cx = $('cxBtn');
   if (cx) cx.addEventListener('click', async function() {
     if (!confirm('Cancel this booking?')) return;
     const d = await rpc('routix_web_cancel', { p_token: token }).catch(function(e) { return { ok: false, error: e.message }; });
     if (!d.ok) alert(d.error); showTracking(token, false);
   });
-  if (b.status !== 'delivered' && b.status !== 'cancelled') setTimeout(function() { if (document.visibilityState === 'visible') showTracking(token, false); else setTimeout(function() { showTracking(token, false); }, 20000); }, 20000);
+  if (b.status !== 'delivered' && b.status !== 'cancelled') setTimeout(function() { if ($('payUtr') && $('payUtr').value) { setTimeout(function() { showTracking(token, false); }, 60000); return; } if (document.visibilityState === 'visible') showTracking(token, false); else setTimeout(function() { showTracking(token, false); }, 20000); }, 20000);
+}
+// ===== Pay Routix by UPI (money goes to the Routix company account) =====
+function payLoadQr(cb) {
+  if (window.QRCode) return cb();
+  const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; sc.onload = cb; sc.onerror = function() {}; document.head.appendChild(sc);
+}
+async function renderPayBox(token) {
+  const box = $('payBox'); if (!box) return;
+  let p; try { p = await rpc('routix_web_pay_info', { p_token: token }); } catch (e) { return; }
+  if (!p || !p.ok || p.reason) return;
+  const card = 'margin:12px 0 4px; border-radius:14px; padding:12px 14px;';
+  if (!p.payable) {
+    if (Number(p.paid) <= 0) return;
+    box.innerHTML = p.verified && !p.checking
+      ? '<div style="' + card + ' background:#DCFCE7; color:#14532D; font-weight:700;">✅ ' + rs(p.paid) + ' paid to Routix by UPI — thank you! Rider will not ask for this money.</div>'
+      : '<div style="' + card + ' background:#FEF9C3; color:#713F12; font-weight:700;">⏳ ' + rs(p.paid) + ' UPI payment noted. Rider will not ask for this money. We confirm it in our bank shortly.</div>';
+    return;
+  }
+  const link = 'upi://pay?pa=' + String(p.vpa).replace(/[^A-Za-z0-9._@-]/g, '') + '&pn=' + encodeURIComponent(p.name || 'Routix') + '&am=' + Number(p.amount).toFixed(2) + '&cu=INR&tn=' + encodeURIComponent('Routix ' + p.booking_no);
+  const mobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+  box.innerHTML = '<div style="' + card + ' border:1.5px solid #FDBA74; background:#FFF7ED;">' +
+    (p.rejected ? '<div style="color:#B91C1C; font-weight:700; margin-bottom:6px;">Your last UPI payment was not found in our bank. Please check your UPI app, or pay the rider.</div>' : '') +
+    '<div style="font-weight:800; font-size:17px;">💳 Pay ' + rs(p.amount) + ' now by UPI <span style="font-weight:600; font-size:13px; color:#78716C;">(optional)</span></div>' +
+    '<div style="font-size:13.5px; color:#44403C; margin:2px 0 10px;">Paid to ' + esc(p.name || 'Routix') + '. No cash needed for the rider.</div>' +
+    (mobile ? '<a href="' + link + '" style="display:block; text-align:center; text-decoration:none; background:#1C1917; color:#fff; font-weight:800; border-radius:12px; padding:13px; font-size:16px;">Open UPI app and pay ' + rs(p.amount) + '</a>' : '') +
+    '<details style="margin-top:8px;"' + (mobile ? '' : ' open') + '><summary style="cursor:pointer; font-weight:700; font-size:14px;">' + (mobile ? 'Paying from another phone? Show QR' : 'Scan this QR with any UPI app') + '</summary><div id="payQr" style="display:flex; justify-content:center; background:#fff; border-radius:12px; padding:12px; margin-top:8px;"></div><div style="text-align:center; font-size:12.5px; color:#78716C;">' + esc(p.vpa) + '</div></details>' +
+    '<label style="display:block; font-size:13.5px; font-weight:700; margin-top:10px;">After paying, enter the 12-digit UTR / UPI Ref No. (it is in your UPI app)<input id="payUtr" inputmode="numeric" maxlength="14" placeholder="12 digits" style="display:block; width:100%; box-sizing:border-box; margin-top:4px; padding:12px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:17px; letter-spacing:2px;"></label>' +
+    '<button class="btn" type="button" id="payDone" style="width:100%; margin-top:8px;">I have paid</button>' +
+    '<div id="payErr" role="alert" style="color:#B91C1C; font-size:13.5px; font-weight:700; margin-top:4px;"></div></div>';
+  const qrBox = $('payQr');
+  if (qrBox) payLoadQr(function() { if (window.QRCode) new QRCode(qrBox, { text: link, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M }); });
+  $('payUtr').addEventListener('input', function() { $('payErr').textContent = ''; });
+  $('payDone').addEventListener('click', async function() {
+    const u = $('payUtr').value.replace(/\D/g, '');
+    if (u.length !== 12) { $('payErr').textContent = 'Enter the 12-digit UTR from your UPI app.'; return; }
+    this.disabled = true;
+    const d = await rpc('routix_web_upi_paid', { p_token: token, p_utr: u }).catch(function(e) { return { ok: false, error: e.message }; });
+    if (!d.ok) { $('payErr').textContent = d.error || 'Could not save'; this.disabled = false; return; }
+    $('payUtr').value = ''; renderPayBox(token);
+  });
 }
 function mineHtml(current) {
   try {
