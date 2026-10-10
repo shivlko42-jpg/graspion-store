@@ -288,6 +288,65 @@ label.f textarea { resize: vertical; }
 </div>
 
 <script>
+window.RX_POP_SUB = 'Control';
+// ===== Routix popups (replace browser alert/confirm/prompt so it never says "graspion.in says") =====
+(function() {
+  const LOGO = '<svg width="22" height="25" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  if (!document.getElementById('rxPopCss')) {
+    const st = document.createElement('style'); st.id = 'rxPopCss';
+    st.textContent = '.rxp-bg{position:fixed;inset:0;background:rgba(28,25,23,.62);z-index:10050;display:flex;align-items:center;justify-content:center;padding:18px}' +
+      '.rxp{background:#fff;color:#1C1917;border-radius:16px;overflow:hidden;width:100%;max-width:340px;box-shadow:0 12px 40px rgba(0,0,0,.35);font-family:inherit}' +
+      '.rxp-top{background:#1C1917;color:#FAFAF9;display:flex;align-items:center;gap:8px;padding:10px 14px}' +
+      '.rxp-top b{font-size:16px;font-weight:900;letter-spacing:1.5px}.rxp-top b span{color:#EF4444}.rxp-top small{font-size:12.5px;color:#D6D3D1;font-weight:700}' +
+      '.rxp-msg{padding:14px 14px 2px;font-size:15.5px;line-height:1.45;white-space:pre-line;word-wrap:break-word}' +
+      '.rxp-in{display:block;width:calc(100% - 28px);box-sizing:border-box;margin:10px 14px 0;padding:11px;border:1.5px solid #D6D3D1;border-radius:10px;font-size:16px;background:#fff;color:#1C1917}' +
+      '.rxp-in:focus{outline:2px solid #EA580C;border-color:#EA580C}' +
+      '.rxp-btns{display:flex;gap:8px;padding:14px}' +
+      '.rxp-b{flex:1;min-height:44px;border-radius:10px;font-size:15.5px;font-weight:800;border:1.5px solid #D6D3D1;background:#fff;color:#1C1917;cursor:pointer}' +
+      '.rxp-b.go{background:#EA580C;border-color:#EA580C;color:#fff}.rxp-b.ok{background:#15803D;border-color:#15803D;color:#fff}' +
+      '.rxp-b:focus-visible{outline:3px solid #FDBA74;outline-offset:2px}';
+    document.head.appendChild(st);
+  }
+  function open(kind, msg, opt) {
+    opt = opt || {};
+    return new Promise(function(resolve) {
+      const prev = document.activeElement;
+      const bg = document.createElement('div'); bg.className = 'rxp-bg';
+      const box = document.createElement('div'); box.className = 'rxp'; box.setAttribute('role', kind === 'alert' ? 'alertdialog' : 'dialog'); box.setAttribute('aria-modal', 'true');
+      const top = document.createElement('div'); top.className = 'rxp-top';
+      top.innerHTML = LOGO + '<b>ROUTI<span>X</span></b>' + (window.RX_POP_SUB ? ' <small>' + window.RX_POP_SUB + '</small>' : '');
+      const m = document.createElement('div'); m.className = 'rxp-msg'; m.textContent = String(msg == null ? '' : msg); m.id = 'rxpm' + Date.now(); box.setAttribute('aria-describedby', m.id);
+      box.appendChild(top); box.appendChild(m);
+      let inp = null;
+      if (kind === 'prompt') {
+        inp = document.createElement('input'); inp.className = 'rxp-in'; inp.value = opt.value == null ? '' : String(opt.value);
+        if (opt.type) inp.type = opt.type; if (opt.inputmode) inp.inputMode = opt.inputmode; if (opt.maxlength) inp.maxLength = opt.maxlength;
+        inp.setAttribute('aria-label', String(msg || 'Answer')); box.appendChild(inp);
+      }
+      const btns = document.createElement('div'); btns.className = 'rxp-btns';
+      const done = function(v) { document.removeEventListener('keydown', key, true); bg.remove(); try { if (prev && prev.focus) prev.focus(); } catch (e) {} resolve(v); };
+      let okBtn;
+      if (kind !== 'alert') { const no = document.createElement('button'); no.type = 'button'; no.className = 'rxp-b'; no.textContent = opt.no || (kind === 'prompt' ? 'Cancel' : 'Nahi'); no.onclick = function() { done(kind === 'prompt' ? null : false); }; btns.appendChild(no); }
+      okBtn = document.createElement('button'); okBtn.type = 'button';
+      okBtn.className = 'rxp-b ' + (kind === 'alert' ? (/^\s*✅/.test(String(msg)) ? 'ok' : 'go') : 'go');
+      okBtn.textContent = opt.yes || (kind === 'alert' ? 'OK' : kind === 'prompt' ? 'Save' : 'Haan');
+      okBtn.onclick = function() { done(kind === 'prompt' ? inp.value : true); };
+      btns.appendChild(okBtn); box.appendChild(btns); bg.appendChild(box); document.body.appendChild(bg);
+      const key = function(e) {
+        if (e.key === 'Escape') { e.preventDefault(); done(kind === 'alert' ? undefined : kind === 'prompt' ? null : false); }
+        else if (e.key === 'Enter' && (kind !== 'confirm' || document.activeElement === okBtn)) { e.preventDefault(); okBtn.click(); }
+        else if (e.key === 'Tab') { const f = box.querySelectorAll('input,button'); const first = f[0], last = f[f.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } }
+      };
+      document.addEventListener('keydown', key, true);
+      setTimeout(function() { if (inp) { inp.focus(); try { inp.select(); } catch (e) {} } else okBtn.focus(); }, 30);
+    });
+  }
+  window.rxAlert = function(msg, opt) { return open('alert', msg, opt); };
+  window.rxConfirm = function(msg, opt) { return open('confirm', msg, opt); };
+  window.rxPrompt = function(msg, value, opt) { opt = opt || {}; opt.value = value; return open('prompt', msg, opt); };
+})();
+</script>
+<script>
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -437,11 +496,11 @@ document.addEventListener('click', async function(e) {
   if (cf) { try { const d = await rpc('routix_booking_confirm', { p_id: cf.getAttribute('data-confirm') }); toast(d.ok ? 'Confirmed — riders can see it now' : 'Could not confirm'); } catch (err) { toast(err.message); } refreshAll(); return; }
   const c = e.target.closest && e.target.closest('[data-cancel]'), g = e.target.closest && e.target.closest('[data-goodsback]');
   if (c) {
-    const why = prompt('Why is this booking cancelled?'); if (why === null) return;
+    const why = await rxPrompt('Why is this booking cancelled?'); if (why === null) return;
     try { const d = await rpc('routix_booking_cancel', { p_id: c.getAttribute('data-cancel'), p_reason: why }); toast(d.ok ? 'Booking cancelled' : 'Could not cancel'); } catch (err) { toast(err.message); }
     refreshAll();
   } else if (g) {
-    const ref = prompt('How was the cash handed to the sender? (UPI ref / cash note)'); if (ref === null) return;
+    const ref = await rxPrompt('How was the cash handed to the sender? (UPI ref / cash note)'); if (ref === null) return;
     try { const d = await rpc('routix_mark_goods_cod_returned', { p_id: g.getAttribute('data-goodsback'), p_ref: ref }); toast(d.ok ? 'Marked as handed back' : 'Could not update'); } catch (err) { toast(err.message); }
     refreshAll();
   }
@@ -505,9 +564,9 @@ function openShopSheet(c) {
 $('addShopBtn').addEventListener('click', function() { openShopSheet(null); });
 document.addEventListener('click', async function(e) {
   const cp = e.target.closest && e.target.closest('[data-copy]'), ed = e.target.closest && e.target.closest('[data-editshop]'), bl = e.target.closest && e.target.closest('[data-billshop]');
-  if (cp) { try { await navigator.clipboard.writeText(cp.getAttribute('data-copy')); toast('Link copied'); } catch (err) { prompt('Copy this link:', cp.getAttribute('data-copy')); } }
+  if (cp) { try { await navigator.clipboard.writeText(cp.getAttribute('data-copy')); toast('Link copied'); } catch (err) { await rxPrompt('Copy this link:', cp.getAttribute('data-copy')); } }
   if (ed) openShopSheet(shops.find(function(x) { return x.id === ed.getAttribute('data-editshop'); }));
-  if (bl) { if (!confirm('Make the monthly bill for all delivered parcels on this khaata?')) return; try { const d = await rpc('routix_create_shop_bill', { p_client_id: bl.getAttribute('data-billshop') }); toast(d.ok ? 'Bill ' + d.statement_no + ': ' + rs(d.amount) + ' for ' + d.deliveries + ' deliveries' : d.error); } catch (err) { toast(err.message); } loadShops(); }
+  if (bl) { if (!await rxConfirm('Make the monthly bill for all delivered parcels on this khaata?')) return; try { const d = await rpc('routix_create_shop_bill', { p_client_id: bl.getAttribute('data-billshop') }); toast(d.ok ? 'Bill ' + d.statement_no + ': ' + rs(d.amount) + ' for ' + d.deliveries + ' deliveries' : d.error); } catch (err) { toast(err.message); } loadShops(); }
 });
 
 // ===== Riders: PIN login =====
@@ -516,14 +575,14 @@ document.addEventListener('click', async function(e) {
   const b = e.target.closest && e.target.closest('[data-setpin]'); if (!b) return;
   const r = riders.find(function(x) { return x.id === b.getAttribute('data-setpin'); }) || {};
   const auto = String(Math.floor(100000 + Math.random() * 900000));
-  const pin = prompt('6-digit PIN for ' + (r.name || 'rider') + ' (you can keep this one):', auto); if (pin === null) return;
+  const pin = await rxPrompt('6-digit PIN for ' + (r.name || 'rider') + ' (you can keep this one):', auto); if (pin === null) return;
   b.disabled = true;
   try {
     const res = await fetch(SUPABASE_URL + '/functions/v1/routix-rider-pin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ action: 'set', rider_id: r.id, pin: pin.trim() }) });
     const d = await res.json();
     if (!res.ok || !d.ok) { toast(d.error || 'Could not set PIN'); return; }
     const msg = 'Namaste ' + r.name + '! Routix Rider app mein login:\nMobile: ' + d.phone + '\nPIN: ' + pin.trim() + '\nApp: ' + location.origin + '/rider.html\nApni bike, apna route, apni kamai.';
-    if (confirm('PIN set for ' + r.name + '. Send it to them on WhatsApp now?')) window.open('https://wa.me/91' + d.phone + '?text=' + encodeURIComponent(msg), '_blank');
+    if (await rxConfirm('PIN set for ' + r.name + '. Send it to them on WhatsApp now?')) window.open('https://wa.me/91' + d.phone + '?text=' + encodeURIComponent(msg), '_blank');
     loadDashboard();
   } catch (err) { toast(err.message); }
   finally { b.disabled = false; }
@@ -557,9 +616,9 @@ async function loadClaims() {
 document.addEventListener('click', async function(e) {
   const ok = e.target.closest && e.target.closest('[data-claimok]'), no = e.target.closest && e.target.closest('[data-claimno]'), pd = e.target.closest && e.target.closest('[data-claimpaid]');
   try {
-    if (ok) { const amt = prompt('Approve how much? (up to ₹' + ok.getAttribute('data-max') + ')', ok.getAttribute('data-max')); if (amt === null) return; const note = prompt('Note for the customer:', 'Checked photos — approved') || ''; const d = await rpc('routix_claim_decide', { p_id: ok.getAttribute('data-claimok'), p_approve: true, p_amount: Number(amt), p_note: note }); toast(d.ok ? 'Approved' : d.error); loadClaims(); }
-    if (no) { const note = prompt('Why is it not approved? (customer will see this)'); if (!note) return; const d = await rpc('routix_claim_decide', { p_id: no.getAttribute('data-claimno'), p_approve: false, p_amount: 0, p_note: note }); toast(d.ok ? 'Rejected' : d.error); loadClaims(); }
-    if (pd) { const ref = prompt('UPI / bank reference:'); if (ref === null) return; const d = await rpc('routix_claim_paid', { p_id: pd.getAttribute('data-claimpaid'), p_ref: ref }); toast(d.ok ? 'Marked paid' : 'Could not update'); loadClaims(); }
+    if (ok) { const amt = await rxPrompt('Approve how much? (up to ₹' + ok.getAttribute('data-max') + ')', ok.getAttribute('data-max')); if (amt === null) return; const note = await rxPrompt('Note for the customer:', 'Checked photos — approved') || ''; const d = await rpc('routix_claim_decide', { p_id: ok.getAttribute('data-claimok'), p_approve: true, p_amount: Number(amt), p_note: note }); toast(d.ok ? 'Approved' : d.error); loadClaims(); }
+    if (no) { const note = await rxPrompt('Why is it not approved? (customer will see this)'); if (!note) return; const d = await rpc('routix_claim_decide', { p_id: no.getAttribute('data-claimno'), p_approve: false, p_amount: 0, p_note: note }); toast(d.ok ? 'Rejected' : d.error); loadClaims(); }
+    if (pd) { const ref = await rxPrompt('UPI / bank reference:'); if (ref === null) return; const d = await rpc('routix_claim_paid', { p_id: pd.getAttribute('data-claimpaid'), p_ref: ref }); toast(d.ok ? 'Marked paid' : 'Could not update'); loadClaims(); }
   } catch (err) { toast(err.message); }
 });
 
@@ -593,7 +652,7 @@ document.addEventListener('click', async function(e) {
     if (ok) { const d = await rpc('routix_upi_decide', { p_id: ok.getAttribute('data-upiok'), p_ok: true, p_note: null }); toast(d.ok ? 'Marked received' : d.error); }
     if (no) {
       const riderPays = no.getAttribute('data-by') === 'rider' && no.getAttribute('data-bs') === 'delivered';
-      const note = prompt('Not in bank? Write a short note.' + (riderPays ? '\nThis amount will be added to the rider\'s cash to deposit.' : '\nCall the customer — they will see "payment not found".'), 'Not found in bank');
+      const note = await rxPrompt('Not in bank? Write a short note.' + (riderPays ? '\nThis amount will be added to the rider\'s cash to deposit.' : '\nCall the customer — they will see "payment not found".'), 'Not found in bank');
       if (note === null) return;
       const d = await rpc('routix_upi_decide', { p_id: no.getAttribute('data-upino'), p_ok: false, p_note: note }); toast(d.ok ? 'Marked not received' : d.error);
     }
@@ -661,7 +720,7 @@ document.addEventListener('click', async function(e) {
   const t = e.target.closest && e.target.closest('[data-rtoggle]'), sv = e.target.closest && e.target.closest('[data-rsave]');
   if (t) {
     const active = t.getAttribute('data-active') === 'true';
-    if (active && !confirm('Deactivate this rider? They will stop getting deliveries.')) return;
+    if (active && !await rxConfirm('Deactivate this rider? They will stop getting deliveries.')) return;
     try { const r = await fetch(SUPABASE_URL + '/rest/v1/riders?id=eq.' + t.getAttribute('data-rtoggle'), { method: 'PATCH', headers: RHDR(), body: JSON.stringify({ status: active ? 'inactive' : 'active' }) }); if (!r.ok) throw new Error(await r.text()); toast(active ? 'Rider deactivated' : 'Rider activated'); } catch (err) { toast(err.message); }
     loadRidersFull(); loadDashboard();
   }
@@ -710,7 +769,7 @@ async function loadApplications() {
 document.addEventListener('click', async function(e) {
   const ok = e.target.closest && e.target.closest('[data-appok]'), no = e.target.closest && e.target.closest('[data-appno]');
   if (!ok && !no) return;
-  if (no && !confirm('Reject this application?')) return;
+  if (no && !await rxConfirm('Reject this application?')) return;
   const btn = ok || no; btn.disabled = true;
   try {
     const r = await fetch(SUPABASE_URL + '/functions/v1/approve-rider-application', { method: 'POST', headers: RHDR(), body: JSON.stringify({ application_id: btn.getAttribute(ok ? 'data-appok' : 'data-appno'), action: ok ? 'approve' : 'reject' }) });
@@ -744,16 +803,16 @@ document.addEventListener('click', async function(e) {
   const pay = e.target.closest && e.target.closest('[data-payreq]'), rej = e.target.closest && e.target.closest('[data-rejreq]'), adj = e.target.closest && e.target.closest('[data-wadj]'), cin = e.target.closest && e.target.closest('[data-cashin]');
   try {
     if (pay || rej) {
-      const ref = prompt(pay ? 'UPI transaction / UTR number:' : 'Reason (the rider will see it):'); if (ref === null) return;
+      const ref = await rxPrompt(pay ? 'UPI transaction / UTR number:' : 'Reason (the rider will see it):'); if (ref === null) return;
       const d = await rpc('routix_payout_decide', { p_request_id: (pay || rej).getAttribute(pay ? 'data-payreq' : 'data-rejreq'), p_paid: !!pay, p_ref: ref });
       toast(d.ok ? (pay ? 'Marked paid' : 'Rejected') : (d.error || 'Could not update'));
     } else if (adj) {
-      const type = adj.getAttribute('data-type'); const amt = prompt((type === 'bonus' ? 'Bonus' : 'Penalty') + ' amount (₹):'); if (!amt) return;
-      const note = prompt('Reason (the rider will see it):') || '';
+      const type = adj.getAttribute('data-type'); const amt = await rxPrompt((type === 'bonus' ? 'Bonus' : 'Penalty') + ' amount (₹):'); if (!amt) return;
+      const note = await rxPrompt('Reason (the rider will see it):') || '';
       const d = await rpc('routix_wallet_adjust', { p_rider_id: adj.getAttribute('data-wadj'), p_type: type, p_amount: Number(amt), p_note: note });
       toast(d.ok ? 'Added to passbook' : (d.error || 'Could not update'));
     } else if (cin) {
-      const amt = prompt('How much cash did this rider deposit? (₹)'); if (!amt) return;
+      const amt = await rxPrompt('How much cash did this rider deposit? (₹)'); if (!amt) return;
       await rpc('record_rider_cash_remittance', { p_rider_id: cin.getAttribute('data-cashin'), p_amount: Number(amt) });
       toast('Cash deposit recorded');
     } else return;
@@ -776,13 +835,13 @@ async function loadGraspionAccount() {
   } catch (e) { ub.innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }
 }
 $('gaMake').addEventListener('click', async function() {
-  if (!confirm('Make a statement for all Graspion deliveries not billed yet?')) return;
+  if (!await rxConfirm('Make a statement for all Graspion deliveries not billed yet?')) return;
   try { const d = await rpc('routix_create_statement', { p_client_code: 'graspion' }); toast(d.ok ? 'Statement ' + d.statement_no + ' made' : d.error); } catch (err) { toast(err.message); }
   loadGraspionAccount();
 });
 document.addEventListener('click', async function(e) {
   const g = e.target.closest && e.target.closest('[data-gsettle]'); if (!g) return;
-  const ref = prompt('Payment reference (UPI / bank / cash note):'); if (ref === null) return;
+  const ref = await rxPrompt('Payment reference (UPI / bank / cash note):'); if (ref === null) return;
   try { await rpc('routix_settle_statement', { p_id: g.getAttribute('data-gsettle'), p_ref: ref }); toast('Settled'); } catch (err) { toast(err.message); }
   loadGraspionAccount();
 });

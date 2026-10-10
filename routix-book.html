@@ -200,6 +200,64 @@ label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; 
 <div class="bar" id="bar"><div class="in"><div class="price" id="price">₹—<small>Choose pickup and drop to see the price</small></div><button class="book" id="bookBtn" type="button" disabled>Book now</button></div></div>
 
 <script>
+// ===== Routix popups (replace browser alert/confirm/prompt so it never says "graspion.in says") =====
+(function() {
+  const LOGO = '<svg width="22" height="25" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  if (!document.getElementById('rxPopCss')) {
+    const st = document.createElement('style'); st.id = 'rxPopCss';
+    st.textContent = '.rxp-bg{position:fixed;inset:0;background:rgba(28,25,23,.62);z-index:10050;display:flex;align-items:center;justify-content:center;padding:18px}' +
+      '.rxp{background:#fff;color:#1C1917;border-radius:16px;overflow:hidden;width:100%;max-width:340px;box-shadow:0 12px 40px rgba(0,0,0,.35);font-family:inherit}' +
+      '.rxp-top{background:#1C1917;color:#FAFAF9;display:flex;align-items:center;gap:8px;padding:10px 14px}' +
+      '.rxp-top b{font-size:16px;font-weight:900;letter-spacing:1.5px}.rxp-top b span{color:#EF4444}.rxp-top small{font-size:12.5px;color:#D6D3D1;font-weight:700}' +
+      '.rxp-msg{padding:14px 14px 2px;font-size:15.5px;line-height:1.45;white-space:pre-line;word-wrap:break-word}' +
+      '.rxp-in{display:block;width:calc(100% - 28px);box-sizing:border-box;margin:10px 14px 0;padding:11px;border:1.5px solid #D6D3D1;border-radius:10px;font-size:16px;background:#fff;color:#1C1917}' +
+      '.rxp-in:focus{outline:2px solid #EA580C;border-color:#EA580C}' +
+      '.rxp-btns{display:flex;gap:8px;padding:14px}' +
+      '.rxp-b{flex:1;min-height:44px;border-radius:10px;font-size:15.5px;font-weight:800;border:1.5px solid #D6D3D1;background:#fff;color:#1C1917;cursor:pointer}' +
+      '.rxp-b.go{background:#EA580C;border-color:#EA580C;color:#fff}.rxp-b.ok{background:#15803D;border-color:#15803D;color:#fff}' +
+      '.rxp-b:focus-visible{outline:3px solid #FDBA74;outline-offset:2px}';
+    document.head.appendChild(st);
+  }
+  function open(kind, msg, opt) {
+    opt = opt || {};
+    return new Promise(function(resolve) {
+      const prev = document.activeElement;
+      const bg = document.createElement('div'); bg.className = 'rxp-bg';
+      const box = document.createElement('div'); box.className = 'rxp'; box.setAttribute('role', kind === 'alert' ? 'alertdialog' : 'dialog'); box.setAttribute('aria-modal', 'true');
+      const top = document.createElement('div'); top.className = 'rxp-top';
+      top.innerHTML = LOGO + '<b>ROUTI<span>X</span></b>' + (window.RX_POP_SUB ? ' <small>' + window.RX_POP_SUB + '</small>' : '');
+      const m = document.createElement('div'); m.className = 'rxp-msg'; m.textContent = String(msg == null ? '' : msg); m.id = 'rxpm' + Date.now(); box.setAttribute('aria-describedby', m.id);
+      box.appendChild(top); box.appendChild(m);
+      let inp = null;
+      if (kind === 'prompt') {
+        inp = document.createElement('input'); inp.className = 'rxp-in'; inp.value = opt.value == null ? '' : String(opt.value);
+        if (opt.type) inp.type = opt.type; if (opt.inputmode) inp.inputMode = opt.inputmode; if (opt.maxlength) inp.maxLength = opt.maxlength;
+        inp.setAttribute('aria-label', String(msg || 'Answer')); box.appendChild(inp);
+      }
+      const btns = document.createElement('div'); btns.className = 'rxp-btns';
+      const done = function(v) { document.removeEventListener('keydown', key, true); bg.remove(); try { if (prev && prev.focus) prev.focus(); } catch (e) {} resolve(v); };
+      let okBtn;
+      if (kind !== 'alert') { const no = document.createElement('button'); no.type = 'button'; no.className = 'rxp-b'; no.textContent = opt.no || (kind === 'prompt' ? 'Cancel' : 'Nahi'); no.onclick = function() { done(kind === 'prompt' ? null : false); }; btns.appendChild(no); }
+      okBtn = document.createElement('button'); okBtn.type = 'button';
+      okBtn.className = 'rxp-b ' + (kind === 'alert' ? (/^\s*✅/.test(String(msg)) ? 'ok' : 'go') : 'go');
+      okBtn.textContent = opt.yes || (kind === 'alert' ? 'OK' : kind === 'prompt' ? 'Save' : 'Haan');
+      okBtn.onclick = function() { done(kind === 'prompt' ? inp.value : true); };
+      btns.appendChild(okBtn); box.appendChild(btns); bg.appendChild(box); document.body.appendChild(bg);
+      const key = function(e) {
+        if (e.key === 'Escape') { e.preventDefault(); done(kind === 'alert' ? undefined : kind === 'prompt' ? null : false); }
+        else if (e.key === 'Enter' && (kind !== 'confirm' || document.activeElement === okBtn)) { e.preventDefault(); okBtn.click(); }
+        else if (e.key === 'Tab') { const f = box.querySelectorAll('input,button'); const first = f[0], last = f[f.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } }
+      };
+      document.addEventListener('keydown', key, true);
+      setTimeout(function() { if (inp) { inp.focus(); try { inp.select(); } catch (e) {} } else okBtn.focus(); }, 30);
+    });
+  }
+  window.rxAlert = function(msg, opt) { return open('alert', msg, opt); };
+  window.rxConfirm = function(msg, opt) { return open('confirm', msg, opt); };
+  window.rxPrompt = function(msg, value, opt) { opt = opt || {}; opt.value = value; return open('prompt', msg, opt); };
+})();
+</script>
+<script>
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
 const params = new URLSearchParams(location.search);
@@ -372,15 +430,15 @@ async function showTracking(token, isNew) {
   let stars = 0;
   document.querySelectorAll('[data-star]').forEach(function(s) { s.addEventListener('click', function() { stars = Number(s.getAttribute('data-star')); document.querySelectorAll('[data-star]').forEach(function(x) { x.textContent = Number(x.getAttribute('data-star')) <= stars ? '★' : '☆'; x.style.color = Number(x.getAttribute('data-star')) <= stars ? '#EA580C' : ''; }); }); });
   const rb = $('rateBtn');
-  if (rb) rb.addEventListener('click', async function() { if (!stars) { alert('Tap the stars first'); return; } const d = await rpc('routix_web_rate', { p_token: token, p_rating: stars, p_note: $('rateNote').value }).catch(function(e) { return { ok: false, error: e.message }; }); if (!d.ok) alert(d.error); showTracking(token, false); });
+  if (rb) rb.addEventListener('click', async function() { if (!stars) { rxAlert('Tap the stars first'); return; } const d = await rpc('routix_web_rate', { p_token: token, p_rating: stars, p_note: $('rateNote').value }).catch(function(e) { return { ok: false, error: e.message }; }); if (!d.ok) rxAlert(d.error); showTracking(token, false); });
   if (isNew) setTimeout(function() { openInstallSheet(true, true); }, 1500);
   if (b.insured) renderClaimBox(token, b);
   if (b.status !== 'cancelled') renderPayBox(token);
   const cx = $('cxBtn');
   if (cx) cx.addEventListener('click', async function() {
-    if (!confirm('Cancel this booking?')) return;
+    if (!await rxConfirm('Cancel this booking?')) return;
     const d = await rpc('routix_web_cancel', { p_token: token }).catch(function(e) { return { ok: false, error: e.message }; });
-    if (!d.ok) alert(d.error); showTracking(token, false);
+    if (!d.ok) rxAlert(d.error); showTracking(token, false);
   });
   if (b.status !== 'delivered' && b.status !== 'cancelled') setTimeout(function() { if ($('payUtr') && $('payUtr').value) { setTimeout(function() { showTracking(token, false); }, 60000); return; } if (document.visibilityState === 'visible') showTracking(token, false); else setTimeout(function() { showTracking(token, false); }, 20000); }, 20000);
 }
@@ -529,8 +587,8 @@ async function renderClaimBox(token, b) {
     '<button class="btn" type="button" id="clSend" style="width:100%;">Submit claim</button><p style="font-size:13px; color:#44403C; margin:6px 0 0;">Within 24 hours of delivery. <a href="routix-suraksha.html" target="_blank" rel="noopener">See rules</a></p></details>');
   document.getElementById('clSend').addEventListener('click', async function() {
     const d = await rpc('routix_web_claim', { p_token: token, p_type: document.getElementById('clType').value, p_description: document.getElementById('clDesc').value, p_amount: Number(document.getElementById('clAmt').value || 0) }).catch(function(e) { return { ok: false, error: e.message }; });
-    if (!d.ok) { alert(d.error); return; }
-    alert('✅ Claim received. Please send photos and the bill on WhatsApp. We will reply within 3 working days.');
+    if (!d.ok) { rxAlert(d.error); return; }
+    rxAlert('✅ Claim received. Please send photos and the bill on WhatsApp. We will reply within 3 working days.');
     renderClaimBox(token, b);
   });
 }

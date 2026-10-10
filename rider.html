@@ -289,6 +289,64 @@ Continue with Google
 </div>
 
 <script>
+// ===== Routix popups (replace browser alert/confirm/prompt so it never says "graspion.in says") =====
+(function() {
+  const LOGO = '<svg width="22" height="25" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  if (!document.getElementById('rxPopCss')) {
+    const st = document.createElement('style'); st.id = 'rxPopCss';
+    st.textContent = '.rxp-bg{position:fixed;inset:0;background:rgba(28,25,23,.62);z-index:10050;display:flex;align-items:center;justify-content:center;padding:18px}' +
+      '.rxp{background:#fff;color:#1C1917;border-radius:16px;overflow:hidden;width:100%;max-width:340px;box-shadow:0 12px 40px rgba(0,0,0,.35);font-family:inherit}' +
+      '.rxp-top{background:#1C1917;color:#FAFAF9;display:flex;align-items:center;gap:8px;padding:10px 14px}' +
+      '.rxp-top b{font-size:16px;font-weight:900;letter-spacing:1.5px}.rxp-top b span{color:#EF4444}.rxp-top small{font-size:12.5px;color:#D6D3D1;font-weight:700}' +
+      '.rxp-msg{padding:14px 14px 2px;font-size:15.5px;line-height:1.45;white-space:pre-line;word-wrap:break-word}' +
+      '.rxp-in{display:block;width:calc(100% - 28px);box-sizing:border-box;margin:10px 14px 0;padding:11px;border:1.5px solid #D6D3D1;border-radius:10px;font-size:16px;background:#fff;color:#1C1917}' +
+      '.rxp-in:focus{outline:2px solid #EA580C;border-color:#EA580C}' +
+      '.rxp-btns{display:flex;gap:8px;padding:14px}' +
+      '.rxp-b{flex:1;min-height:44px;border-radius:10px;font-size:15.5px;font-weight:800;border:1.5px solid #D6D3D1;background:#fff;color:#1C1917;cursor:pointer}' +
+      '.rxp-b.go{background:#EA580C;border-color:#EA580C;color:#fff}.rxp-b.ok{background:#15803D;border-color:#15803D;color:#fff}' +
+      '.rxp-b:focus-visible{outline:3px solid #FDBA74;outline-offset:2px}';
+    document.head.appendChild(st);
+  }
+  function open(kind, msg, opt) {
+    opt = opt || {};
+    return new Promise(function(resolve) {
+      const prev = document.activeElement;
+      const bg = document.createElement('div'); bg.className = 'rxp-bg';
+      const box = document.createElement('div'); box.className = 'rxp'; box.setAttribute('role', kind === 'alert' ? 'alertdialog' : 'dialog'); box.setAttribute('aria-modal', 'true');
+      const top = document.createElement('div'); top.className = 'rxp-top';
+      top.innerHTML = LOGO + '<b>ROUTI<span>X</span></b>' + (window.RX_POP_SUB ? ' <small>' + window.RX_POP_SUB + '</small>' : '');
+      const m = document.createElement('div'); m.className = 'rxp-msg'; m.textContent = String(msg == null ? '' : msg); m.id = 'rxpm' + Date.now(); box.setAttribute('aria-describedby', m.id);
+      box.appendChild(top); box.appendChild(m);
+      let inp = null;
+      if (kind === 'prompt') {
+        inp = document.createElement('input'); inp.className = 'rxp-in'; inp.value = opt.value == null ? '' : String(opt.value);
+        if (opt.type) inp.type = opt.type; if (opt.inputmode) inp.inputMode = opt.inputmode; if (opt.maxlength) inp.maxLength = opt.maxlength;
+        inp.setAttribute('aria-label', String(msg || 'Answer')); box.appendChild(inp);
+      }
+      const btns = document.createElement('div'); btns.className = 'rxp-btns';
+      const done = function(v) { document.removeEventListener('keydown', key, true); bg.remove(); try { if (prev && prev.focus) prev.focus(); } catch (e) {} resolve(v); };
+      let okBtn;
+      if (kind !== 'alert') { const no = document.createElement('button'); no.type = 'button'; no.className = 'rxp-b'; no.textContent = opt.no || (kind === 'prompt' ? 'Cancel' : 'Nahi'); no.onclick = function() { done(kind === 'prompt' ? null : false); }; btns.appendChild(no); }
+      okBtn = document.createElement('button'); okBtn.type = 'button';
+      okBtn.className = 'rxp-b ' + (kind === 'alert' ? (/^\s*✅/.test(String(msg)) ? 'ok' : 'go') : 'go');
+      okBtn.textContent = opt.yes || (kind === 'alert' ? 'OK' : kind === 'prompt' ? 'Save' : 'Haan');
+      okBtn.onclick = function() { done(kind === 'prompt' ? inp.value : true); };
+      btns.appendChild(okBtn); box.appendChild(btns); bg.appendChild(box); document.body.appendChild(bg);
+      const key = function(e) {
+        if (e.key === 'Escape') { e.preventDefault(); done(kind === 'alert' ? undefined : kind === 'prompt' ? null : false); }
+        else if (e.key === 'Enter' && (kind !== 'confirm' || document.activeElement === okBtn)) { e.preventDefault(); okBtn.click(); }
+        else if (e.key === 'Tab') { const f = box.querySelectorAll('input,button'); const first = f[0], last = f[f.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } }
+      };
+      document.addEventListener('keydown', key, true);
+      setTimeout(function() { if (inp) { inp.focus(); try { inp.select(); } catch (e) {} } else okBtn.focus(); }, 30);
+    });
+  }
+  window.rxAlert = function(msg, opt) { return open('alert', msg, opt); };
+  window.rxConfirm = function(msg, opt) { return open('confirm', msg, opt); };
+  window.rxPrompt = function(msg, value, opt) { opt = opt || {}; opt.value = value; return open('prompt', msg, opt); };
+})();
+</script>
+<script>
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
 const supaAuth = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -398,7 +456,7 @@ document.getElementById('onlineToggleBtn').addEventListener('click', async funct
     if (goingOnline) startLocationTracking();
     loadOrders();
   } catch (err) {
-    alert('Could not change your online status. Please check your connection and try again.');
+    rxAlert('Could not change your online status. Please check your connection and try again.');
   } finally {
     btn.disabled = false;
   }
@@ -894,13 +952,13 @@ async function loadWallet() {
 }
 document.getElementById('walletWithdrawBtn').addEventListener('click', async function() {
   const w = walletData || {};
-  const amt = prompt('How much to withdraw? (up to ' + wMoney(w.can_withdraw) + ')', Math.floor(Number(w.can_withdraw || 0)));
+  const amt = await rxPrompt('How much to withdraw? (up to ' + wMoney(w.can_withdraw) + ')', Math.floor(Number(w.can_withdraw || 0)));
   if (amt === null) return;
-  const upi = prompt('Your UPI ID (money will be sent here):', w.upi_id || '');
+  const upi = await rxPrompt('Your UPI ID (money will be sent here):', w.upi_id || '');
   if (upi === null) return;
   const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/rider_request_payout', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_amount: Number(amt), p_upi: upi.trim() }) });
   const d = await r.json().catch(function() { return {}; });
-  alert(d.ok ? '✅ Request sent. You will get the money on your UPI soon.' : (d.error || 'Could not send request'));
+  rxAlert(d.ok ? '✅ Request sent. You will get the money on your UPI soon.' : (d.error || 'Could not send request'));
   loadWallet();
 });
 document.getElementById('walletOpenBtn').addEventListener('click', async function() {
@@ -971,8 +1029,8 @@ document.addEventListener('click', async function(e) {
   if (rt) {
     const rid = rt.getAttribute('data-rbreturned'); const otp = (document.querySelector('[data-rbretotp="' + rid + '"]') || {}).value || '';
     const res2 = await rbCall('rider_routix_returned', { p_id: rid, p_otp: otp.trim() });
-    if (!res2 || !res2.ok) { alert((res2 && (res2.error || res2.message)) || 'Could not finish'); btn.disabled = false; return; }
-    alert('✅ Return trip finished. Earnings added to your wallet.');
+    if (!res2 || !res2.ok) { rxAlert((res2 && (res2.error || res2.message)) || 'Could not finish'); btn.disabled = false; return; }
+    rxAlert('✅ Return trip finished. Earnings added to your wallet.');
     loadRoutixBookings(); try { loadWallet(); } catch (err) {}
     return;
   }
@@ -991,9 +1049,9 @@ document.addEventListener('click', async function(e) {
     }
     res = await rbCall('rider_routix_deliver', { p_id: id, p_otp: otp.trim() });
   }
-  if (!res || !res.ok) { alert((res && (res.error || res.message)) || 'Could not update'); btn.disabled = false; return; }
-  if (d && res.returning) { alert('✅ Delivered. Now take the reply back to the sender and ask for their OTP.' + (Number(res.collect) > 0 ? ' Keep ' + rbMoney(res.collect) + ' safe.' : '')); loadRoutixBookings(); return; }
-  if (d) alert('✅ Delivered!' + (Number(res.collect) > 0 ? ' Keep ' + rbMoney(res.collect) + ' cash safe and deposit it at the office.' : ' No cash to deposit for this one.'));
+  if (!res || !res.ok) { rxAlert((res && (res.error || res.message)) || 'Could not update'); btn.disabled = false; return; }
+  if (d && res.returning) { rxAlert('✅ Delivered. Now take the reply back to the sender and ask for their OTP.' + (Number(res.collect) > 0 ? ' Keep ' + rbMoney(res.collect) + ' safe.' : '')); loadRoutixBookings(); return; }
+  if (d) rxAlert('✅ Delivered!' + (Number(res.collect) > 0 ? ' Keep ' + rbMoney(res.collect) + ' cash safe and deposit it at the office.' : ' No cash to deposit for this one.'));
   loadRoutixBookings(); try { loadWallet(); } catch (err) {}
 });
 setInterval(function() { if (document.visibilityState === 'visible') loadRoutixBookings(); }, 30000);
@@ -1024,7 +1082,7 @@ function rbPayBox(b, stage) {
 function rbLoadQrLib(cb) {
   if (window.QRCode) return cb();
   const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-  sc.onload = cb; sc.onerror = function() { alert('Could not load the QR code. Check internet.'); }; document.head.appendChild(sc);
+  sc.onload = cb; sc.onerror = function() { rxAlert('Could not load the QR code. Check internet.'); }; document.head.appendChild(sc);
 }
 function rbUpiLink(info, amt, no) {
   return 'upi://pay?pa=' + String(info.vpa).replace(/[^A-Za-z0-9._@-]/g, '') + '&pn=' + encodeURIComponent(info.name || 'Routix') +
@@ -1032,7 +1090,7 @@ function rbUpiLink(info, amt, no) {
 }
 async function rbShowQr(id, stage, amt, no) {
   const info = await rbUpiInfo();
-  if (!info || !info.enabled || !info.vpa) { alert('UPI is switched off right now. Please take cash.'); return; }
+  if (!info || !info.enabled || !info.vpa) { rxAlert('UPI is switched off right now. Please take cash.'); return; }
   rbLoadQrLib(function() {
     const w = document.createElement('div');
     w.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px; overflow-y:auto;';
@@ -1054,8 +1112,8 @@ async function rbShowQr(id, stage, amt, no) {
     w.querySelector('#rbUpiDone').addEventListener('click', async function() {
       const btn = this; btn.disabled = true; btn.textContent = 'Saving…';
       const res = await rbCall('rider_routix_upi', { p_id: id, p_stage: stage, p_utr: w.querySelector('#rbUtr').value.trim() || null });
-      if (!res || !res.ok) { alert((res && (res.error || res.message)) || 'Could not save'); btn.disabled = false; btn.textContent = '✅ Customer ne pay kar diya'; return; }
-      w.remove(); alert('✅ ' + rbMoney(res.amount) + ' UPI se mila. Is booking ka ye cash aapke paas nahi gina jayega.');
+      if (!res || !res.ok) { rxAlert((res && (res.error || res.message)) || 'Could not save'); btn.disabled = false; btn.textContent = '✅ Customer ne pay kar diya'; return; }
+      w.remove(); rxAlert('✅ ' + rbMoney(res.amount) + ' UPI se mila. Is booking ka ye cash aapke paas nahi gina jayega.');
       loadRoutixBookings(); try { loadWallet(); } catch (err) {}
     });
   });
@@ -1064,9 +1122,9 @@ document.addEventListener('click', async function(e) {
   const q = e.target.closest && e.target.closest('[data-rbqr]'), u = e.target.closest && e.target.closest('[data-rbupiundo]');
   if (q) rbShowQr(q.getAttribute('data-rbqr'), q.getAttribute('data-stage'), Number(q.getAttribute('data-amt')), q.getAttribute('data-no'));
   if (u) {
-    if (!confirm('UPI mark hata dein? Fir ye amount cash mein lena hoga.')) return;
+    if (!await rxConfirm('UPI mark hata dein? Fir ye amount cash mein lena hoga.')) return;
     const res = await rbCall('rider_routix_upi_undo', { p_id: u.getAttribute('data-rbupiundo') });
-    if (!res || !res.ok) alert((res && res.error) || 'Cannot undo now');
+    if (!res || !res.ok) rxAlert((res && res.error) || 'Cannot undo now');
     loadRoutixBookings();
   }
 });
@@ -1099,7 +1157,7 @@ document.getElementById('shareQrBtn').addEventListener('click', function() {
     w.querySelector('#qrClose').addEventListener('click', function() { w.remove(); });
   };
   if (window.QRCode) return show();
-  const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; sc.onload = show; sc.onerror = function() { alert('Could not load the QR code. Check internet.'); }; document.head.appendChild(sc);
+  const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; sc.onload = show; sc.onerror = function() { rxAlert('Could not load the QR code. Check internet.'); }; document.head.appendChild(sc);
 });
 document.getElementById('spotBookBtn').addEventListener('click', async function() {
   const btn = this; btn.disabled = true; btn.textContent = 'Getting your location…';
@@ -1107,7 +1165,7 @@ document.getElementById('spotBookBtn').addEventListener('click', async function(
     try {
       const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/rider_spot_token', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: '{}' });
       const d = await r.json();
-      if (!d.ok) { alert(d.error || 'Could not start'); return; }
+      if (!d.ok) { rxAlert(d.error || 'Could not start'); return; }
       location.href = BOOK_URL + '?ref=' + encodeURIComponent(d.ref_code) + '&spot=' + d.token + (lat ? '&lat=' + lat + '&lng=' + lng : '');
     } finally { btn.disabled = false; btn.textContent = '📦 Book for a customer here'; }
   };
@@ -1136,13 +1194,13 @@ document.getElementById('pinLoginBtn').addEventListener('click', async function(
 try { const lp = localStorage.getItem('routix_rider_phone'); if (lp) document.getElementById('pinPhone').value = lp; } catch (e) {}
 // change own PIN (after login)
 async function changeMyPin() {
-  const a = prompt('New 6-digit PIN:'); if (a === null) return;
+  const a = await rxPrompt('New 6-digit PIN:', '', { inputmode: 'numeric', maxlength: 6, type: 'password' }); if (a === null) return;
   const pin = a.replace(/\D/g, '');
-  if (pin.length !== 6 || /^(\d)\1{5}$/.test(pin) || pin === '123456') { alert('Choose 6 digits that are not too easy (not 111111 or 123456).'); return; }
-  const b = prompt('Type the new PIN again:'); if (b === null) return;
-  if (b.replace(/\D/g, '') !== pin) { alert('The two PINs are different. Try again.'); return; }
+  if (pin.length !== 6 || /^(\d)\1{5}$/.test(pin) || pin === '123456') { rxAlert('Choose 6 digits that are not too easy (not 111111 or 123456).'); return; }
+  const b = await rxPrompt('Type the new PIN again:', '', { inputmode: 'numeric', maxlength: 6, type: 'password' }); if (b === null) return;
+  if (b.replace(/\D/g, '') !== pin) { rxAlert('The two PINs are different. Try again.'); return; }
   const { error } = await supaAuth.auth.updateUser({ password: 'RtxPin-' + pin });
-  alert(error ? 'Could not change PIN: ' + error.message : '✅ PIN changed. Use your mobile number + this PIN to log in.');
+  rxAlert(error ? 'Could not change PIN: ' + error.message : '✅ PIN changed. Use your mobile number + this PIN to log in.');
 }
 
 // ===== rider rating =====
