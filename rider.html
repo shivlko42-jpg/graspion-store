@@ -1005,6 +1005,7 @@ async function loadRoutixBookings() {
   const typed = {}, focusKey = document.activeElement && box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT' ? ['data-rbpcode', 'data-rbotp', 'data-rbretotp'].map(function(k) { return document.activeElement.getAttribute(k) ? k + '=' + document.activeElement.getAttribute(k) : ''; }).join('') : '';
   box.querySelectorAll('input[data-rbpcode], input[data-rbotp], input[data-rbretotp]').forEach(function(i) { ['data-rbpcode', 'data-rbotp', 'data-rbretotp'].forEach(function(k) { if (i.getAttribute(k) && i.value) typed[k + '=' + i.getAttribute(k)] = i.value; }); });
   setTimeout(function() { Object.keys(typed).concat(focusKey ? [focusKey] : []).forEach(function(key) { const kv = key.split('='); const el = box.querySelector('input[' + kv[0] + '="' + kv[1] + '"]'); if (el) { if (typed[key]) el.value = typed[key]; if (key === focusKey) el.focus(); } }); }, 0);
+  rbCheckNew(list);
   box.innerHTML = list.map(function(b) {
     const mine = b.rider_id === currentRider.id;
     const tel = function(p) { return 'tel:' + String(p || '').replace(/\D/g, '').slice(-10); };
@@ -1049,7 +1050,7 @@ document.addEventListener('click', async function(e) {
     return;
   }
   let res;
-  if (a) res = await rbCall('rider_routix_accept', { p_id: a.getAttribute('data-rbaccept') });
+  if (a) { rbJustAccepted[a.getAttribute('data-rbaccept')] = 1; res = await rbCall('rider_routix_accept', { p_id: a.getAttribute('data-rbaccept') }); }
   if (p) {
     const pid = p.getAttribute('data-rbpicked'), ci = document.querySelector('[data-rbpcode="' + pid + '"]');
     if (ci) {
@@ -1076,8 +1077,53 @@ document.addEventListener('click', async function(e) {
   if (d) rxAlert('✅ Delivered!' + (Number(res.collect) > 0 ? ' Keep ' + rbMoney(res.collect) + ' cash safe and deposit it at the office.' : ' No cash to deposit for this one.'));
   loadRoutixBookings(); try { loadWallet(); } catch (err) {}
 });
-setInterval(function() { if (document.visibilityState === 'visible') loadRoutixBookings(); }, 30000);
+setInterval(function() { if (document.visibilityState === 'visible') loadRoutixBookings(); }, 15000);
+document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') loadRoutixBookings(); });
 
+// ===== New Routix booking alert: loud ring + vibration + banner (works while the rider app is open) =====
+let rbSeen = null, rbAudio = null, rbRing = null, rbRingStop = null, rbTitle = document.title;
+const rbJustAccepted = {};
+document.addEventListener('pointerdown', function() {
+  try { if (!rbAudio) rbAudio = new (window.AudioContext || window.webkitAudioContext)(); if (rbAudio.state === 'suspended') rbAudio.resume(); } catch (e) {}
+}, true);
+function rbBeep() {
+  if (!rbAudio) return;
+  try {
+    const t = rbAudio.currentTime;
+    [0, 0.22, 0.44, 0.9, 1.12, 1.34].forEach(function(d, i) {
+      const o = rbAudio.createOscillator(), g = rbAudio.createGain();
+      o.type = 'square'; o.frequency.value = i % 3 === 1 ? 1320 : 988;
+      g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.6, t + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.18);
+      o.connect(g); g.connect(rbAudio.destination); o.start(t + d); o.stop(t + d + 0.2);
+    });
+  } catch (e) {}
+}
+function rbStopRing() {
+  if (rbRing) clearInterval(rbRing); if (rbRingStop) clearTimeout(rbRingStop); rbRing = rbRingStop = null;
+  try { navigator.vibrate && navigator.vibrate(0); } catch (e) {}
+  document.title = rbTitle; const bn = document.getElementById('rbNewBanner'); if (bn) bn.remove();
+}
+function rbAlertNew(title, sub) {
+  rbStopRing();
+  const bn = document.createElement('div'); bn.id = 'rbNewBanner'; bn.setAttribute('role', 'alert');
+  bn.style.cssText = 'position:fixed; left:10px; right:10px; top:10px; z-index:10040; background:#EA580C; color:#fff; border-radius:16px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.4);';
+  bn.innerHTML = '<div style="font-size:19px; font-weight:900;">' + rbEsc(title) + '</div><div style="font-size:14.5px; font-weight:700; margin-top:3px;">' + rbEsc(sub) + '</div>' +
+    '<button type="button" id="rbNewSeen" style="margin-top:10px; width:100%; height:46px; border:none; border-radius:12px; background:#1c1917; color:#fff; font-size:16px; font-weight:900;">👀 Dekh liya</button>';
+  document.body.appendChild(bn);
+  bn.querySelector('#rbNewSeen').addEventListener('click', function() { rbStopRing(); const w = document.getElementById('routixBookingsWrap'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  const ring = function() { rbBeep(); try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 600]); } catch (e) {} document.title = document.title === rbTitle ? '🔔 Nayi booking!' : rbTitle; };
+  ring(); rbRing = setInterval(ring, 2500); rbRingStop = setTimeout(function() { if (rbRing) clearInterval(rbRing); rbRing = null; document.title = rbTitle; }, 60000);
+}
+function rbCheckNew(list) {
+  const now = {}; list.forEach(function(b) { now[b.id] = b.status + '|' + (b.rider_id || ''); });
+  if (rbSeen === null) { rbSeen = now; return; }
+  const mineNew = list.filter(function(b) { return b.rider_id === currentRider.id && b.status === 'assigned' && rbSeen[b.id] !== now[b.id] && !rbJustAccepted[b.id]; });
+  const openNew = currentRider.is_online ? list.filter(function(b) { return b.status === 'open' && !rbSeen[b.id]; }) : [];
+  rbSeen = now;
+  const where = function(b) { return (b.pickup_address || '').split(',')[0]; };
+  if (mineNew.length) { const b = mineNew[0]; rbAlertNew('🔔 Aapko booking mili!', rbMoney(b.rider_pay) + ' kamai · ' + b.distance_km + ' km · pickup: ' + where(b)); }
+  else if (openNew.length) { const b = openNew[0]; rbAlertNew('🔔 Nayi booking — ' + rbMoney(b.rider_pay) + ' kamai', b.distance_km + ' km · pickup: ' + where(b) + (openNew.length > 1 ? ' · +' + (openNew.length - 1) + ' aur' : '') + ' · jaldi Accept karein'); }
+}
 // ===== Routix UPI QR (money goes straight to the Routix company account) =====
 let rbUpi = null;
 async function rbUpiInfo() { if (rbUpi) return rbUpi; try { const d = await rbCall('routix_upi_info'); if (d && d.vpa) rbUpi = d; } catch (e) {} return rbUpi; }
@@ -1091,11 +1137,24 @@ function rbPayBox(b, stage) {
   if (m.total <= 0) return '';
   const who = stage === 'pickup' ? 'sender' : 'receiver';
   const mine = (b.upi_list || []).filter(function(u) { return u.stage === stage; });
+  const custPending = mine.filter(function(u) { return u.by === 'customer' && u.status === 'pending'; });
+  const allVerified = mine.length && mine.every(function(u) { return u.status === 'verified'; });
   const undo = mine.filter(function(u) { return u.by === 'rider' && u.status === 'pending'; }).map(function(u) { return ' <button data-rbupiundo="' + u.id + '" style="background:none; border:none; color:#166534; text-decoration:underline; font-size:13px; font-weight:700; padding:0;">Galti se dabaya? Undo</button>'; }).join('');
-  if (m.due <= 0) return '<div style="background:#dcfce7; color:#14532d; border-radius:10px; padding:10px; font-size:14.5px; font-weight:800; margin-bottom:8px;">✅ ' + rbMoney(m.paid) + ' UPI se mil gaya (' + who + ') — cash nahi lena.' + '<div style="font-size:12.5px; font-weight:600; margin-top:2px;">Office bank mein check karega.' + undo + '</div></div>';
-  return '<div style="background:#fef3c7; color:#92400e; border-radius:10px; padding:10px; margin-bottom:8px;">' +
+  let paidNote = '';
+  if (custPending.length) {
+    const amt = custPending.reduce(function(t, u) { return t + Number(u.amount); }, 0);
+    paidNote = '<div style="background:#fef9c3; color:#713f12; border:1.5px solid #facc15; border-radius:10px; padding:10px; font-size:14px; font-weight:800; margin-bottom:8px;">⚠️ Customer ka kehna hai ' + rbMoney(amt) + ' UPI se pay kar diya — office ne abhi pakka nahi kiya.' +
+      '<div style="font-size:12.5px; font-weight:600; margin-top:3px;">Customer ke phone par green "Paid" screen dekh lein. Pay nahi kiya ho to:</div>' +
+      custPending.map(function(u) { return '<button data-rbupidispute="' + u.id + '" style="margin-top:6px; width:100%; height:40px; border:1.5px solid #b45309; border-radius:10px; background:#fff; color:#92400e; font-size:14px; font-weight:800;">✋ Customer ne pay nahi kiya</button>'; }).join('') + '</div>';
+  }
+  if (m.due <= 0) {
+    if (custPending.length) return paidNote;
+    if (allVerified) return '<div style="background:#dcfce7; color:#14532d; border-radius:10px; padding:10px; font-size:14.5px; font-weight:800; margin-bottom:8px;">✅ ' + rbMoney(m.paid) + ' UPI pakka mil gaya (office ne check kiya) — cash nahi lena.</div>';
+    return '<div style="background:#dcfce7; color:#14532d; border-radius:10px; padding:10px; font-size:14.5px; font-weight:800; margin-bottom:8px;">✅ ' + rbMoney(m.paid) + ' UPI se mil gaya (' + who + ') — cash nahi lena.' + '<div style="font-size:12.5px; font-weight:600; margin-top:2px;">Office bank mein check karega.' + undo + '</div></div>';
+  }
+  return paidNote + '<div style="background:#fef3c7; color:#92400e; border-radius:10px; padding:10px; margin-bottom:8px;">' +
     '<div style="font-size:15px; font-weight:800;">Collect ' + rbMoney(m.due) + ' from the ' + who + '</div>' +
-    (m.paid > 0 ? '<div style="font-size:12.5px; font-weight:700; color:#166534;">' + rbMoney(m.paid) + ' already paid by UPI</div>' : '') +
+    (m.paid > 0 && !custPending.length ? '<div style="font-size:12.5px; font-weight:700; color:#166534;">' + rbMoney(m.paid) + ' already paid by UPI</div>' : '') +
     '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">' +
       '<button data-rbqr="' + b.id + '" data-stage="' + stage + '" data-amt="' + m.due + '" data-no="' + rbEsc(b.booking_no) + '" style="height:44px; border:none; border-radius:10px; background:#1c1917; color:#fff; font-size:15px; font-weight:800;">💳 UPI QR</button>' +
       '<div style="height:44px; border:1.5px dashed #d97706; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800;">💵 or cash</div>' +
@@ -1141,6 +1200,12 @@ async function rbShowQr(id, stage, amt, no) {
   });
 }
 document.addEventListener('click', async function(e) {
+  const dsp = e.target.closest && e.target.closest('[data-rbupidispute]');
+  if (dsp) {
+    if (!(await rxConfirm('Pakka? Customer ne UPI payment nahi kiya? Fir ye amount cash ya QR se lena hoga.', { yes: 'Haan, nahi kiya', no: 'Wapas' }))) return;
+    const r = await rbCall('rider_routix_upi_dispute', { p_id: dsp.getAttribute('data-rbupidispute') });
+    if (!r || !r.ok) rxAlert((r && r.error) || 'Could not update'); loadRoutixBookings(); return;
+  }
   const q = e.target.closest && e.target.closest('[data-rbqr]'), u = e.target.closest && e.target.closest('[data-rbupiundo]');
   if (q) rbShowQr(q.getAttribute('data-rbqr'), q.getAttribute('data-stage'), Number(q.getAttribute('data-amt')), q.getAttribute('data-no'));
   if (u) {
