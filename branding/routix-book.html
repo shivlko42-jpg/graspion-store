@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="only light">
+<title>Routix — Routix hai na, pahuncha denge | Bike delivery in Lucknow</title>
+<meta name="description" content="Routix hai na, pahuncha denge. Book a bike delivery in Lucknow in under a minute. See the price before you book, track your rider, pay at pickup or delivery.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="manifest" href="manifest-routix-book.json">
+<meta name="theme-color" content="#1C1917">
+<link rel="icon" href="routix-icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="routix-icon-512.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Routix">
+<style>
+:root { color-scheme: only light; --asphalt: #1C1917; --road: #44403C; --paper: #FAFAF9; --line: #E7E5E4; --routix: #EA580C; --routix-dark: #9A3412; --done: #15803D; --stop: #B91C1C; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--asphalt); font-family: 'Barlow', system-ui, sans-serif; font-size: 16px; line-height: 1.45; }
+button, input, select, textarea { font-family: inherit; font-size: 16px; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--routix); outline-offset: 2px; }
+.top { background: var(--asphalt); color: #fff; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; display: flex; justify-content: space-between; align-items: center; }
+.brand { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 800; font-size: 26px; letter-spacing: 0.5px; }
+.brand span { color: #EF4444; }
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand-wrap { display: flex; flex-direction: column; line-height: 1; }
+.tagline { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 700; font-size: 13.5px; color: #FED7AA; letter-spacing: 0.3px; margin-top: 3px; white-space: nowrap; }
+.hero .promise { display: inline-block; font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 800; font-size: 19px; color: var(--routix-dark); background: #FFEDD5; border-radius: 8px; padding: 3px 10px; margin-bottom: 8px; }
+.top a { color: #fff; font-weight: 600; font-size: 14px; text-decoration: none; border: 1.5px solid #57534E; border-radius: 10px; padding: 7px 10px; white-space: nowrap; }
+#map { height: 42vh; min-height: 260px; background: #E7E5E4; }
+.hero { padding: 18px 16px 4px; max-width: 640px; margin: 0 auto; }
+.hero h1 { font-family: 'Barlow Semi Condensed', sans-serif; font-size: 30px; line-height: 1.05; margin: 0 0 6px; }
+.hero p { margin: 0; color: var(--road); }
+main { max-width: 640px; margin: 0 auto; padding: 8px 16px calc(120px + env(safe-area-inset-bottom, 0px)); }
+.step { background: #fff; border: 1.5px solid var(--line); border-radius: 16px; padding: 14px; margin-top: 12px; }
+.step[aria-current="step"] { border-color: var(--routix); box-shadow: 0 0 0 3px #FFEDD5; }
+.step h2 { margin: 0 0 10px; display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; }
+.num { width: 28px; height: 28px; border-radius: 50%; background: var(--asphalt); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; flex-shrink: 0; }
+.step.done .num { background: var(--done); }
+.step .summary { font-size: 14.5px; color: var(--road); }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+label.f { display: block; font-size: 14px; font-weight: 600; color: var(--road); margin-bottom: 8px; }
+label.f input, label.f textarea { display: block; width: 100%; margin-top: 4px; padding: 12px; border: 1.5px solid #D6D3D1; border-radius: 10px; background: #fff; color: var(--asphalt); }
+.full { grid-column: 1 / -1; }
+.search { position: relative; }
+.sugg { position: absolute; left: 0; right: 0; top: 100%; z-index: 1000; background: #fff; border: 1.5px solid #D6D3D1; border-radius: 10px; margin-top: 4px; max-height: 240px; overflow-y: auto; }
+.sugg button { display: block; width: 100%; text-align: left; background: #fff; border: none; border-bottom: 1px solid var(--line); padding: 10px 12px; font-size: 14.5px; color: var(--asphalt); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
+.btn { border: 1.5px solid #D6D3D1; background: #fff; color: var(--asphalt); border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 15px; }
+.picked { font-size: 14px; color: var(--done); font-weight: 600; margin-bottom: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+[hidden] { display: none !important; }
+.places { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 10px; }
+.places:empty { display: none; }
+.places button { flex-shrink: 0; border: 1.5px solid #D6D3D1; background: #fff; border-radius: 999px; padding: 8px 12px; font-size: 14px; font-weight: 700; color: var(--asphalt); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.places button.sv { border-color: #FDBA74; background: #FFF7ED; }
+.savebtn { background: none; border: none; color: #C2410C; font-weight: 800; font-size: 14px; padding: 4px 0; text-decoration: underline; }
+.road { display: inline-block; background: #1C1917; color: #fff; border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 800; margin-left: 4px; vertical-align: middle; }
+#etaBar { margin: 0 0 12px; border-radius: 14px; padding: 12px 14px; font-weight: 700; font-size: 15.5px; line-height: 1.4; }
+#etaBar small { display: block; font-weight: 600; font-size: 12.5px; opacity: .8; margin-top: 2px; }
+.eta-live { background: #DCFCE7; color: #14532D; } .eta-wait { background: #FFF7ED; color: #7C2D12; } .eta-old { background: #FEF9C3; color: #713F12; }
+.rx-bike { width: 36px; height: 36px; border-radius: 50%; background: #1C1917; border: 3px solid #EA580C; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+.chip { border: 1.5px solid #D6D3D1; background: #fff; border-radius: 999px; padding: 9px 14px; font-weight: 600; font-size: 15px; color: var(--asphalt); }
+.chip[aria-pressed="true"] { background: var(--asphalt); color: #fff; border-color: var(--asphalt); }
+.next { width: 100%; height: 50px; border: none; border-radius: 12px; background: var(--asphalt); color: #fff; font-size: 16px; font-weight: 700; margin-top: 4px; }
+.pay { display: grid; gap: 8px; margin-bottom: 10px; }
+.pay label { display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid #D6D3D1; border-radius: 12px; padding: 12px; font-weight: 600; }
+.pay label:has(input:checked) { border-color: var(--routix); background: #FFF7ED; }
+.pay label span { flex: 1; }
+.rules { font-size: 13.5px; color: var(--road); margin-top: 10px; }
+/* the price bar: the one bold thing on the page */
+.bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1200; background: var(--asphalt); color: #fff; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+.bar .in { max-width: 640px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.price { font-family: 'Barlow Semi Condensed', sans-serif; font-size: 36px; font-weight: 800; line-height: 1; }
+.price small { display: block; font-family: 'Barlow', sans-serif; font-size: 13.5px; font-weight: 500; color: #D6D3D1; }
+.book { height: 52px; padding: 0 22px; border: none; border-radius: 12px; background: var(--routix); color: #fff; font-size: 17px; font-weight: 700; white-space: nowrap; }
+.book:disabled { background: #57534E; color: #A8A29E; }
+.err { color: var(--stop); font-size: 14.5px; font-weight: 600; min-height: 20px; margin-top: 6px; }
+/* done + track */
+.ticket { background: #fff; border: 1.5px solid var(--line); border-radius: 18px; padding: 18px; margin-top: 14px; }
+.otp { display: flex; align-items: center; justify-content: space-between; background: #FFF7ED; border-radius: 14px; padding: 14px; margin: 12px 0; }
+.otp b { font-family: 'Barlow Semi Condensed', sans-serif; font-size: 40px; letter-spacing: 8px; }
+.timeline { list-style: none; padding: 0; margin: 14px 0 0; }
+.timeline li { position: relative; padding: 0 0 16px 30px; color: #A8A29E; font-weight: 600; }
+.timeline li::before { content: ''; position: absolute; left: 6px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: #D6D3D1; }
+.timeline li::after { content: ''; position: absolute; left: 11px; top: 18px; bottom: 2px; border-left: 2px dashed #D6D3D1; }
+.timeline li:last-child::after { display: none; }
+.timeline li.on { color: var(--asphalt); }
+.timeline li.on::before { background: var(--done); }
+.timeline li.now::before { background: var(--routix); box-shadow: 0 0 0 4px #FFEDD5; }
+.timeline small { display: block; font-weight: 500; color: var(--road); }
+.wa { display: block; text-align: center; text-decoration: none; background: #DCFCE7; border: 1.5px solid #86EFAC; color: #14532D; border-radius: 12px; padding: 13px; font-weight: 700; }
+.mine { margin-top: 18px; }
+.mine a { display: block; padding: 10px 0; border-bottom: 1px solid var(--line); color: var(--asphalt); text-decoration: none; font-weight: 600; }
+.home { max-width: 640px; margin: 0 auto; padding: 14px 16px 0; }
+.send { width: 100%; display: grid; grid-template-columns: 1fr auto; text-align: left; border: none; border-radius: 18px; padding: 18px; background: var(--routix); color: #fff; box-shadow: 0 10px 24px rgba(234,88,12,0.35); }
+.send .big { font-family: 'Barlow Semi Condensed', sans-serif; font-size: 30px; font-weight: 800; line-height: 1.05; }
+.send .sub { grid-column: 1; font-size: 14.5px; opacity: 0.95; margin-top: 4px; }
+.send .go { grid-column: 2; grid-row: 1 / span 2; align-self: center; width: 46px; height: 46px; border-radius: 50%; background: #fff; color: var(--routix-dark); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; }
+.quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.quick a, .quick button { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 54px; padding: 8px; border: 1.5px solid var(--line); border-radius: 14px; background: #fff; color: var(--asphalt); font-weight: 700; font-size: 13.5px; text-decoration: none; line-height: 1.2; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* install + location sheets */
+.sheet-bg { position: fixed; inset: 0; background: rgba(28,25,23,0.55); z-index: 2000; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: #fff; width: 100%; max-width: 520px; border-radius: 22px 22px 0 0; padding: 22px 18px calc(18px + env(safe-area-inset-bottom, 0px)); }
+.sheet .ic { width: 64px; height: 64px; border-radius: 16px; background: var(--asphalt); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 800; font-size: 20px; }
+.sheet .ic span { color: var(--routix); }
+.sheet h3 { margin: 12px 0 4px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 24px; }
+.sheet ul { margin: 8px 0 14px; padding-left: 20px; color: var(--road); }
+.sheet .go { width: 100%; height: 52px; border: none; border-radius: 12px; background: var(--routix); color: #fff; font-size: 17px; font-weight: 700; }
+.sheet .later { width: 100%; height: 44px; border: none; background: none; color: var(--road); font-weight: 600; margin-top: 4px; }
+.install-chip { position: fixed; right: 12px; top: calc(70px + env(safe-area-inset-top, 0px)); z-index: 1100; background: var(--routix); color: #fff; border: none; border-radius: 999px; padding: 9px 14px; font-weight: 700; font-size: 14px; box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
+@media (prefers-reduced-motion: no-preference) { .sheet { animation: up .25s ease-out; } @keyframes up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } } }
+</style>
+</head>
+<body>
+<header class="top"><div class="brand-wrap"><div class="brand"><svg width="24" height="27" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><em style="font-style:normal; white-space:nowrap;">ROUTI<span>X</span></em></div><div class="tagline">Routix hai na, pahuncha denge.</div></div><div style="display:flex; gap:6px;"><a href="rider.html">Rider</a><a href="https://wa.me/918004873819" target="_blank" rel="noopener">Help</a></div></header>
+<div id="spotBanner" hidden style="background:#ea580c; color:#fff; padding:10px 16px; font-weight:700; font-size:15px;"></div>
+<div id="map" role="application" aria-label="Map: tap to set the pickup or drop point"></div>
+
+<div id="bookView">
+  <section class="home" aria-label="What would you like to do?">
+    <button class="send" type="button" id="goBook"><span class="big">📦 Parcel bhejo</span><span class="sub">Pick-up from your door · price before you book</span><span class="go" aria-hidden="true">→</span></button>
+    <div class="quick">
+      <button type="button" id="goTrack">🔎 Mera parcel kahan hai?</button>
+      <a href="https://wa.me/918004873819?text=Namaste%20Routix%2C%20meri%20dukaan%20ke%20liye%20Khaata%20chahiye." target="_blank" rel="noopener">🏪 Dukaan ke liye Khaata</a>
+      <a href="rider.html">🛵 Rider bano</a>
+    </div>
+  </section>
+  <div class="hero">
+    <h1>Send a parcel across Lucknow</h1>
+    <p>Bike delivery, price shown before you book. Pay the rider in cash or UPI. <b>No surge</b> — same price in rain and festivals.</p>
+    <a href="https://wa.me/918004873819?text=Namaste%20Routix%2C%20mujhe%20parcel%20bhejna%20hai.%20Pickup%3A%20%20%20Drop%3A%20" id="waBook" target="_blank" rel="noopener" style="display:inline-block; margin-top:8px; background:#DCFCE7; border:1.5px solid #86EFAC; color:#14532D; border-radius:10px; padding:8px 12px; font-weight:700; text-decoration:none;">Prefer WhatsApp? Book by message or 🎤 voice note</a>
+  </div>
+  <main>
+    <section class="step" id="s1" aria-current="step">
+      <h2><span class="num">1</span>Pick up from</h2>
+      <div class="places" id="pl1" aria-label="Your saved places"></div>
+      <div class="search"><label class="f">Search area or landmark<input id="q1" placeholder="e.g. Indira Nagar Sector 14" autocomplete="off"></label><div class="sugg" id="sg1" hidden></div></div>
+      <div class="row"><button class="btn" type="button" id="loc1">Use my location</button><span class="summary" style="align-self:center;">or tap the map</span></div>
+      <div class="picked" id="pk1" aria-live="polite"></div>
+      <div class="grid2">
+        <label class="f">Your name<input id="pn" autocomplete="name"></label>
+        <label class="f">Your mobile<input id="pp" inputmode="tel" maxlength="14" autocomplete="tel"></label>
+        <label class="f full">House / shop no., floor, landmark<input id="pa" placeholder="e.g. B-12, first floor, near Hanuman mandir"></label>
+      </div>
+      <button class="next" type="button" data-next="2">Next: where to deliver</button>
+    </section>
+
+    <section class="step" id="s2">
+      <h2><span class="num">2</span>Deliver to</h2>
+      <div id="b2">
+        <div class="places" id="pl2" aria-label="Saved places"></div>
+        <div class="search"><label class="f">Search area or landmark<input id="q2" placeholder="e.g. Vipul Khand, Gomti Nagar" autocomplete="off"></label><div class="sugg" id="sg2" hidden></div></div>
+        <p class="summary" style="margin:0 0 8px;">Or tap the map. You can drag the pins to the exact spot.</p>
+        <div class="picked" id="pk2" aria-live="polite"></div>
+        <div class="grid2">
+          <label class="f">Receiver name<input id="dn"></label>
+          <label class="f">Receiver mobile<input id="dp" inputmode="tel" maxlength="14"></label>
+          <label class="f full">House / shop no., floor, landmark<input id="da" placeholder="e.g. 3/45, second floor, opp. Bal Vidya school"></label>
+        </div>
+        <button class="next" type="button" data-next="3">Next: what are you sending</button>
+      </div>
+    </section>
+
+    <section class="step" id="s3">
+      <h2><span class="num">3</span>What are you sending?</h2>
+      <div id="b3">
+        <div class="chips" id="itemChips" role="group" aria-label="Item type">
+          <button class="chip" type="button" aria-pressed="true">Documents</button><button class="chip" type="button" aria-pressed="false">Food / tiffin</button>
+          <button class="chip" type="button" aria-pressed="false">Medicines</button><button class="chip" type="button" aria-pressed="false">Clothes</button>
+          <button class="chip" type="button" aria-pressed="false">Electronics</button><button class="chip" type="button" aria-pressed="false">Other</button>
+        </div>
+        <div style="font-size:14px; font-weight:600; color:#44403C; margin-bottom:6px;">How heavy?</div>
+        <div class="chips" id="kgChips" role="group" aria-label="Weight">
+          <button class="chip" type="button" data-kg="1" aria-pressed="true">Up to 1 kg</button><button class="chip" type="button" data-kg="5" aria-pressed="false">1–5 kg</button>
+          <button class="chip" type="button" data-kg="10" aria-pressed="false">5–10 kg</button><button class="chip" type="button" data-kg="20" aria-pressed="false">10–20 kg</button>
+        </div>
+        <label class="f">Note for the rider (optional)<textarea id="nt" rows="2" placeholder="Call before reaching, fragile, gate code…"></textarea></label>
+        <button class="next" type="button" data-next="4">Next: payment</button>
+      </div>
+    </section>
+
+    <section class="step" id="s4">
+      <h2><span class="num">4</span>Delivery options & payment</h2>
+      <div id="b4">
+        <div class="pay" role="radiogroup" aria-label="Delivery speed">
+          <label><input type="radio" name="svc" value="express" checked> <span>⚡ <b>Express</b> — rider comes now <b id="pxExp" style="float:right;"></b></span></label>
+          <label><input type="radio" name="svc" value="saver"> <span>🚌 <b>Saathi Saver</b> — next run <b id="saverSlot">(time shows after you choose places)</b>, save 30% <b id="pxSav" style="float:right;"></b></span></label>
+        </div>
+        <label class="check" style="display:flex; gap:8px; align-items:flex-start; font-weight:600; margin:6px 0;"><input type="checkbox" id="bima" style="margin-top:3px;"> <span style="flex:1;">🛡️ <b>Parcel Suraksha</b> <span id="bimaFee"></span> — Routix pays back if your parcel is lost or damaged, up to the value you enter. <a href="routix-suraksha.html" target="_blank" rel="noopener">Rules</a></span></label>
+        <label class="f" id="bimaBox" hidden>Value of the parcel (₹)<input type="number" id="bimaVal" min="1" placeholder="e.g. 2000"></label>
+        <label class="f">🎁 Gift note for the receiver (optional)<textarea id="gift" rows="2" maxlength="200" placeholder="e.g. Happy Diwali!"></textarea></label>
+
+        <div class="pay" role="radiogroup" aria-label="Who pays">
+          <label><input type="radio" name="pm" value="collect_at_pickup" checked> I pay at pickup (cash or UPI)</label>
+          <label><input type="radio" name="pm" value="collect_at_drop"> The receiver pays at delivery</label>
+        </div>
+        <div class="summary" id="sumText"></div>
+        <div class="rules">We don't carry cash, jewellery, liquor, prescription medicines without a prescription, or anything illegal or dangerous. Parcels up to 20 kg that fit on a bike, within 25 km.</div>
+      </div>
+    </section>
+    <div class="err" id="err" role="alert"></div>
+  </main>
+</div>
+
+<div id="doneView" hidden><main style="padding-bottom:40px;"><div id="doneBox"></div></main></div>
+
+<div class="bar" id="bar"><div class="in"><div class="price" id="price">₹—<small>Choose pickup and drop to see the price</small></div><button class="book" id="bookBtn" type="button" disabled>Book now</button></div></div>
+
+<script>
+// ===== Routix popups (replace browser alert/confirm/prompt so it never says "graspion.in says") =====
+(function() {
+  const LOGO = '<svg width="22" height="25" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  if (!document.getElementById('rxPopCss')) {
+    const st = document.createElement('style'); st.id = 'rxPopCss';
+    st.textContent = '.rxp-bg{position:fixed;inset:0;background:rgba(28,25,23,.62);z-index:10050;display:flex;align-items:center;justify-content:center;padding:18px}' +
+      '.rxp{background:#fff;color:#1C1917;border-radius:16px;overflow:hidden;width:100%;max-width:340px;box-shadow:0 12px 40px rgba(0,0,0,.35);font-family:inherit}' +
+      '.rxp-top{background:#1C1917;color:#FAFAF9;display:flex;align-items:center;gap:8px;padding:10px 14px}' +
+      '.rxp-top b{font-size:16px;font-weight:900;letter-spacing:1.5px}.rxp-top b span{color:#EF4444}.rxp-top small{font-size:12.5px;color:#D6D3D1;font-weight:700}' +
+      '.rxp-msg{padding:14px 14px 2px;font-size:15.5px;line-height:1.45;white-space:pre-line;word-wrap:break-word}' +
+      '.rxp-in{display:block;width:calc(100% - 28px);box-sizing:border-box;margin:10px 14px 0;padding:11px;border:1.5px solid #D6D3D1;border-radius:10px;font-size:16px;background:#fff;color:#1C1917}' +
+      '.rxp-in:focus{outline:2px solid #EA580C;border-color:#EA580C}' +
+      '.rxp-btns{display:flex;gap:8px;padding:14px}' +
+      '.rxp-b{flex:1;min-height:44px;border-radius:10px;font-size:15.5px;font-weight:800;border:1.5px solid #D6D3D1;background:#fff;color:#1C1917;cursor:pointer}' +
+      '.rxp-b.go{background:#EA580C;border-color:#EA580C;color:#fff}.rxp-b.ok{background:#15803D;border-color:#15803D;color:#fff}' +
+      '.rxp-b:focus-visible{outline:3px solid #FDBA74;outline-offset:2px}';
+    document.head.appendChild(st);
+  }
+  function open(kind, msg, opt) {
+    opt = opt || {};
+    return new Promise(function(resolve) {
+      const prev = document.activeElement;
+      const bg = document.createElement('div'); bg.className = 'rxp-bg';
+      const box = document.createElement('div'); box.className = 'rxp'; box.setAttribute('role', kind === 'alert' ? 'alertdialog' : 'dialog'); box.setAttribute('aria-modal', 'true');
+      const top = document.createElement('div'); top.className = 'rxp-top';
+      top.innerHTML = LOGO + '<b>ROUTI<span>X</span></b>' + (window.RX_POP_SUB ? ' <small>' + window.RX_POP_SUB + '</small>' : '');
+      const m = document.createElement('div'); m.className = 'rxp-msg'; m.textContent = String(msg == null ? '' : msg); m.id = 'rxpm' + Date.now(); box.setAttribute('aria-describedby', m.id);
+      box.appendChild(top); box.appendChild(m);
+      let inp = null;
+      if (kind === 'prompt') {
+        inp = document.createElement('input'); inp.className = 'rxp-in'; inp.value = opt.value == null ? '' : String(opt.value);
+        if (opt.type) inp.type = opt.type; if (opt.inputmode) inp.inputMode = opt.inputmode; if (opt.maxlength) inp.maxLength = opt.maxlength;
+        inp.setAttribute('aria-label', String(msg || 'Answer')); box.appendChild(inp);
+      }
+      const btns = document.createElement('div'); btns.className = 'rxp-btns';
+      const done = function(v) { document.removeEventListener('keydown', key, true); bg.remove(); try { if (prev && prev.focus) prev.focus(); } catch (e) {} resolve(v); };
+      let okBtn;
+      if (kind !== 'alert') { const no = document.createElement('button'); no.type = 'button'; no.className = 'rxp-b'; no.textContent = opt.no || (kind === 'prompt' ? 'Cancel' : 'Nahi'); no.onclick = function() { done(kind === 'prompt' ? null : false); }; btns.appendChild(no); }
+      okBtn = document.createElement('button'); okBtn.type = 'button';
+      okBtn.className = 'rxp-b ' + (kind === 'alert' ? (/^\s*✅/.test(String(msg)) ? 'ok' : 'go') : 'go');
+      okBtn.textContent = opt.yes || (kind === 'alert' ? 'OK' : kind === 'prompt' ? 'Save' : 'Haan');
+      okBtn.onclick = function() { done(kind === 'prompt' ? inp.value : true); };
+      btns.appendChild(okBtn); box.appendChild(btns); bg.appendChild(box); document.body.appendChild(bg);
+      const key = function(e) {
+        if (e.key === 'Escape') { e.preventDefault(); done(kind === 'alert' ? undefined : kind === 'prompt' ? null : false); }
+        else if (e.key === 'Enter' && (kind !== 'confirm' || document.activeElement === okBtn)) { e.preventDefault(); okBtn.click(); }
+        else if (e.key === 'Tab') { const f = box.querySelectorAll('input,button'); const first = f[0], last = f[f.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } }
+      };
+      document.addEventListener('keydown', key, true);
+      setTimeout(function() { if (inp) { inp.focus(); try { inp.select(); } catch (e) {} } else okBtn.focus(); }, 30);
+    });
+  }
+  window.rxAlert = function(msg, opt) { return open('alert', msg, opt); };
+  window.rxConfirm = function(msg, opt) { return open('confirm', msg, opt); };
+  window.rxPrompt = function(msg, value, opt) { opt = opt || {}; opt.value = value; return open('prompt', msg, opt); };
+})();
+</script>
+<script>
+const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
+const params = new URLSearchParams(location.search);
+const $ = function(id) { return document.getElementById(id); };
+const rs = function(v) { return '₹' + Math.round(Number(v || 0)).toLocaleString('en-IN'); };
+const esc = function(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+async function rpc(name, body) {
+  const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  const d = await r.json().catch(function() { return null; });
+  if (!r.ok) throw new Error((d && (d.message || d.error)) || 'Network error');
+  return d;
+}
+
+// ---------- map ----------
+const LKO = [26.8467, 80.9462];
+const map = L.map('map', { zoomControl: true }).setView(LKO, 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+const pinIcon = function(color) { return L.divIcon({ className: '', iconSize: [30, 30], iconAnchor: [15, 30], html: '<svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z" fill="' + color + '" stroke="#fff" stroke-width="1.5"/><circle cx="12" cy="10" r="2.6" fill="#fff"/></svg>' }); };
+const pts = { 1: null, 2: null }, markers = { 1: null, 2: null };
+let line = null, activeStep = 1, kg = 1, item = 'Documents', lastQuote = null;
+function setPoint(which, lat, lng, label) {
+  pts[which] = { lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)), label: label || '' };
+  if (!markers[which]) {
+    markers[which] = L.marker([lat, lng], { draggable: true, icon: pinIcon(which === 1 ? '#EA580C' : '#1C1917') }).addTo(map);
+    markers[which].on('dragend', function(ev) { const p = ev.target.getLatLng(); setPoint(which, p.lat, p.lng, pts[which].label); });
+  } else markers[which].setLatLng([lat, lng]);
+  $('pk' + which).textContent = (which === 1 ? 'Pickup' : 'Drop') + ' pin set' + (label ? ': ' + label.split(',').slice(0, 3).join(',') : '');
+  if (pts[1] && pts[2]) {
+    if (line) line.setLatLngs([[pts[1].lat, pts[1].lng], [pts[2].lat, pts[2].lng]]);
+    else line = L.polyline([[pts[1].lat, pts[1].lng], [pts[2].lat, pts[2].lng]], { color: '#EA580C', weight: 4, dashArray: '8 8' }).addTo(map);
+    line.setStyle({ dashArray: '8 8', weight: 4 });
+    map.fitBounds(line.getBounds(), { padding: [40, 40] });
+    updateRoad();
+  } else { map.setView([lat, lng], 15); refreshQuote(); }
+  showSaveLink(which);
+}
+map.on('click', function(e) { const w = (activeStep >= 2 && pts[1]) ? 2 : 1; setPoint(w, e.latlng.lat, e.latlng.lng, ''); reverse(w, e.latlng.lat, e.latlng.lng); });
+async function reverse(which, lat, lng) {
+  try { const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=17&lat=' + lat + '&lon=' + lng); const d = await r.json(); if (d && d.display_name) { pts[which].label = d.display_name; $('pk' + which).textContent = (which === 1 ? 'Pickup' : 'Drop') + ' pin set: ' + d.display_name.split(',').slice(0, 3).join(','); showSaveLink(which); } } catch (e) {}
+}
+// search (Lucknow first)
+function wireSearch(which) {
+  let t = null; const inp = $('q' + which), box = $('sg' + which);
+  inp.addEventListener('input', function() {
+    clearTimeout(t);
+    const q = inp.value.trim(); if (q.length < 3) { box.hidden = true; return; }
+    t = setTimeout(async function() {
+      try {
+        const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=in&viewbox=80.75,27.05,81.15,26.65&bounded=0&q=' + encodeURIComponent(q + ', Lucknow'));
+        const list = await r.json();
+        box.innerHTML = list.length ? list.map(function(x, i) { return '<button type="button" data-i="' + i + '">' + esc(x.display_name.split(',').slice(0, 4).join(',')) + '</button>'; }).join('') : '<button type="button" disabled>No match — try a nearby landmark or tap the map</button>';
+        box.hidden = false;
+        box.querySelectorAll('[data-i]').forEach(function(b) { b.addEventListener('click', function() { const x = list[Number(b.getAttribute('data-i'))]; setPoint(which, Number(x.lat), Number(x.lon), x.display_name); box.hidden = true; inp.value = x.display_name.split(',').slice(0, 3).join(','); }); });
+      } catch (e) { box.hidden = true; }
+    }, 600);
+  });
+  document.addEventListener('click', function(e) { if (!box.contains(e.target) && e.target !== inp) box.hidden = true; });
+}
+wireSearch(1); wireSearch(2);
+$('loc1').addEventListener('click', function() {
+  if (!navigator.geolocation) { $('err').textContent = 'Location is not available on this phone. Search or tap the map instead.'; return; }
+  $('loc1').textContent = 'Finding you…';
+  navigator.geolocation.getCurrentPosition(function(p) { $('loc1').textContent = 'Use my location'; setPoint(1, p.coords.latitude, p.coords.longitude, ''); reverse(1, p.coords.latitude, p.coords.longitude); },
+    function() { $('loc1').textContent = 'Use my location'; $('err').textContent = 'Could not get your location. Search or tap the map instead.'; }, { enableHighAccuracy: true, timeout: 10000 });
+});
+
+// ---------- steps ----------
+function goStep(n) {
+  activeStep = n;
+  for (let i = 1; i <= 4; i++) { const s = $('s' + i); s.setAttribute('aria-current', i === n ? 'step' : 'false'); }
+  $('s' + n).scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function checkStep(n) {
+  const phone = function(v) { return v.replace(/\D/g, '').slice(-10).length === 10; };
+  if (n === 1 && (!pts[1] || !$('pn').value.trim() || !phone($('pp').value) || !$('pa').value.trim())) return 'Set the pickup pin, and add your name, 10-digit mobile and house / shop details.';
+  if (n === 2 && (!pts[2] || !$('dn').value.trim() || !phone($('dp').value) || !$('da').value.trim())) return 'Set the drop pin, and add the receiver name, 10-digit mobile and house / shop details.';
+  return '';
+}
+document.querySelectorAll('[data-next]').forEach(function(b) { b.addEventListener('click', function() {
+  const to = Number(b.getAttribute('data-next')), msg = checkStep(to - 1);
+  $('err').textContent = msg; if (msg) return;
+  $('s' + (to - 1)).classList.add('done'); goStep(to); updateSummary();
+}); });
+function chipGroup(id, onPick) { $(id).querySelectorAll('.chip').forEach(function(c) { c.addEventListener('click', function() { $(id).querySelectorAll('.chip').forEach(function(x) { x.setAttribute('aria-pressed', x === c ? 'true' : 'false'); }); onPick(c); }); }); }
+chipGroup('itemChips', function(c) { item = c.textContent; updateSummary(); });
+chipGroup('kgChips', function(c) { kg = Number(c.getAttribute('data-kg')); refreshQuote(); });
+document.querySelectorAll('input[name="pm"], input[name="svc"]').forEach(function(r) { r.addEventListener('change', updateSummary); });
+$('bima').addEventListener('change', function() { $('bimaBox').hidden = !this.checked; updateSummary(); });
+function chosenTotal() {
+  if (!lastQuote || !lastQuote.ok) return null;
+  const saver = document.querySelector('input[name="svc"]:checked').value === 'saver';
+  return (saver ? lastQuote.saver_charge : lastQuote.charge) + ($('bima').checked ? Number(lastQuote.insurance_fee || 0) : 0);
+}
+function updateSummary() {
+  const pm = document.querySelector('input[name="pm"]:checked').value;
+  if (lastQuote && lastQuote.ok) {
+    $('pxExp').textContent = rs(lastQuote.charge); $('pxSav').textContent = rs(lastQuote.saver_charge);
+    $('saverSlot').textContent = lastQuote.saver_slot ? new Date(lastQuote.saver_slot).toLocaleString('en-IN', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—';
+    $('bimaFee').textContent = '(+' + rs(lastQuote.insurance_fee) + ')';
+    const tot = chosenTotal(), saver = document.querySelector('input[name="svc"]:checked').value === 'saver';
+    $('price').innerHTML = rs(tot) + '<small>' + (saver ? 'Saathi Saver · ' : 'Express · ') + kmText(lastQuote) + ($('bima').checked ? ' · with Suraksha' : '') + '</small>';
+  }
+  $('sumText').textContent = lastQuote && lastQuote.ok ? item + ', up to ' + kg + ' kg, ' + kmText(lastQuote) + '. ' + (pm === 'collect_at_pickup' ? 'Pay ' + rs(chosenTotal()) + ' to the rider at pickup.' : 'The receiver pays ' + rs(chosenTotal()) + ' at delivery.') : '';
+}
+
+// ===== Road route (free OSRM servers) — real road km for a fair price =====
+const RX_ROUTERS = ['https://router.project-osrm.org/route/v1/driving/', 'https://routing.openstreetmap.de/routed-car/route/v1/driving/'];
+const routeCache = {};
+async function roadRoute(a, b) {
+  const key = [a.lat, a.lng, b.lat, b.lng].map(function(v) { return Number(v).toFixed(5); }).join(',');
+  if (routeCache[key]) return routeCache[key];
+  for (let i = 0; i < RX_ROUTERS.length; i++) {
+    try {
+      const ctl = new AbortController(), tm = setTimeout(function() { ctl.abort(); }, 6000);
+      const r = await fetch(RX_ROUTERS[i] + Number(a.lng).toFixed(6) + ',' + Number(a.lat).toFixed(6) + ';' + Number(b.lng).toFixed(6) + ',' + Number(b.lat).toFixed(6) + '?overview=full&geometries=geojson&alternatives=false&steps=false', { signal: ctl.signal });
+      clearTimeout(tm);
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (!d || d.code !== 'Ok' || !d.routes || !d.routes[0]) continue;
+      const rt = d.routes[0];
+      routeCache[key] = { km: Math.round(rt.distance / 100) / 10, mins: Math.max(1, Math.round(rt.duration / 60)), coords: rt.geometry.coordinates.map(function(c) { return [c[1], c[0]]; }) };
+      return routeCache[key];
+    } catch (e) {}
+  }
+  return null;
+}
+function straightKm(a, b) {
+  const R = 6371, t = Math.PI / 180, dLat = (b.lat - a.lat) * t, dLng = (b.lng - a.lng) * t;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * t) * Math.cos(b.lat * t) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function kmText(q) { return q.km_source === 'road' ? q.km + ' km by road' : 'about ' + q.km + ' km'; }
+let road = null, roadSeq = 0;
+async function updateRoad() {
+  const seq = ++roadSeq; road = null;
+  $('price').innerHTML = '₹…<small>Finding the road route…</small>'; $('bookBtn').disabled = true;
+  const r = await roadRoute(pts[1], pts[2]);
+  if (seq !== roadSeq) return;
+  if (r) {
+    road = { km: r.km, mins: r.mins };
+    line.setLatLngs(r.coords); line.setStyle({ dashArray: null, weight: 5 });
+    map.fitBounds(line.getBounds(), { padding: [40, 40] });
+  }
+  refreshQuote();
+}
+
+// ===== Saved places + remember me (only on this phone) =====
+function loadJSON(k, d) { try { return JSON.parse(localStorage.getItem(k) || '') || d; } catch (e) { return d; } }
+function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function near(a, b) { return straightKm(a, b) < 0.05; }
+function renderPlaces() {
+  const saved = loadJSON('routix_places', []), recent = loadJSON('routix_recent', []);
+  [1, 2].forEach(function(w) {
+    const list = saved.map(function(p) { return { p: p, sv: true }; }).concat(recent.filter(function(r) { return !saved.some(function(s) { return near(s, r); }); }).slice(0, 4).map(function(p) { return { p: p, sv: false }; }));
+    $('pl' + w).innerHTML = list.map(function(x, i) { return '<button type="button" class="' + (x.sv ? 'sv' : '') + '" data-pl="' + i + '">' + (x.sv ? '⭐ ' + esc(x.p.name) : '🕘 ' + esc((x.p.detail ? x.p.detail + ', ' : '') + (x.p.label || '').split(',')[0])) + '</button>'; }).join('');
+    $('pl' + w).querySelectorAll('[data-pl]').forEach(function(btn) { btn.addEventListener('click', function() {
+      const p = list[Number(btn.getAttribute('data-pl'))].p;
+      setPoint(w, p.lat, p.lng, p.label || '');
+      if (p.detail) $(w === 1 ? 'pa' : 'da').value = p.detail;
+      if (w === 2 && p.person) { if (!$('dn').value) $('dn').value = p.person; if (!$('dp').value) $('dp').value = p.phone || ''; }
+    }); });
+  });
+}
+function showSaveLink(w) {
+  const pk = $('pk' + w); if (!pk || !pts[w]) return;
+  if (loadJSON('routix_places', []).some(function(s) { return near(s, pts[w]); })) return;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'savebtn'; b.textContent = '⭐ Save this place';
+  b.addEventListener('click', async function() {
+    const name = await rxPrompt('Name for this place (e.g. Ghar, Dukaan, Office):', w === 1 ? 'Ghar' : '', { maxlength: 20 });
+    if (!name || !name.trim()) return;
+    const saved = loadJSON('routix_places', []).filter(function(s) { return s.name.toLowerCase() !== name.trim().toLowerCase(); });
+    saved.unshift({ name: name.trim(), lat: pts[w].lat, lng: pts[w].lng, label: pts[w].label, detail: $(w === 1 ? 'pa' : 'da').value.trim() });
+    saveJSON('routix_places', saved.slice(0, 6)); b.remove(); renderPlaces();
+  });
+  pk.appendChild(document.createTextNode(' ')); pk.appendChild(b);
+}
+function rememberAfterBooking() {
+  saveJSON('routix_me', { name: $('pn').value.trim(), phone: $('pp').value.trim() });
+  let recent = loadJSON('routix_recent', []);
+  [[1, 'pa'], [2, 'da']].forEach(function(x) {
+    const p = pts[x[0]]; if (!p) return;
+    recent = recent.filter(function(r) { return !near(r, p); });
+    recent.unshift({ lat: p.lat, lng: p.lng, label: p.label, detail: $(x[1]).value.trim(), person: x[0] === 2 ? $('dn').value.trim() : '', phone: x[0] === 2 ? $('dp').value.trim() : '' });
+  });
+  saveJSON('routix_recent', recent.slice(0, 8));
+}
+(function() { const me = loadJSON('routix_me', null); if (me) { if (!$('pn').value) $('pn').value = me.name || ''; if (!$('pp').value) $('pp').value = me.phone || ''; } renderPlaces(); })();
+
+// ===== Live tracking on the map =====
+let trk = null;
+const bikeIcon = L.divIcon({ className: '', iconSize: [36, 36], iconAnchor: [18, 18], html: '<div class="rx-bike" aria-hidden="true">🛵</div>' });
+function ago(t) { const s = Math.max(0, Math.round((Date.now() - new Date(t).getTime()) / 1000)); return s < 60 ? s + ' sec ago' : Math.round(s / 60) + ' min ago'; }
+function etaBar() {
+  let e = $('etaBar');
+  if (!e) { e = document.createElement('div'); e.id = 'etaBar'; e.setAttribute('role', 'status'); e.setAttribute('aria-live', 'polite'); $('doneBox').parentNode.insertBefore(e, $('doneBox')); }
+  return e;
+}
+function trackMap(token, b) {
+  if (!b.pickup_lat || !b.drop_lat || b.status === 'cancelled') { $('map').style.display = 'none'; if ($('etaBar')) $('etaBar').hidden = true; stopTrack(); return; }
+  const P = { lat: Number(b.pickup_lat), lng: Number(b.pickup_lng) }, D = { lat: Number(b.drop_lat), lng: Number(b.drop_lng) };
+  if (!trk) {
+    [markers[1], markers[2], line].forEach(function(l) { if (l) map.removeLayer(l); });
+    $('map').style.display = '';
+    trk = { token: token, layer: L.layerGroup().addTo(map), rider: null, live: null, lastFrom: null, lastAt: 0, fitted: false, timer: null };
+    L.marker([P.lat, P.lng], { icon: pinIcon('#EA580C'), keyboard: false }).addTo(trk.layer).bindTooltip('Pickup');
+    L.marker([D.lat, D.lng], { icon: pinIcon('#1C1917'), keyboard: false }).addTo(trk.layer).bindTooltip('Drop');
+    trk.base = L.polyline([[P.lat, P.lng], [D.lat, D.lng]], { color: '#FDBA74', weight: 4, dashArray: '6 8' }).addTo(trk.layer);
+    setTimeout(function() { map.invalidateSize(); map.fitBounds(trk.base.getBounds(), { padding: [40, 40] }); }, 50);
+    roadRoute(P, D).then(function(r) { if (r && trk) { trk.base.setLatLngs(r.coords); trk.base.setStyle({ dashArray: null, weight: 5 }); } });
+  }
+  trk.b = b; trk.P = P; trk.D = D;
+  liveUpdate(b.status, b.rider_lat != null ? { lat: Number(b.rider_lat), lng: Number(b.rider_lng), at: b.rider_loc_at } : null);
+  const live = ['assigned', 'picked', 'returning'].indexOf(b.status) !== -1;
+  if (live && !trk.timer) trk.timer = setInterval(async function() {
+    if (document.visibilityState !== 'visible') return;
+    try { const d = await rpc('routix_web_rider_loc', { p_token: token }); if (d && d.ok) { if (!d.live) { stopTrack(); showTracking(token, false); return; } liveUpdate(d.status, d.lat != null ? { lat: Number(d.lat), lng: Number(d.lng), at: d.at } : null); } } catch (e) {}
+  }, 15000);
+  if (!live) stopTrack();
+}
+function stopTrack() { if (trk && trk.timer) { clearInterval(trk.timer); trk.timer = null; } }
+async function liveUpdate(status, loc) {
+  const e = etaBar(), b = trk.b, name = b.rider_name ? 'Rider ' + esc(b.rider_name.split(' ')[0]) : 'Rider';
+  e.hidden = false;
+  if (status === 'requested' || status === 'open') { e.className = 'eta-wait'; e.innerHTML = '⏳ Aapke paas ke rider ko dhoondh rahe hain…<small>Rider milte hi yahan live dikhega.</small>'; return; }
+  if (status === 'delivered') { e.className = 'eta-live'; e.innerHTML = '✅ Delivered' + (b.delivered_at ? ' at ' + new Date(b.delivered_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '') + '. Thank you for choosing Routix!'; if (trk.rider) { trk.layer.removeLayer(trk.rider); trk.rider = null; } if (trk.live) { trk.layer.removeLayer(trk.live); trk.live = null; } return; }
+  const target = status === 'picked' ? trk.D : trk.P, where = status === 'assigned' ? 'pickup par' : status === 'picked' ? (b.drop_name ? esc(b.drop_name.split(' ')[0]) + ' tak' : 'drop par') : 'wapas pickup par';
+  if (!loc || !loc.at || Date.now() - new Date(loc.at).getTime() > 5 * 60 * 1000) {
+    e.className = 'eta-old';
+    e.innerHTML = '📍 ' + name + ' ki live location abhi nahi mil rahi.<small>' + (loc && loc.at ? 'Last seen ' + ago(loc.at) + '. ' : '') + 'Phone ka net ya GPS band ho sakta hai — rider ko call kar sakte hain.</small>';
+    return;
+  }
+  if (!trk.rider) trk.rider = L.marker([loc.lat, loc.lng], { icon: bikeIcon, keyboard: false, zIndexOffset: 1000 }).addTo(trk.layer).bindTooltip(b.rider_name || 'Rider');
+  else trk.rider.setLatLng([loc.lat, loc.lng]);
+  let km, mins;
+  const moved = !trk.lastFrom || straightKm(trk.lastFrom, loc) > 0.15 || Date.now() - trk.lastAt > 60000;
+  if (moved) {
+    const r = await roadRoute(loc, target);
+    trk.lastFrom = loc; trk.lastAt = Date.now();
+    if (r) { trk.km = r.km; trk.mins = r.mins; if (trk.live) trk.live.setLatLngs(r.coords); else trk.live = L.polyline(r.coords, { color: '#EA580C', weight: 5 }).addTo(trk.layer); }
+    else { trk.km = Math.round(straightKm(loc, target) * 1.3 * 10) / 10; trk.mins = Math.max(1, Math.round(trk.km / 20 * 60)); if (trk.live) { trk.layer.removeLayer(trk.live); trk.live = null; } }
+  }
+  km = trk.km; mins = trk.mins;
+  if (!trk.fitted) { trk.fitted = true; map.fitBounds(L.latLngBounds([[loc.lat, loc.lng], [target.lat, target.lng]]), { padding: [50, 50], maxZoom: 16 }); }
+  e.className = 'eta-live';
+  e.innerHTML = km < 0.15 ? '🛵 ' + name + ' ' + where + ' pahunch gaye hain' + '<small>Updated ' + ago(loc.at) + '</small>'
+    : '🛵 ' + name + ' lagbhag <b>' + mins + ' min</b> mein ' + where + ' · ' + km + ' km baaki<small>Live · updated ' + ago(loc.at) + ' · har 15 second mein</small>';
+}
+// ---------- price ----------
+let qt = null;
+function refreshQuote() {
+  clearTimeout(qt);
+  qt = setTimeout(async function() {
+    if (!pts[1] || !pts[2]) return;
+    try {
+      let q;
+      try { q = await rpc('routix_web_quote_road', { p_pickup_lat: pts[1].lat, p_pickup_lng: pts[1].lng, p_drop_lat: pts[2].lat, p_drop_lng: pts[2].lng, p_kg: kg, p_road_km: road ? road.km : null }); }
+      catch (e1) { q = await rpc('routix_web_quote', { p_pickup_lat: pts[1].lat, p_pickup_lng: pts[1].lng, p_drop_lat: pts[2].lat, p_drop_lng: pts[2].lng, p_kg: kg }); }
+      lastQuote = q;
+      if (!q.ok) { $('price').innerHTML = '₹—<small>' + esc(q.error) + '</small>'; $('bookBtn').disabled = true; return; }
+      $('bookBtn').disabled = false; updateSummary();
+    } catch (e) { $('price').innerHTML = '₹—<small>Could not get the price. Check your internet.</small>'; }
+  }, 300);
+}
+
+// ---------- book ----------
+$('bookBtn').addEventListener('click', async function() {
+  for (let i = 1; i <= 2; i++) { const m = checkStep(i); if (m) { $('err').textContent = m; goStep(i); return; } }
+  const btn = $('bookBtn'); btn.disabled = true; btn.textContent = 'Booking…'; $('err').textContent = '';
+  try {
+    const d = await rpc('routix_web_book', { p: {
+      pickup_name: $('pn').value, pickup_phone: $('pp').value, pickup_address: $('pa').value + (pts[1].label ? ', ' + pts[1].label.split(',').slice(0, 3).join(',') : ''), pickup_lat: pts[1].lat, pickup_lng: pts[1].lng,
+      drop_name: $('dn').value, drop_phone: $('dp').value, drop_address: $('da').value + (pts[2].label ? ', ' + pts[2].label.split(',').slice(0, 3).join(',') : ''), drop_lat: pts[2].lat, drop_lng: pts[2].lng,
+      item_desc: item, weight_kg: kg, notes: $('nt').value, payment_mode: document.querySelector('input[name="pm"]:checked').value, ref: params.get('ref') || '', spot_token: params.get('spot') || '',
+      service_type: document.querySelector('input[name="svc"]:checked').value, insured: $('bima').checked, declared_value: $('bimaVal').value,
+      gift_message: $('gift').value, road_km: road ? road.km : '' } });
+    if (!d.ok) { $('err').textContent = d.error || 'Could not book'; return; }
+    rememberAfterBooking();
+    try { const mine = JSON.parse(localStorage.getItem('routix_mine') || '[]'); mine.unshift({ t: d.track_token, no: d.booking_no, at: Date.now() }); localStorage.setItem('routix_mine', JSON.stringify(mine.slice(0, 10))); } catch (e) {}
+    location.href = location.pathname + '?t=' + d.track_token + '&new=1' + (d.with_rider ? '&with=' + encodeURIComponent(d.with_rider) : '');
+  } catch (e) { $('err').textContent = e.message; }
+  finally { btn.disabled = false; btn.textContent = 'Book now'; }
+});
+
+// ---------- tracking ----------
+async function showTracking(token, isNew) {
+  $('bookView').hidden = true; $('bar').hidden = true; $('doneView').hidden = false; if (!trk) $('map').style.display = 'none';
+  let b;
+  try { b = await rpc('routix_web_track', { p_token: token }); } catch (e) { $('doneBox').innerHTML = '<div class="ticket">Could not load your booking. Check your internet and refresh.</div>'; return; }
+  if (!b.ok) { $('doneBox').innerHTML = '<div class="ticket">Booking not found. <a href="' + location.pathname + '">Book a new delivery</a></div>'; return; }
+  const order = ['requested', 'open', 'assigned', 'picked', 'delivered'];
+  const at = order.indexOf(b.status);
+  const t = function(v) { return v ? new Date(v).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''; };
+  const steps = [
+    ['Booking received', 'We will call you shortly to confirm', b.created_at],
+    ['Confirmed', 'Looking for a nearby rider', b.confirmed_at],
+    ['Rider on the way to pickup', b.rider_name ? '✔ Verified Routix rider: ' + b.rider_name + (b.rider_bike ? ', ' + b.rider_bike : '') : '', b.assigned_at],
+    ['Picked up', 'On the way to ' + b.drop_name, b.picked_at],
+    ['Delivered', '', b.delivered_at]];
+  const share = 'https://wa.me/?text=' + encodeURIComponent('Routix hai na, pahuncha denge! Delivery ' + b.booking_no + ' is coming to you. Tell the rider this OTP only when you get the parcel: ' + b.drop_otp + '\nTrack: ' + location.href.split('&')[0]);
+  $('doneBox').innerHTML = '<div class="ticket">' +
+    (isNew ? '<div style="font-family:Barlow Semi Condensed,sans-serif; font-size:28px; font-weight:800;">Booked!</div>' + (params.get('with') ? '<div style="font-weight:700; color:#15803D;">Rider ' + esc(params.get('with')) + ' will take your parcel now.</div>' : '') : '') +
+    '<div style="font-size:15px; color:#44403C;">' + esc(b.booking_no) + ' · ' + rs(b.charge) + (b.payment_mode === 'collect_at_pickup' ? ' to pay at pickup' : ' to pay at delivery') + ' · ' + b.distance_km + ' km' + (b.distance_source === 'road' ? ' by road' : '') + '</div>' +
+    (b.status !== 'cancelled' ? '<div id="payBox"></div>' : '') +
+    (b.status === 'cancelled' ? '<p style="color:#B91C1C; font-weight:700;">This booking was cancelled.' + (b.cancel_reason ? ' ' + esc(b.cancel_reason) : '') + '</p>' :
+    '<div class="otp"><span>Delivery OTP<br><small style="color:#44403C;">Send it to the receiver</small></span><b>' + esc(b.drop_otp) + '</b></div>' +
+    '<a class="wa" target="_blank" rel="noopener" href="' + share + '">Send OTP to receiver on WhatsApp</a>' +
+    (b.return_trip && b.return_otp ? '<div class="otp" style="background:#EDE9FE;"><span>Return OTP<br><small style="color:#44403C;">Give it to the rider when they bring the reply back</small></span><b>' + esc(b.return_otp) + '</b></div>' : '') +
+    '<ol class="timeline">' + steps.map(function(s, i) { return '<li class="' + (i <= at ? 'on' : '') + (i === at ? ' now' : '') + '">' + s[0] + (i <= at && s[2] ? ' · ' + t(s[2]) : '') + (i <= at && s[1] ? '<small>' + esc(s[1]) + '</small>' : '') + '</li>'; }).join('') + '</ol>' +
+    (b.rider_phone ? '<a class="btn" style="display:block; text-align:center; text-decoration:none;" href="tel:' + esc(b.rider_phone) + '">Call rider ' + esc(b.rider_name || '') + '</a>' : '') +
+    (at <= 1 ? '<button class="btn" type="button" id="cxBtn" style="width:100%; margin-top:8px; color:#B91C1C; border-color:#FECACA;">Cancel booking</button>' : '')) +
+    (b.service_type === 'saver' && b.scheduled_at && at < 3 ? '<p style="margin:10px 0 0; font-weight:600;">🚌 Saathi Saver run: pickup around ' + new Date(b.scheduled_at).toLocaleString('en-IN', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) + '</p>' : '') +
+    (b.insured ? '<p style="margin:6px 0 0; font-weight:600;">🛡️ Parcel Suraksha on — value ' + rs(b.declared_value) + ' · <a href="routix-suraksha.html" target="_blank" rel="noopener">rules</a></p>' : '') +
+    (b.insured && ['picked','returning','delivered'].indexOf(b.status) !== -1 ? '<div id="claimBox" style="margin-top:12px;"></div>' : '') +
+    (b.gift_message ? '<p style="margin:6px 0 0;">🎁 Gift note: <i>' + esc(b.gift_message) + '</i></p>' : '') +
+    (b.proof_photo_url ? '<p style="margin:10px 0 4px; font-weight:700;">📷 Delivery photo</p><img src="' + esc(b.proof_photo_url) + '" alt="Photo taken by the rider at delivery" style="width:100%; border-radius:12px;">' : '') +
+    (b.status === 'delivered' && !b.rating ? '<div style="margin-top:12px; padding:12px; border:1.5px solid #E7E5E4; border-radius:12px;"><b>How was your delivery?</b><div id="stars" style="font-size:32px; margin:6px 0;" role="radiogroup" aria-label="Rating">' + [1,2,3,4,5].map(function(n) { return '<button type="button" data-star="' + n + '" aria-label="' + n + ' star" style="background:none; border:none; font-size:32px; padding:0 2px; cursor:pointer;">☆</button>'; }).join('') + '</div><input id="rateNote" placeholder="Anything to tell us? (optional)" style="width:100%; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px;"><button class="btn" type="button" id="rateBtn" style="width:100%; margin-top:8px;">Send rating</button></div>' : (b.rating ? '<p style="margin-top:10px;">Your rating: ' + '★'.repeat(b.rating) + '☆'.repeat(5 - b.rating) + ' — thank you!</p>' : '')) +
+    '<a class="btn" style="display:block; text-align:center; text-decoration:none; margin-top:8px;" href="' + location.pathname + '">Book another delivery</a></div>' + mineHtml(token);
+  let stars = 0;
+  document.querySelectorAll('[data-star]').forEach(function(s) { s.addEventListener('click', function() { stars = Number(s.getAttribute('data-star')); document.querySelectorAll('[data-star]').forEach(function(x) { x.textContent = Number(x.getAttribute('data-star')) <= stars ? '★' : '☆'; x.style.color = Number(x.getAttribute('data-star')) <= stars ? '#EA580C' : ''; }); }); });
+  const rb = $('rateBtn');
+  if (rb) rb.addEventListener('click', async function() { if (!stars) { rxAlert('Tap the stars first'); return; } const d = await rpc('routix_web_rate', { p_token: token, p_rating: stars, p_note: $('rateNote').value }).catch(function(e) { return { ok: false, error: e.message }; }); if (!d.ok) rxAlert(d.error); showTracking(token, false); });
+  if (isNew) setTimeout(function() { openInstallSheet(true, true); }, 1500);
+  if (b.insured) renderClaimBox(token, b);
+  if (b.status !== 'cancelled') renderPayBox(token);
+  trackMap(token, b);
+  const cx = $('cxBtn');
+  if (cx) cx.addEventListener('click', async function() {
+    if (!await rxConfirm('Cancel this booking?')) return;
+    const d = await rpc('routix_web_cancel', { p_token: token }).catch(function(e) { return { ok: false, error: e.message }; });
+    if (!d.ok) rxAlert(d.error); showTracking(token, false);
+  });
+  if (b.status !== 'delivered' && b.status !== 'cancelled') setTimeout(function() { if ($('payUtr') && $('payUtr').value) { setTimeout(function() { showTracking(token, false); }, 60000); return; } if (document.visibilityState === 'visible') showTracking(token, false); else setTimeout(function() { showTracking(token, false); }, 20000); }, 20000);
+}
+// ===== Pay Routix by UPI (money goes to the Routix company account) =====
+function payLoadQr(cb) {
+  if (window.QRCode) return cb();
+  const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; sc.onload = cb; sc.onerror = function() {}; document.head.appendChild(sc);
+}
+async function renderPayBox(token) {
+  const box = $('payBox'); if (!box) return;
+  let p; try { p = await rpc('routix_web_pay_info', { p_token: token }); } catch (e) { return; }
+  if (!p || !p.ok || p.reason) return;
+  const card = 'margin:12px 0 4px; border-radius:14px; padding:12px 14px;';
+  if (!p.payable) {
+    if (Number(p.paid) <= 0) return;
+    box.innerHTML = p.verified && !p.checking
+      ? '<div style="' + card + ' background:#DCFCE7; color:#14532D; font-weight:700;">✅ ' + rs(p.paid) + ' paid to Routix by UPI — thank you! Rider will not ask for this money.</div>'
+      : '<div style="' + card + ' background:#FEF9C3; color:#713F12; font-weight:700;">⏳ ' + rs(p.paid) + ' UPI payment noted. Rider will not ask for this money. We confirm it in our bank shortly.</div>';
+    return;
+  }
+  const link = 'upi://pay?pa=' + String(p.vpa).replace(/[^A-Za-z0-9._@-]/g, '') + '&pn=' + encodeURIComponent(p.name || 'Routix') + '&am=' + Number(p.amount).toFixed(2) + '&cu=INR&tn=' + encodeURIComponent('Routix ' + p.booking_no);
+  const mobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+  box.innerHTML = '<div style="' + card + ' border:1.5px solid #FDBA74; background:#FFF7ED;">' +
+    (p.rejected ? '<div style="color:#B91C1C; font-weight:700; margin-bottom:6px;">Your last UPI payment was not found in our bank. Please check your UPI app, or pay the rider.</div>' : '') +
+    '<div style="font-weight:800; font-size:17px;">💳 Pay ' + rs(p.amount) + ' now by UPI <span style="font-weight:600; font-size:13px; color:#78716C;">(optional)</span></div>' +
+    '<div style="font-size:13.5px; color:#44403C; margin:2px 0 10px;">Paid to ' + esc(p.name || 'Routix') + '. No cash needed for the rider.</div>' +
+    (mobile ? '<a href="' + link + '" style="display:block; text-align:center; text-decoration:none; background:#1C1917; color:#fff; font-weight:800; border-radius:12px; padding:13px; font-size:16px;">Open UPI app and pay ' + rs(p.amount) + '</a>' : '') +
+    '<details style="margin-top:8px;"' + (mobile ? '' : ' open') + '><summary style="cursor:pointer; font-weight:700; font-size:14px;">' + (mobile ? 'Paying from another phone? Show QR' : 'Scan this QR with any UPI app') + '</summary><div id="payQr" style="display:flex; justify-content:center; background:#fff; border-radius:12px; padding:12px; margin-top:8px;"></div><div style="text-align:center; font-size:12.5px; color:#78716C;">' + esc(p.vpa) + '</div></details>' +
+    '<label style="display:block; font-size:13.5px; font-weight:700; margin-top:10px;">After paying, enter the 12-digit UTR / UPI Ref No. (it is in your UPI app)<input id="payUtr" inputmode="numeric" maxlength="14" placeholder="12 digits" style="display:block; width:100%; box-sizing:border-box; margin-top:4px; padding:12px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:17px; letter-spacing:2px;"></label>' +
+    '<button class="btn" type="button" id="payDone" style="width:100%; margin-top:8px;">I have paid</button>' +
+    '<div id="payErr" role="alert" style="color:#B91C1C; font-size:13.5px; font-weight:700; margin-top:4px;"></div></div>';
+  const qrBox = $('payQr');
+  if (qrBox) payLoadQr(function() { if (window.QRCode) new QRCode(qrBox, { text: link, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M }); });
+  $('payUtr').addEventListener('input', function() { $('payErr').textContent = ''; });
+  $('payDone').addEventListener('click', async function() {
+    const u = $('payUtr').value.replace(/\D/g, '');
+    if (u.length !== 12) { $('payErr').textContent = 'Enter the 12-digit UTR from your UPI app.'; return; }
+    this.disabled = true;
+    const d = await rpc('routix_web_upi_paid', { p_token: token, p_utr: u }).catch(function(e) { return { ok: false, error: e.message }; });
+    if (!d.ok) { $('payErr').textContent = d.error || 'Could not save'; this.disabled = false; return; }
+    $('payUtr').value = ''; renderPayBox(token);
+  });
+}
+function mineHtml(current) {
+  try {
+    const mine = JSON.parse(localStorage.getItem('routix_mine') || '[]').filter(function(m) { return m.t !== current; });
+    return mine.length ? '<div class="mine"><b>Your other bookings</b>' + mine.map(function(m) { return '<a href="?t=' + m.t + '">' + esc(m.no) + ' · ' + new Date(m.at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + '</a>'; }).join('') + '</div>' : '';
+  } catch (e) { return ''; }
+}
+if (params.get('t')) showTracking(params.get('t'), params.get('new') === '1');
+else {
+  // came from a rider: on-the-spot booking (rider is here) or a rider's shared link
+  if (params.get('spot')) { $('spotBanner').hidden = false; $('spotBanner').textContent = 'Your rider is right here — fill the drop details and hand over the parcel.'; }
+  if (params.get('lat') && params.get('lng')) { const la = Number(params.get('lat')), ln = Number(params.get('lng')); if (la && ln) { setPoint(1, la, ln, ''); reverse(1, la, ln); } }
+}
+
+// ===== Install the Routix app (strong but polite) + location for pickup =====
+let installEvt = null;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(function() {});
+window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); installEvt = e; showInstallChip(); });
+window.addEventListener('appinstalled', function() { try { localStorage.setItem('routix_installed', '1'); } catch (e) {} const c = document.getElementById('installChip'); if (c) c.remove(); });
+function installSnoozed() { try { return Date.now() < Number(localStorage.getItem('routix_install_snooze') || 0) || localStorage.getItem('routix_installed') === '1'; } catch (e) { return false; } }
+function showInstallChip() {
+  if (isStandalone || document.getElementById('installChip')) return;
+  const c = document.createElement('button'); c.id = 'installChip'; c.className = 'install-chip'; c.type = 'button'; c.textContent = '⬇ Install app';
+  c.addEventListener('click', function() { openInstallSheet(true); });
+  document.body.appendChild(c);
+}
+function openInstallSheet(force, afterBooking) {
+  if (isStandalone || (!force && installSnoozed()) || document.getElementById('installSheet')) return;
+  if (!installEvt && !isIOS) return; // browser can't install right now
+  const w = document.createElement('div'); w.className = 'sheet-bg'; w.id = 'installSheet';
+  w.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="insH"><div class="ic"><svg width="34" height="38" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>' +
+    '<h3 id="insH">' + (afterBooking ? 'Track this delivery from your home screen' : 'Get the Routix app') + '</h3><div style="font-family:Barlow Semi Condensed,sans-serif; font-weight:800; color:#9A3412; font-size:17px;">Routix hai na, pahuncha denge.</div>' +
+    '<ul><li>Book a parcel in 2 taps next time</li><li>See your rider and delivery OTP any time</li><li>Free, small, no app store needed</li></ul>' +
+    (isIOS && !installEvt ? '<p style="margin:0 0 12px; font-weight:600;">On iPhone: tap the Share button <span aria-hidden="true">⬆</span> below, then "Add to Home Screen".</p><button class="go" type="button" id="insLater">Got it</button>' :
+      '<button class="go" type="button" id="insGo">Install Routix</button><button class="later" type="button" id="insLater">Not now</button>') + '</div>';
+  document.body.appendChild(w);
+  const close = function() { w.remove(); try { localStorage.setItem('routix_install_snooze', String(Date.now() + 3 * 864e5)); } catch (e) {} };
+  w.querySelector('#insLater').addEventListener('click', close);
+  w.addEventListener('click', function(e) { if (e.target === w) close(); });
+  const go = w.querySelector('#insGo');
+  if (go) go.addEventListener('click', async function() { w.remove(); if (!installEvt) return; installEvt.prompt(); const r = await installEvt.userChoice; installEvt = null; if (r.outcome !== 'accepted') { try { localStorage.setItem('routix_install_snooze', String(Date.now() + 3 * 864e5)); } catch (e) {} } });
+}
+// first visit: offer install after a few seconds (not while typing)
+setTimeout(function() { const a = document.activeElement; if (!a || (a.tagName !== 'INPUT' && a.tagName !== 'TEXTAREA')) openInstallSheet(false); }, 6000);
+if (isIOS && !isStandalone) showInstallChip();
+
+// Location: if already allowed, set the pickup pin quietly; otherwise ask once with a friendly card
+function locateForPickup(silent) {
+  if (!navigator.geolocation || pts[1]) return;
+  navigator.geolocation.getCurrentPosition(function(p) { if (!pts[1]) { setPoint(1, p.coords.latitude, p.coords.longitude, ''); reverse(1, p.coords.latitude, p.coords.longitude); } },
+    function() { if (!silent) $('err').textContent = 'Location is off. Search your pickup place or tap the map.'; }, { enableHighAccuracy: true, timeout: 10000 });
+}
+(async function askLocation() {
+  if (params.get('t') || params.get('lat')) return;
+  let state = 'prompt';
+  try { if (navigator.permissions) state = (await navigator.permissions.query({ name: 'geolocation' })).state; } catch (e) {}
+  if (state === 'granted') return locateForPickup(true);
+  if (state === 'denied') return;
+  try { if (localStorage.getItem('routix_loc_asked') === '1') return; } catch (e) {}
+  const w = document.createElement('div'); w.className = 'sheet-bg';
+  w.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="locH"><h3 id="locH">Pick up from where you are?</h3><p style="margin:0 0 14px; color:#44403C;">Allow location and we put the pickup pin at your door. You can still move it.</p><button class="go" type="button" id="locGo">Allow location</button><button class="later" type="button" id="locNo">I\'ll choose on the map</button></div>';
+  document.body.appendChild(w);
+  const done = function() { w.remove(); try { localStorage.setItem('routix_loc_asked', '1'); } catch (e) {} };
+  w.querySelector('#locGo').addEventListener('click', function() { done(); locateForPickup(false); });
+  w.querySelector('#locNo').addEventListener('click', done);
+})();
+
+// ===== Home band: booking first =====
+document.getElementById('goBook').addEventListener('click', function() { goStep(1); setTimeout(function() { const q = document.getElementById('q1'); if (q && !pts[1]) q.focus(); }, 400); });
+document.getElementById('goTrack').addEventListener('click', function() {
+  let mine = [];
+  try { mine = JSON.parse(localStorage.getItem('routix_mine') || '[]'); } catch (e) {}
+  if (mine.length === 1) { location.href = location.pathname + '?t=' + mine[0].t; return; }
+  const w = document.createElement('div'); w.className = 'sheet-bg';
+  w.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="trH"><h3 id="trH">Your parcels</h3>' +
+    (mine.length ? mine.map(function(m) { return '<a href="?t=' + m.t + '" style="display:block; padding:12px 0; border-bottom:1px solid #E7E5E4; color:#1C1917; font-weight:700; text-decoration:none;">' + esc(m.no) + ' · ' + new Date(m.at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' →</a>'; }).join('') :
+      '<p style="color:#44403C;">No parcels booked from this phone yet. If someone sent you a tracking link on WhatsApp, open that link.</p>') +
+    '<button class="later" type="button" id="trClose">Close</button></div>';
+  document.body.appendChild(w);
+  w.querySelector('#trClose').addEventListener('click', function() { w.remove(); });
+  w.addEventListener('click', function(e) { if (e.target === w) w.remove(); });
+});
+
+// ===== Parcel Suraksha claim =====
+async function renderClaimBox(token, b) {
+  const box = document.getElementById('claimBox'); if (!box) return;
+  let claims = [];
+  try { claims = await rpc('routix_web_claim_status', { p_token: token }) || []; } catch (e) {}
+  const words = { submitted: 'Received — we will reply within 3 working days', approved: 'Approved', rejected: 'Not approved', paid: 'Paid' };
+  if (claims.length) {
+    box.innerHTML = '<div style="border:1.5px solid #E7E5E4; border-radius:12px; padding:12px;"><b>🛡️ Your Suraksha claim</b>' + claims.map(function(c) {
+      return '<p style="margin:6px 0 0;">' + rs(c.amount) + ' claimed · <b>' + words[c.status] + '</b>' + (c.approved_amount ? ' · ' + rs(c.approved_amount) + ' approved' : '') + (c.note ? '<br><span style="color:#44403C;">' + esc(c.note) + '</span>' : '') + '</p>';
+    }).join('') + '</div>';
+    if (claims.some(function(c) { return c.status === 'submitted' || c.status === 'approved'; })) return;
+  }
+  const wa = 'https://wa.me/918004873819?text=' + encodeURIComponent('Parcel Suraksha claim for ' + b.booking_no + ' — sending photos and bill here.');
+  box.insertAdjacentHTML('beforeend', '<details style="border:1.5px solid #FECACA; border-radius:12px; padding:12px; margin-top:8px;"><summary style="font-weight:700; cursor:pointer;">⚠️ Report a problem (lost or damaged)</summary>' +
+    '<label class="f" style="margin-top:10px;">What happened?<select id="clType" style="display:block; width:100%; margin-top:4px; padding:11px; border:1.5px solid #D6D3D1; border-radius:10px; background:#fff;"><option value="damaged">Parcel damaged</option><option value="missing_item">Item missing</option><option value="lost">Parcel lost</option></select></label>' +
+    '<label class="f">Tell us briefly<textarea id="clDesc" rows="2"></textarea></label>' +
+    '<label class="f">Amount you are claiming (₹, up to ' + rs(b.declared_value) + ')<input id="clAmt" type="number" min="1" max="' + Number(b.declared_value || 0) + '"></label>' +
+    '<a class="wa" target="_blank" rel="noopener" href="' + wa + '" style="margin-bottom:8px;">📷 Send photos & bill on WhatsApp</a>' +
+    '<button class="btn" type="button" id="clSend" style="width:100%;">Submit claim</button><p style="font-size:13px; color:#44403C; margin:6px 0 0;">Within 24 hours of delivery. <a href="routix-suraksha.html" target="_blank" rel="noopener">See rules</a></p></details>');
+  document.getElementById('clSend').addEventListener('click', async function() {
+    const d = await rpc('routix_web_claim', { p_token: token, p_type: document.getElementById('clType').value, p_description: document.getElementById('clDesc').value, p_amount: Number(document.getElementById('clAmt').value || 0) }).catch(function(e) { return { ok: false, error: e.message }; });
+    if (!d.ok) { rxAlert(d.error); return; }
+    rxAlert('✅ Claim received. Please send photos and the bill on WhatsApp. We will reply within 3 working days.');
+    renderClaimBox(token, b);
+  });
+}
+</script>
+</body>
+</html>
