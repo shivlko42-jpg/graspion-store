@@ -63,6 +63,27 @@ label.f input, label.f select { display: block; width: 100%; margin-top: 4px; pa
 .ticket { border-bottom: 1px solid var(--line); padding: 10px 0; }
 .ticket .row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .pill { font-size: 12.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #F5F5F4; color: var(--road); white-space: nowrap; }
+.who { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+.av { width: 52px; height: 52px; border-radius: 14px; background: var(--routix); color: #fff; font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 800; font-size: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; }
+.av::after { content: ''; position: absolute; right: -4px; bottom: -4px; width: 18px; height: 20px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 52'%3E%3Cpath d='M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z' fill='%231C1917' stroke='%23fff' stroke-width='4'/%3E%3Cpath d='M16.5 10.5l10.5 8-10.5 8' fill='none' stroke='%23fff' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center / contain; }
+.install { margin-top: 12px; width: 100%; border: none; border-radius: 12px; background: var(--routix); color: #fff; font-weight: 800; font-size: 15.5px; padding: 12px; }
+.billbtns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.billbtns button, .billbtns a { flex: 1; min-width: 120px; border-radius: 10px; padding: 10px; font-weight: 800; font-size: 14.5px; border: 1.5px solid var(--line); background: #fff; color: var(--asphalt); text-align: center; text-decoration: none; }
+.billbtns .payb { background: var(--asphalt); color: #fff; border-color: var(--asphalt); }
+.sheet-bg { position: fixed; inset: 0; background: rgba(28,25,23,.6); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: #fff; width: 100%; max-width: 680px; max-height: 92vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 16px 16px calc(18px + env(safe-area-inset-bottom, 0px)); }
+.sheet h2 { margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 22px; }
+.items { width: 100%; border-collapse: collapse; font-size: 14px; margin: 10px 0; }
+.items th, .items td { text-align: left; padding: 7px 4px; border-bottom: 1px solid #F5F5F4; }
+.items td:last-child, .items th:last-child { text-align: right; white-space: nowrap; }
+.paybox { border: 1.5px solid #FDBA74; background: #FFF7ED; border-radius: 14px; padding: 12px; margin-top: 10px; }
+.qrwrap { display: flex; justify-content: center; background: #fff; border-radius: 12px; padding: 12px; margin: 8px 0; }
+@media print {
+  body.printing > *:not(.sheet-bg) { display: none !important; }
+  body.printing .sheet-bg { position: static; background: none; display: block; }
+  body.printing .sheet { max-height: none; box-shadow: none; border-radius: 0; }
+  body.printing .noprint { display: none !important; }
+}
 .pill.open, .pill.assigned, .pill.picked { background: #FEF3C7; color: #92400E; } .pill.delivered { background: #DCFCE7; color: var(--done); } .pill.cancelled { background: #F5F5F4; }
 .small { font-size: 13.5px; color: var(--road); }
 .wa { display: inline-block; text-decoration: none; background: #DCFCE7; border: 1.5px solid #86EFAC; color: #14532D; border-radius: 10px; padding: 7px 10px; font-weight: 700; font-size: 14px; margin-top: 6px; }
@@ -70,10 +91,69 @@ label.f input, label.f select { display: block; width: 100%; margin-top: 4px; pa
 </style>
 </head>
 <body>
-<header class="top"><div class="in"><div class="brand"><svg width="16" height="18" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><em style="font-style:normal; white-space:nowrap;">ROUTI<span>X</span></em>&nbsp;KHAATA</div><div class="shop" id="shopName">…</div><div class="tagline">Routix hai na, pahuncha denge.</div></div></header>
+<header class="top"><div class="in"><div class="brand"><svg width="16" height="18" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><em style="font-style:normal; white-space:nowrap;">ROUTI<span>X</span></em>&nbsp;KHAATA</div><div class="who"><div class="av" id="shopAv" aria-hidden="true"></div><div><div class="shop" id="shopName">…</div><div class="tagline">Routix hai na, pahuncha denge.</div></div></div><button type="button" class="install" id="installBtn" hidden>📲 Apni dukaan ka app phone par lagayein</button></div></header>
 <main id="app">
   <div class="center" id="loading">Loading your khaata…</div>
 </main>
+<script>
+window.RX_POP_SUB = "Khaata";
+// ===== Routix popups (replace browser alert/confirm/prompt so it never says "graspion.in says") =====
+(function() {
+  const LOGO = '<svg width="22" height="25" viewBox="0 0 46 52" aria-hidden="true" style="flex-shrink:0;"><path d="M23 50s-20-17.5-20-32.5a20 20 0 0 1 40 0C43 32.5 23 50 23 50z" fill="#EA580C"/><path d="M16.5 10.5l10.5 8-10.5 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  if (!document.getElementById('rxPopCss')) {
+    const st = document.createElement('style'); st.id = 'rxPopCss';
+    st.textContent = '.rxp-bg{position:fixed;inset:0;background:rgba(28,25,23,.62);z-index:10050;display:flex;align-items:center;justify-content:center;padding:18px}' +
+      '.rxp{background:#fff;color:#1C1917;border-radius:16px;overflow:hidden;width:100%;max-width:340px;box-shadow:0 12px 40px rgba(0,0,0,.35);font-family:inherit}' +
+      '.rxp-top{background:#1C1917;color:#FAFAF9;display:flex;align-items:center;gap:8px;padding:10px 14px}' +
+      '.rxp-top b{font-size:16px;font-weight:900;letter-spacing:1.5px}.rxp-top b span{color:#EF4444}.rxp-top small{font-size:12.5px;color:#D6D3D1;font-weight:700}' +
+      '.rxp-msg{padding:14px 14px 2px;font-size:15.5px;line-height:1.45;white-space:pre-line;word-wrap:break-word}' +
+      '.rxp-in{display:block;width:calc(100% - 28px);box-sizing:border-box;margin:10px 14px 0;padding:11px;border:1.5px solid #D6D3D1;border-radius:10px;font-size:16px;background:#fff;color:#1C1917}' +
+      '.rxp-in:focus{outline:2px solid #EA580C;border-color:#EA580C}' +
+      '.rxp-btns{display:flex;gap:8px;padding:14px}' +
+      '.rxp-b{flex:1;min-height:44px;border-radius:10px;font-size:15.5px;font-weight:800;border:1.5px solid #D6D3D1;background:#fff;color:#1C1917;cursor:pointer}' +
+      '.rxp-b.go{background:#EA580C;border-color:#EA580C;color:#fff}.rxp-b.ok{background:#15803D;border-color:#15803D;color:#fff}' +
+      '.rxp-b:focus-visible{outline:3px solid #FDBA74;outline-offset:2px}';
+    document.head.appendChild(st);
+  }
+  function open(kind, msg, opt) {
+    opt = opt || {};
+    return new Promise(function(resolve) {
+      const prev = document.activeElement;
+      const bg = document.createElement('div'); bg.className = 'rxp-bg';
+      const box = document.createElement('div'); box.className = 'rxp'; box.setAttribute('role', kind === 'alert' ? 'alertdialog' : 'dialog'); box.setAttribute('aria-modal', 'true');
+      const top = document.createElement('div'); top.className = 'rxp-top';
+      top.innerHTML = LOGO + '<b>ROUTI<span>X</span></b>' + (window.RX_POP_SUB ? ' <small>' + window.RX_POP_SUB + '</small>' : '');
+      const m = document.createElement('div'); m.className = 'rxp-msg'; m.textContent = String(msg == null ? '' : msg); m.id = 'rxpm' + Date.now(); box.setAttribute('aria-describedby', m.id);
+      box.appendChild(top); box.appendChild(m);
+      let inp = null;
+      if (kind === 'prompt') {
+        inp = document.createElement('input'); inp.className = 'rxp-in'; inp.value = opt.value == null ? '' : String(opt.value);
+        if (opt.type) inp.type = opt.type; if (opt.inputmode) inp.inputMode = opt.inputmode; if (opt.maxlength) inp.maxLength = opt.maxlength;
+        inp.setAttribute('aria-label', String(msg || 'Answer')); box.appendChild(inp);
+      }
+      const btns = document.createElement('div'); btns.className = 'rxp-btns';
+      const done = function(v) { document.removeEventListener('keydown', key, true); bg.remove(); try { if (prev && prev.focus) prev.focus(); } catch (e) {} resolve(v); };
+      let okBtn;
+      if (kind !== 'alert') { const no = document.createElement('button'); no.type = 'button'; no.className = 'rxp-b'; no.textContent = opt.no || (kind === 'prompt' ? 'Cancel' : 'Nahi'); no.onclick = function() { done(kind === 'prompt' ? null : false); }; btns.appendChild(no); }
+      okBtn = document.createElement('button'); okBtn.type = 'button';
+      okBtn.className = 'rxp-b ' + (kind === 'alert' ? (/^\s*✅/.test(String(msg)) ? 'ok' : 'go') : 'go');
+      okBtn.textContent = opt.yes || (kind === 'alert' ? 'OK' : kind === 'prompt' ? 'Save' : 'Haan');
+      okBtn.onclick = function() { done(kind === 'prompt' ? inp.value : true); };
+      btns.appendChild(okBtn); box.appendChild(btns); bg.appendChild(box); document.body.appendChild(bg);
+      const key = function(e) {
+        if (e.key === 'Escape') { e.preventDefault(); done(kind === 'alert' ? undefined : kind === 'prompt' ? null : false); }
+        else if (e.key === 'Enter' && (kind !== 'confirm' || document.activeElement === okBtn)) { e.preventDefault(); okBtn.click(); }
+        else if (e.key === 'Tab') { const f = box.querySelectorAll('input,button'); const first = f[0], last = f[f.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } }
+      };
+      document.addEventListener('keydown', key, true);
+      setTimeout(function() { if (inp) { inp.focus(); try { inp.select(); } catch (e) {} } else okBtn.focus(); }, 30);
+    });
+  }
+  window.rxAlert = function(msg, opt) { return open('alert', msg, opt); };
+  window.rxConfirm = function(msg, opt) { return open('confirm', msg, opt); };
+  window.rxPrompt = function(msg, value, opt) { opt = opt || {}; opt.value = value; return open('prompt', msg, opt); };
+})();
+</script>
 <script>
 const SUPABASE_URL = 'https://fghhbmdgelnpirysbusl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_nuTN31ISqVeDBFDrCiWf-g_MQWA4Fs4';
@@ -95,14 +175,16 @@ async function load() {
   if (!info.ok) { $('app').innerHTML = '<div class="center">' + esc(info.error) + '</div>'; $('shopName').textContent = 'Routix'; return; }
   $('shopName').textContent = info.name;
   document.title = info.name + ' — Routix Khaata';
+  $('shopAv').textContent = initials(info.name);
+  makeShopApp(info.name);
   render();
 }
 function render() {
-  const used = Math.min(100, Math.round(Number(info.khaata_due) / Number(info.credit_limit || 1) * 100));
+  const usedAmt = Number(info.limit_used != null ? info.limit_used : info.khaata_due), used = Math.min(100, Math.round(usedAmt / Number(info.credit_limit || 1) * 100));
   $('app').innerHTML =
     '<section class="strip" aria-label="Your khaata today">' +
       '<div class="tile cash"><b>' + rs(info.cash_to_get_today) + '</b><small>your goods cash to get back today' + (Number(info.cash_on_the_way) ? ' · ' + rs(info.cash_on_the_way) + ' still on the way' : '') + '</small></div>' +
-      '<div class="tile due"><b>' + rs(info.khaata_due) + '</b><small>delivery charges on your khaata (limit ' + rs(info.credit_limit) + ')</small><div class="limit"><i style="width:' + used + '%"></i></div></div>' +
+      '<div class="tile due"><b>' + rs(usedAmt) + '</b><small>khaata used of ' + rs(info.credit_limit) + ' limit · bill bharne par limit khaali hoti hai</small><div class="limit"><i style="width:' + used + '%"></i></div></div>' +
       '<div class="tile"><b>' + info.today_deliveries + '</b><small>parcels booked today</small></div>' +
       '<div class="tile"><b>' + info.month_deliveries + '</b><small>delivered this month' + (info.preferred_rider ? ' · your rider ' + esc(info.preferred_rider) : '') + '</small></div>' +
     '</section>' +
@@ -116,7 +198,11 @@ function render() {
       '<div class="err" id="err" role="alert"></div>' +
     '</section>' +
     '<section class="panel" aria-labelledby="recentH"><h2 id="recentH">Your deliveries</h2>' + bookingsHtml() + '</section>' +
-    (info.bills && info.bills.length ? '<section class="panel" aria-labelledby="billH"><h2 id="billH">Bills</h2>' + info.bills.map(function(b) { return '<div class="ticket"><div class="row"><b>' + esc(b.no) + '</b><span class="pill ' + (b.status === 'settled' ? 'delivered' : 'open') + '">' + (b.status === 'settled' ? 'Paid' : 'To pay') + '</span></div><div class="small">' + b.deliveries + ' deliveries · ' + rs(b.amount) + ' · ' + new Date(b.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + '</div></div>'; }).join('') + '</section>' : '') +
+    (info.bills && info.bills.length ? '<section class="panel" aria-labelledby="billH"><h2 id="billH">Bills</h2>' + info.bills.map(function(b) {
+      const st = b.status === 'settled' ? '<span class="pill delivered">Paid ✅</span>' : b.paid_claim_at ? '<span class="pill open">Payment check ho raha hai</span>' : '<span class="pill open">To pay</span>';
+      return '<div class="ticket"><div class="row"><b>' + esc(b.no) + '</b>' + st + '</div><div class="small">' + b.deliveries + ' deliveries · <b>' + rs(b.amount) + '</b> · ' + (b.from ? new Date(b.from).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' – ' + new Date(b.to).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '') + '</div>' +
+        '<div class="billbtns"><button type="button" data-bill="' + b.id + '">📄 Dekhein</button>' + (b.status !== 'settled' && !b.paid_claim_at ? '<button type="button" class="payb" data-bill="' + b.id + '" data-pay="1">💳 UPI se ' + rs(b.amount) + ' bharein</button>' : '') + '</div></div>';
+    }).join('') + '</section>' : '') +
     '<p class="small" style="text-align:center;">Need help? <a href="https://wa.me/918004873819" target="_blank" rel="noopener">WhatsApp Routix</a></p>';
   drops = []; addDrop();
   $('addDrop').addEventListener('click', function() { if (drops.length >= 10) return; addDrop(); });
@@ -136,6 +222,83 @@ function bookingsHtml() {
   }).join('');
 }
 
+// ---------- shop's own app (name + Routix on the icon) ----------
+function initials(n) { const w = String(n || 'R').replace(/[^A-Za-z0-9\u0900-\u097F ]/g, ' ').trim().split(/\s+/); return ((w[0] || 'R')[0] + (w[1] ? w[1][0] : (w[0] || '')[1] || '')).toUpperCase(); }
+function shopIcon(name, size) {
+  const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d'), u = size / 512;
+  x.fillStyle = '#EA580C'; x.beginPath(); if (x.roundRect) x.roundRect(0, 0, size, size, 96 * u); else x.rect(0, 0, size, size); x.fill();
+  x.fillStyle = '#1C1917'; x.fillRect(0, 372 * u, size, 140 * u);
+  x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.font = '800 ' + Math.round(210 * u) + 'px "Barlow Semi Condensed", Arial, sans-serif'; x.fillText(initials(name), 256 * u, 196 * u);
+  x.font = '800 ' + Math.round(78 * u) + 'px "Barlow Semi Condensed", Arial, sans-serif';
+  const w1 = x.measureText('ROUTI').width, w2 = x.measureText('X').width, sx = 256 * u - (w1 + w2) / 2;
+  x.textAlign = 'left'; x.fillText('ROUTI', sx, 444 * u); x.fillStyle = '#EF4444'; x.fillText('X', sx + w1, 444 * u);
+  return c.toDataURL('image/png');
+}
+let installEvt = null;
+function makeShopApp(name) {
+  try {
+    const i192 = shopIcon(name, 192), i512 = shopIcon(name, 512), here = location.origin + location.pathname + '?k=' + encodeURIComponent(TOKEN);
+    const m = { id: here, name: name + ' — Routix Khaata', short_name: String(name).slice(0, 12), start_url: here, scope: location.origin + location.pathname, display: 'standalone',
+      background_color: '#FAFAF9', theme_color: '#1C1917', icons: [{ src: i192, sizes: '192x192', type: 'image/png', purpose: 'any' }, { src: i512, sizes: '512x512', type: 'image/png', purpose: 'any' }] };
+    const add = function(rel, href, extra) { const l = document.createElement('link'); l.rel = rel; l.href = href; if (extra) Object.keys(extra).forEach(function(k) { l.setAttribute(k, extra[k]); }); document.head.appendChild(l); };
+    document.querySelectorAll('link[rel="icon"]').forEach(function(l) { l.href = i192; l.type = 'image/png'; });
+    add('apple-touch-icon', i192); add('manifest', 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(m)));
+    const mt = document.createElement('meta'); mt.name = 'apple-mobile-web-app-title'; mt.content = String(name).slice(0, 15); document.head.appendChild(mt);
+  } catch (e) {}
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(function() {});
+}
+window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); installEvt = e; $('installBtn').hidden = false; });
+window.addEventListener('appinstalled', function() { $('installBtn').hidden = true; });
+document.addEventListener('click', async function(e) {
+  if (e.target && e.target.id === 'installBtn') {
+    if (installEvt) { installEvt.prompt(); const r = await installEvt.userChoice; if (r.outcome === 'accepted') $('installBtn').hidden = true; installEvt = null; }
+    return;
+  }
+  const bb = e.target.closest && e.target.closest('[data-bill]'); if (bb) openBill(bb.getAttribute('data-bill'), !!bb.getAttribute('data-pay'));
+});
+// if the browser never offers install, still show a help button on phones
+setTimeout(function() { if (!installEvt && /android|iphone|ipad/i.test(navigator.userAgent) && !window.matchMedia('(display-mode: standalone)').matches && info && info.ok) { const b = $('installBtn'); b.hidden = false; b.onclick = function() { rxAlert(/iphone|ipad/i.test(navigator.userAgent) ? 'Safari mein neeche Share (⬆️) dabaiye, phir "Add to Home Screen".' : 'Chrome mein upar ⋮ dabaiye, phir "Add to Home screen" ya "Install app".'); }; } }, 4000);
+
+// ---------- bill: list of deliveries, UPI pay, WhatsApp, print ----------
+function loadQr(cb) { if (window.QRCode) return cb(); const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; sc.onload = cb; document.head.appendChild(sc); }
+async function openBill(id, payNow) {
+  let b; try { b = await rpc('shop_portal_bill', { p_token: TOKEN, p_id: id }); } catch (e) { rxAlert('Could not open the bill. Check internet.'); return; }
+  if (!b.ok) { rxAlert(b.error); return; }
+  const d = function(t) { return t ? new Date(t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''; };
+  const upi = b.upi || {}, canPay = b.status !== 'settled' && !b.paid_claim_at && upi.enabled && upi.vpa;
+  const link = canPay ? 'upi://pay?pa=' + String(upi.vpa).replace(/[^A-Za-z0-9._@-]/g, '') + '&pn=' + encodeURIComponent(upi.name || 'Routix') + '&am=' + Number(b.amount).toFixed(2) + '&cu=INR&tn=' + encodeURIComponent('Routix ' + b.no) : '';
+  const lines = b.items.map(function(it) { return d(it.date) + ' · ' + it.to + ' (' + it.place + ') · ' + rs(it.charge); }).join('\n');
+  const wa = 'https://wa.me/?text=' + encodeURIComponent(b.shop + ' — Routix bill ' + b.no + '\n' + d(b.from) + ' – ' + d(b.to) + ' · ' + b.deliveries + ' deliveries\n\n' + lines + '\n\nTotal: ' + rs(b.amount) + (b.status === 'settled' ? ' (paid)' : ''));
+  const bg = document.createElement('div'); bg.className = 'sheet-bg';
+  bg.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="billT">' +
+    '<div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;"><div><div class="brand" style="color:#78716C;">ROUTI<span>X</span>&nbsp;KHAATA BILL</div><h2 id="billT">' + esc(b.shop) + '</h2><div class="small">' + esc(b.address) + '</div></div><button type="button" class="noprint" data-close style="border:none; background:#F5F5F4; border-radius:10px; width:40px; height:40px; font-size:20px;" aria-label="Close">✕</button></div>' +
+    '<div class="small" style="margin-top:8px;">Bill <b>' + esc(b.no) + '</b> · ' + d(b.from) + ' – ' + d(b.to) + ' · ' + b.deliveries + ' deliveries</div>' +
+    '<table class="items"><thead><tr><th>Date</th><th>Customer</th><th>₹</th></tr></thead><tbody>' + b.items.map(function(it) { return '<tr><td>' + d(it.date) + '</td><td>' + esc(it.to) + '<br><span class="small">' + esc(it.place) + ' · ' + it.km + ' km</span></td><td>' + rs(it.charge) + '</td></tr>'; }).join('') + '</tbody></table>' +
+    '<div style="display:flex; justify-content:space-between; font-size:20px; font-weight:800;"><span>Total</span><span>' + rs(b.amount) + '</span></div>' +
+    '<div class="small" style="margin-top:2px;">' + (b.status === 'settled' ? '✅ Paid on ' + d(b.settled_at) + '. Thank you!' : b.paid_claim_at ? '⏳ Aapne pay bataya — Routix bank mein check kar raha hai.' : 'To pay') + '</div>' +
+    (canPay ? '<div class="paybox noprint" id="payArea"><b>💳 UPI se ' + rs(b.amount) + ' bharein</b><div class="small">To ' + esc(upi.name || 'Routix') + '</div>' +
+      (/android|iphone|ipad/i.test(navigator.userAgent) ? '<a href="' + link + '" style="display:block; margin-top:8px; text-align:center; text-decoration:none; background:#1C1917; color:#fff; border-radius:12px; padding:12px; font-weight:800;">UPI app kholein</a>' : '') +
+      '<div class="qrwrap" id="billQr"></div>' +
+      '<label class="small" style="display:block; font-weight:700;">Payment confirm karne ke liye UPI Ref No. ke last 4 ank (optional)<input id="billRef" inputmode="numeric" maxlength="14" style="display:block; width:100%; margin-top:4px; padding:11px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:17px; letter-spacing:2px;"></label>' +
+      '<button type="button" id="billPaid" style="margin-top:8px; width:100%; border:none; border-radius:12px; background:var(--routix); color:#fff; font-weight:800; font-size:16px; padding:12px;">✅ Maine pay kar diya</button></div>' : '') +
+    '<div class="billbtns noprint"><a href="' + wa + '" target="_blank" rel="noopener">📤 WhatsApp par bhejein</a><button type="button" data-print>🖨️ Print / PDF</button></div></div>';
+  document.body.appendChild(bg);
+  const close = function() { bg.remove(); document.body.classList.remove('printing'); };
+  bg.querySelector('[data-close]').addEventListener('click', close);
+  bg.querySelector('[data-print]').addEventListener('click', function() { document.body.classList.add('printing'); window.print(); setTimeout(function() { document.body.classList.remove('printing'); }, 500); });
+  if (canPay) {
+    loadQr(function() { if (window.QRCode && bg.querySelector('#billQr')) new QRCode(bg.querySelector('#billQr'), { text: link, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M }); });
+    if (payNow) setTimeout(function() { bg.querySelector('#payArea').scrollIntoView({ behavior: 'smooth' }); }, 100);
+    bg.querySelector('#billPaid').addEventListener('click', async function() {
+      if (!await rxConfirm('Kya aapne ' + rs(b.amount) + ' UPI se bhar diye?')) return;
+      this.disabled = true;
+      const r = await rpc('shop_portal_bill_paid', { p_token: TOKEN, p_id: b.id, p_ref: bg.querySelector('#billRef').value }).catch(function(e) { return { ok: false, error: e.message }; });
+      if (!r.ok) { rxAlert(r.error || 'Could not save'); this.disabled = false; return; }
+      close(); rxAlert('✅ Dhanyavaad! Routix bank mein check karke bill "Paid" kar dega.'); load();
+    });
+  }
+}
 // ---------- road route (free OSRM servers) — real road km for a fair price ----------
 const RX_ROUTERS = ['https://router.project-osrm.org/route/v1/driving/', 'https://routing.openstreetmap.de/routed-car/route/v1/driving/'];
 async function roadRoute(a, b) {

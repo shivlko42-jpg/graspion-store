@@ -514,11 +514,12 @@ async function loadShops() {
   if (!shops.length) { $('shopList').innerHTML = '<div class="empty">No shops yet. Add the first one — a medical store, kirana or bakery that sends parcels often.</div>'; return; }
   $('shopList').innerHTML = shops.map(function(c) {
     const link = location.origin + '/routix-shop.html?k=' + c.portal_token;
-    const wa = 'https://wa.me/91' + String(c.contact_phone).slice(-10) + '?text=' + encodeURIComponent('Namaste ' + c.name + '! Aapka Routix Khaata taiyaar hai. Isi link se parcel book karein, delivery charge mahine ke bill mein judega, aur saamaan ka cash usi din wapas milega:\n' + link + '\nRoutix hai na, pahuncha denge!');
+    const wa = 'https://wa.me/91' + String(c.contact_phone).slice(-10) + '?text=' + encodeURIComponent('Namaste ' + c.name + '! Aapka Routix Khaata taiyaar hai. Isi link se parcel book karein, delivery charge mahine ke bill mein judega, aur saamaan ka cash usi din wapas milega:\n' + link + '\nLink kholkar "Add to Home screen" karein — aapki dukaan ka apna app ban jayega.\nRoutix hai na, pahuncha denge!');
     return '<article class="ticket"><div class="head"><span class="no">' + esc(c.name) + '</span><span class="pill ' + (c.status === 'active' ? 's-delivered' : 's-cancelled') + '">' + (c.status === 'active' ? 'Active' : 'Paused') + '</span></div>' +
       '<div class="facts">' + esc(c.address) + ' · ' + esc(c.contact_phone) + (c.preferred_rider ? ' · rider ' + esc(c.preferred_rider) : '') + '</div>' +
-      '<div class="facts" style="margin-top:4px;">This month <b>' + c.month_deliveries + '</b> delivered · to bill <b>' + rs(c.unbilled) + '</b> of ' + rs(c.credit_limit) + ' limit' + (Number(c.cash_to_return) ? ' · <b style="color:#B91C1C;">goods cash to hand back ' + rs(c.cash_to_return) + '</b>' : '') + '</div>' +
-      '<div class="actions"><a class="btn wa" target="_blank" rel="noopener" href="' + wa + '">Send khaata link</a><button class="btn" type="button" data-copy="' + esc(link) + '">Copy link</button><button class="btn" type="button" data-editshop="' + c.id + '">Edit</button>' +
+      '<div class="facts" style="margin-top:4px;">This month <b>' + c.month_deliveries + '</b> delivered · to bill <b>' + rs(c.unbilled) + '</b> · khaata used <b>' + rs(c.limit_used) + '</b> of ' + rs(c.credit_limit) + ' limit' + (Number(c.cash_to_return) ? ' · <b style="color:#B91C1C;">goods cash to hand back ' + rs(c.cash_to_return) + '</b>' : '') + '</div>' +
+      (c.unpaid_bills || []).map(function(u) { return '<div class="facts" style="margin-top:6px; padding:8px 10px; border-radius:10px; background:' + (u.paid_claim_at ? '#FEF9C3' : '#F5F5F4') + ';">🧾 <b>' + esc(u.no) + '</b> · ' + rs(u.amount) + ' unpaid' + (u.paid_claim_at ? ' · <b>shop says paid</b>' + (u.paid_claim_ref ? ' (UPI ref ' + esc(u.paid_claim_ref) + ')' : '') + ' — check bank' : '') + ' <button class="btn" type="button" data-billpaid="' + u.id + '" data-amt="' + u.amount + '" style="margin-left:6px;">✅ Paid</button></div>'; }).join('') +
+      '<div class="actions"><a class="btn wa" target="_blank" rel="noopener" href="' + wa + '">Send khaata link</a><button class="btn" type="button" data-copy="' + esc(link) + '">Copy link</button><button class="btn" type="button" data-editshop="' + c.id + '">Edit</button><button class="btn" type="button" data-newlink="' + c.id + '" data-name="' + esc(c.name) + '" data-phone="' + esc(c.contact_phone) + '">🔗 New link</button>' +
       (Number(c.unbilled) ? '<button class="btn" type="button" data-billshop="' + c.id + '">Make bill ' + rs(c.unbilled) + '</button>' : '') + '</div></article>';
   }).join('');
 }
@@ -626,6 +627,25 @@ document.addEventListener('click', async function(e) {
 document.addEventListener('click', async function(e) {
   const r = e.target.closest && e.target.closest('[data-resettries]'); if (!r) return;
   try { const d = await rpc('routix_reset_pickup_tries', { p_id: r.getAttribute('data-resettries') }); toast(d.ok ? 'Rider can try the code again' : 'Could not unlock'); } catch (err) { toast(err.message); }
+});
+document.addEventListener('click', async function(e) {
+  const bp = e.target.closest && e.target.closest('[data-billpaid]'), nl = e.target.closest && e.target.closest('[data-newlink]');
+  if (bp) {
+    const ref = await rxPrompt('Bill ' + rs(bp.getAttribute('data-amt')) + ' bank mein mil gaya? Payment ref / note (optional):', '');
+    if (ref === null) return;
+    try { const d = await rpc('routix_settle_statement', { p_id: bp.getAttribute('data-billpaid'), p_ref: ref || 'paid' }); toast(d.ok ? 'Bill marked paid — shop limit freed' : 'Already paid'); loadShops(); } catch (err) { toast(err.message); }
+  }
+  if (nl) {
+    if (!(await rxConfirm('Naya link banayein? Purana link turant band ho jayega — dukaan ko naya link bhejna hoga.', { yes: 'Haan, naya link', no: 'Nahi' }))) return;
+    try {
+      const d = await rpc('routix_client_new_link', { p_id: nl.getAttribute('data-newlink') });
+      if (!d.ok) { toast('Could not make a new link'); return; }
+      const link = location.origin + '/routix-shop.html?k=' + d.portal_token;
+      loadShops();
+      if (await rxConfirm('Naya link ready. Dukaan ko WhatsApp par bhejein?', { yes: 'WhatsApp kholo', no: 'Baad mein' }))
+        window.open('https://wa.me/91' + String(nl.getAttribute('data-phone')).slice(-10) + '?text=' + encodeURIComponent('Namaste ' + nl.getAttribute('data-name') + '! Aapka naya Routix Khaata link (purana band ho gaya hai):\n' + link + '\nIse kholkar "Add to Home screen" karein — aapki dukaan ka apna app ban jayega.'), '_blank');
+    } catch (err) { toast(err.message); }
+  }
 });
 // ===== UPI check (Routix QR payments) =====
 let upiTab = 'pending', upiSettingsFilled = false;
