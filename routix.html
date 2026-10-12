@@ -135,6 +135,7 @@ label.f textarea { resize: vertical; }
     <button type="button" data-go="applications">📝 New riders <span class="badge" id="navApps"></span></button>
     <button type="button" data-go="money">💰 Rider money</button>
     <button type="button" data-go="upi">💳 UPI check <span class="badge" id="navUpi"></span></button>
+    <button type="button" data-go="team">👥 Team</button>
     <button type="button" data-go="shops">🏪 Shops (Khaata)</button>
     <button type="button" data-go="claims">🛡️ Suraksha claims</button>
     <button type="button" data-go="graspion">🤝 Graspion account</button>
@@ -256,6 +257,21 @@ label.f textarea { resize: vertical; }
       <div id="riderWallets"><div class="empty">Loading…</div></div>
     </section>
 
+    <section class="panel" data-sec="team" aria-labelledby="teamH">
+      <h2 id="teamH">👥 Team — company structure</h2>
+      <p class="hint">Har pad (position) yahan hai. Naya vyakti aaye to naam, email bharein aur "Active" karein. Wo vyakti <b>usi email</b> se is page par login kare (Google ya password) — Routix ka access apne aap mil jayega, uske role ke hisaab se. Chhod de to "Left" karein — access turant band.</p>
+      <div id="teamList"><div class="empty">Loading…</div></div>
+      <details style="margin-top:14px;"><summary style="cursor:pointer; font-weight:700;">➕ Naya pad (position) jodein</summary>
+        <div style="display:grid; gap:8px; margin-top:8px; max-width:440px;">
+          <label class="facts">Company<select id="npCompany" style="display:block; width:100%; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"><option value="routix">Routix</option><option value="graspion">Graspion</option><option value="grasp">Grasp Infotech</option></select></label>
+          <label class="facts">Pad ka naam<input id="npTitle" placeholder="e.g. Dispatch Executive (shaam)" style="display:block; width:100%; box-sizing:border-box; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"></label>
+          <label class="facts">Role (Routix ke liye)<select id="npRole" style="display:block; width:100%; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"><option value="dispatch">Dispatch — booking, rider, UPI</option><option value="sales_support">Sales & Support — dukaan, dekhna</option><option value="accounts">Accounts — paisa, bill, UPI</option><option value="rider_lead">Rider Team Lead — riders</option><option value="">Koi Routix access nahi</option></select></label>
+          <button class="btn" type="button" id="npSave">Pad jodein</button>
+        </div>
+      </details>
+      <div class="facts" style="margin-top:14px; padding:10px; border-radius:10px; background:#F5F5F4;"><b>Graspion pad:</b> abhi sirf record hain — Graspion admin ka login Stage 2 (surakshit permission) ke baad. <b>ERP:</b> asli vyakti aane par ERP ki apni "staff" screen se jodein — wahan role "staff" (accounts wale ke liye "accountant") aur sirf zaroori tick (permissions) dein.</div>
+    </section>
+
     <section class="panel" data-sec="upi" aria-labelledby="upiH">
       <h2 id="upiH">💳 UPI check</h2>
       <p class="hint">Payments customers made by scanning the Routix QR. Open your bank app, find the amount (and UTR if given), then tick ✅ or ❌. If you tick ❌ for a delivered booking the rider marked, that amount goes to the rider's "cash to deposit".</p>
@@ -368,13 +384,17 @@ async function boot() {
   if (!data.session) { $('loginView').hidden = false; $('appView').hidden = true; return; }
   token = data.session.access_token;
   try {
+    try { await rpc('staff_claim'); } catch (e) {}
     const ok = await rpc('is_routix_admin');
     if (ok !== true) { await sb.auth.signOut(); $('loginView').hidden = false; $('loginErr').textContent = 'This account is not a Routix or admin account.'; return; }
+    try { ACCESS = await rpc('routix_my_access'); } catch (e) {}
+    applyAccess();
   } catch (e) { $('loginView').hidden = false; $('loginErr').textContent = 'Could not check your account. ' + e.message; return; }
-  $('whoAmI').textContent = data.session.user.email || '';
+  $('whoAmI').textContent = (data.session.user.email || '') + (ACCESS.role ? ' · ' + ({ owner: 'Owner', dispatch: 'Dispatch', sales_support: 'Sales & Support', accounts: 'Accounts', rider_lead: 'Rider Team Lead' }[ACCESS.role] || ACCESS.role) : '');
   $('loginView').hidden = true; $('appView').hidden = false;
   refreshAll();
-  goSec((location.hash || '#overview').slice(1) || 'overview');
+  const want = (location.hash || '#overview').slice(1) || 'overview';
+  goSec(canSee(want) ? want : 'overview');
   loadApplications();
   setInterval(function() { if (document.visibilityState === 'visible') refreshAll(); }, 30000);
 }
@@ -389,7 +409,50 @@ $('logoutBtn').addEventListener('click', async function() { await sb.auth.signOu
 sb.auth.onAuthStateChange(function(ev, s) { if (s) token = s.access_token; });
 
 // ---------- dashboard ----------
-async function refreshAll() { await Promise.all([loadDashboard(), loadBookings()]); loadShops(); loadLeaderboard(); loadClaims(); loadUpi(); }
+async function refreshAll() { await Promise.all([loadDashboard(), can('bookings_view') ? loadBookings() : null]); if (can('shops_view')) loadShops(); loadLeaderboard(); if (can('bookings_view')) loadClaims(); if (can('upi')) loadUpi(); }
+let ACCESS = { role: null, perms: [] };
+const SEC_PERM = { overview: 'dashboard', bookings: 'bookings_view', claims: 'bookings_view', riders: 'riders_view', applications: 'riders', money: 'money_view', upi: 'upi', shops: 'shops_view', graspion: 'money', team: 'team' };
+function can(p) { return (ACCESS.perms || []).indexOf(p) !== -1; }
+function canSee(sec) { return !SEC_PERM[sec] || can(SEC_PERM[sec]); }
+function applyAccess() {
+  document.querySelectorAll('[data-go]').forEach(function(b) { b.hidden = !canSee(b.getAttribute('data-go')); });
+  if (!can('settings')) { const d = document.querySelector('#upiSave'); if (d) { const box = d.closest('details'); if (box) box.hidden = true; } }
+}
+// ===== Team (owner only) =====
+async function loadTeam() {
+  try {
+    const list = await rpc('staff_positions_list');
+    const co = { grasp: 'Grasp Infotech', routix: 'Routix', graspion: 'Graspion' }, roleName = { owner: 'Owner', dispatch: 'Dispatch', sales_support: 'Sales & Support', accounts: 'Accounts', rider_lead: 'Rider Team Lead', orders_manager: 'Orders Manager', support_staff: 'Support Staff', finance_manager: 'Finance Manager', marketing_manager: 'Marketing' };
+    const groups = ['grasp', 'routix', 'graspion'];
+    $('teamList').innerHTML = groups.map(function(g) {
+      const rows = list.filter(function(p) { return p.company === g; });
+      if (!rows.length) return '';
+      return '<h3 style="margin:14px 0 6px; font-family:\'Barlow Semi Condensed\',sans-serif;">' + co[g] + '</h3>' + rows.map(function(p) {
+        const st = p.status === 'active' ? '<span class="pill s-delivered">Active</span>' : p.status === 'left' ? '<span class="pill s-cancelled">Left</span>' : '<span class="pill s-open">' + (p.phase === 'later' ? 'Baad mein' : 'Khaali — abhi bharna') + '</span>';
+        const inp = function(k, ph, v, type) { return '<input data-tk="' + k + '" type="' + (type || 'text') + '" placeholder="' + ph + '" value="' + esc(v || '') + '" style="width:100%; box-sizing:border-box; padding:9px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:14.5px;">'; };
+        return '<article class="ticket" data-pos="' + p.id + '"><div class="head"><span class="no">' + esc(p.person_code ? p.person_code + ' · ' : '') + esc(p.title) + '</span>' + st + '</div>' +
+          '<div class="facts">' + esc(p.department || '') + (p.role_key ? ' · role: <b>' + esc(roleName[p.role_key] || p.role_key) + '</b>' : '') + (p.salary_min ? ' · ₹' + Number(p.salary_min).toLocaleString('en-IN') + '–' + Number(p.salary_max).toLocaleString('en-IN') : '') + (p.reports_to_title ? ' · reports to ' + esc(p.reports_to_title) : '') + (p.auth_user_id ? ' · <b style="color:#166534;">login juda ✅</b>' : '') + '</div>' +
+          (p.notes ? '<div class="facts" style="color:#78716C;">' + esc(p.notes) + '</div>' : '') +
+          (p.role_key === 'owner' ? '' : '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">' + inp('person_name', 'Naam', p.person_name) + inp('email', 'Email (login ke liye)', p.email, 'email') + inp('phone', 'Mobile', p.phone, 'tel') +
+            '<select data-tk="status" style="padding:9px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:14.5px;"><option value="vacant"' + (p.status === 'vacant' ? ' selected' : '') + '>Khaali</option><option value="active"' + (p.status === 'active' ? ' selected' : '') + '>Active</option><option value="left"' + (p.status === 'left' ? ' selected' : '') + '>Left (chhod diya)</option></select></div>' +
+            '<div class="actions"><button class="btn" type="button" data-possave="' + p.id + '">Save</button></div>') + '</article>';
+      }).join('');
+    }).join('');
+  } catch (e) { $('teamList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }
+}
+document.addEventListener('click', async function(e) {
+  const b = e.target.closest && e.target.closest('[data-possave]');
+  if (b) {
+    const card = b.closest('[data-pos]'), body = { id: b.getAttribute('data-possave') };
+    card.querySelectorAll('[data-tk]').forEach(function(i) { body[i.getAttribute('data-tk')] = i.value.trim(); });
+    if (body.status === 'active' && (!body.person_name || !/^\S+@\S+\.\S+$/.test(body.email))) { rxAlert('Active karne ke liye sahi naam aur email bharein.'); return; }
+    try { await rpc('staff_position_save', { p: body }); toast('Saved'); loadTeam(); } catch (err) { rxAlert(err.message); }
+  }
+  if (e.target && e.target.id === 'npSave') {
+    const t = $('npTitle').value.trim(); if (!t) { rxAlert('Pad ka naam likhein.'); return; }
+    try { await rpc('staff_position_save', { p: { company: $('npCompany').value, title: t, role_key: $('npCompany').value === 'routix' ? ($('npRole').value || null) : null } }); $('npTitle').value = ''; toast('Pad jud gaya'); loadTeam(); } catch (err) { rxAlert(err.message); }
+  }
+});
 async function loadDashboard() {
   try {
     const d = await rpc('routix_dashboard');
@@ -693,6 +756,7 @@ $('upiSave').addEventListener('click', async function() {
 
 // ===================== Routix Control: sections =====================
 function goSec(sec) {
+  if (!canSee(sec)) sec = 'overview';
   document.querySelectorAll('[data-sec]').forEach(function(el) { el.hidden = el.getAttribute('data-sec') !== sec; });
   document.querySelectorAll('[data-go]').forEach(function(b) { if (b.getAttribute('data-go') === sec) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   try { history.replaceState(null, '', '#' + sec); } catch (e) {}
@@ -701,6 +765,7 @@ function goSec(sec) {
   if (sec === 'money') loadMoney();
   if (sec === 'graspion') loadGraspionAccount();
   if (sec === 'upi') loadUpi();
+  if (sec === 'team') loadTeam();
   window.scrollTo({ top: 0 });
 }
 document.querySelectorAll('[data-go]').forEach(function(b) { b.addEventListener('click', function() { goSec(b.getAttribute('data-go')); }); });
