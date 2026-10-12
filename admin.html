@@ -1354,6 +1354,7 @@ try {
 const { data } = await supaAuth.auth.getSession();
 if (data.session) {
 authToken = data.session.access_token;
+try { await fetch(SUPABASE_URL + '/rest/v1/rpc/staff_claim', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: '{}' }); } catch (e) {} // link Team position (same email) to this login
 const adminRes = await fetch(SUPABASE_URL + '/rest/v1/admins?auth_user_id=eq.' + data.session.user.id + '&select=*', {
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
 });
@@ -1993,6 +1994,7 @@ btn.textContent = 'Log In →'; btn.disabled = false;
 return;
 }
 authToken = data.session.access_token;
+try { await fetch(SUPABASE_URL + '/rest/v1/rpc/staff_claim', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: '{}' }); } catch (e) {} // link Team position (same email) to this login
 // Confirm this account is actually a registered admin (not just any Supabase Auth user)
 const adminRes = await fetch(SUPABASE_URL + '/rest/v1/admins?auth_user_id=eq.' + data.user.id + '&select=*', {
 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken }
