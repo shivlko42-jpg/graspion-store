@@ -266,10 +266,11 @@ label.f textarea { resize: vertical; }
           <label class="facts">Company<select id="npCompany" style="display:block; width:100%; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"><option value="routix">Routix</option><option value="graspion">Graspion</option><option value="grasp">Grasp Infotech</option></select></label>
           <label class="facts">Pad ka naam<input id="npTitle" placeholder="e.g. Dispatch Executive (shaam)" style="display:block; width:100%; box-sizing:border-box; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"></label>
           <label class="facts">Role (Routix ke liye)<select id="npRole" style="display:block; width:100%; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"><option value="dispatch">Dispatch — booking, rider, UPI</option><option value="sales_support">Sales & Support — dukaan, dekhna</option><option value="accounts">Accounts — paisa, bill, UPI</option><option value="rider_lead">Rider Team Lead — riders</option><option value="">Koi Routix access nahi</option></select></label>
+          <label class="facts">Role (Graspion ke liye)<select id="npGRole" style="display:block; width:100%; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"><option value="orders_manager">Orders Manager — orders, delivery, returns</option><option value="support_staff">Support Staff — orders, customers, products</option><option value="finance_manager">Finance Manager — payments, settlement, refund</option><option value="inventory_manager">Inventory Manager — products, stock</option><option value="marketing_manager">Marketing Manager — banners, coupons, ads</option><option value="category_manager">Category Manager</option><option value="category_executive">Category Executive</option></select></label>
           <button class="btn" type="button" id="npSave">Pad jodein</button>
         </div>
       </details>
-      <div class="facts" style="margin-top:14px; padding:10px; border-radius:10px; background:#F5F5F4;"><b>Graspion pad:</b> abhi sirf record hain — Graspion admin ka login Stage 2 (surakshit permission) ke baad. <b>ERP:</b> asli vyakti aane par ERP ki apni "staff" screen se jodein — wahan role "staff" (accounts wale ke liye "accountant") aur sirf zaroori tick (permissions) dein.</div>
+      <div class="facts" style="margin-top:14px; padding:10px; border-radius:10px; background:#F5F5F4;"><b>Graspion pad:</b> Active karne ke baad wo vyakti <b>usi email</b> se graspion.in/admin.html par login kare — role ke hisaab se access apne aap milega. Paisa, settings aur staff jodna sirf aapke paas. <b>ERP:</b> asli vyakti aane par ERP ki apni "staff" screen se jodein — wahan role "staff" (accounts wale ke liye "accountant") aur sirf zaroori tick (permissions) dein.</div>
     </section>
 
     <section class="panel" data-sec="upi" aria-labelledby="upiH">
@@ -450,7 +451,7 @@ document.addEventListener('click', async function(e) {
   }
   if (e.target && e.target.id === 'npSave') {
     const t = $('npTitle').value.trim(); if (!t) { rxAlert('Pad ka naam likhein.'); return; }
-    try { await rpc('staff_position_save', { p: { company: $('npCompany').value, title: t, role_key: $('npCompany').value === 'routix' ? ($('npRole').value || null) : null } }); $('npTitle').value = ''; toast('Pad jud gaya'); loadTeam(); } catch (err) { rxAlert(err.message); }
+    try { await rpc('staff_position_save', { p: { company: $('npCompany').value, title: t, role_key: $('npCompany').value === 'routix' ? ($('npRole').value || null) : $('npCompany').value === 'graspion' ? $('npGRole').value : null } }); $('npTitle').value = ''; toast('Pad jud gaya'); loadTeam(); } catch (err) { rxAlert(err.message); }
   }
 });
 async function loadDashboard() {
