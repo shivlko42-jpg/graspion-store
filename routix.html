@@ -259,7 +259,7 @@ label.f textarea { resize: vertical; }
 
     <section class="panel" data-sec="team" aria-labelledby="teamH">
       <h2 id="teamH">👥 Routix Team</h2>
-      <p class="hint">Har pad (position) yahan hai. Naya vyakti aaye to naam, email bharein aur "Active" karein. Wo vyakti <b>usi email</b> se is page par login kare (Google ya password) — Routix ka access apne aap mil jayega, uske role ke hisaab se. Chhod de to "Left" karein — access turant band.</p>
+      <p class="hint">Har pad (position) yahan hai. Naya vyakti aaye to naam, email aur <b>ERP Employee ID</b> (ERP se) bharein aur "Active" karein. Wo vyakti <b>usi email</b> se is page par login kare (Google ya password) — Routix ka access apne aap mil jayega, uske role ke hisaab se. Chhod de to "Left" karein — access turant band.</p>
       <div id="teamList"><div class="empty">Loading…</div></div>
       <details style="margin-top:14px;"><summary style="cursor:pointer; font-weight:700;">➕ Naya pad (position) jodein</summary>
         <div style="display:grid; gap:8px; margin-top:8px; max-width:440px;">
@@ -432,9 +432,9 @@ async function loadTeam() {
         const st = p.status === 'active' ? '<span class="pill s-delivered">Active</span>' : p.status === 'left' ? '<span class="pill s-cancelled">Left</span>' : '<span class="pill s-open">' + (p.phase === 'later' ? 'Baad mein' : 'Khaali — abhi bharna') + '</span>';
         const inp = function(k, ph, v, type) { return '<input data-tk="' + k + '" type="' + (type || 'text') + '" placeholder="' + ph + '" value="' + esc(v || '') + '" style="width:100%; box-sizing:border-box; padding:9px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:14.5px;">'; };
         return '<article class="ticket" data-pos="' + p.id + '"><div class="head"><span class="no">' + esc(p.person_code ? p.person_code + ' · ' : '') + esc(p.title) + '</span>' + st + '</div>' +
-          '<div class="facts">' + esc(p.department || '') + (p.role_key ? ' · role: <b>' + esc(roleName[p.role_key] || p.role_key) + '</b>' : '') + (p.salary_min ? ' · ₹' + Number(p.salary_min).toLocaleString('en-IN') + '–' + Number(p.salary_max).toLocaleString('en-IN') : '') + (p.reports_to_title ? ' · reports to ' + esc(p.reports_to_title) : '') + (p.auth_user_id ? ' · <b style="color:#166534;">login juda ✅</b>' : '') + '</div>' +
+          '<div class="facts">' + esc(p.department || '') + (p.role_key ? ' · role: <b>' + esc(roleName[p.role_key] || p.role_key) + '</b>' : '') + (p.salary_min ? ' · ₹' + Number(p.salary_min).toLocaleString('en-IN') + '–' + Number(p.salary_max).toLocaleString('en-IN') : '') + (p.reports_to_title ? ' · reports to ' + esc(p.reports_to_title) : '') + (p.employee_code ? ' · ERP ID <b>' + esc(p.employee_code) + '</b>' : '') + (p.auth_user_id ? ' · <b style="color:#166534;">login juda ✅</b>' : '') + '</div>' +
           (p.notes ? '<div class="facts" style="color:#78716C;">' + esc(p.notes) + '</div>' : '') +
-          (p.role_key === 'owner' ? '' : '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">' + inp('person_name', 'Naam', p.person_name) + inp('email', 'Email (login ke liye)', p.email, 'email') + inp('phone', 'Mobile', p.phone, 'tel') +
+          (p.role_key === 'owner' ? '' : '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">' + inp('person_name', 'Naam', p.person_name) + inp('email', 'Email (login ke liye)', p.email, 'email') + inp('phone', 'Mobile', p.phone, 'tel') + inp('employee_code', 'ERP Employee ID', p.employee_code) +
             '<select data-tk="status" style="padding:9px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:14.5px;"><option value="vacant"' + (p.status === 'vacant' ? ' selected' : '') + '>Khaali</option><option value="active"' + (p.status === 'active' ? ' selected' : '') + '>Active</option><option value="left"' + (p.status === 'left' ? ' selected' : '') + '>Left (chhod diya)</option></select></div>' +
             '<div class="actions"><button class="btn" type="button" data-possave="' + p.id + '">Save</button></div>') + '</article>';
       }).join('');
@@ -446,7 +446,7 @@ document.addEventListener('click', async function(e) {
   if (b) {
     const card = b.closest('[data-pos]'), body = { id: b.getAttribute('data-possave') };
     card.querySelectorAll('[data-tk]').forEach(function(i) { body[i.getAttribute('data-tk')] = i.value.trim(); });
-    if (body.status === 'active' && (!body.person_name || !/^\S+@\S+\.\S+$/.test(body.email))) { rxAlert('Active karne ke liye sahi naam aur email bharein.'); return; }
+    if (body.status === 'active' && (!body.person_name || !/^\S+@\S+\.\S+$/.test(body.email) || !body.employee_code)) { rxAlert('Active karne ke liye naam, email aur ERP Employee ID teeno bharein.'); return; }
     try { await rpc('staff_position_save', { p: body }); toast('Saved'); loadTeam(); } catch (err) { rxAlert(err.message); }
   }
   if (e.target && e.target.id === 'npSave') {
