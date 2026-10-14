@@ -2028,11 +2028,11 @@ btn.textContent = 'Log In →'; btn.disabled = false;
 function applyRolePermissions(role) {
 // super_admin sees everything. Other roles see only their relevant sidebar sections.
 const roleSections = {
-orders_manager: ['dashboard','orders','delivery','customers'],
+orders_manager: ['dashboard','orders','prebookings','dailysheet','delivery','returns','customers','reviews'],
 inventory_manager: ['dashboard','products','warehouses','categories','pairings','catalog'],
 marketing_manager: ['dashboard','banners','pairings','ads','settings','coupons','homepage'],
 finance_manager: ['dashboard','payments','vendors'],
-support_staff: ['dashboard','orders','customers'],
+support_staff: ['dashboard','orders','customers','applications','vendors','products','catalog','reviews'],
 category_manager: ['dashboard','products','categories','catalog','pairings'],
 category_executive: ['dashboard','products','categories','catalog']
 };
