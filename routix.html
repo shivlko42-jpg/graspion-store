@@ -258,19 +258,19 @@ label.f textarea { resize: vertical; }
     </section>
 
     <section class="panel" data-sec="team" aria-labelledby="teamH">
-      <h2 id="teamH">👥 Team — company structure</h2>
+      <h2 id="teamH">👥 Routix Team</h2>
       <p class="hint">Har pad (position) yahan hai. Naya vyakti aaye to naam, email bharein aur "Active" karein. Wo vyakti <b>usi email</b> se is page par login kare (Google ya password) — Routix ka access apne aap mil jayega, uske role ke hisaab se. Chhod de to "Left" karein — access turant band.</p>
       <div id="teamList"><div class="empty">Loading…</div></div>
       <details style="margin-top:14px;"><summary style="cursor:pointer; font-weight:700;">➕ Naya pad (position) jodein</summary>
         <div style="display:grid; gap:8px; margin-top:8px; max-width:440px;">
-          <label class="facts">Company<select id="npCompany" style="display:block; width:100%; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"><option value="routix">Routix</option><option value="graspion">Graspion</option><option value="grasp">Grasp Infotech</option></select></label>
+
           <label class="facts">Pad ka naam<input id="npTitle" placeholder="e.g. Dispatch Executive (shaam)" style="display:block; width:100%; box-sizing:border-box; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"></label>
-          <label class="facts">Role (Routix ke liye)<select id="npRole" style="display:block; width:100%; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"><option value="dispatch">Dispatch — booking, rider, UPI</option><option value="sales_support">Sales & Support — dukaan, dekhna</option><option value="accounts">Accounts — paisa, bill, UPI</option><option value="rider_lead">Rider Team Lead — riders</option><option value="">Koi Routix access nahi</option></select></label>
-          <label class="facts">Role (Graspion ke liye)<select id="npGRole" style="display:block; width:100%; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"><option value="orders_manager">Orders Manager — orders, delivery, returns</option><option value="support_staff">Support Staff — orders, customers, products</option><option value="finance_manager">Finance Manager — payments, settlement, refund</option><option value="inventory_manager">Inventory Manager — products, stock</option><option value="marketing_manager">Marketing Manager — banners, coupons, ads</option><option value="category_manager">Category Manager</option><option value="category_executive">Category Executive</option></select></label>
+          <label class="facts">Role<select id="npRole" style="display:block; width:100%; padding:10px; border:1.5px solid #D6D3D1; border-radius:10px; font-size:15px;"><option value="dispatch">Dispatch — booking, rider, UPI</option><option value="sales_support">Sales & Support — dukaan, dekhna</option><option value="accounts">Accounts — paisa, bill, UPI</option><option value="rider_lead">Rider Team Lead — riders</option><option value="">Koi Routix access nahi</option></select></label>
+
           <button class="btn" type="button" id="npSave">Pad jodein</button>
         </div>
       </details>
-      <div class="facts" style="margin-top:14px; padding:10px; border-radius:10px; background:#F5F5F4;"><b>Graspion pad:</b> Active karne ke baad wo vyakti <b>usi email</b> se graspion.in/admin.html par login kare — role ke hisaab se access apne aap milega. Paisa, settings aur staff jodna sirf aapke paas. <b>ERP:</b> asli vyakti aane par ERP ki apni "staff" screen se jodein — wahan role "staff" (accounts wale ke liye "accountant") aur sirf zaroori tick (permissions) dein.</div>
+      <div class="facts" style="margin-top:14px; padding:10px; border-radius:10px; background:#F5F5F4;"><b>Sirf Routix:</b> yahan sirf Routix ke pad hain. Graspion ki team Graspion admin (graspion.in/admin.html → Staff) mein alag hai. Har vyakti ka Routix ke liye <b>alag email / alag login</b> hona chahiye — ek hi email dono jagah nahi chalega. <b>ERP:</b> asli vyakti aane par ERP ki apni "staff" screen se jodein.</div>
     </section>
 
     <section class="panel" data-sec="upi" aria-labelledby="upiH">
@@ -422,9 +422,9 @@ function applyAccess() {
 // ===== Team (owner only) =====
 async function loadTeam() {
   try {
-    const list = await rpc('staff_positions_list');
+    const list = await rpc('staff_positions_company', { p_company: 'routix' });
     const co = { grasp: 'Grasp Infotech', routix: 'Routix', graspion: 'Graspion' }, roleName = { owner: 'Owner', dispatch: 'Dispatch', sales_support: 'Sales & Support', accounts: 'Accounts', rider_lead: 'Rider Team Lead', orders_manager: 'Orders Manager', support_staff: 'Support Staff', finance_manager: 'Finance Manager', marketing_manager: 'Marketing' };
-    const groups = ['grasp', 'routix', 'graspion'];
+    const groups = ['grasp', 'routix'];
     $('teamList').innerHTML = groups.map(function(g) {
       const rows = list.filter(function(p) { return p.company === g; });
       if (!rows.length) return '';
@@ -451,7 +451,7 @@ document.addEventListener('click', async function(e) {
   }
   if (e.target && e.target.id === 'npSave') {
     const t = $('npTitle').value.trim(); if (!t) { rxAlert('Pad ka naam likhein.'); return; }
-    try { await rpc('staff_position_save', { p: { company: $('npCompany').value, title: t, role_key: $('npCompany').value === 'routix' ? ($('npRole').value || null) : $('npCompany').value === 'graspion' ? $('npGRole').value : null } }); $('npTitle').value = ''; toast('Pad jud gaya'); loadTeam(); } catch (err) { rxAlert(err.message); }
+    try { await rpc('staff_position_save', { p: { company: 'routix', title: t, role_key: $('npRole').value || null } }); $('npTitle').value = ''; toast('Pad jud gaya'); loadTeam(); } catch (err) { rxAlert(err.message); }
   }
 });
 async function loadDashboard() {
