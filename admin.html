@@ -770,6 +770,18 @@ Continue with Google
 </details>
 
 <div class="panel" data-section="staff">
+<h3>👥 Graspion Team <span style="font-size:10px; color:#9ca3af; font-weight:400;">(Owner only)</span></h3>
+<p style="font-size:12px; color:#6b7280; margin:4px 0 12px;">Graspion ke pad. Naya vyakti aaye to naam, email bharein aur <b>Active</b> karein — wo usi email se is page par login kare (Google ya password), role apne aap milega. Chhode to <b>Left</b>. Routix ki team alag hai (Routix Control). Har vyakti ka Graspion ke liye <b>alag email / alag login</b> ho.</p>
+<div id="gTeamList"><div class="empty-state" style="display:block;">Loading…</div></div>
+<details style="margin-top:12px;"><summary style="cursor:pointer; font-weight:700;">➕ Naya pad jodein</summary>
+<div class="form-grid" style="margin-top:8px;">
+<input class="form-input" id="gNpTitle" placeholder="Pad ka naam, e.g. Catalog Executive">
+<select class="form-input" id="gNpRole"><option value="orders_manager">Orders Manager / Manager</option><option value="support_staff">Support Staff / Sales &amp; Support</option><option value="finance_manager">Finance Manager</option><option value="inventory_manager">Inventory Manager</option><option value="marketing_manager">Marketing Manager</option><option value="category_manager">Category Manager</option><option value="category_executive">Category Executive</option></select>
+<button class="login-btn" id="gNpSave" type="button">+ Pad jodein</button>
+</div></details>
+</div>
+
+<div class="panel" data-section="staff">
 <h3>🏢 Departments <span style="font-size:10px; color:#9ca3af; font-weight:400;">(Super Admin only)</span></h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Organize staff into departments, each with its own head. Assign any staff member to a department (with their designation) from the Staff Management panel below.</p>
 <div class="form-grid">
@@ -4831,6 +4843,60 @@ document.addEventListener('click', async function(e) {
   const pg = e.target.closest && e.target.closest('[data-page="delivery"]'); if (pg) setTimeout(loadRiderWallets, 300);
 });
 setTimeout(loadRiderWallets, 5000);
+</script>
+<script>
+// ===== Graspion Team (positions) — owner only, Graspion positions only =====
+(function() {
+  var loaded = false;
+  function gEsc(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  async function gRpc(name, body) {
+    var r = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+    var d = await r.json().catch(function() { return null; });
+    if (!r.ok) throw new Error((d && (d.message || d.error)) || ('Error ' + r.status));
+    return d;
+  }
+  var roleName = { owner: 'Owner', orders_manager: 'Orders Manager', support_staff: 'Support Staff', finance_manager: 'Finance Manager', inventory_manager: 'Inventory Manager', marketing_manager: 'Marketing Manager', category_manager: 'Category Manager', category_executive: 'Category Executive' };
+  function pill(bg, fg, t) { return '<span style="background:' + bg + '; color:' + fg + '; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700;">' + t + '</span>'; }
+  async function loadGTeam() {
+    var box = document.getElementById('gTeamList'); if (!box) return;
+    try {
+      var list = await gRpc('staff_positions_company', { p_company: 'graspion' });
+      box.innerHTML = list.map(function(p) {
+        var st = p.status === 'active' ? pill('#dcfce7', '#166534', 'Active') : p.status === 'left' ? pill('#fee2e2', '#991b1b', 'Left') : pill('#fef3c7', '#92400e', p.phase === 'later' ? 'Baad mein' : 'Khaali — abhi bharna');
+        var head = '<div style="display:flex; justify-content:space-between; gap:8px; align-items:center;"><b>' + gEsc((p.person_code ? p.person_code + ' · ' : '') + p.title) + '</b>' + st + '</div>' +
+          '<div style="font-size:12px; color:#6b7280; margin-top:3px;">' + gEsc(p.department || '') + (p.role_key ? ' · role: <b>' + gEsc(roleName[p.role_key] || p.role_key) + '</b>' : '') + (p.auth_user_id ? ' · <b style="color:#166534;">login juda ✅</b>' : '') + '</div>' +
+          (p.notes ? '<div style="font-size:12px; color:#9ca3af; margin-top:3px;">' + gEsc(p.notes) + '</div>' : '');
+        if (p.role_key === 'owner') return '<div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px; margin-bottom:10px;">' + head + '</div>';
+        return '<div data-gpos="' + p.id + '" style="border:1px solid #e5e7eb; border-radius:12px; padding:12px; margin-bottom:10px;">' + head +
+          '<div class="form-grid" style="margin-top:8px;"><input class="form-input" data-gk="person_name" placeholder="Naam" value="' + gEsc(p.person_name) + '"><input class="form-input" data-gk="email" type="email" placeholder="Email (login ke liye)" value="' + gEsc(p.email) + '"><input class="form-input" data-gk="phone" type="tel" placeholder="Mobile" value="' + gEsc(p.phone) + '">' +
+          '<select class="form-input" data-gk="status"><option value="vacant"' + (p.status === 'vacant' ? ' selected' : '') + '>Khaali</option><option value="active"' + (p.status === 'active' ? ' selected' : '') + '>Active</option><option value="left"' + (p.status === 'left' ? ' selected' : '') + '>Left (chhod diya)</option></select>' +
+          '<button class="login-btn" type="button" data-gsave="' + p.id + '">Save</button></div></div>';
+      }).join('') || '<div class="empty-state" style="display:block;">Koi pad nahi</div>';
+      loaded = true;
+    } catch (e) { box.innerHTML = '<div class="empty-state" style="display:block;">' + gEsc(e.message) + '</div>'; }
+  }
+  document.addEventListener('click', async function(e) {
+    var nav = e.target.closest && e.target.closest('.side-item[data-page="staff"]'); if (nav) loadGTeam();
+    var b = e.target.closest && e.target.closest('[data-gsave]');
+    if (b) {
+      var card = b.closest('[data-gpos]'), body = { id: b.getAttribute('data-gsave') };
+      card.querySelectorAll('[data-gk]').forEach(function(i) { body[i.getAttribute('data-gk')] = i.value.trim(); });
+      if (body.status === 'active' && (!body.person_name || !/^\S+@\S+\.\S+$/.test(body.email))) { alert('Active karne ke liye sahi naam aur email bharein.'); return; }
+      b.disabled = true;
+      try { await gRpc('staff_position_save', { p: body }); await loadGTeam(); } catch (err) { alert(err.message); }
+      b.disabled = false;
+    }
+    if (e.target && e.target.id === 'gNpSave') {
+      var t = document.getElementById('gNpTitle').value.trim(); if (!t) { alert('Pad ka naam likhein.'); return; }
+      try { await gRpc('staff_position_save', { p: { company: 'graspion', title: t, role_key: document.getElementById('gNpRole').value } }); document.getElementById('gNpTitle').value = ''; loadGTeam(); } catch (err) { alert(err.message); }
+    }
+  });
+  var tries = 0, timer = setInterval(function() {
+    tries++;
+    try { if (authToken && authToken !== SUPABASE_KEY && currentAdmin && currentAdmin.role === 'super_admin' && !loaded) { loadGTeam(); clearInterval(timer); } } catch (e) {}
+    if (tries > 120) clearInterval(timer);
+  }, 1000);
+})();
 </script>
 </body>
 </html>
