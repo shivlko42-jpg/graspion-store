@@ -666,7 +666,7 @@ const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(function() {});
 window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); installEvt = e; showInstallChip(); });
-window.addEventListener('appinstalled', function() { try { localStorage.setItem('routix_installed', '1'); } catch (e) {} const c = document.getElementById('installChip'); if (c) c.remove(); });
+window.addEventListener('appinstalled', function() { fetch(SUPABASE_URL + '/rest/v1/app_install_events', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ app: 'routix', platform: /android/i.test(navigator.userAgent) ? 'android' : (/iphone|ipad|ipod/i.test(navigator.userAgent) ? 'ios' : 'desktop') }) }).catch(function() {}); try { localStorage.setItem('routix_installed', '1'); } catch (e) {} const c = document.getElementById('installChip'); if (c) c.remove(); });
 function installSnoozed() { try { return Date.now() < Number(localStorage.getItem('routix_install_snooze') || 0) || localStorage.getItem('routix_installed') === '1'; } catch (e) { return false; } }
 function showInstallChip() {
   if (isStandalone || document.getElementById('installChip')) return;

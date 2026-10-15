@@ -356,7 +356,7 @@ let deferredInstallPrompt = null;
 const isStandaloneApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 const isIOSDevice = /iphone|ipad|ipod/i.test(navigator.userAgent);
 window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); deferredInstallPrompt = e; });
-window.addEventListener('appinstalled', function() { const b = document.getElementById('installNudgeBanner'); if (b) b.remove(); });
+window.addEventListener('appinstalled', function() { fetch(SUPABASE_URL + '/rest/v1/app_install_events', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ app: 'routix', platform: /android/i.test(navigator.userAgent) ? 'android' : (/iphone|ipad|ipod/i.test(navigator.userAgent) ? 'ios' : 'desktop') }) }).catch(function() {}); const b = document.getElementById('installNudgeBanner'); if (b) b.remove(); });
 function maybeShowRiderInstallNudge() {
   if (isStandaloneApp) return;
   if (!deferredInstallPrompt && !isIOSDevice) return;

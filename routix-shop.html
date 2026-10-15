@@ -249,7 +249,7 @@ function makeShopApp(name) {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(function() {});
 }
 window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); installEvt = e; $('installBtn').hidden = false; });
-window.addEventListener('appinstalled', function() { $('installBtn').hidden = true; });
+window.addEventListener('appinstalled', function() { fetch(SUPABASE_URL + '/rest/v1/app_install_events', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ app: 'routix', platform: /android/i.test(navigator.userAgent) ? 'android' : (/iphone|ipad|ipod/i.test(navigator.userAgent) ? 'ios' : 'desktop') }) }).catch(function() {}); $('installBtn').hidden = true; });
 document.addEventListener('click', async function(e) {
   if (e.target && e.target.id === 'installBtn') {
     if (installEvt) { installEvt.prompt(); const r = await installEvt.userChoice; if (r.outcome === 'accepted') $('installBtn').hidden = true; installEvt = null; }
