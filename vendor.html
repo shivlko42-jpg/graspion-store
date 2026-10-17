@@ -1455,7 +1455,7 @@ function configureSellingModeUI() {
     explainer.textContent = '⚡ Your store is a Dark Store — products are delivered instantly within your service radius.';
   } else {
     panIndiaOption.style.display = '';
-    explainer.textContent = 'ℹ️ "Local Area Only" restricts which pincode sees this product, but delivery is still standard (courier), not instant — instant delivery is only available to registered Dark Stores.';
+    explainer.textContent = 'ℹ️ Local Area Only = only your area sees it (Routix rider). Ship Pan-India = all of India sees it — customers in your own area still get fast Routix rider delivery (when your local delivery is on), the rest of India gets courier.';
   }
 }
 document.getElementById('modeLocal').addEventListener('click', function() { setMode('local'); });
