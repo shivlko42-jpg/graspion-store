@@ -1191,6 +1191,12 @@ function deliveryPin() { return String((customerInfo && customerInfo.pincode) ||
 // Local Routix delivery for a shop's items when the address is in the shop's area
 // (shop has local delivery on). Pan-India products of that shop also go local there;
 // if the local quote says no (too far / no rider), Pan-India-only items fall back to courier.
+// Shop area match: exact pincode, or a whole-city entry like '226*' (every pincode starting 226 = Lucknow)
+function pinInArea(list, pin) {
+  if (!list || !pin) return false;
+  pin = String(pin);
+  return list.some(function(x) { x = String(x || ''); return x === pin || (x.slice(-1) === '*' && x.length > 1 && pin.indexOf(x.slice(0, -1)) === 0); });
+}
 function localCandidateGroups(items) {
   const dPin = deliveryPin();
   const groups = {};
@@ -1199,7 +1205,7 @@ function localCandidateGroups(items) {
   Object.keys(groups).forEach(function(vid) {
     const v = vendors.find(function(vv) { return vv.id === vid; });
     const allLocal = groups[vid].every(function(i) { return !!i.pincode; });
-    if (v && v.localDelivery && allLocal && dPin && v.pincodes && v.pincodes.indexOf(dPin) !== -1) {
+    if (v && v.localDelivery && allLocal && dPin && pinInArea(v.pincodes, dPin)) {
       out[vid] = groups[vid].reduce(function(sum, i) { return sum + i.price * i.qty; }, 0);
     }
   });
@@ -1686,7 +1692,7 @@ document.getElementById('categoryRailBackdrop').classList.remove('open');
 document.getElementById('categoryToggleBtn').addEventListener('click', openCategoryRail);
 document.getElementById('categoryRailBackdrop').addEventListener('click', closeCategoryRail);
 function renderVendors(pin){
-const list = vendors.filter(function(v){ return (v.pincodes.includes(pin) || v.pincodes.includes('ALL')) && v.nearbySubscribed; });
+const list = vendors.filter(function(v){ return (!pin || pinInArea(v.pincodes, pin) || v.pincodes.includes('ALL')) && v.nearbySubscribed; });
 const row = document.getElementById('vendorRow');
 document.getElementById('vendorHeading').textContent = '🏪 ' + list.length + ' ' + graspionT('vendorsNearYou').replace('🏪 ','');
 if(list.length === 0){ row.innerHTML = '<div style="display:flex; align-items:center; gap:12px; background:#fff; border:1.5px dashed #e5e0f5; border-radius:16px; padding:16px 18px; width:100%;"><div style="font-size:26px;">🏪</div><div><div style="font-size:12.5px; font-weight:800; color:#1e1b3a;">No featured stores here yet</div><div style="font-size:11px; color:#9ca3af; margin-top:2px;">Local sellers are joining Graspion in your area soon — check back shortly.</div></div></div>'; return; }
@@ -1719,7 +1725,7 @@ if (p.pincode === 'ALL') return true;
 if (!pin) return null;
 if (p.pincode.split(',').map(function(s){ return s.trim(); }).indexOf(pin) !== -1) return true;
 const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
-return !!(vendor && vendor.pincodes && vendor.pincodes.indexOf(pin) !== -1);
+return !!(vendor && vendor.pincodes && pinInArea(vendor.pincodes, pin));
 }
 // "Lucknow" for an area-only product (city taken from the shop's address)
 function productAreaName(p){
@@ -1734,7 +1740,7 @@ if (!pin) return p.pincode === 'ALL';
 if (p.pincode === 'ALL') return true;
 if (p.pincode.split(',').map(function(s){ return s.trim(); }).indexOf(pin) !== -1) return true;
 const vendor = vendors.find(function(v){ return v.id === p.vendorId; });
-return !!(vendor && vendor.pincodes && vendor.pincodes.indexOf(pin) !== -1);
+return !!(vendor && vendor.pincodes && pinInArea(vendor.pincodes, pin));
 }
 // The size a customer most likely wants: the one matching the shown price, else the cheapest in stock
 function defaultVariantFor(p){

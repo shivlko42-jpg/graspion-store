@@ -289,6 +289,7 @@ window.addEventListener('load', function() {
             <input class="form-input" id="newAreaLabel" placeholder="Area name (optional)" style="margin:0; flex:1;">
             <button type="button" id="addAreaBtn" style="background:#7c3aed; color:#fff; border:none; border-radius:10px; padding:0 16px; font-weight:700; cursor:pointer;">+ Add</button>
           </div>
+          <button type="button" id="wholeCityBtn" style="width:100%; margin-bottom:8px; background:#ede9fe; color:#6d28d9; border:1.5px solid #c4b5fd; border-radius:10px; padding:10px; font-weight:800; cursor:pointer;">📍 Poora Lucknow (226 se shuru hone wale saare pincode)</button>
           <div id="serviceAreaList" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
         </div>
       </div>
@@ -3473,8 +3474,9 @@ function renderCoverageBadge() {
     explainEl.textContent = 'Set by Graspion admin. You deliver only within a small radius of your store for fast instant delivery — this can\'t be changed here.';
     manager.style.display = 'none';
   } else if (vendorServiceAreas.length > 0) {
-    badgeEl.innerHTML = '<span style="background:#ede9fe; color:#6d28d9; padding:4px 10px; border-radius:20px;">🏘️ Local Area — ' + vendorServiceAreas.length + ' pincode' + (vendorServiceAreas.length > 1 ? 's' : '') + '</span>';
-    explainEl.textContent = 'You deliver across the specific pincodes listed below (e.g. a whole city) — not everywhere in India, but more than just your own doorstep.';
+    const wholeCity = vendorServiceAreas.some(function(a) { return a.pincode === '226*'; });
+    badgeEl.innerHTML = '<span style="background:#ede9fe; color:#6d28d9; padding:4px 10px; border-radius:20px;">🏘️ Local Area — ' + (wholeCity ? 'poora Lucknow' : vendorServiceAreas.length + ' pincode' + (vendorServiceAreas.length > 1 ? 's' : '')) + '</span>';
+    explainEl.textContent = 'Customers in these areas get fast Routix rider delivery. Your "Local Area Only" products are seen only here; your "Ship Pan-India" products are still seen all over India (courier outside this area).';
     manager.style.display = 'block';
   } else {
     badgeEl.innerHTML = '<span style="background:#dcfce7; color:#15803d; padding:4px 10px; border-radius:20px;">📦 Pan-India — Ships Anywhere</span>';
@@ -3488,7 +3490,7 @@ function renderServiceAreaChips() {
   if (!list) return;
   list.innerHTML = vendorServiceAreas.map(function(a) {
     return '<span style="display:inline-flex; align-items:center; gap:6px; background:#fff; border:1.5px solid #ede9fe; border-radius:20px; padding:5px 10px; font-size:11px;">' +
-      a.pincode + (a.area_label ? ' (' + a.area_label + ')' : '') +
+      (a.pincode === '226*' ? '📍 Poora Lucknow (226…)' : a.pincode + (a.area_label ? ' (' + a.area_label + ')' : '')) +
       ' <button type="button" data-delarea="' + a.id + '" style="background:none; border:none; color:#dc2626; cursor:pointer; font-size:12px; padding:0;">✕</button></span>';
   }).join('');
   document.querySelectorAll('[data-delarea]').forEach(function(btn) {
@@ -3516,6 +3518,20 @@ if (addAreaBtnEl) addAreaBtnEl.addEventListener('click', async function() {
     pinInput.value = ''; labelInput.value = '';
     renderCoverageBadge();
   } catch (err) { alert('Could not add pincode: ' + err.message); }
+});
+// One tap: the whole of Lucknow city = every pincode that starts with 226 (stored as '226*')
+const wholeCityBtnEl = document.getElementById('wholeCityBtn');
+if (wholeCityBtnEl) wholeCityBtnEl.addEventListener('click', async function() {
+  if (vendorServiceAreas.some(function(a) { return a.pincode === '226*'; })) { alert('Poora Lucknow pehle se juda hai.'); return; }
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/vendor_service_areas', {
+      method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+      body: JSON.stringify({ vendor_id: currentVendor.id, pincode: '226*', area_label: 'Poora Lucknow' })
+    });
+    if (!res.ok) { alert('Could not add: ' + await res.text()); return; }
+    const rows = await res.json(); vendorServiceAreas.push(rows[0]); renderCoverageBadge(); refreshSavedAreaPicker();
+    alert('✅ Poora Lucknow jud gaya — Lucknow ke har pincode par aapki dukaan aur Routix delivery.');
+  } catch (err) { alert('Could not add: ' + err.message); }
 });
 // Reuses the vendor's existing saved service areas (managed in the Local
 // Area Manager under Store Settings) — no separate fetch needed, and any
