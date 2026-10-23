@@ -284,7 +284,7 @@ Continue with Google
 </div>
 
 <div class="panel" data-section="dashboard" id="attnPanel" style="display:none; border:2px solid #f59e0b;">
-<h3>🚨 Orders needing attention <span id="attnCount" style="font-size:12px; background:#fef3c7; color:#92400e; padding:2px 10px; border-radius:999px;"></span></h3>
+<h3>🚨 Orders needing attention <span id="attnCount" style="font-size:12px; background:#fef3c7; color:#92400e; padding:2px 10px; border-radius:999px;"></span> <button type="button" id="attnNotifyBtn" style="margin-left:6px; font-size:11.5px; background:#ede9fe; color:#6d28d9; border:none; padding:4px 10px; border-radius:999px; font-weight:700; cursor:pointer;">🔔 Phone alert on</button></h3>
 <div style="font-size:12.5px; color:#374151; margin-bottom:10px;">Shops that have not accepted in time, or rejected. Customers already see "the shop is a little busy — wait or cancel".</div>
 <div id="attnList"></div>
 </div>
@@ -4649,6 +4649,7 @@ async function loadAttentionOrders() {
     });
     const panel = document.getElementById('attnPanel'); if (!panel) return;
     panel.style.display = rows.length ? 'block' : 'none';
+    if (typeof window.attnAlert === 'function') { try { window.attnAlert(rows); } catch (e) {} }
     document.getElementById('attnCount').textContent = rows.length + ' order' + (rows.length === 1 ? '' : 's');
     document.getElementById('attnList').innerHTML = rows.map(function(o) {
       const waited = Math.round((now - new Date(o.created_at)) / 60000);
@@ -4701,7 +4702,7 @@ document.addEventListener('click', async function(e) {
   }
 });
 setTimeout(loadAttentionOrders, 3000);
-setInterval(function() { if (document.visibilityState === 'visible') loadAttentionOrders(); }, 60000);
+setInterval(function() { loadAttentionOrders(); }, 60000); // also in a background tab, so the alert can ring
 
 // ===== Routix books: deliveries done by riders, per client =====
 async function loadRoutixSummary() {
@@ -4896,6 +4897,70 @@ setTimeout(loadRiderWallets, 5000);
     try { if (authToken && authToken !== SUPABASE_KEY && currentAdmin && currentAdmin.role === 'super_admin' && !loaded) { loadGTeam(); clearInterval(timer); } } catch (e) {}
     if (tries > 120) clearInterval(timer);
   }, 1000);
+})();
+</script>
+<script>
+// ===== Alert when an order needs attention (shop late / rejected) =====
+(function() {
+  var KEY = 'graspion_attn_seen', baseTitle = document.title;
+  var banner = document.createElement('div');
+  banner.id = 'attnBanner';
+  banner.setAttribute('role', 'alert');
+  banner.style.cssText = 'display:none; position:fixed; left:50%; top:10px; transform:translateX(-50%); z-index:9999; background:#b91c1c; color:#fff; padding:12px 16px; border-radius:14px; font-weight:800; font-size:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); max-width:92vw; cursor:pointer; text-align:center;';
+  document.body.appendChild(banner);
+  banner.addEventListener('click', function() {
+    banner.style.display = 'none';
+    var d = document.querySelector('.side-item[data-page="dashboard"]'); if (d) d.click();
+    setTimeout(function() { var pnl = document.getElementById('attnPanel'); if (pnl) pnl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300);
+  });
+  function seen() { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } }
+  function setSeen(a) { try { localStorage.setItem(KEY, JSON.stringify(a.slice(-200))); } catch (e) {} }
+  function chime() {
+    try {
+      var C = window.AudioContext || window.webkitAudioContext; if (!C) return;
+      var ctx = new C();
+      [0, 0.35, 0.7].forEach(function(t) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.0001, ctx.currentTime + t); g.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.28);
+        o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.3);
+      });
+    } catch (e) {}
+    try { if (navigator.vibrate) navigator.vibrate([250, 120, 250]); } catch (e) {}
+  }
+  function badge(n) {
+    ['orders', 'dashboard'].forEach(function(pg) {
+      var item = document.querySelector('.side-item[data-page="' + pg + '"]'); if (!item) return;
+      var b = item.querySelector('.attn-badge');
+      if (!n) { if (b) b.remove(); return; }
+      if (!b) { b = document.createElement('span'); b.className = 'attn-badge'; b.style.cssText = 'margin-left:6px; background:#dc2626; color:#fff; border-radius:999px; padding:0 7px; font-size:11px; font-weight:800;'; item.appendChild(b); }
+      b.textContent = n;
+    });
+    document.title = (n ? '(' + n + ') 🚨 ' : '') + baseTitle;
+  }
+  window.attnAlert = function(rows) {
+    badge(rows.length);
+    var ids = rows.map(function(o) { return o.id + (o.vendor_rejected_at ? ':r' : ''); });
+    var old = seen(), fresh = ids.filter(function(id) { return old.indexOf(id) === -1; });
+    setSeen(old.concat(fresh));
+    if (!fresh.length) { if (!rows.length) banner.style.display = 'none'; return; }
+    var msg = '🚨 ' + fresh.length + ' order' + (fresh.length > 1 ? 's' : '') + ' need attention — shop late / rejected. Dekhein ›';
+    banner.textContent = msg; banner.style.display = 'block';
+    chime();
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        var n = new Notification('Graspion — order needs attention', { body: fresh.length + ' order(s): shop has not accepted in time or rejected. Tap to open.', tag: 'graspion-attn', renotify: true });
+        n.onclick = function() { window.focus(); banner.click(); n.close(); };
+      }
+    } catch (e) {}
+  };
+  var nb = document.getElementById('attnNotifyBtn');
+  function nbText() { if (!nb) return; if (!('Notification' in window)) { nb.style.display = 'none'; return; } nb.textContent = Notification.permission === 'granted' ? '🔔 Phone alert: ON' : '🔔 Phone alert on'; }
+  if (nb) nb.addEventListener('click', function() {
+    chime();
+    if ('Notification' in window && Notification.permission !== 'granted') Notification.requestPermission().then(nbText);
+  });
+  nbText();
 })();
 </script>
 </body>
