@@ -100,6 +100,23 @@
   .pipe-label { font-size:8.5px; color:#8b87a8; font-weight:700; }
   .empty-state { text-align:center; padding:30px 20px; color:#4b5563; font-size:12.5px; }
   @media(max-width:650px){ .sidebar{display:none;} .form-row{grid-template-columns:1fr;} }
+  /* Mobile bottom navigation (vendor) */
+  .bnav { display:none; }
+  .bnav-sheet { display:none; }
+  @media(max-width:650px){
+    .vendor-tabs { display:none !important; }
+    .app-wrap.show-bnav .bnav { display:grid; grid-template-columns:repeat(5,1fr); position:fixed; left:0; right:0; bottom:0; z-index:900; background:#fff; border-top:1px solid #ece9f7; padding:6px 4px calc(8px + env(safe-area-inset-bottom, 0px)); box-shadow:0 -4px 16px rgba(76,29,149,0.08); }
+    .app-wrap.show-bnav .main { padding-bottom:calc(84px + env(safe-area-inset-bottom, 0px)) !important; }
+    .bnav button { background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:11px; font-weight:700; color:#8b87a8; padding:4px 0; cursor:pointer; position:relative; font-family:inherit; }
+    .bnav button .bi { font-size:20px; line-height:1; }
+    .bnav button.on { color:#7c3aed; }
+    .bnav .bbadge { position:absolute; top:0; right:calc(50% - 22px); background:#dc2626; color:#fff; border-radius:99px; font-size:10.5px; padding:0 5px; min-width:16px; line-height:16px; }
+    .bnav-sheet.open { display:block; position:fixed; inset:0; z-index:950; background:rgba(28,25,23,0.45); }
+    .bnav-sheet .card { position:absolute; left:0; right:0; bottom:0; background:#fff; border-radius:18px 18px 0 0; padding:14px 14px calc(16px + env(safe-area-inset-bottom, 0px)); }
+    .bnav-sheet .card button { display:flex; align-items:center; gap:12px; width:100%; background:#f7f5ff; border:none; border-radius:12px; padding:14px; margin-top:8px; font-size:15px; font-weight:700; color:#1c1917; cursor:pointer; font-family:inherit; }
+    .bnav-sheet .card button.danger { background:#fee2e2; color:#b91c1c; }
+  }
+
 </style>
 </head>
 <body>
@@ -214,6 +231,24 @@ window.addEventListener('load', function() {
 </div>
 
 <div class="app-wrap" id="appWrap">
+<nav class="bnav" id="bnav" aria-label="Vendor menu">
+  <button type="button" data-bn="navDashboard" class="on"><span class="bi" aria-hidden="true">🏠</span>Home</button>
+  <button type="button" data-bn="navProducts"><span class="bi" aria-hidden="true">📦</span>Products</button>
+  <button type="button" data-bn="navOrders"><span class="bi" aria-hidden="true">🧾</span>Orders<span class="bbadge" id="bnOrdersBadge" hidden>0</span></button>
+  <button type="button" data-bn="navPayments"><span class="bi" aria-hidden="true">💳</span>Payments</button>
+  <button type="button" id="bnMore"><span class="bi" aria-hidden="true">☰</span>More</button>
+</nav>
+<div class="bnav-sheet" id="bnSheet" role="dialog" aria-modal="true" aria-label="More options">
+  <div class="card">
+    <div style="font-weight:800; font-size:15px; color:#1c1917;">More</div>
+    <button type="button" data-bs="navPrebookings">📦 Pre-Bookings</button>
+    <button type="button" data-bs="navPromote">🎯 Promote / Ads</button>
+    <button type="button" data-bs="navSettings">⚙️ Store Settings</button>
+    <button type="button" data-bs="logoutBtn" class="danger">🚪 Logout</button>
+    <button type="button" id="bnClose" style="background:#f1f0f5; justify-content:center;">Close</button>
+  </div>
+</div>
+
   <div class="sidebar">
     <div class="side-logo-wrap">
       <div data-graspion-logo="text" data-size="16"></div>
@@ -3944,5 +3979,27 @@ document.addEventListener('change', function(e) {
 })();
 </script>
 
+<script>
+// Mobile bottom navigation: each button just presses the matching (hidden) sidebar item
+(function() {
+  var wrap = document.getElementById('appWrap'); if (!wrap) return;
+  wrap.classList.add('show-bnav');
+  var nav = document.getElementById('bnav'), sheet = document.getElementById('bnSheet');
+  function setOn(btn) { nav.querySelectorAll('button').forEach(function(b) { b.classList.toggle('on', b === btn); }); }
+  nav.querySelectorAll('[data-bn]').forEach(function(b) {
+    b.addEventListener('click', function() { var t = document.getElementById(b.getAttribute('data-bn')); if (t) t.click(); setOn(b); });
+  });
+  document.getElementById('bnMore').addEventListener('click', function() { sheet.classList.add('open'); });
+  document.getElementById('bnClose').addEventListener('click', function() { sheet.classList.remove('open'); });
+  sheet.addEventListener('click', function(e) { if (e.target === sheet) sheet.classList.remove('open'); });
+  sheet.querySelectorAll('[data-bs]').forEach(function(b) {
+    b.addEventListener('click', function() { sheet.classList.remove('open'); var t = document.getElementById(b.getAttribute('data-bs')); if (t) t.click(); setOn(document.getElementById('bnMore')); });
+  });
+  var src = document.getElementById('todoPendingOrders'), badge = document.getElementById('bnOrdersBadge');
+  function syncBadge() { var n = parseInt((src && src.textContent) || '0', 10) || 0; badge.textContent = n; badge.hidden = n < 1; }
+  if (src && window.MutationObserver) new MutationObserver(syncBadge).observe(src, { childList: true, characterData: true, subtree: true });
+  syncBadge();
+})();
+</script>
 </body>
 </html>
