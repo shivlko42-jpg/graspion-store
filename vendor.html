@@ -1926,8 +1926,8 @@ function renderOrders() {
     }
 
     const stepsHtml = STATUS_STEPS.map(function(step, i) {
-      const isDone = i < currentIndex;
-      const isCurrent = i === currentIndex;
+      const isDone = i < currentIndex || (step === 'delivered' && o.status === 'delivered'); // last step done → tick
+      const isCurrent = i === currentIndex && !isDone;
       return '<div class="pipe-step">' +
         '<div class="pipe-line ' + (isDone || isCurrent ? 'done' : '') + '"></div>' +
         '<div class="pipe-dot ' + (isDone ? 'done' : isCurrent ? 'current' : '') + '" data-orderid="' + o.id + '" data-step="' + i + '">' + (isDone ? '✓' : (i+1)) + '</div>' +
