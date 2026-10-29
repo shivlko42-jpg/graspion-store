@@ -147,6 +147,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
   th, td { padding:7px 4px; }
 }
 </style>
+<style>#oldStaffPanel{display:none !important}</style>
 </head>
 <body>
 <div id="splashScreen" style="position:fixed; inset:0; z-index:99999; background:linear-gradient(135deg,#0a0f1f,#1e2749 55%,#3b4a7a); display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity 0.4s ease;">
@@ -770,15 +771,23 @@ Continue with Google
 </details>
 
 <div class="panel" data-section="staff">
-<h3>👥 Graspion Team <span style="font-size:10px; color:#9ca3af; font-weight:400;">(Owner only)</span></h3>
-<p style="font-size:12px; color:#6b7280; margin:4px 0 12px;">Graspion ke pad. Naya vyakti aaye to naam, email aur <b>ERP Employee ID</b> (ERP se) bharein aur <b>Active</b> karein — wo usi email se is page par login kare (Google ya password), role apne aap milega. Chhode to <b>Left</b>. Routix ki team alag hai (Routix Control). Har vyakti ka Graspion ke liye <b>alag email / alag login</b> ho.</p>
+<h3>👥 Graspion Staff <span style="font-size:10px; color:#9ca3af; font-weight:400;">(Owner only)</span></h3>
+<div style="background:#f7f5ff; border:1px solid #e9e3fb; border-radius:14px; padding:14px; margin:8px 0 14px;">
+<div style="font-weight:800; margin-bottom:8px;">➕ Naya staff jodein</div>
+<div class="form-grid">
+<input class="form-input" id="sfName" placeholder="Naam" autocomplete="off">
+<input class="form-input" id="sfEmail" type="email" placeholder="Email (sirf Graspion ke liye)" autocomplete="off">
+<input class="form-input" id="sfPhone" type="tel" placeholder="Mobile">
+<input class="form-input" id="sfErp" placeholder="ERP Employee ID (ERP se)" autocomplete="off">
+<select class="form-input" id="sfRole"></select>
+<select class="form-input" id="sfCity"><option value="">Sab shehar / Head office</option><option value="Lucknow">Lucknow</option></select>
+</div>
+<div id="sfRoleInfo" style="font-size:12.5px; line-height:1.5; background:#ecfdf5; color:#065f46; border-radius:10px; padding:9px 11px; margin-top:8px;"></div>
+<button class="login-btn" id="sfAdd" type="button" style="margin-top:10px;">Jodein aur chalu karein</button>
+<div style="font-size:11.5px; color:#6b7280; margin-top:6px;">Staff isi email se graspion.in/admin.html par login kare (Google ya password) — role apne aap milega. Routix ke liye alag email.</div>
+</div>
+<div style="font-weight:800; margin-bottom:6px;">👥 Graspion ka staff</div>
 <div id="gTeamList"><div class="empty-state" style="display:block;">Loading…</div></div>
-<details style="margin-top:12px;"><summary style="cursor:pointer; font-weight:700;">➕ Naya pad jodein</summary>
-<div class="form-grid" style="margin-top:8px;">
-<input class="form-input" id="gNpTitle" placeholder="Pad ka naam, e.g. Catalog Executive">
-<select class="form-input" id="gNpRole"><option value="orders_manager">Orders Manager / Manager</option><option value="support_staff">Support Staff / Sales &amp; Support</option><option value="finance_manager">Finance Manager</option><option value="inventory_manager">Inventory Manager</option><option value="marketing_manager">Marketing Manager</option><option value="category_manager">Category Manager</option><option value="category_executive">Category Executive</option></select>
-<button class="login-btn" id="gNpSave" type="button">+ Pad jodein</button>
-</div></details>
 </div>
 
 <div class="panel" data-section="staff">
@@ -793,7 +802,7 @@ Continue with Google
 <div class="empty-state" id="deptEmpty" style="display:none;">No departments yet</div>
 </div>
 
-<div class="panel" data-section="staff">
+<div class="panel" data-section="staff" id="oldStaffPanel" style="display:none !important;">
 <h3>👤 Staff Management <span style="font-size:10px; color:#9ca3af; font-weight:400;">(Super Admin only)</span></h3>
 <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">Add staff accounts and assign each person a role — they'll only see the sections relevant to their job.</p>
 <div class="form-grid">
@@ -4846,51 +4855,82 @@ document.addEventListener('click', async function(e) {
 setTimeout(loadRiderWallets, 5000);
 </script>
 <script>
-// ===== Graspion Team (positions) — owner only, Graspion positions only =====
+// ===== Graspion Staff — easy add / change role / remove (owner only) =====
 (function() {
   var loaded = false;
-  function gEsc(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-  async function gRpc(name, body) {
+  var ROLES = [
+    { k: 'orders_manager', t: 'Manager / Operations', can: 'orders, pre-booking, daily sheet, delivery, returns, customers, reviews; vendor form sirf dekhna', cannot: 'refund, settlement, payout, vendor approve, settings, staff' },
+    { k: 'support_staff', t: 'Sales & Support', can: 'vendor form dekhna, products / catalog, customers, reviews, orders mein note', cannot: 'vendor approve, refund, paisa, settings' },
+    { k: 'finance_manager', t: 'Finance', can: 'payment, vendor settlement, refund, payout', cannot: 'orders badalna, products, settings, staff' },
+    { k: 'marketing_manager', t: 'Marketing', can: 'banner, coupon, popup ad, homepage', cannot: 'paisa, orders, settings, staff' },
+    { k: 'inventory_manager', t: 'Inventory / Catalog', can: 'products, category, stock, warehouse', cannot: 'paisa, orders, settings, staff' },
+    { k: 'category_manager', t: 'Category Manager', can: 'apni category ke products', cannot: 'paisa, settings, staff' },
+    { k: 'category_executive', t: 'Category Executive', can: 'apni category ke products (chhota role)', cannot: 'paisa, settings, staff' }
+  ];
+  function roleOf(k) { return ROLES.filter(function(r) { return r.k === k; })[0]; }
+  function esc(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  async function rpc(name, body) {
     var r = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
     var d = await r.json().catch(function() { return null; });
     if (!r.ok) throw new Error((d && (d.message || d.error)) || ('Error ' + r.status));
     return d;
   }
-  var roleName = { owner: 'Owner', orders_manager: 'Orders Manager', support_staff: 'Support Staff', finance_manager: 'Finance Manager', inventory_manager: 'Inventory Manager', marketing_manager: 'Marketing Manager', category_manager: 'Category Manager', category_executive: 'Category Executive' };
-  function pill(bg, fg, t) { return '<span style="background:' + bg + '; color:' + fg + '; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700;">' + t + '</span>'; }
+  function chip(bg, fg, t) { return '<span style="background:' + bg + '; color:' + fg + '; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700; white-space:nowrap;">' + t + '</span>'; }
+  var sel = document.getElementById('sfRole'), info = document.getElementById('sfRoleInfo');
+  if (sel) {
+    sel.innerHTML = ROLES.map(function(r) { return '<option value="' + r.k + '">' + r.t + '</option>'; }).join('');
+    var showInfo = function() { var r = roleOf(sel.value); info.innerHTML = '✅ <b>Kar payega:</b> ' + esc(r.can) + '<br>❌ <b>Nahi kar payega:</b> ' + esc(r.cannot); };
+    sel.addEventListener('change', showInfo); showInfo();
+  }
   async function loadGTeam() {
     var box = document.getElementById('gTeamList'); if (!box) return;
     try {
-      var list = await gRpc('staff_positions_company', { p_company: 'graspion' });
-      box.innerHTML = list.map(function(p) {
-        var st = p.status === 'active' ? pill('#dcfce7', '#166534', 'Active') : p.status === 'left' ? pill('#fee2e2', '#991b1b', 'Left') : pill('#fef3c7', '#92400e', p.phase === 'later' ? 'Baad mein' : 'Khaali — abhi bharna');
-        var head = '<div style="display:flex; justify-content:space-between; gap:8px; align-items:center;"><b>' + gEsc((p.person_code ? p.person_code + ' · ' : '') + p.title) + '</b>' + st + '</div>' +
-          '<div style="font-size:12px; color:#6b7280; margin-top:3px;">' + gEsc(p.department || '') + (p.role_key ? ' · role: <b>' + gEsc(roleName[p.role_key] || p.role_key) + '</b>' : '') + (p.employee_code ? ' · ERP ID <b>' + gEsc(p.employee_code) + '</b>' : '') + (p.auth_user_id ? ' · <b style="color:#166534;">login juda ✅</b>' : '') + '</div>' +
-          (p.notes ? '<div style="font-size:12px; color:#9ca3af; margin-top:3px;">' + gEsc(p.notes) + '</div>' : '');
-        if (p.role_key === 'owner') return '<div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px; margin-bottom:10px;">' + head + '</div>';
-        return '<div data-gpos="' + p.id + '" style="border:1px solid #e5e7eb; border-radius:12px; padding:12px; margin-bottom:10px;">' + head +
-          '<div class="form-grid" style="margin-top:8px;"><input class="form-input" data-gk="person_name" placeholder="Naam" value="' + gEsc(p.person_name) + '"><input class="form-input" data-gk="email" type="email" placeholder="Email (login ke liye)" value="' + gEsc(p.email) + '"><input class="form-input" data-gk="phone" type="tel" placeholder="Mobile" value="' + gEsc(p.phone) + '"><input class="form-input" data-gk="employee_code" placeholder="ERP Employee ID" value="' + gEsc(p.employee_code) + '">' +
-          '<select class="form-input" data-gk="status"><option value="vacant"' + (p.status === 'vacant' ? ' selected' : '') + '>Khaali</option><option value="active"' + (p.status === 'active' ? ' selected' : '') + '>Active</option><option value="left"' + (p.status === 'left' ? ' selected' : '') + '>Left (chhod diya)</option></select>' +
-          '<button class="login-btn" type="button" data-gsave="' + p.id + '">Save</button></div></div>';
-      }).join('') || '<div class="empty-state" style="display:block;">Koi pad nahi</div>';
+      var list = await rpc('staff_positions_company', { p_company: 'graspion' });
+      var people = list.filter(function(p) { return p.person_name; });
+      var vacant = list.filter(function(p) { return !p.person_name && p.role_key !== 'owner'; });
+      box.innerHTML = people.map(function(p) {
+        if (p.role_key === 'owner') return '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid #eee;"><div><b>' + esc(p.person_name) + '</b><div style="font-size:12px; color:#6b7280;">Owner · sab kuch</div></div>' + chip('#dcfce7', '#166534', 'Owner') + '</div>';
+        var st = p.status === 'active' ? chip('#dcfce7', '#166534', 'Active') : p.status === 'left' ? chip('#fee2e2', '#991b1b', 'Hata diya') : chip('#fef3c7', '#92400e', 'Khaali');
+        var opts = ROLES.map(function(r) { return '<option value="' + r.k + '"' + (r.k === p.role_key ? ' selected' : '') + '>' + r.t + '</option>'; }).join('');
+        return '<div data-gpos="' + p.id + '" style="padding:10px 0; border-bottom:1px solid #eee;">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div><b>' + esc(p.person_name) + '</b>' +
+          '<div style="font-size:12px; color:#6b7280;">' + esc(p.email || '') + (p.employee_code ? ' · ERP ' + esc(p.employee_code) : '') + (p.city ? ' · ' + esc(p.city) : '') + (p.auth_user_id ? ' · <b style="color:#166534;">login juda ✅</b>' : ' · login baaki') + '</div></div>' + st + '</div>' +
+          '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; align-items:center;">' +
+          '<label style="font-size:12px; color:#6b7280;">Role <select class="form-input" data-grole="' + p.id + '" style="display:inline-block; width:auto; padding:6px 8px; font-size:13px;"' + (p.status !== 'active' ? ' disabled' : '') + '>' + opts + '</select></label>' +
+          (p.status === 'active' ? '<button type="button" data-gleft="' + p.id + '" style="font-size:12.5px; padding:6px 12px; border-radius:10px; border:1px solid #fca5a5; background:#fff; color:#b91c1c; font-weight:700; cursor:pointer;">Hataayein</button>'
+                                 : '<button type="button" data-gback="' + p.id + '" style="font-size:12.5px; padding:6px 12px; border-radius:10px; border:1px solid #c4b5fd; background:#fff; color:#6d28d9; font-weight:700; cursor:pointer;">Wapas chalu</button>') +
+          '</div></div>';
+      }).join('') + (vacant.length ? '<div style="font-size:12px; color:#9ca3af; margin-top:10px;">Aage ke khaali pad (yojana): ' + vacant.map(function(v) { return esc(v.title); }).join(' · ') + '</div>' : '');
+      if (!people.length) box.innerHTML = '<div class="empty-state" style="display:block;">Abhi koi staff nahi.</div>';
       loaded = true;
-    } catch (e) { box.innerHTML = '<div class="empty-state" style="display:block;">' + gEsc(e.message) + '</div>'; }
+    } catch (e) { box.innerHTML = '<div class="empty-state" style="display:block;">' + esc(e.message) + '</div>'; }
   }
+  var addBtn = document.getElementById('sfAdd');
+  if (addBtn) addBtn.addEventListener('click', async function() {
+    var v = function(id) { return (document.getElementById(id).value || '').trim(); };
+    var body = { company: 'graspion', person_name: v('sfName'), email: v('sfEmail'), phone: v('sfPhone'), employee_code: v('sfErp'), role_key: v('sfRole'), city: v('sfCity') };
+    if (!body.person_name || !/^\S+@\S+\.\S+$/.test(body.email) || !body.employee_code) { alert('Naam, sahi email aur ERP Employee ID teeno bharein.'); return; }
+    addBtn.disabled = true;
+    try {
+      await rpc('staff_add', { p: body });
+      ['sfName', 'sfEmail', 'sfPhone', 'sfErp'].forEach(function(id) { document.getElementById(id).value = ''; });
+      alert('✅ ' + body.person_name + ' jud gaye (' + roleOf(body.role_key).t + '). Ab wo ' + body.email + ' se admin.html par login karein.');
+      loadGTeam();
+    } catch (err) { alert(err.message); }
+    addBtn.disabled = false;
+  });
+  document.addEventListener('change', async function(e) {
+    var s = e.target.closest && e.target.closest('[data-grole]'); if (!s) return;
+    var r = roleOf(s.value);
+    if (!confirm('Role badal kar "' + r.t + '" karein?\n\nKar payega: ' + r.can + '\nNahi kar payega: ' + r.cannot)) { loadGTeam(); return; }
+    try { await rpc('staff_change_role', { p_id: s.getAttribute('data-grole'), p_role_key: s.value }); loadGTeam(); } catch (err) { alert(err.message); loadGTeam(); }
+  });
   document.addEventListener('click', async function(e) {
     var nav = e.target.closest && e.target.closest('.side-item[data-page="staff"]'); if (nav) loadGTeam();
-    var b = e.target.closest && e.target.closest('[data-gsave]');
-    if (b) {
-      var card = b.closest('[data-gpos]'), body = { id: b.getAttribute('data-gsave') };
-      card.querySelectorAll('[data-gk]').forEach(function(i) { body[i.getAttribute('data-gk')] = i.value.trim(); });
-      if (body.status === 'active' && (!body.person_name || !/^\S+@\S+\.\S+$/.test(body.email) || !body.employee_code)) { alert('Active karne ke liye naam, email aur ERP Employee ID teeno bharein.'); return; }
-      b.disabled = true;
-      try { await gRpc('staff_position_save', { p: body }); await loadGTeam(); } catch (err) { alert(err.message); }
-      b.disabled = false;
-    }
-    if (e.target && e.target.id === 'gNpSave') {
-      var t = document.getElementById('gNpTitle').value.trim(); if (!t) { alert('Pad ka naam likhein.'); return; }
-      try { await gRpc('staff_position_save', { p: { company: 'graspion', title: t, role_key: document.getElementById('gNpRole').value } }); document.getElementById('gNpTitle').value = ''; loadGTeam(); } catch (err) { alert(err.message); }
-    }
+    var l = e.target.closest && e.target.closest('[data-gleft]');
+    if (l) { if (!confirm('Is staff ko hataayein? Login turant band ho jayega.')) return; try { await rpc('staff_position_save', { p: { id: l.getAttribute('data-gleft'), status: 'left' } }); loadGTeam(); } catch (err) { alert(err.message); } }
+    var b = e.target.closest && e.target.closest('[data-gback]');
+    if (b) { try { await rpc('staff_position_save', { p: { id: b.getAttribute('data-gback'), status: 'active' } }); loadGTeam(); } catch (err) { alert(err.message); } }
   });
   var tries = 0, timer = setInterval(function() {
     tries++;
