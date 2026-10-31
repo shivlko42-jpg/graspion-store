@@ -167,7 +167,7 @@ async function rpc(name, body) {
   if (!r.ok) throw new Error((d && (d.message || d.error)) || 'Network error');
   return d;
 }
-let info = null, drops = [], dropSeq = 0;
+let info = null, drops = [], dropSeq = 0, partner = null;
 
 async function load() {
   if (!TOKEN) { $('app').innerHTML = '<div class="center">Open the khaata link Routix sent you on WhatsApp.</div>'; return; }
@@ -177,11 +177,17 @@ async function load() {
   document.title = info.name + ' — Routix Khaata';
   $('shopAv').textContent = initials(info.name);
   makeShopApp(info.name);
+  try { partner = await rpc('shop_portal_partner', { p_token: TOKEN }); } catch (e) { partner = null; }
   render();
 }
 function render() {
   const usedAmt = Number(info.limit_used != null ? info.limit_used : info.khaata_due), used = Math.min(100, Math.round(usedAmt / Number(info.credit_limit || 1) * 100));
-  $('app').innerHTML =
+  const pBanner = (partner && partner.ok && partner.is_partner)
+    ? '<div style="margin:0 0 12px; padding:12px 14px; border-radius:14px; background:#ECFDF5; border:1px solid #A7F3D0; color:#065F46; font-size:14.5px; line-height:1.45;"><b>🤝 Routix Partner</b>' +
+      (partner.welcome_available ? '<br>🎁 Aapki <b>pehli delivery FREE</b> hai (₹' + Number(partner.welcome_max || 60) + ' tak) — abhi book kijiye!' : '') +
+      (partner.on_graspion ? '' : '<br>🛒 Apni dukaan <b>Graspion par free online</b> kholiye: <a href="https://graspion.in/?sell=1&utm_source=routix&utm_medium=partner&utm_campaign=partner_shop" target="_blank" rel="noopener" style="color:#047857; font-weight:700;">yahan dabaiye</a>') + '</div>'
+    : '';
+  $('app').innerHTML = pBanner +
     '<section class="strip" aria-label="Your khaata today">' +
       '<div class="tile cash"><b>' + rs(info.cash_to_get_today) + '</b><small>your goods cash to get back today' + (Number(info.cash_on_the_way) ? ' · ' + rs(info.cash_on_the_way) + ' still on the way' : '') + '</small></div>' +
       '<div class="tile due"><b>' + rs(usedAmt) + '</b><small>khaata used of ' + rs(info.credit_limit) + ' limit · bill bharne par limit khaali hoti hai</small><div class="limit"><i style="width:' + used + '%"></i></div></div>' +
@@ -363,7 +369,7 @@ async function quote(d) {
       if (r) { d.road_km = r.km; d.road_for = d.lat + ',' + d.lng; q = await ask(r.km); }
     }
     if (seq !== d.seq) return;
-    if (!q.ok) { out.textContent = q.error; d.price = null; } else { d.price = q.charge; out.textContent = rs(q.charge) + ' · ' + (q.km_source === 'road' ? q.km + ' km by road' : 'about ' + q.km + ' km') + (val(d, 'payment_mode') === 'client_account' ? ' · on your khaata' : ' · customer pays'); }
+    if (!q.ok) { out.textContent = q.error; d.price = null; } else { d.price = q.charge; const isWelcome = partner && partner.welcome_available && drops.length && drops[0].id === d.id; out.textContent = (isWelcome ? '🎁 ' + rs(q.charge) + ' → ' + rs(Math.max(0, q.charge - Number(partner.welcome_max || 60))) + ' (pehli delivery free) · ' : '') + rs(q.charge) + ' · ' + (q.km_source === 'road' ? q.km + ' km by road' : 'about ' + q.km + ' km') + (val(d, 'payment_mode') === 'client_account' ? ' · on your khaata' : ' · customer pays'); }
   } catch (e) { out.textContent = e.message; d.price = null; }
   refreshTotal();
 }
