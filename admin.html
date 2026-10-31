@@ -147,7 +147,7 @@ td { padding:9px 6px; border-bottom:1px solid #f7f6fb; font-weight:600; }
   th, td { padding:7px 4px; }
 }
 </style>
-<style>#oldStaffPanel{display:none !important}</style>
+<style>#oldStaffPanel,#oldRiderAppsPanel{display:none !important}</style>
 </head>
 <body>
 <div id="splashScreen" style="position:fixed; inset:0; z-index:99999; background:linear-gradient(135deg,#0a0f1f,#1e2749 55%,#3b4a7a); display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity 0.4s ease;">
@@ -842,7 +842,7 @@ Continue with Google
 <div class="empty-state" id="vendorAppsEmpty" style="display:none;">No pending vendor applications</div>
 </details>
 
-<details class="panel" data-section="applications">
+<details class="panel" data-section="applications" id="oldRiderAppsPanel">
 <summary style="cursor:pointer; list-style:none;"><h3 style="display:inline;">🚴 Rider Applications ▾</h3></summary>
 <p style="font-size:13px; color:#374151; margin-top:8px;">Rider applications are now handled by Routix. <a href="routix.html#applications" target="_blank" rel="noopener" style="color:#ea580c; font-weight:800;">Open Routix Control → New riders</a></p>
 <div class="empty-state" id="riderAppsEmpty" style="display:none;">No pending rider applications</div>
