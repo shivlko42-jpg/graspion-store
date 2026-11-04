@@ -5259,7 +5259,7 @@ tryMatchVariant();
 (function pickDefaultVariant() {
   if (!variants.length) return;
   const sorted = variants.slice().sort(function(x, y) { return Number(x.selling_price) - Number(y.selling_price); });
-  const def = variants.find(function(v) { return Number(v.selling_price) === Number(p.price) && v.stock > 0; }) || sorted.find(function(v) { return v.stock > 0; }) || sorted[0];
+  const def = variants.find(function(v) { return v.is_default === true && v.stock > 0; }) || variants.find(function(v) { return Number(v.selling_price) === Number(p.price) && v.stock > 0; }) || sorted.find(function(v) { return v.stock > 0; }) || sorted[0];
   (productVariantAttrsMap[def.id] || []).forEach(function(a) {
     const btn = Array.from(document.querySelectorAll('.pd-attr-btn')).find(function(b) { return b.getAttribute('data-attrname') === a.attribute_name && b.getAttribute('data-attrvalue') === a.attribute_value; });
     if (btn) btn.click();
