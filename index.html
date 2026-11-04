@@ -1231,8 +1231,9 @@ async function refreshLocalQuotes(force) {
   const fresh = {};
   await Promise.all(Object.keys(groups).map(async function(vid) {
     try {
-      const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/local_delivery_quote', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ p_vendor_id: vid, p_lat: useGeo ? useGeo.lat : null, p_lng: useGeo ? useGeo.lng : null, p_pincode: deliveryPin(), p_items_total: groups[vid], p_weight_kg: Math.round((weights[vid] || 0) * 10) / 10 }) });
+      const pids = cartItemsList().filter(function(i) { return i.vendorId === vid; }).map(function(i) { return i.id; });
+      const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/local_delivery_quote_items', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_product_ids: pids, p_vendor_id: vid, p_lat: useGeo ? useGeo.lat : null, p_lng: useGeo ? useGeo.lng : null, p_pincode: deliveryPin(), p_items_total: groups[vid], p_weight_kg: Math.round((weights[vid] || 0) * 10) / 10 }) });
       if (r.ok) fresh[vid] = await r.json();
     } catch (e) {}
   }));
