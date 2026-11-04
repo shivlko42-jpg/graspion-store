@@ -2,6 +2,9 @@ User-agent: *
 Allow: /
 Disallow: /admin.html
 Disallow: /vendor.html
+Disallow: /routix.html
 Disallow: /rider.html
+Disallow: /routix-shop.html
 
+Sitemap: https://graspion.in/sitemap.xml
 Sitemap: https://fghhbmdgelnpirysbusl.supabase.co/functions/v1/dynamic-sitemap
