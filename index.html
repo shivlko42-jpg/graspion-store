@@ -4981,7 +4981,7 @@ mainImgHtml + thumbsHtml +
   (vendor && vendor.fssaiLicense && siteSettings.vendor_show_license !== false ? '<div style="display:flex; gap:8px; margin-bottom:6px;"><span style="flex-shrink:0;">🍽️</span><span><b>FSSAI Lic:</b> ' + vendor.fssaiLicense + '</span></div>' : '') +
   (vendor && vendor.drugLicense && siteSettings.vendor_show_license !== false ? '<div style="display:flex; gap:8px;"><span style="flex-shrink:0;">💊</span><span><b>Drug Lic:</b> ' + vendor.drugLicense + '</span></div>' : '') +
 '</div>' +
-'<div id="pdPriceRow" style="display:flex; align-items:center; gap:8px; margin-top:6px;"><span id="pdPrice" style="font-size:20px; font-weight:900; color:#7c3aed;">₹' + p.price + '</span>' + (p.old > p.price ? '<span style="text-decoration:line-through; color:#9ca3af; font-size:13px;">₹' + p.old + '</span><span style="color:#dc2626; font-size:11px; font-weight:700;">' + p.off + '</span>' : '') + '</div>' +
+'<div id="pdPriceRow" style="display:flex; align-items:center; gap:8px; margin-top:6px;"><span id="pdPrice" style="font-size:20px; font-weight:900; color:#7c3aed;">₹' + p.price + '</span>' + (p.old > p.price ? '<span style="text-decoration:line-through; color:#9ca3af; font-size:13px;">₹' + p.old + '</span><span style="color:#dc2626; font-size:11px; font-weight:700;">' + p.off + '</span>' : '') + '</div>' + (typeof productPopularityHtml === 'function' ? productPopularityHtml(p.id) : '') +
 variantSelectorHtml +
 (avgRating ? '<div style="margin-top:6px; font-size:12px;">⭐ ' + avgRating + ' (' + reviews.length + ' review' + (reviews.length !== 1 ? 's' : '') + ')</div>' : '<div style="margin-top:6px; font-size:11px; color:#9ca3af;">No reviews yet</div>') +
 (variants.length === 0 && p.stock != null && p.stock > 0 && p.stock <= 10 ? '<div style="margin-top:6px; background:#fef2f2; color:#dc2626; font-size:11px; font-weight:700; padding:6px 10px; border-radius:8px; display:inline-block;">🔥 Only ' + p.stock + ' left in stock — order soon!</div>' : '') +
@@ -5430,5 +5430,25 @@ function openCancelOrderModal(orderId, paid, amount) {
 }
 </script>
 
+<script>
+// Views / Added on the product page — real totals; shown only when big enough (20+ views, 5+ added)
+var productEventCounts = {};
+(function() {
+  try {
+    fetch(SUPABASE_URL + '/rest/v1/rpc/product_event_counts', { method: 'POST', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function(r) { return r.ok ? r.json() : {}; }).then(function(d) { productEventCounts = d || {}; }).catch(function() {});
+  } catch (e) {}
+})();
+function productPopularityHtml(id) {
+  var c = productEventCounts[id]; if (!c) return '';
+  var v = Number(c.v || 0), a = Number(c.a || 0), parts = [];
+  var eye = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var cart = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h9.3a1 1 0 0 0 1-.8L21 8H6.2"/></svg>';
+  if (v >= 20) parts.push('<span style="display:inline-flex; align-items:center; gap:5px;">' + eye + '<b style="color:#1f2937;">' + v.toLocaleString('en-IN') + '</b> Views</span>');
+  if (a >= 5) parts.push('<span style="display:inline-flex; align-items:center; gap:5px;">' + cart + '<b style="color:#1f2937;">' + a.toLocaleString('en-IN') + '</b> Added</span>');
+  if (!parts.length) return '';
+  return '<div style="display:flex; gap:16px; margin-top:6px; font-size:12.5px; color:#6b7280;">' + parts.join('') + '</div>';
+}
+</script>
 </body>
 </html>
