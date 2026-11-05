@@ -375,7 +375,7 @@ footer a { color:#9ca3af; text-decoration:none; margin:0 6px; }
 .pair-price { font-size:11px; font-weight:800; color:#7c3aed; margin-bottom:6px; }
 .pair-add-btn { width:100%; background:#ec4899; color:#fff; border:none; padding:6px; border-radius:8px; font-size:10.5px; font-weight:700; cursor:pointer; }
 body { padding-bottom:68px; }
-.bottom-nav { position:fixed; bottom:0; left:0; right:0; background:#fff; box-shadow:0 -2px 12px rgba(0,0,0,0.08); display:flex; justify-content:space-around; align-items:center; padding:8px 0 max(8px, env(safe-area-inset-bottom)); z-index:80; transition:padding .2s; }
+.bottom-nav { position:fixed; bottom:0; left:0; right:0; background:#fff; box-shadow:0 -2px 12px rgba(0,0,0,0.08); display:flex; justify-content:space-around; align-items:center; padding:8px 0 max(8px, env(safe-area-inset-bottom)); z-index:80; transform:translateZ(0); -webkit-transform:translateZ(0); backface-visibility:hidden; }
 .bottom-nav.compact { padding:4px 0 max(4px, env(safe-area-inset-bottom)); }
 .bottom-nav.compact .bn-label { max-height:0; opacity:0; margin:0; overflow:hidden; }
 .bottom-nav.compact .bn-icon { font-size:22px; }
@@ -2012,19 +2012,8 @@ icon.classList.add('bn-cart-bounce');
 // content — expands again the moment scrolling stops or reverses.
 let lastScrollY = 0;
 let scrollStopTimer = null;
-window.addEventListener('scroll', function() {
-const nav = document.getElementById('bottomNav');
-if (!nav) return;
-const currentY = window.scrollY;
-if (currentY > lastScrollY && currentY > 120) {
-nav.classList.add('compact');
-} else {
-nav.classList.remove('compact');
-}
-lastScrollY = currentY;
-clearTimeout(scrollStopTimer);
-scrollStopTimer = setTimeout(function() { nav.classList.remove('compact'); }, 900);
-}, { passive: true });
+// 4 Nov 2026: the shrink-on-scroll made the bar jump up and down while scrolling,
+// so the bar now stays one fixed size (owner asked for a stable footer bar).
 function makeCartKey(productId, variantId){ return variantId ? (productId + '::' + variantId) : productId; }
 function parseCartKey(key){ const parts = key.split('::'); return { productId: parts[0], variantId: parts[1] || null }; }
 function cartItemsList(){
